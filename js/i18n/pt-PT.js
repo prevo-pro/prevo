@@ -3478,6 +3478,8 @@ I18n.ajouter('pt-PT', {
   'import.rapport_refus.raison': 'Motivo',
   'import.reference.fournisseur': 'Fornecedor',
   'import.reference.localisation': 'Localização',
+  'import.codes_depart.remplace': 'Toma o lugar do código inicial {code} «{libelle}», que nenhum registo cita.',
+  'import.codes_depart.remplaces': { one: '{n} código da lista inicial substituído pelo seu (mesma descrição).', other: '{n} códigos da lista inicial substituídos pelos seus (mesma descrição).' },
   'import.references.creees_aussi': { one: 'Criada também, por ser citada pelas linhas a importar:', other: 'Criadas também, por serem citadas pelas linhas a importar:' },
   'import.references.reference': '{nature} «{libelle}» <small class="import-cible">{id}</small>',
   'import.rendre.etape_courante': 'Passo {numero} de {total}: {titre}',

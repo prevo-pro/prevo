@@ -3476,6 +3476,8 @@ I18n.ajouter('en', {
   'import.rapport_refus.raison': 'Reason',
   'import.reference.fournisseur': 'Supplier',
   'import.reference.localisation': 'Location',
+  'import.codes_depart.remplace': 'Takes the place of starter code {code} “{libelle}”, which nothing refers to.',
+  'import.codes_depart.remplaces': { one: '{n} starter-list code replaced by yours (same label).', other: '{n} starter-list codes replaced by yours (same label).' },
   'import.references.creees_aussi': { one: 'Also created, because cited by the rows to import:', other: 'Also created, because cited by the rows to import:' },
   'import.references.reference': '{nature} “{libelle}” <small class="import-cible">{id}</small>',
   'import.rendre.etape_courante': 'Step {numero} of {total}: {titre}',

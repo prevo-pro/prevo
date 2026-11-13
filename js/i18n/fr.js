@@ -3474,6 +3474,8 @@ I18n.ajouter('fr', {
   'import.rapport_refus.raison': 'Raison',
   'import.reference.fournisseur': 'Fournisseur',
   'import.reference.localisation': 'Localisation',
+  'import.codes_depart.remplace': 'Prend la place du code de départ {code} « {libelle} », que rien ne cite.',
+  'import.codes_depart.remplaces': { one: '{n} code de la liste de départ remplacé par le vôtre (même libellé).', other: '{n} codes de la liste de départ remplacés par les vôtres (même libellé).' },
   'import.references.creees_aussi': { one: 'Créée aussi, car citée par les lignes à importer :', other: 'Créées aussi, car citées par les lignes à importer :' },
   'import.references.reference': '{nature} « {libelle} » <small class="import-cible">{id}</small>',
   'import.rendre.etape_courante': 'Étape {numero} sur {total} : {titre}',

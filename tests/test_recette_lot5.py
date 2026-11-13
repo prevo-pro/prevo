@@ -96,7 +96,11 @@ TOTAUX_BASE_VIDE = {
     "historique.csv": {"creer": 14, "refusee": 2, "doublon_sur": 1, "doublon_suppose": 1},
 }
 # Fiches attendues après la reprise (LISEZMOI) ; localisations, fournisseurs et mouvements recalculés plus bas.
-FICHES_BASE_VIDE = {"codes_defaillance": 40, "techniciens": 6, "equipements": 20, "articles": 9, "habilitations": 6,
+# Base vide (lot 1 ergonomie, A2 : T515 puis T523) : elle part des 37 codes de la liste de départ ; codes.csv en crée 40
+# et 9 d'entre eux portent le libellé d'un code de départ que rien ne cite (S02, S06, C13, C15, R01, R02, R03, R04, R06),
+# qu'ils remplacent : 40 + 37 - 9 = 68 codes.
+CODES_DEPART_REMPLACES = 9
+FICHES_BASE_VIDE = {"codes_defaillance": 40 + len(codes_de_depart("fr")) - CODES_DEPART_REMPLACES, "techniciens": 6, "equipements": 20, "articles": 9, "habilitations": 6,
                     "compteurs": 6, "controles_reglementaires": 4, "gammes": 3, "gamme_operations": 8,
                     "ordres_travail": 14, "ot_temps": 13}
 LIGNES_REFUSEES_PARC = {16, 17, 24}               # criticité « Z », parent « XX-99 », désignation vide
@@ -128,7 +132,7 @@ IMPORTER_JS = """async ([type, nom, contenu, collage, options, importer]) => {
     colonnes: correspondance.map((c) => [c.entete, c.champ, c.statut]),
     lignes: apercu.lignes.map((l) => [l.numero, l.action, l.cible || '']),
     ecritures: Object.fromEntries(Object.entries(apercu.ecritures)
-      .map(([table, e]) => [table, [e.creer.length, e.modifier.length]])) };
+      .map(([table, e]) => [table, [e.creer.length, e.modifier.length, (e.supprimer || []).length]])) };
   if (importer) {
     const resultat = await Import.importer(apercu, { nomFichier: nom, recalculer: calculer });
     window.__imports = (window.__imports || []).concat([resultat]);
@@ -329,13 +333,17 @@ class TestReprise(CasRecette):
                     self.assertEqual(totaux(apercu["totaux"]), attendus(TOTAUX_BASE_VIDE[nom]))
                     # Fiches écrites = créations de l'aperçu (base vide : rien à mettre à jour)
                     apres = page.evaluate(COMPTES_JS)
-                    ecrites = {t: n for t, (n, m) in apercu["ecritures"].items() if n or m}
-                    self.assertEqual({t: apres[t] - avant[t] for t in apres if apres[t] != avant[t] and t != "journal"}, ecrites)
-                    self.assertEqual({t: [b["crees"], b["misAJour"]] for t, b in tables.items()},
-                                     {t: [n, 0] for t, n in ecrites.items()})
+                    ecrites = {t: n for t, (n, m, s) in apercu["ecritures"].items() if n or m}
+                    remplaces = {t: s for t, (n, m, s) in apercu["ecritures"].items() if s}
+                    self.assertEqual(remplaces, {"codes_defaillance": CODES_DEPART_REMPLACES} if nom == "codes.csv" else {})
+                    self.assertEqual({t: apres[t] - avant[t] for t in apres if apres[t] != avant[t] and t != "journal"},
+                                     {t: n - remplaces.get(t, 0) for t, n in ecrites.items()})
+                    self.assertEqual({t: [b["crees"], b["misAJour"], b.get("remplaces", 0)] for t, b in tables.items()},
+                                     {t: [n, 0, remplaces.get(t, 0)] for t, n in ecrites.items()})
                     self.assertRegex(sauvegarde, MOTIF_AVANT_IMPORT)
                     sauvegardes.append(sauvegarde)
-                    bilans += [[t, "", "import %s : %d créé(s), 0 mis à jour" % (nom, n)] for t, n in ecrites.items()]
+                    bilans += [[t, "", "import %s : %d créé(s), 0 mis à jour" % (nom, n)
+                                + (", %d code(s) de départ remplacé(s)" % remplaces[t] if t in remplaces else "")] for t, n in ecrites.items()]
                 if nom == "gammes.xlsx":
                     # Avant l'historique : heures de fonctionnement de deux machines (le parc importé n'en a pas) et
                     # réglages des suggestions (2 pannes de même cause, sur 24 mois), comme dans la fiche et Paramètres.
@@ -413,7 +421,9 @@ class TestReprise(CasRecette):
             print("  [recette] indicateurs du %s au %s (%s) : MTBF %s h, MTTR %s h, disponibilité %s %%"
                   % (DU, AU, " + ".join(MACHINES_SUIVIES), affiches["mtbf"][0], affiches["mttr"][0], affiches["disponibilite"][0]))
             self.assertLessEqual(abs(float(affiches["mtbf"][0]) - global_["mtbf"]), 0.05 + 1e-9)
-            self.assertLessEqual(abs(float(affiches["mttr"][0]) - global_["mttr"]), 0.05 + 1e-9)
+            # MTTR sur TOUTES les pannes de la période (lot 1 ergonomie, A6, T519 : il ne dépend pas des heures par jour),
+            # MTBF et disponibilité sur les deux machines suivies.
+            self.assertLessEqual(abs(float(affiches["mttr"][0]) - fiabilite(pannes, requis)["mttr"]), 0.05 + 1e-9)
             self.assertLessEqual(abs(float(affiches["disponibilite"][0]) - 100 * global_["disponibilite"]), 0.05 + 1e-9)
             self.assertIn("2 pannes", affiches["mtbf"][1])
             self.assertIn("%s : sans durée d'arrêt" % historique[7], affiches["mttr"][1])

@@ -3478,6 +3478,8 @@ I18n.ajouter('tr', {
   'import.rapport_refus.raison': 'Neden',
   'import.reference.fournisseur': 'Tedarikçi',
   'import.reference.localisation': 'Konum',
+  'import.codes_depart.remplace': 'Hiçbir kaydın kullanmadığı başlangıç kodu {code} “{libelle}” yerine geçer.',
+  'import.codes_depart.remplaces': { one: 'Başlangıç listesindeki {n} kod sizinkiyle değiştirildi (aynı ad).', other: 'Başlangıç listesindeki {n} kod sizinkilerle değiştirildi (aynı ad).' },
   'import.references.creees_aussi': { one: 'Ayrıca oluşturuldu, çünkü içe aktarılacak satırlarda geçiyor:', other: 'Ayrıca oluşturuldu, çünkü içe aktarılacak satırlarda geçiyorlar:' },
   'import.references.reference': '{nature} “{libelle}” <small class="import-cible">{id}</small>',
   'import.rendre.etape_courante': 'Adım {numero} / {total}: {titre}',

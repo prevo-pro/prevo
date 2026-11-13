@@ -175,6 +175,21 @@ Object.assign(Import, (() => {
     indexer(index, table, Object.assign({}, fiche.valeurs, { id: fiche.idCourant || fiche.propre }));
   }
 
+  // Lot 1 ergonomie, A2 (T523) : code importé dont le libellé est déjà pris dans sa famille par un code de la liste de
+  // départ (js/catalogue/codes-depart.js) qu'aucune fiche ne cite (Parametres.codeCite, comme sa suppression) : il prend
+  // sa place, le code de départ est retiré à l'écriture (ecritures.codes_defaillance.supprimer) et la ligne le dit, si
+  // elle est acceptée (sinon il est remis). Code de départ cité, ou homonyme qui n'est pas de départ : refus, comme avant.
+  function codeDeDepartRemplace(etat, valeurs) {
+    if (typeof CodesDeDepart === 'undefined') return null;
+    const index = indexDe(etat, 'codes_defaillance');
+    const libelle = UI.normaliserRecherche(texte(valeurs.libelle));
+    const depart = Donnees.lignes('codes_defaillance').find((c) => index.parId.has(c.id) && c.famille === valeurs.famille
+      && UI.normaliserRecherche(c.libelle) === libelle && CodesDeDepart.codes.some((d) => d.famille === c.famille && d.code === texte(c.code))
+      && !Parametres.codeCite(c));
+    if (depart) retirer(index, 'codes_defaillance', depart.id);
+    return depart || null;
+  }
+
   // ===== Refus et dépendances ===================================================================
   // Raison du formulaire, précédée du libellé du champ (colonne de l'import, sinon schéma) quand le message ne le nomme pas.
   function raison(contexte, erreur) {
@@ -223,7 +238,13 @@ Object.assign(Import, (() => {
     contexte.lignes.filter(gardee).forEach((ligne) => {
       const fiche = ficheEcrite(etat, ligne);
       if (!fiche) return;
+      const depart = contexte.type === 'codes' && !fiche.idCourant ? codeDeDepartRemplace(etat, fiche.valeurs) : null;
       const erreurs = controle(fiche.valeurs, (table) => lignesUtiles(etat, table, fiche, table === contexte.table), fiche.idCourant, jour, estProvisoire);
+      if (depart && erreurs.length) indexer(indexDe(etat, 'codes_defaillance'), 'codes_defaillance', depart);
+      if (depart && !erreurs.length) {
+        (contexte.supprimer = contexte.supprimer || []).push(depart.id);
+        ligne.raisons.push(I18n.t('import.codes_depart.remplace', { code: depart.code, libelle: depart.libelle }));
+      }
       if (!erreurs.length) return accepter(etat, fiche);
       refuser(ligne, erreurs.map((erreur) => raison(contexte, erreur)));
       refus += 1;

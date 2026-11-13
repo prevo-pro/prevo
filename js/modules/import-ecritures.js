@@ -38,7 +38,8 @@ Object.assign(Import, (() => {
     if (!ecritures) return null;
     const creer = ecritures.creer || [];
     const modifier = ecritures.modifier || [];
-    return creer.length || modifier.length ? { creer, modifier } : null;
+    const supprimer = ecritures.supprimer || [];          // T523 : codes de la liste de départ remplacés par l'import
+    return creer.length || modifier.length ? { creer, modifier, supprimer } : null;
   }
 
   // Signature d'un aperçu : ce qui serait écrit (identifiants et champs), pour savoir s'il a changé.
@@ -47,7 +48,8 @@ Object.assign(Import, (() => {
       const ecritures = ecrituresDe(apercu, nomTable);
       if (!ecritures) return null;
       return [nomTable, ecritures.creer.map((ligne) => JSON.stringify(ligne)).sort(),
-        ecritures.modifier.map((modification) => modification.id + ' ' + JSON.stringify(modification.changes)).sort()];
+        ecritures.modifier.map((modification) => modification.id + ' ' + JSON.stringify(modification.changes)).sort(),
+        ecritures.supprimer.slice().sort()];
     }));
   }
 
@@ -111,6 +113,12 @@ Object.assign(Import, (() => {
     await Donnees.modifier(nomTable, (lignes) => {
       bilan.crees = 0;                                     // la fonction peut être rejouée après un conflit
       bilan.misAJour = 0;
+      delete bilan.remplaces;
+      // T523 : codes de la liste de départ remplacés par ceux du fichier (aperçu relu juste avant : toujours non cités).
+      ecritures.supprimer.forEach((id) => {
+        const rang = lignes.findIndex((ligne) => ligne.id === id);
+        if (rang >= 0) { lignes.splice(rang, 1); bilan.remplaces = (bilan.remplaces || 0) + 1; }
+      });
       const parId = new Map(lignes.map((ligne) => [ligne.id, ligne]));
       ecritures.creer.forEach((nouvelle) => {
         if (parId.has(nouvelle.id)) {
@@ -130,7 +138,7 @@ Object.assign(Import, (() => {
     }, { action: 'import ' + nomFichier });
     tables[nomTable] = bilan;
     await Donnees.journaliser(nomTable, '', 'import ' + nomFichier + ' : ' + bilan.crees + ' créé(s), '
-      + bilan.misAJour + ' mis à jour');
+      + bilan.misAJour + ' mis à jour' + (bilan.remplaces ? ', ' + bilan.remplaces + ' code(s) de départ remplacé(s)' : ''));
   }
 
   async function annuler(resultat) {

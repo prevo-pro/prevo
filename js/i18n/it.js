@@ -3478,6 +3478,8 @@ I18n.ajouter('it', {
   'import.rapport_refus.raison': 'Motivo',
   'import.reference.fournisseur': 'Fornitore',
   'import.reference.localisation': 'Ubicazione',
+  'import.codes_depart.remplace': 'Prende il posto del codice iniziale {code} «{libelle}», che nessuna scheda cita.',
+  'import.codes_depart.remplaces': { one: '{n} codice dell\'elenco iniziale sostituito dal vostro (stessa descrizione).', other: '{n} codici dell\'elenco iniziale sostituiti dai vostri (stessa descrizione).' },
   'import.references.creees_aussi': { one: 'Creata anche, perché citata dalle righe da importare:', other: 'Create anche, perché citate dalle righe da importare:' },
   'import.references.reference': '{nature} «{libelle}» <small class="import-cible">{id}</small>',
   'import.rendre.etape_courante': 'Fase {numero} di {total}: {titre}',

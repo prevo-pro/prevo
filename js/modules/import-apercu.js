@@ -165,6 +165,12 @@ Object.assign(Import.assistant, (() => {
     return morceaux.length ? I18n.t('import.resume.lues_detail', { lues, detail: morceaux.join(', ') }) : I18n.t('import.resume.lues', { lues });
   }
 
+  // T523 (A2) : codes de la liste de départ que les codes du fichier remplacent (aperçu, puis compte rendu de l'import).
+  function codesDeDepartRemplaces(liste) {
+    const n = Array.isArray(liste) ? liste.length : Number(liste) || 0;
+    return n ? UI.html`<p class="encadre info import-codes-depart">${I18n.t('import.codes_depart.remplaces', { n })}</p>` : '';
+  }
+
   function references(apercu) {
     const liste = apercu.referencesCreees || [];
     if (!liste.length) return '';
@@ -198,6 +204,7 @@ Object.assign(Import.assistant, (() => {
     const affichees = filtrees.slice(0, etat.limite);
     UI.remplir(zone, UI.html`
       <p class="import-resume" id="import-resume">${resume(apercu, actions)}</p>
+      ${codesDeDepartRemplaces(((apercu.ecritures || {}).codes_defaillance || {}).supprimer)}
       ${references(apercu)}
       <div class="import-barre">
         <div class="import-filtres" role="group" aria-label="${I18n.t('import.rendre_resultats.afficher_lignes')}">
@@ -456,6 +463,7 @@ Object.assign(Import.assistant, (() => {
           misesAJour: I18n.t('import.resultat.fiches_mises_a_jour', { n: misAJour }) }));
       UI.remplir(zone, UI.html`${UI.brut(entete.outerHTML)}
         ${tableauResultat(resultat)}
+        ${codesDeDepartRemplaces((resultat.tables.codes_defaillance || {}).remplaces)}
         ${resultat.sauvegarde
           ? UI.html`<p class="note">${I18n.html('import.resultat.sauvegarde_faite_juste_avant', { sauvegarde: resultat.sauvegarde })}</p>`
           : UI.html`<p class="note">${I18n.t('import.resultat.demo_etat_avant_import')}</p>`}

@@ -625,6 +625,7 @@ const Import = (() => {
       const creee = ligne._objet || ligne._objetCible;
       if (ligne.action !== 'refusee' && creee && !ligne._existante) ligne.cible = creee.id;
     }
+    if (contexte.supprimer) ecritures.codes_defaillance.supprimer = contexte.supprimer;     // T523 : codes de départ remplacés
     const totaux = { lignes: contexte.lignes.length, references: referencesCreees.length };
     ACTIONS.concat(contexte.lignes.map((l) => l.action)).forEach((action) => { totaux[action] = contexte.lignes.filter((l) => l.action === action).length; });
     const lignes = contexte.lignes.map((l) => ({ numero: l.numero, rang: l.rang, action: l.action, raisons: l.raisons, valeurs: l.valeurs, changements: l.changements, cible: l.cible }));
