@@ -5886,7 +5886,6 @@ I18n.ajouter('en', {
   'serveur.sessions.reserve_au_responsable': 'Manager only: you can only close your own sessions.',
   'serveur.sessions.sans_comptes': 'Accounts are not turned on on this server (“this PC” scope): no sign-in is needed.',
   'serveur.sessions.trop_d_essais': { one: 'Too many attempts: sign-in is blocked for this username. Try again in {n} min.', other: 'Too many attempts: sign-in is blocked for this username. Try again in {n} min.' },
-  'serveur.solo.autres_comptes': 'Cannot go back to Solo: other maintenance accounts are active ({comptes}). Deactivate them in Team › Access.',
   'serveur.statique.acces_refuse': 'Access denied.',
   'serveur.statique.introuvable': 'File not found.',
   'serveur.tailscale.commande_interdite': 'Prévo never runs “tailscale {commande}”: that is for you to do.',

@@ -4725,10 +4725,9 @@ technicien actif dans `techniciens.csv`, ou, en mode comptes, un autre compte ac
 « moi » (créé, ou repris sous le même nom). Les OT ouverts sans technicien ou au nom d'un technicien inactif passent au
 nom du technicien seul après une confirmation qui les nomme (`#solo-confirmation` ; une écriture d'`ordres_travail`,
 une ligne de prise en charge chacun), puis `mode_solo` = 1, `solo_technicien_id`, `cloture_une_etape` = 1. Côté
-serveur, `parametres.csv` reste écrit par le responsable seul (droits inchangés) ; `controle_d_ecriture` lui ajoute
-`verifier_retour_en_solo` : une écriture qui fait passer `mode_solo` à 1 alors qu'un autre compte actif de la
-maintenance existe est refusée (400 `serveur.solo.autres_comptes`, comptes nommés, rien d'écrit) ; sans comptes (« ce
-PC », dossier, démo), la règle des techniciens actifs est celle de l'écran.
+serveur, `parametres.csv` reste écrit par le responsable seul (droits inchangés) et aucun refus n'est ajouté : la
+règle du retour en Solo est une règle d'écran (un refus du serveur sur `mode_solo` bloquait l'import du ZIP d'une
+base Solo vers un serveur à plusieurs comptes, `tests/test_recette_beta2.py`).
 
 Précisions de T175 (sauvegardes du serveur, `tests/test_sauvegardes_lot7.py`) :
 

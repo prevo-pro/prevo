@@ -5888,7 +5888,6 @@ I18n.ajouter('pt-PT', {
   'serveur.sessions.reserve_au_responsable': 'Reservado ao responsável: só pode terminar as suas próprias sessões.',
   'serveur.sessions.sans_comptes': 'As contas não estão ativadas neste servidor (âmbito «este PC»): nenhum início de sessão é necessário.',
   'serveur.sessions.trop_d_essais': { one: 'Demasiadas tentativas: o início de sessão está bloqueado para este nome de utilizador. Tente de novo dentro de {n} min.', other: 'Demasiadas tentativas: o início de sessão está bloqueado para este nome de utilizador. Tente de novo dentro de {n} min.' },
-  'serveur.solo.autres_comptes': 'Não é possível voltar ao Solo: outras contas da manutenção estão ativas ({comptes}). Desative-as em Equipa › Acesso.',
   'serveur.statique.acces_refuse': 'Acesso recusado.',
   'serveur.statique.introuvable': 'Ficheiro não encontrado.',
   'serveur.tailscale.commande_interdite': 'O Prévo nunca executa «tailscale {commande}»: cabe-lhe a si fazê-lo.',

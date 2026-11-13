@@ -5889,7 +5889,6 @@ I18n.ajouter('tr', {
   'serveur.sessions.reserve_au_responsable': 'Yalnızca sorumluya ayrılmıştır: yalnızca kendi oturumlarınızı kapatabilirsiniz.',
   'serveur.sessions.sans_comptes': 'Bu sunucuda hesaplar etkin değil (kapsam “bu PC”): oturum açmak gerekmez.',
   'serveur.sessions.trop_d_essais': { one: 'Çok fazla deneme: bu kullanıcı adı için oturum açma engellendi. {n} dk sonra yeniden deneyin.', other: 'Çok fazla deneme: bu kullanıcı adı için oturum açma engellendi. {n} dk sonra yeniden deneyin.' },
-  'serveur.solo.autres_comptes': 'Solo\'ya dönülemez: başka bakım hesapları aktif ({comptes}). Onları Ekip › Erişim bölümünde pasif yapın.',
   'serveur.statique.acces_refuse': 'Erişim reddedildi.',
   'serveur.statique.introuvable': 'Dosya bulunamadı.',
   'serveur.tailscale.commande_interdite': 'Prévo “tailscale {commande}” komutunu asla çalıştırmaz: bunu sizin yapmanız gerekir.',

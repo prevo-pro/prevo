@@ -5888,7 +5888,6 @@ I18n.ajouter('it', {
   'serveur.sessions.reserve_au_responsable': 'Riservato al responsabile: puoi chiudere solo le tue sessioni.',
   'serveur.sessions.sans_comptes': 'Gli account non sono attivati su questo server (ambito «questo PC»): nessun accesso è necessario.',
   'serveur.sessions.trop_d_essais': { one: 'Troppi tentativi: l\'accesso è bloccato per questo nome utente. Riprova tra {n} min.', other: 'Troppi tentativi: l\'accesso è bloccato per questo nome utente. Riprova tra {n} min.' },
-  'serveur.solo.autres_comptes': 'Impossibile tornare in Solo: altri account della manutenzione sono attivi ({comptes}). Disattivali in Squadra › Accesso.',
   'serveur.statique.acces_refuse': 'Accesso negato.',
   'serveur.statique.introuvable': 'File non trovato.',
   'serveur.tailscale.commande_interdite': 'Prévo non esegue mai «tailscale {commande}»: spetta a te farlo.',

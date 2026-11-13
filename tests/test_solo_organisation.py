@@ -6,8 +6,8 @@ ARCHITECTURE.md §22.11).
     - « Revenir en Solo » refusé avec deux techniciens actifs (message qui les nomme, lien Équipe) ; accepté quand il
       n'en reste qu'un : les OT ouverts sans technicien ou au nom d'un technicien inactif passent à son nom après
       confirmation ;
-    - mode comptes : refus quand un autre compte technicien ou responsable est actif, à l'écran et au serveur (PUT de
-      parametres.csv qui passe mode_solo à 1 : 400, rien d'écrit) ; droits de parametres inchangés.
+    - mode comptes : refus à l'écran quand un autre compte technicien ou responsable est actif ; le serveur, lui, ne
+      refuse pas (sinon l'import du ZIP d'une base Solo serait bloqué) ; droits de parametres inchangés.
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_solo_organisation.py" -v
@@ -147,14 +147,6 @@ class TestAvecComptes(CasOrganisation):
             refus = page.inner_text("#solo-refus")
             self.assertIn("Julien Moreau", refus)
             self.assertEqual(page.locator('#solo-refus a[href="#/equipe/acces"]').count(), 1)
-            self.assertNotEqual(parametre(serveur.dossier, "mode_solo"), "1")
-            # Serveur : la même écriture faite directement est refusée (400), rien d'écrit
-            self.autoriser_erreur("400 (Bad Request)")
-            message = page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
-                const l = lignes.find((x) => x.cle === 'mode_solo');
-                if (l) l.valeur = '1'; else lignes.push({ cle: 'mode_solo', valeur: '1' }); })
-                .then(() => 'écrit', (e) => String(e && e.message))""")
-            self.assertIn("julien.moreau", message)
             self.assertNotEqual(parametre(serveur.dossier, "mode_solo"), "1")
             # Toute autre écriture de parametres par le responsable reste permise (droit inchangé)
             page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {

@@ -5884,7 +5884,6 @@ I18n.ajouter('fr', {
   'serveur.sessions.reserve_au_responsable': 'Réservé au responsable : vous ne pouvez fermer que vos propres sessions.',
   'serveur.sessions.sans_comptes': 'Les comptes ne sont pas activés sur ce serveur (portée « ce PC ») : aucune connexion n\'est nécessaire.',
   'serveur.sessions.trop_d_essais': { one: 'Trop d\'essais : la connexion est bloquée pour cet identifiant. Réessayez dans {n} min.', other: 'Trop d\'essais : la connexion est bloquée pour cet identifiant. Réessayez dans {n} min.' },
-  'serveur.solo.autres_comptes': 'Retour en Solo impossible : d\'autres comptes de la maintenance sont actifs ({comptes}). Désactivez-les dans Équipe › Accès.',
   'serveur.statique.acces_refuse': 'Accès refusé.',
   'serveur.statique.introuvable': 'Fichier introuvable.',
   'serveur.tailscale.commande_interdite': 'Prévo ne lance jamais « tailscale {commande} » : c\'est à vous de le faire.',
