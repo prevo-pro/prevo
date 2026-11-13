@@ -2432,7 +2432,9 @@ class TestRecherche(CasWiki):
         for fichier, morceaux in attendus.items():
             with self.subTest(fichier=fichier):
                 lignes = [l for l in (RACINE / "js" / "modules" / fichier).read_text(encoding="utf-8").splitlines()
-                          if re.search("wiki", l, re.IGNORECASE)]
+                          if re.search("wiki", l, re.IGNORECASE) and not l.lstrip().startswith("//")]
+                # Lignes de commentaire écartées : parc-fiche.js nomme le wiki dans celui du rôle Direction (lot 1
+                # ergonomie, A7, T520) ; seules comptent les lignes de code.
                 self.assertEqual(len(lignes), len(morceaux), lignes)
                 for ligne, morceau in zip(lignes, morceaux):
                     self.assertIn(morceau, ligne)
