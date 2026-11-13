@@ -168,8 +168,10 @@ class TestParcoursPrise(CasPrise):
             self.assertEqual(ligne["statut"], "En cours")
             aujourdhui = self.page.evaluate("Donnees.aujourdhui()")
             self.assertEqual(ligne["date_prevue"][:10], aujourdhui)                   # date prévue manquante
-            self.page.click(".onglet[data-onglet='execution']")
-            case = self.page.locator("#form-execution .ot-fait").first
+            # T528 : la fiche s'ouvre d'elle-même sur Exécution (la check-list), sans toucher l'onglet
+            self.page.wait_for_selector(".onglet[data-onglet='execution'][aria-selected='true']")
+            self.page.wait_for_selector("#form-execution .ot-fait")
+            case =self.page.locator("#form-execution .ot-fait").first
             self.assertTrue(case.is_enabled())
             case.check()
             self.page.wait_for_function("() => document.querySelector('#form-execution .ot-fait').checked")

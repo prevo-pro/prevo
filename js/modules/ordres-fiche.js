@@ -483,6 +483,8 @@ Object.assign(Ordres, (() => {
     if (mot === null) return;
     const reussi = await pendant(bouton, () => Ordres.avecDerogation((options) => changerStatut(actuel.id, actuel.statut, cible, Object.assign({}, complement, mot), options)), I18n.t('ordres.demander_transition.changement_statut'));
     if (reussi === undefined) return;
+    // T528 : « Démarrer » (ni Reprendre, ni Rouvrir) ouvre l'onglet Exécution, celui de la check-list.
+    if (cible === 'En cours' && !['En attente', 'Clôturé techniquement'].includes(actuel.statut)) memoire.ongletParOt[actuel.id] = 'execution';
     await apresEnregistrement();
     // Clôture d'un préventif dont la gamme n'a pas pu être mise à jour (RG5) : l'avertissement
     // reste affiché au-dessus des onglets, et le toast le redit au lieu du succès.

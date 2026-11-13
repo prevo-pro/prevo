@@ -197,6 +197,8 @@ class TestFicheEtCreation(CasSolo):
             page.click('.ot-actions > .actions button[data-cible="En cours"]')
             page.wait_for_function("id => Donnees.trouver('ordres_travail', id).statut === 'En cours'", arg=ot_id)
             self.assertEqual(page.locator("dialog[open]").count(), 0)
+            # T528 : la fiche s'ouvre alors sur Exécution (elle était sur Préparation)
+            page.wait_for_selector(".onglet[data-onglet='execution'][aria-selected='true']")
             # Liste : ni colonne ni filtre « Technicien »
             evaluer("location.hash = '#/ot'")
             page.wait_for_selector("#ot-filtres")
