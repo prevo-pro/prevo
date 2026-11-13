@@ -34,7 +34,9 @@ DÉTERMINISME
     (prefers-reduced-motion : les graphiques ne s'animent pas), agent du navigateur fixe (AGENT : le journal des
     connexions l'affiche). Aide à l'écran ACTIVE (comme chez l'utilisateur à la première visite : l'encart de chaque
     écran est relevé). Un écran est relevé quand il est « calme » : écran attendu affiché (App.ecranCourant), aucune
-    requête fetch ni script en cours de chargement, aucun [aria-busy=true], aucun changement du DOM pendant 400 ms.
+    requête fetch ni script en cours de chargement, aucun [aria-busy=true], aucune recherche de l'historique
+    pré-remplie encore sans résultat (elle part par une minuterie : voir SCRIPT_ETAT), aucun changement du DOM
+    pendant 400 ms.
     Ce qui varie encore est MASQUÉ (remplacé par un repère entre chevrons, dans le texte, les attributs, le titre, et
     sur les captures d'image) — voir masques() et MASQUES_ELEMENTS :
       ‹version›          numéro de version de Prévo (VERSION de js/app.js) : change à chaque version ;
@@ -311,9 +313,19 @@ SCRIPT_LANGUE = """
 })();
 """
 
+# Occupé : un [aria-busy=true], ou une recherche de l'historique pré-remplie (Wiki.champRecherche, js/modules/wiki-
+# ecrans.js : titre de l'OT dans l'onglet Préparation, symptôme d'une DI) dont la zone de résultats est encore vide.
+# Cette recherche part par une minuterie (DELAI_RECHERCHE_MS, 300 ms) que les compteurs ne voient pas : sans ce
+# signal, un PC chargé laissait passer les 400 ms de calme avant qu'elle ne remplisse l'écran (T524). Un champ
+# rempli donne toujours quelque chose dans sa zone (résultats ou « rien trouvé ») : l'attente a une fin.
 SCRIPT_ETAT = """() => {
   const e = window.__photo || { mutations: -1, requetes: 0, scripts: 0 };
-  return [e.mutations, e.requetes, e.scripts, Boolean(document.querySelector('[aria-busy="true"]'))];
+  const rechercheEnAttente = Array.from(document.querySelectorAll('section.wiki-recherche .wiki-recherche-champ'))
+    .some((champ) => {
+      const zone = champ.closest('section.wiki-recherche').querySelector('.wiki-resultats');
+      return Boolean(zone) && champ.value.trim() !== '' && !zone.hasChildNodes();
+    });
+  return [e.mutations, e.requetes, e.scripts, Boolean(document.querySelector('[aria-busy="true"]')) || rechercheEnAttente];
 }"""
 
 # Relevé d'une ou plusieurs zones : texte visible et attributs lus, masqués ; titre de l'onglet.
