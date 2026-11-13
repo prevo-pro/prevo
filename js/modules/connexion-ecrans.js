@@ -22,6 +22,9 @@ const Connexion = (() => {
   const LONGUEUR_SOLIDE = 20;                   // au-delà : « solide » (phrase de passe)
   const ATTENTE_PAR_DEFAUT_S = 60;              // 429 sans temps lisible
   const MOTIF_ROUTE_ENROLER = /^#\/enroler\/([A-Za-z0-9_-]+)$/;
+  // T527 : #/document/<nom>, où le serveur renvoie un lien de document ouvert sans session ; le nom suit les règles
+  // du serveur (MOTIF_NOM_DOCUMENT_ENREGISTRE) : rien d'autre ne peut servir d'adresse de retour.
+  const MOTIF_ROUTE_DOCUMENT = /^#\/document\/((?:[0-9]{8}-[0-9]{6}-)?[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/;
   const PANNEAUX = {
     connexion: 'connexion-formulaire',
     enrolement: 'connexion-enrolement',
@@ -131,6 +134,11 @@ const Connexion = (() => {
     } else if (reglages.message) {
       const bandeau = UI.bandeau('attention', reglages.message);
       bandeau.id = 'connexion-motif';
+      zone.appendChild(bandeau);
+    } else if (documentDeLaRoute(location.hash)) {
+      // T527 : un lien de document ouvert sans session ; il s'ouvre une fois la personne connectée.
+      const bandeau = UI.bandeau('info', I18n.t('connexion.montrer_alertes.connectez_vous_ouvrir_document'));
+      bandeau.id = 'connexion-document';
       zone.appendChild(bandeau);
     }
     zone.hidden = zone.children.length === 0;
@@ -349,6 +357,12 @@ const Connexion = (() => {
     return jetonDeLaRoute(hash) !== '';
   }
 
+  /** T527 : nom du document de la route #/document/<nom> (nom valide pour le serveur), sinon ''. */
+  function documentDeLaRoute(hash) {
+    const trouve = MOTIF_ROUTE_DOCUMENT.exec(hash || '');
+    return trouve && !trouve[1].includes('..') ? trouve[1] : '';
+  }
+
   // Langue de l'écran (T297) : en haut, visible sans menu, à côté du globe ; chaque langue écrite dans sa langue, sans
   // aucun mot autour (UI.selecteurLangue : choix retenu par cet appareil, page rechargée). Posée une seule fois.
   function placerSelecteurLangue() {
@@ -401,6 +415,7 @@ const Connexion = (() => {
     changerLangue,
     jetonDeLaRoute,
     estRouteEnrolement,
+    documentDeLaRoute,
     sessionLue,
     LONGUEUR_MIN_MOT_DE_PASSE,
     LONGUEUR_MAX_MOT_DE_PASSE,

@@ -7,7 +7,10 @@ ROLES_PAR_ROUTE (une colonne « direction ») sont jouées par tests/test_acces_
                    d'habilitation et document de contrat refusés (D196, par colonne et par nom), avec la phrase qui
                    dit quoi faire ; le demandeur garde son refus (le droit ne change pas) ;
     navigation     un lien de document refusé ouvert dans le navigateur (Sec-Fetch-Mode « navigate ») mène à
-                   /#/document-ferme (303), un appel de l'application garde son 403 JSON ;
+                   /#/document-ferme (303), un appel de l'application garde son 403 JSON ; T527 : ouvert sans session,
+                   il mène à /#/document/<nom> (303, nom valide seulement : jamais une autre adresse), un appel de
+                   l'application et un appareil refusé gardent leur 401 JSON ; dans le navigateur, l'écran de
+                   connexion le dit, puis le document s'ouvre (refusé au rôle : la page « document fermé ») ;
     lecture        aucune colonne cachée (taux horaire, prix, coût d'arrêt : les octets du disque), ni habilitations
                    ni wiki ; /api/versions réduit à ses tables ; /api/info réduit au port ;
     écriture       PUT, ajout, document, sauvegarde, IA : 403 au message « lecture seule » ; rien n'est écrit ;
@@ -110,6 +113,43 @@ class TestDocumentsDeLaDirection(CasDirection):
         self.assertEqual(self.requete("GET", "/api/documents/" + RAPPORT, entetes=navigation).statut, 200)
         # Une autre adresse refusée ne change pas (table fermée : 403 JSON).
         self.assertEqual(self.requete("GET", "/api/csv/habilitations", entetes=navigation).statut, 403)
+
+    def test_lien_ouvert_sans_session_mene_a_la_connexion_avec_le_document_en_retour(self):
+        navigation = {"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document",
+                      "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"}
+        sans_session = lambda chemin, entetes: self.client.requete("GET", chemin, entetes=entetes)
+        for nom in (RAPPORT, JUSTIFICATIF, JUSTIFICATIF_PAR_NOM, "absent-2026.pdf"):
+            with self.subTest(nom=nom):
+                renvoi = sans_session("/api/documents/" + nom, navigation)
+                self.assertEqual((renvoi.statut, renvoi.entetes.get("location"), renvoi.octets),
+                                 (303, "/#/document/" + nom, b""))
+        self.assertEqual(sans_session("/api/documents/" + RAPPORT + "?v=1", {"Accept": "text/html"}).entetes.get("location"),
+                         "/#/document/" + RAPPORT)
+        # Appel de l'application (X-Prevo, fetch) : 401 JSON, comme avant.
+        for entetes in ({"X-Prevo": "1", "Accept": "text/html"}, {"Sec-Fetch-Mode": "cors", "Accept": "*/*"}, {}):
+            with self.subTest(entetes=entetes):
+                appel = sans_session("/api/documents/" + RAPPORT, entetes)
+                self.assertEqual((appel.statut, appel.json()["erreur_code"]), (401, "sessions.absente"))
+                self.assertIsNone(appel.entetes.get("location"))
+        # Aucune autre adresse de retour : nom invalide, encodé, cible externe, hors documents → 401 JSON, sans renvoi.
+        for chemin in ("/api/documents/a..b.pdf", "/api/documents/%2e%2e%2fcomptes.json", "/api/documents/..",
+                       "/api/documents/http:%2F%2Fexemple.invalid%2Fx.pdf", "/api/documents/x.pdf%23https://exemple.invalid",
+                       "/api/documents/", "/api/documents/-x.pdf", "/api/csv/ordres_travail", "/api/session"):
+            with self.subTest(chemin=chemin):
+                refus = sans_session(chemin, navigation)
+                self.assertNotEqual(refus.statut, 303, refus.entetes.get("location"))
+                self.assertIsNone(refus.entetes.get("location"))
+        for chemin in ("//exemple.invalid/x.pdf", "https://exemple.invalid/x.pdf", "/api/documents/x.pdf/../../a",
+                       "/api/csv/x.pdf", "/api/documents/a b.pdf", "/api/documents/%41.pdf"):
+            with self.subTest(retour=chemin):
+                self.assertIsNone(serveur.retour_vers_document(chemin))
+        self.assertEqual(serveur.retour_vers_document("/api/documents/" + JUSTIFICATIF_PAR_NOM + "?x=1#y"),
+                         "/#/document/" + JUSTIFICATIF_PAR_NOM)
+        # Un appareil refusé garde son 401, son cookie effacé et son message (écran d'invitation, D125).
+        appareil = self.client.requete("GET", "/api/documents/" + RAPPORT, cookie="appareil=" + "A" * 43,
+                                       entetes=navigation)
+        self.assertEqual((appareil.statut, appareil.json().get("appareil_refuse")), (401, True))
+        self.assertIn("Max-Age=0", appareil.entetes.get("set-cookie", ""))
 
 
 class TestLectureEtEcrituresDeLaDirection(CasDirection):
@@ -287,6 +327,65 @@ class TestNavigateurDirection(roles.CasNavigateurComptes):
         for methode, adresse, statut in self.reponses:
             if statut >= 400:
                 self.assertTrue(statut == 403 and adresse.rsplit("/api/csv/", 1)[-1] in fermees, (methode, adresse, statut))
+
+
+class TestNavigateurLienSansSession(roles.CasNavigateurComptes):
+    """T527 (A7) : le lien d'un document ouvert sans session (le patron, sa session finie) : l'écran de connexion de
+    Prévo le dit, puis le document s'ouvre avec les droits du compte connecté ; refusé au rôle : « document fermé »."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        (cls.serveur.dossier / "documents" / RAPPORT).write_bytes(HTML)
+        ecrire_parametre(cls.serveur.dossier, "rapports_mensuels", RAPPORT)
+
+    def setUp(self):
+        super().setUp()
+        self.autoriser_erreur(re.compile(r"status of 401 .*/api/"))       # la sonde d'App, sans session
+
+    def ouvrir_le_lien(self):
+        page = self.page
+        page.goto(self.serveur.url + "/api/documents/" + RAPPORT)
+        page.wait_for_selector("#connexion-document", state="visible")
+        self.assertTrue(page.url.endswith("/#/document/" + RAPPORT), page.url)
+        self.assertIn("Connectez-vous pour ouvrir ce document", page.inner_text("#connexion-alertes"))
+        self.assertEqual(page.get_attribute("#connexion-document", "role"), "status")
+
+    def connecter(self, identifiant):
+        self.page.fill("#connexion-identifiant", identifiant)
+        self.page.fill("#connexion-mot-de-passe", roles.MOTS_DE_PASSE[identifiant])
+        self.page.click("#connexion-valider")
+
+    def test_patron_connecte_le_document_s_ouvre(self):
+        page = self.page
+        fermees = sorted(roles.TOUTES_LES_TABLES - roles.TABLES_DE_LA_DIRECTION)
+        self.autoriser_erreur(re.compile(r"status of 403 .*/api/csv/(?:%s):" % "|".join(fermees)))
+        self.ouvrir_le_lien()
+        self.connecter("claire.dupont")
+        page.wait_for_url(self.serveur.url + "/api/documents/" + RAPPORT)
+        self.assertIn("Essai", page.inner_text("body"))
+        # Le retour ne sert que des noms valides de ce serveur : une autre cible reste dans Prévo, sans rien ouvrir.
+        page.goto(self.serveur.url + "/#/accueil")
+        attendre_pret(page)
+        self.assertEqual(page.evaluate("""(nom) => ['#/document/https://exemple.invalid/x.pdf', '#/document//exemple.invalid',
+            '#/document/..%2Fcsv%2Fordres_travail', '#/document/a..b.pdf', '#/document/x.pdf?y', '#/document/',
+            '#/documentx/r.pdf', '#/document/' + nom].map((h) => Connexion.documentDeLaRoute(h))""", RAPPORT),
+                         [""] * 7 + [RAPPORT])
+        page.evaluate("() => { location.hash = '#/document/https:%2F%2Fexemple.invalid%2Fx.pdf'; }")
+        page.wait_for_selector("#contenu .document-ferme")
+        self.assertIn("ne mène pas à un document", page.inner_text("#contenu"))
+        self.assertTrue(page.url.startswith(self.serveur.url + "/"), page.url)
+
+    def test_document_refuse_au_role_toujours_la_page_document_ferme(self):
+        page = self.page
+        fermees = sorted(roles.TOUTES_LES_TABLES - roles.TABLES_DU_DEMANDEUR)
+        self.autoriser_erreur(re.compile(r"status of 403 .*/api/csv/(?:%s):" % "|".join(fermees)))
+        self.ouvrir_le_lien()
+        self.connecter("lea.martin")
+        page.wait_for_selector("#contenu .document-ferme")
+        self.assertTrue(page.url.endswith("/#/document-ferme"), page.url)
+        self.assertIn("responsable", page.inner_text("#contenu"))
+        self.assertNotIn("Essai", page.inner_text("body"))
 
 
 class TestNavigateurSansComptes(commun.CasNavigateur):

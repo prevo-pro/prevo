@@ -6696,6 +6696,22 @@ MESSAGE_RESERVE_AU_RESPONSABLE = traduisible('acces.reserve_au_responsable', 'Ac
 MESSAGE_DOCUMENT_FERME = traduisible('acces.document_ferme',
                                      'Ce document est réservé au responsable : demandez-lui de vous l\'envoyer.')
 ROUTE_DOCUMENT_FERME = '/#/document-ferme'
+# T527 (A7) : le même lien ouvert sans session (le patron, sa session finie) mène à l'écran de connexion de Prévo, sur
+# #/document/<nom> : une fois connecté, l'application rouvre /api/documents/<nom> (les droits de son rôle, rien de
+# plus). Seul un nom de document valide est repris dans l'adresse de retour (jamais une autre adresse).
+ROUTE_DOCUMENT_A_OUVRIR = '/#/document/'
+
+
+def retour_vers_document(chemin):
+    """Adresse de retour (« /#/document/<nom> ») pour un GET /api/documents/<nom> ouvert sans session, ou None si le
+    nom n'est pas un nom de document valide (MOTIF_NOM_DOCUMENT_ENREGISTRE, pas de « .. », aucun caractère encodé)."""
+    chemin = (chemin or '').split('?', 1)[0].split('#', 1)[0]
+    if not chemin.startswith('/api/documents/'):
+        return None
+    nom = chemin[len('/api/documents/'):]
+    if not MOTIF_NOM_DOCUMENT_ENREGISTRE.fullmatch(nom) or '..' in nom:
+        return None
+    return ROUTE_DOCUMENT_A_OUVRIR + nom
 
 
 def role_effectif(identite):
@@ -8600,6 +8616,15 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             # (rien du document n'est servi) et un appel de l'application (fetch) garde son 403.
             self.envoyer(303, b'', 'text/plain; charset=utf-8', {'Location': ROUTE_DOCUMENT_FERME})
             return
+        if erreur.statut == 401 and not erreur.champs_supplementaires.get('appareil_refuse') \
+                and self.navigation_vers_un_document():
+            # T527 (A7) : le même lien ouvert sans session : l'écran de connexion de Prévo, puis le document une fois
+            # connecté (#/document/<nom>, js/app.js) ; un appel de l'application garde son 401, un appareil refusé
+            # son effacement de cookie et son message.
+            retour = retour_vers_document(self.path)
+            if retour:
+                self.envoyer(303, b'', 'text/plain; charset=utf-8', {'Location': retour})
+                return
         self.envoyer_json(erreur.statut, donnees, erreur.entetes)
 
     def navigation_vers_un_document(self):

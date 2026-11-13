@@ -1794,6 +1794,25 @@ const App = (() => {
     },
   });
 
+  // T527 (A7) : le même lien ouvert sans session arrive ici (303 du serveur vers #/document/<nom>), après l'écran de
+  // connexion : le document est rouvert avec les droits de la personne connectée (refusé : #/document-ferme). Seul
+  // un nom valide (Connexion.documentDeLaRoute) forme l'adresse, toujours /api/documents/<nom> de ce serveur.
+  ecran({
+    id: 'document-a-ouvrir', route: /^#\/document\/([^/?]+)$/, get titre() { return I18n.t('socle.document_a_ouvrir.titre'); },
+    profils: TYPES_PROFIL, tables: [],
+    afficher(conteneur) {
+      const nom = mode === 'serveur' && typeof Connexion !== 'undefined' ? Connexion.documentDeLaRoute(location.hash) : '';
+      if (nom) {
+        UI.remplir(conteneur, UI.html`<p class="chargement" role="status">${I18n.t('socle.document_a_ouvrir.titre')}</p>`);
+        location.replace('/api/documents/' + encodeURIComponent(nom));
+        return;
+      }
+      UI.remplir(conteneur, UI.html`<div class="document-ferme">
+        ${UI.vide(I18n.t('socle.document_a_ouvrir.lien_invalide'), '', 'cle')}
+        <p><a class="btn btn-secondaire" href="${ROUTE_ACCUEIL}">${I18n.t('socle.ecran_ferme.retour_accueil')}</a></p></div>`);
+    },
+  });
+
   // js/app.js est le dernier script : les modules ont déjà ajouté leurs écouteurs DOMContentLoaded
   // (qui enregistrent leurs écrans) ; celui-ci passe après eux.
   if (document.readyState === 'loading') {

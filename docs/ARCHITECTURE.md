@@ -4058,7 +4058,11 @@ Document refusé (T520, tous les rôles, droit inchangé) : `acces.document_ferm
 responsable : demandez-lui de vous l'envoyer ») ; ouvert comme une page (`Sec-Fetch-Mode: navigate`, ou sans cet
 en-tête un `Accept` qui demande du HTML, jamais avec `X-Prevo`), le refus devient une redirection 303 vers
 `/#/document-ferme`, page de Prévo dans la langue de l'écran, au lieu du JSON brut ; un appel de l'application garde
-son 403.
+son 403. Sans session (T527), le même lien ouvert comme une page devient une redirection 303 vers
+`/#/document/<nom>` (`retour_vers_document` : seulement un nom valide, `MOTIF_NOM_DOCUMENT_ENREGISTRE` sans « .. »,
+jamais une autre adresse) : l'écran de connexion dit « Connectez-vous pour ouvrir ce document », puis l'écran
+`document-a-ouvrir` (js/app.js) rouvre `/api/documents/<nom>` avec les droits du compte connecté (refusé : la page
+« document fermé ») ; un appel de l'application et un appareil refusé gardent leur 401 JSON.
 
 Précisions de T152 :
 
