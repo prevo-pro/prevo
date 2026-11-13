@@ -401,6 +401,9 @@ Object.assign(Demandes, (() => {
         suivi.terminer();                                     // T329 : la demande est enregistrée, plus de brouillon
         App.marquerSaisie(false);
         libererApercu();
+        // T521 : en Solo, sa propre déclaration devient aussitôt un OT à son nom (solo-flux.js).
+        const otSolo = typeof Solo !== 'undefined' ? await Solo.apresSignalement(id) : '';
+        if (otSolo) { UI.toast(I18n.t('demandes.solo.ot_cree', { otId: otSolo }), 'succes'); App.naviguer('#/ot/' + encodeURIComponent(otSolo)); return; }
         afficherConfirmation(conteneur, id);
       } catch (erreur) {
         App.signalerErreur(erreur, 'envoi de la demande');

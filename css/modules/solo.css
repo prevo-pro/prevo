@@ -1,0 +1,36 @@
+/* Mode Solo sans la couche équipe (lot 1 ergonomie, B, T521 ; ARCHITECTURE.md §22.11). <html data-solo> est posé par
+   Solo.marquer (js/modules/solo-flux.js) en mode Solo seulement : hors Solo, aucune de ces règles ne s'applique. */
+
+/* Tout OT est au nom du technicien seul : ni champ « Technicien » (nouvel OT, préparation, temps passé), ni filtre
+   « Mes OT / Tous les techniciens / Non affectés ». La valeur reste dans le formulaire (champ caché à l'écran). */
+:root[data-solo] .champ[data-champ="technicien_id"],
+:root[data-solo] .ot-technicien-lecture,
+:root[data-solo] .champ:has(#ot-temps-technicien),
+:root[data-solo] #ot-filtre-technicien,
+:root[data-solo] label[for="ot-filtre-technicien"] { display: none; }
+/* « Marquer préparé » et « Planifier » de l'onglet Préparation : rangés sous « Plus d'options » des Actions. */
+:root[data-solo] .ot-actions-preparation { display: none; }
+
+/* Accueil du Solo (solo-accueil.js) */
+.solo-accueil { display: flex; flex-direction: column; gap: 16px; }
+.solo-entete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.solo-entete h1 { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.solo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.solo-actions .btn { min-height: 64px; justify-content: center; }
+.solo-carte .liste-cartes { margin: 0; }
+.solo-vide { margin: 0; }
+.solo-panne .carte-tete b { overflow-wrap: anywhere; }
+.solo-finis { margin: 0; }
+.solo-carte .badge { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+
+/* Fiche d'un OT : boutons qui ne sont pas un passage obligé, sous « Plus d'options » */
+.solo-plus-options { margin-top: 10px; }
+.solo-plus-options summary { cursor: pointer; color: var(--texte-2); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.solo-plus-options .actions { margin-top: 6px; }
+
+/* Téléphone : l'en-tête mobile dit « Bonjour » et la date (comme l'accueil du responsable) */
+@media (max-width: 640px) {
+  .solo-actions { grid-template-columns: minmax(0, 1fr); }
+  .solo-salut { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .solo-entete #btn-export-accueil { display: none; }
+}

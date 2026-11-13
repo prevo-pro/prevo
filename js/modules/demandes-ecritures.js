@@ -160,12 +160,14 @@ Object.assign(Demandes, (() => {
       }
       const maintenant = outils.maintenant();
       const id = outils.nouvelId(lignes, maintenant);
-      lignes.push({
+      const ligne = {
         id, origine: 'DI', di_id: diId, equipement_id: demande.equipement_id, type, priorite,
         statut: 'Créé', titre: texte(demande.symptome).replace(/[\r\n]+/g, ' '),
         travail_a_faire: demande.description || '', date_creation: maintenant,
         date_prevue: datePrevue(priorite, outils.aujourdhui()), symptome_code: symptomeCode,
-      });
+      };
+      if (typeof Solo !== 'undefined') Solo.completerOt(ligne);      // T521 : en Solo, au nom du technicien seul
+      lignes.push(ligne);
       return id;
     }, { action: 'acceptation de ' + diId + (changementPriorite ? ' ; ' + changementPriorite : '') });
 

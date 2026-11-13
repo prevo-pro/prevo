@@ -60,7 +60,9 @@ const AideEcrans = (() => {
 
   /** Texte et geste pour le profil courant : { titre, ancre, texte, essayez, demo }. */
   function contenu(texte) {
-    const profil = (App.profil && App.profil.type) || 'responsable';
+    // T521 : en mode Solo, la variante « solo » quand l'écran en a une (posée par solo-accueil.js).
+    const solo = texte.profils && texte.profils.solo && typeof Solo !== 'undefined' && Solo.actif();
+    const profil = solo ? 'solo' : (App.profil && App.profil.type) || 'responsable';
     let variante = texte;
     if (texte.profils) {
       variante = texte.profils[profil] || texte.profils.responsable || texte.profils[Object.keys(texte.profils)[0]];

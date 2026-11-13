@@ -139,7 +139,9 @@ Object.assign(Preventif, (() => {
           // Un seul parcours des OT existants : les suivants partent du dernier créé (même année).
           const dernier = identifiants[identifiants.length - 1];
           const id = outils.nouvelId(dernier ? [{ id: dernier }] : lignes, outils.aujourdhui());
-          lignes.push(nouvelOtPreventif(gamme, etat, jour, id, outils.maintenant()));
+          const ot = nouvelOtPreventif(gamme, etat, jour, id, outils.maintenant());
+          if (typeof Solo !== 'undefined') Solo.completerOt(ot);       // T521 : en Solo, au nom du technicien seul
+          lignes.push(ot);
           identifiants.push(id);
         });
         return identifiants;

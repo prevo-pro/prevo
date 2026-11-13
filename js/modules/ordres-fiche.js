@@ -389,6 +389,7 @@ Object.assign(Ordres, (() => {
 
     brancherActionsFiche(racine, ot);
     Ordres.interne.brancherPrise(racine, ot);                       // A3 : ordres-prise.js
+    if (typeof Solo !== 'undefined') Solo.ajusterFiche(racine, ot); // T521 : trois états, rappel, « Plus d'options »
   }
 
   function brancherActionsFiche(racine, ot) {

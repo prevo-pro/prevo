@@ -140,23 +140,9 @@ Object.assign(Accueil, (() => {
   // 3. Tuiles
   // ===========================================================================================
 
-  // Mode Solo (mode_solo = 1, D132, §22.11) : « Nouvel OT » en premier, « Signaler un problème » en second.
-  function actionsSolo() {
-    if (!App.modeSolo()) return '';
-    const iconeAjouter = UI.icone('ajouter');
-    const iconeAlerte = UI.icone('alerte');
-    const nouvelOt = UI.html`<a class="btn btn-primaire" id="accueil-nouvel-ot" href="#/ot/nouveau">${iconeAjouter}${I18n.t('accueil.actions_solo.nouvel_ot')}</a>`;
-    const signaler = UI.html`<a class="btn btn-secondaire" id="accueil-signaler" href="#/di/nouvelle">${iconeAlerte}${I18n.t('accueil.actions_solo.signaler_probleme')}</a>`;
-    return UI.html`<div class="bento-solo" id="accueil-solo">
-      ${nouvelOt}
-      ${signaler}
-    </div>`;
-  }
-
   function entete(aujourdhui) {
     return UI.html`<div class="bento-entete">
       <div class="bento-salut"><h1>${I18n.t('accueil.entete.bonjour')}</h1><p class="bento-date">${dateEnLettres(aujourdhui, true)}</p></div>
-      ${actionsSolo()}
       <div class="bento-entete-actions">
         ${App.mode === 'demo' ? UI.html`<span class="bento-demo" id="accueil-demo">${UI.icone('alerte')}${I18n.t('accueil.entete.demo_rien_enregistre')}</span>` : ''}
         <button type="button" class="btn btn-fantome bento-zip" id="btn-export-accueil">${UI.icone('export')}${I18n.t('accueil.entete.exporter_zip')}</button>
@@ -480,5 +466,7 @@ Object.assign(Accueil, (() => {
   }
 
   return { afficherResponsable, choisirEnPremier, momentDeLaJournee, phraseDemandes, ligneSecondaire,
-    avertissementCopieExterne, avertissementTailscale };
+    avertissementCopieExterne, avertissementTailscale,
+    // T521 : repris par l'accueil du Solo (solo-accueil.js).
+    afficherEtatServeur, dateEnLettres };
 })());

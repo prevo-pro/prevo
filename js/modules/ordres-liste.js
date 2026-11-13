@@ -103,6 +103,8 @@ Object.assign(Ordres, (() => {
   }
 
   function colonnesListe() {
+    // T521 : en Solo, tous les OT sont au nom du technicien seul : pas de colonne « Technicien ».
+    const solo = typeof Solo !== 'undefined' && Solo.actif();
     return [
       { cle: 'id', libelle: I18n.t('ordres.colonnes_liste.numero'), rendu: (ot) => UI.html`<a href="#/ot/${encodeURIComponent(ot.id)}">${ot.id}</a>` },
       { cle: 'priorite', libelle: I18n.t('commun.champ.priorite'), rendu: (ot) => UI.badgePriorite(ot.priorite) },
@@ -111,10 +113,10 @@ Object.assign(Ordres, (() => {
         rendu: (ot) => UI.html`<b class="sans-coupure">${repereEquipement(ot.equipement_id)}</b>` },
       { cle: 'titre', libelle: I18n.t('ordres.colonnes_liste.titre'), classe: 'ot-col-titre', rendu: (ot) => UI.html`${ot.titre}${badgeAnomalie(ot)}` },
       { cle: 'type', libelle: I18n.t('ordres.barre_filtres.type'), table: 'ordres_travail' },
-      { cle: 'technicien', libelle: I18n.t('commun.champ.technicien'), valeurTri: (ot) => nomTechnicien(ot.technicien_id), rendu: (ot) => Ordres.interne.technicienOuPrendre(ot) },
+      solo ? null : { cle: 'technicien', libelle: I18n.t('commun.champ.technicien'), valeurTri: (ot) => nomTechnicien(ot.technicien_id), rendu: (ot) => Ordres.interne.technicienOuPrendre(ot) },
       { cle: 'date_prevue', libelle: I18n.t('ordres.colonnes_liste.prevu'), classe: 'ot-col-date', rendu: (ot) => UI.html`<span class="sans-coupure">${UI.dateFr(ot.date_prevue)}</span>${badgeRetard(ot)}` },
       { cle: 'origine', libelle: I18n.t('ordres.colonnes_liste.origine'), classe: 'ot-col-origine', rendu: origineCourte },
-    ];
+    ].filter(Boolean);
   }
 
   function cartesHtml(ordres) {

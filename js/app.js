@@ -78,9 +78,10 @@ const App = (() => {
   // En mode comptes le serveur fait foi (ROLES_PAR_ROUTE) ; sans comptes, c'est l'écran, comme pour les autres profils.
   const TYPES_PROFIL = ['demandeur', 'technicien', 'responsable', 'direction'];
   const ENTREES_BARRE_BAS = 4;
-  // Mode Solo (D132, §22.11) : réglage mode_solo de parametres.csv, profil responsable seulement. Ces écrans
-  // passent sous « Plus » (repliable dans le menu latéral, feuille « Plus » au téléphone) ; leurs routes restent.
-  const ECRANS_SOUS_PLUS_SOLO = ['equipe', 'planning'];
+  // Mode Solo (D132, §22.11) : réglage mode_solo de parametres.csv, profil responsable seulement. Depuis T521 (lot 1
+  // ergonomie, B), ces écrans d'équipe n'apparaissent plus dans le menu en Solo ; leurs routes restent (« Ma fiche »,
+  // Paramètres › Organisation).
+  const ECRANS_MASQUES_SOLO = ['equipe', 'planning'];
   const ECRANS_PLEINS = ['ecran-chargement', 'ecran-demarrage', 'ecran-base-vide', 'ecran-profil', 'ecran-connexion', 'ecran-installation', 'app'];
   const ROUTE_INSTALLATION = '#/installation';
   const HOTES_DU_PC_SERVEUR = ['127.0.0.1', 'localhost', '[::1]', '::1'];
@@ -107,7 +108,6 @@ const App = (() => {
   let promesseEcharts = null;        // chargement à la demande d'ECharts (lot 3)
   let resoudreProfil = null;       // fonction qui termine l'écran de profil en cours
   let resoudreBaseVide = null;     // fonction qui termine l'écran « base vide » en cours
-  let menuPlusOuvert = false;      // mode Solo : groupe « Plus » du menu latéral déplié
   const alertesCoque = [];         // bandeaux à montrer dans la coque (ex. verrou du dossier)
   let tablesLaissees = [];          // tables laissées par le passage au format (déjà dites par leur bandeau, T197)
   const tablesDitesAbimees = new Set();   // tables dont le bandeau « Fichier abîmé » est déjà posé (T197, T200)
@@ -1312,6 +1312,8 @@ const App = (() => {
       // T323 : mode Solo sans technicien « moi » reconnu (import ZIP, fiche supprimée) : la question, sans deviner.
       if (modeSolo() && !technicienSolo() && typeof Parametres !== 'undefined' && Parametres.interne.demanderMoiSolo
           && !Donnees.lectureSeule()) Parametres.interne.demanderMoiSolo();
+      // T521 : en Solo, les demandes des opérateurs arrivées pendant l'absence deviennent des OT à son nom.
+      if (typeof Solo !== 'undefined') Solo.auDemarrage();
     }
   }
 
@@ -1385,14 +1387,10 @@ const App = (() => {
     return ecran.menu.lien || lienDepuisRoute(ecran.route);
   }
 
-  // Entrées du menu partagées en deux : principales, et celles rangées sous « Plus » en mode Solo (vide sinon).
-  function partagerEntrees() {
+  // Entrées du menu ; en mode Solo, sans les écrans d'équipe (T521 : avant, ils étaient rangés sous un groupe « Plus »).
+  function entreesDuMenu() {
     const entrees = entreesMenu();
-    if (!modeSolo()) return { principales: entrees, sousPlus: [] };
-    return {
-      principales: entrees.filter((ecran) => !ECRANS_SOUS_PLUS_SOLO.includes(ecran.id)),
-      sousPlus: entrees.filter((ecran) => ECRANS_SOUS_PLUS_SOLO.includes(ecran.id)),
-    };
+    return modeSolo() ? entrees.filter((ecran) => !ECRANS_MASQUES_SOLO.includes(ecran.id)) : entrees;
   }
 
   function lienMenu(ecran) {
@@ -1400,7 +1398,8 @@ const App = (() => {
   }
 
   function construireMenus() {
-    const { principales, sousPlus } = partagerEntrees();
+    if (typeof Solo !== 'undefined') Solo.marquer();       // T521 : <html data-solo> (css/modules/solo.css)
+    const principales = entreesDuMenu();
     const morceaux = [];
     let groupeCourant = '';
     principales.forEach((ecran) => {
@@ -1409,32 +1408,13 @@ const App = (() => {
       groupeCourant = groupe;
       morceaux.push(lienMenu(ecran));
     });
-    // Mode Solo : groupe « Plus » repliable (bouton réel, aria-expanded) ; replié par défaut.
-    if (sousPlus.length) {
-      morceaux.push(UI.html`<div class="menu-plus">
-        <button type="button" class="menu-plus-bouton" id="btn-menu-plus" aria-expanded="false" aria-controls="menu-plus-liste" title="${I18n.t('socle.construire_menus.plus')}">${UI.icone('plus')}<span class="libelle">${I18n.t('socle.construire_menus.plus')}</span></button>
-        <div class="menu-plus-liste" id="menu-plus-liste" hidden>${sousPlus.map(lienMenu)}</div>
-      </div>`);
-    }
     UI.remplir(UI.$('#menu'), morceaux);
-    const boutonPlus = UI.$('#btn-menu-plus');
-    if (boutonPlus) boutonPlus.addEventListener('click', () => deplierMenuPlus(!menuPlusOuvert));
 
     const enBas = principales.slice(0, ENTREES_BARRE_BAS);
     UI.remplir(UI.$('#barre-bas'), UI.html`${enBas.map((ecran) => UI.html`<a href="${lienEntree(ecran)}" data-ecran="${ecran.id}">${UI.icone(ecran.menu.icone || 'chevron')}<span class="libelle">${ecran.menu.court || ecran.menu.libelle}</span></a>`)}
       <button type="button" id="btn-plus" aria-haspopup="dialog">${UI.icone('plus')}<span class="libelle">${I18n.t('socle.construire_menus.plus')}</span></button>`);
     UI.$('#btn-plus').addEventListener('click', ouvrirPlus);
     allumerMenus();
-  }
-
-  // Mode Solo : déplie (vrai) ou replie le groupe « Plus » du menu latéral.
-  function deplierMenuPlus(ouvert) {
-    const bouton = UI.$('#btn-menu-plus');
-    const liste = UI.$('#menu-plus-liste');
-    if (!bouton || !liste) return;
-    menuPlusOuvert = ouvert;
-    bouton.setAttribute('aria-expanded', String(ouvert));
-    liste.hidden = !ouvert;
   }
 
   // Entrée active (et aria-current) dans le menu latéral et la barre du bas.
@@ -1445,13 +1425,6 @@ const App = (() => {
       lien.classList.toggle('actif', actif);
       if (actif) lien.setAttribute('aria-current', 'page'); else lien.removeAttribute('aria-current');
     });
-    // Mode Solo : l'écran ouvert est sous « Plus » → le groupe est déplié (sinon il garde son état).
-    const boutonPlus = UI.$('#btn-menu-plus');
-    if (boutonPlus) {
-      const dansPlus = UI.$$('#menu-plus-liste a').some((lien) => lien.dataset.ecran === idActif);
-      boutonPlus.classList.toggle('actif', dansPlus);
-      deplierMenuPlus(menuPlusOuvert || dansPlus);
-    }
     const plus = UI.$('#btn-plus');
     if (plus) {
       const dansLaBarre = UI.$$('#barre-bas a').some((lien) => lien.dataset.ecran === idActif);
@@ -1462,8 +1435,7 @@ const App = (() => {
   // « Plus » (téléphone) : les entrées qui n'ont pas de place dans la barre du bas + actions du poste.
   function ouvrirPlus() {
     const idActif = ecranCourant ? (ecranCourant.parent || ecranCourant.id) : '';
-    const { principales, sousPlus } = partagerEntrees();
-    const reste = principales.slice(ENTREES_BARRE_BAS).concat(sousPlus);
+    const reste = entreesDuMenu().slice(ENTREES_BARRE_BAS);
     // Mode comptes : « Se déconnecter » à la place de « Changer de profil » ; rien pour un appareil enrôlé.
     const appareil = comptesExiges && Boolean(session) && session.appareil;
     const contenu = UI.element(UI.html`<ul class="liste-plus">

@@ -1503,13 +1503,14 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   « Administration », avant Paramètres).
 - **Ordre de chargement** (remplace celui du §14.2 ; `ORDRE_MODULES` de `tests/test_depot.py` change
   avec lui ; T329 : `brouillons.js` juste après `poste.js`, voir « Brouillons gardés sur l'appareil » ; T515 :
-  `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11) :
+  `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11 ; T521 : `solo-flux.js` et
+  `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11) :
   ```
   apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-retour.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
   ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js
-  ordres-impression.js  ordres-habilitations.js  ordres-prise.js
+  ordres-impression.js  ordres-habilitations.js  ordres-prise.js  solo-flux.js  solo-accueil.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
@@ -4655,14 +4656,62 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
 
 ### 22.11 Mode Solo et sauvegardes (D132, D133)
 
-`parametres.csv` gagne `mode_solo` (0/1) et `cloture_une_etape` (0/1, posé à 1 avec `mode_solo`). Mode Solo : menu
-avec « Plus » (Équipe, Planning), accueil « Nouvel OT » en premier, fiche équipement « Créer un OT » en premier,
-technicien du compte pré-rempli. Clôture en une étape : `Ordres.clore(ot, valeurs)` fait la clôture technique puis
+`parametres.csv` gagne `mode_solo` (0/1) et `cloture_une_etape` (0/1, posé à 1 avec `mode_solo`). Mode Solo : fiche
+équipement « Créer un OT » en premier, technicien du compte pré-rempli ; depuis T521, sans la couche équipe (paragraphe
+« Mode Solo sans la couche équipe » ci-dessous). Clôture en une étape : `Ordres.clore(ot, valeurs)` fait la clôture technique puis
 l'administrative dans la même écriture de la table, deux dates égales, deux lignes de journal, entrée dans la file du
 wiki. Sauvegardes : copie externe à la première écriture après 2 h du matin (ou au démarrage), 30 copies ; échec
 noté dans `journal-serveur.log` et rendu par `/api/info` (`copie_externe`) pour l'accueil du responsable ;
 `POST /api/sauvegarde/tester` ; 429 pour une deuxième sauvegarde manuelle dans la minute ; purge au-delà de 60
 manuelles.
+
+**Mode Solo sans la couche équipe** (lot 1 ergonomie, B, T521 ; `js/modules/solo-flux.js` (objet `Solo`),
+`js/modules/solo-accueil.js` (`SoloAccueil`), `css/modules/solo.css` ; `tests/test_solo_flux.py`, `tests/test_solo.py`).
+Une seule base de code : tout ce qui suit ne vaut que si `App.modeSolo()` (mode_solo = 1 et profil responsable) ; en
+équipe, chaque fonction rend sans rien changer. Une base déjà en Solo reçoit ce flux à sa prochaine ouverture.
+
+- **OT au nom du technicien seul** : `Solo.completerOt(ligne)`, appelé dans la mutation de chaque création d'OT
+  (`Ordres.creer` : manuel, urgence, contrôle, réserve, OT lié ; `Demandes.accepter` ; génération du préventif,
+  `Preventif.genererOTEchus`) : sans technicien, l'OT naît avec `technicien_id` = `solo_technicien_id` et une ligne de
+  `prises_en_charge` (`Ordres.interne.noterPrise`, A3). « Démarrer » est proposé dès « Créé » (A3).
+- **Demandes des opérateurs acceptées d'elles-mêmes** : `Solo.convertirDemandes()` relit `demandes.csv` puis passe
+  chaque demande « Nouvelle » sans `ot_id` par `Demandes.accepter` (les écritures du bouton « Accepter » : type et
+  priorité déduits de l'impact, OT réutilisé s'il porte déjà ce `di_id`, statut relu dans la mutation ; T517 s'y
+  branche sans changement). Le demandeur ne peut pas écrire d'OT (`ROLES_PAR_ROUTE` inchangé) : la conversion se fait
+  dans le navigateur du technicien seul, à l'ouverture (`Solo.auDemarrage`, appelé par js/app.js une fois prêt), à
+  chaque affichage de l'accueil, et quand `demandes.csv` change sur un autre poste (événement `changement` de Donnees,
+  origine « distant » : toast « Nouvelle panne déclarée par … » hors de l'accueil). Une seule conversion par demande,
+  même avec deux onglets ou deux appareils : le second trouve l'OT du premier (conflit d'écriture relu, `di_id`) ou la
+  demande déjà acceptée (`ErreurValidation` : rien à dire) ; les appels d'un même onglet passent en file. Les
+  demandes « Différée » restent telles quelles. Les boutons Accepter / Regrouper / Différer / Refuser ne sont plus un
+  passage obligé (la demande est « Acceptée ») ; un OT créé à tort se traite par « Annuler l'OT » ; « Regrouper » une
+  demande déjà acceptée n'est pas proposé (point ouvert).
+- **Sa propre déclaration** : après `Demandes.creer` (« Signaler un problème »), `Solo.apresSignalement(diId)`
+  l'accepte aussitôt ; demandes-signaler.js ouvre l'OT (toast « OT-… créé à votre nom »).
+- **Habilitation** : `refusHabilitation` (ordres-regles.js) rend null quand `Solo.sansRefusHabilitation()` : jamais de
+  refus ni de dérogation à soi-même (affectation, planification, prise) ; D191 inchangée en équipe. La fiche de l'OT
+  porte un rappel (`#solo-rappel-habilitation`, bandeau « attention » : habilitations manquantes au jour, lien
+  « Ma fiche ») ; le badge « Habilitation exigée » de l'en-tête reste.
+- **Fiche d'un OT** (`Solo.ajusterFiche(racine, ot)`, appelé en fin d'affichage par ordres-fiche.js) : trois états
+  (`.solo-etapes` : À faire = Créé, Préparé, Planifié ; En cours = En cours, « En attente » ; Fini = clôturés ; Annulé
+  à part) à la place des étapes ; « Marquer préparé », « Planifier » (et « Clôturer techniquement / administrativement »
+  quand « Clore » est là) déplacés dans `<details id="solo-plus-options">` « Plus d'options » des Actions ; ceux de
+  l'onglet Préparation cachés. `<html data-solo>` (`Solo.marquer`, appelé par `construireMenus`) : solo.css cache le
+  champ « Technicien » (nouvel OT, préparation, temps passé ; la valeur reste dans le formulaire), le filtre
+  « Technicien » de la liste des OT (« Mes OT », « Tous les techniciens », « Non affectés ») ; la liste perd sa colonne
+  « Technicien » (ordres-liste.js).
+- **Menu** : Équipe et Planning n'apparaissent plus (ni menu latéral, ni barre du bas, ni feuille « Plus ») ; leurs
+  routes restent (« Ma fiche » `#/equipe/<id>`, accès `#/equipe/acces` depuis Paramètres › Organisation). Le groupe
+  « Plus » du menu latéral (lot 7) est retiré.
+- **Accueil** (`SoloAccueil.afficher`, appelé par `Accueil.afficher` à la place du bento) : « Bonjour », la date,
+  deux gros boutons (`#accueil-solo` : `#accueil-nouvel-ot`, `#accueil-signaler`), « Exporter en ZIP », les
+  avertissements (mise à jour, contrôle de la base, copie externe, Tailscale, parc vide), puis `#solo-pannes`
+  (« Nouvelle panne déclarée par <demandeur> : <machine> » tant que l'OT n'est pas démarré, lien vers l'OT),
+  `#solo-en-cours` (avec le motif d'attente), `#solo-preventif` (préventifs à faire au plus tard dimanche),
+  `#solo-a-faire` (le reste non démarré, hors préventifs des semaines suivantes), « Fini ces 7 derniers jours : N »,
+  « Bilan du mois » (`#/indicateurs?onglet=rapports`), la tuile du rapport à figer et la carte « Connecter un
+  téléphone ». Rien sur l'équipe (ni « À prendre », ni « Reprises récentes »). Aide à l'écran : variante « solo »
+  ajoutée par solo-accueil.js à `AideEcransTextes.accueil.profils` (aide-ecrans.js la choisit en Solo).
 
 Précisions de T175 (sauvegardes du serveur, `tests/test_sauvegardes_lot7.py`) :
 

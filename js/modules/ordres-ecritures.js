@@ -119,6 +119,7 @@ Object.assign(Ordres, (() => {
       const ligne = Object.assign({
         origine: 'manuel', statut: 'Créé', arret_production: '0', remise_service: '0',
       }, valeurs, { id, statut: 'Créé', date_creation: outils.maintenant() });
+      if (typeof Solo !== 'undefined') Solo.completerOt(ligne);      // T521 : en Solo, au nom du technicien seul
       noterDerogation(journal, action, controlerAffectation(ligne, options));
       lignes.push(ligne);
       return id;

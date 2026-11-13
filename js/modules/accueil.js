@@ -410,6 +410,8 @@ const Accueil = (() => {
     const connexion = adresses === null ? '' : carteConnexion(adresses);
     // Responsable : accueil « bento » (accueil-bento.js, chargé après ce fichier : appelé au moment de
     // l'affichage), avec la tuile du rapport du mois écoulé (lot 3, §15.9).
+    // T521 : accueil du mode Solo (solo-accueil.js, chargé après ce fichier).
+    if (typeof SoloAccueil !== 'undefined' && App.modeSolo()) { await SoloAccueil.afficher(conteneur, connexion); return; }
     if (App.estResponsable()) { Accueil.afficherResponsable(conteneur, connexion); return; }
     const contenu = App.estTechnicien() ? accueilTechnicien() : accueilDemandeur();
     UI.remplir(conteneur, UI.html`${contenu}${connexion}`);

@@ -4,8 +4,8 @@ Le mode Solo est le profil Responsable avec le réglage mode_solo = 1 de paramet
 profil). Mode démo (file://), profil Responsable préréglé :
     - « Passer en mode Solo » (Paramètres) crée le technicien « moi » et écrit mode_solo et
       solo_technicien_id (lus dans les données en mémoire) ;
-    - accueil : « Nouvel OT » avant « Signaler un problème » ;
-    - menu : Équipe et Planning sous « Plus » (repliable à 1280 px, feuille « Plus » à 375 px) ;
+    - accueil du Solo (T521, solo-accueil.js) : « Nouvel OT » avant « Signaler un problème » ;
+    - menu : ni Équipe ni Planning (T521 ; avant : sous « Plus »), leurs routes restent ;
     - nouvel OT : technicien « moi » pré-rempli ;
     - fiche équipement : « Créer un OT » avant « Signaler un problème » ;
     - « Quitter le mode Solo » rétablit le menu sans rien supprimer ; profils Demandeur et Technicien
@@ -51,7 +51,6 @@ class TestModeSolo(CasNavigateur):
     def entrees_menu(self):
         return self.page.evaluate("""() => ({
           principales: [...document.querySelectorAll('#menu > a')].map(a => a.dataset.ecran),
-          sousPlus: [...document.querySelectorAll('#menu-plus-liste a')].map(a => a.dataset.ecran),
         })""")
 
     def sans_defilement_horizontal(self):
@@ -65,7 +64,7 @@ class TestModeSolo(CasNavigateur):
         self.assertFalse(page.evaluate("App.modeSolo()"))
         self.assertEqual(page.evaluate("App.technicienSolo()"), "")
         self.assertEqual(page.locator("#accueil-solo").count(), 0)
-        self.assertEqual(page.locator("#btn-menu-plus").count(), 0)
+        self.assertFalse(page.evaluate("document.documentElement.hasAttribute('data-solo')"))
         menu = self.entrees_menu()
         self.assertIn("equipe", menu["principales"])
         self.assertIn("planning", menu["principales"])
@@ -92,38 +91,29 @@ class TestModeSolo(CasNavigateur):
         self.assertEqual(page.evaluate("App.technicienSolo()"), technicien_id)
         self.assertIn(technicien_id, page.inner_text("#solo-technicien"))
 
-        # Accueil : « Nouvel OT » en premier, « Signaler un problème » en second, dans l'en-tête
-        self.aller("#/accueil", "#bento")
-        boutons = page.evaluate("[...document.querySelectorAll('.bento-entete #accueil-solo .btn')].map(b => b.id)")
+        # Accueil du Solo (T521) : « Nouvel OT » en premier, « Signaler un problème » en second ; pas de bento
+        self.aller("#/accueil", "#solo-accueil")
+        self.assertEqual(page.locator("#bento").count(), 0)
+        self.assertTrue(page.evaluate("document.documentElement.hasAttribute('data-solo')"))
+        boutons = page.evaluate("[...document.querySelectorAll('#accueil-solo .btn')].map(b => b.id)")
         self.assertEqual(boutons, ["accueil-nouvel-ot", "accueil-signaler"])
         self.assertEqual(page.get_attribute("#accueil-nouvel-ot", "href"), "#/ot/nouveau")
         self.assertEqual(page.get_attribute("#accueil-signaler", "href"), "#/di/nouvelle")
         hauteur = page.evaluate("Math.min(...[...document.querySelectorAll('#accueil-solo .btn')].map(b => b.getBoundingClientRect().height))")
         self.assertGreaterEqual(hauteur, 48)
 
-        # Menu à 1280 px : Équipe et Planning sous « Plus », replié ; le bouton le déplie
+        # Menu à 1280 px (T521) : ni Équipe ni Planning, pas de groupe « Plus » ; les routes restent
         menu = self.entrees_menu()
         self.assertNotIn("equipe", menu["principales"])
         self.assertNotIn("planning", menu["principales"])
-        self.assertEqual(sorted(menu["sousPlus"]), ["equipe", "planning"])
-        self.assertEqual(page.get_attribute("#btn-menu-plus", "aria-expanded"), "false")
-        self.assertTrue(page.is_hidden("#menu-plus-liste"))
-        page.click("#btn-menu-plus")
-        self.assertEqual(page.get_attribute("#btn-menu-plus", "aria-expanded"), "true")
-        self.assertTrue(page.is_visible("#menu-plus-liste a[data-ecran='equipe']"))
-        page.click("#menu-plus-liste a[data-ecran='planning']")
-        page.wait_for_function("location.hash === '#/planning'")
-        page.wait_for_selector("#menu-plus-liste a[data-ecran='planning'][aria-current='page']")
-        page.click("#btn-menu-plus")
-        self.assertTrue(page.is_hidden("#menu-plus-liste"))
-        # Aucune route supprimée : #/equipe s'ouvre toujours
+        self.assertEqual(page.locator("#btn-menu-plus").count(), 0)
         self.aller("#/equipe", "#contenu h1")
         self.assertEqual(page.evaluate("App.ecranCourant.id"), "equipe")
-        self.assertEqual(page.get_attribute("#btn-menu-plus", "aria-expanded"), "true")
 
-        # Nouvel OT : technicien « moi » pré-rempli
+        # Nouvel OT : technicien « moi » pré-rempli, champ caché à l'écran (T521)
         self.aller("#/ot/nouveau", "#form-nouvel-ot")
         self.assertEqual(page.input_value("#form-nouvel-ot [name='technicien_id']"), technicien_id)
+        self.assertTrue(page.is_hidden("#form-nouvel-ot [name='technicien_id']"))
 
         # Fiche équipement : « Créer un OT » avant « Signaler un problème »
         self.aller("#/equipement/" + EQUIPEMENT, ".parc-actions")
@@ -135,19 +125,19 @@ class TestModeSolo(CasNavigateur):
         page.wait_for_selector("#form-nouvel-ot")
         self.assertEqual(page.input_value("#form-nouvel-ot [name='technicien_id']"), technicien_id)
 
-        # Téléphone (375 px) : Équipe et Planning dans le « Plus » de la barre du bas, pas de défilement horizontal
+        # Téléphone (375 px) : ni Équipe ni Planning, même dans le « Plus » de la barre du bas ; pas de défilement
         page.set_viewport_size({"width": 375, "height": 812})
-        self.aller("#/accueil", "#bento")
+        self.aller("#/accueil", "#solo-accueil")
         self.sans_defilement_horizontal()
         en_bas = page.evaluate("[...document.querySelectorAll('#barre-bas a')].map(a => a.dataset.ecran)")
         self.assertNotIn("equipe", en_bas)
         self.assertNotIn("planning", en_bas)
         page.click("#btn-plus")
         page.wait_for_selector("dialog .liste-plus", state="visible")
-        self.assertEqual(page.locator("dialog .liste-plus a[href='#/equipe']").count(), 1)
-        self.assertEqual(page.locator("dialog .liste-plus a[href='#/planning']").count(), 1)
-        page.click("dialog .liste-plus a[href='#/equipe']")
-        page.wait_for_function("location.hash === '#/equipe'")
+        self.assertEqual(page.locator("dialog .liste-plus a[href='#/equipe']").count(), 0)
+        self.assertEqual(page.locator("dialog .liste-plus a[href='#/planning']").count(), 0)
+        page.click("dialog .liste-plus a[href='#/parametres']")
+        page.wait_for_function("location.hash === '#/parametres'")
         self.aller("#/equipement/" + EQUIPEMENT, "#parc-creer-ot")
         self.sans_defilement_horizontal()
         self.aller("#/parametres", "#btn-quitter-solo")
@@ -187,20 +177,22 @@ class TestModeSolo(CasNavigateur):
         self.assertFalse(page.evaluate("App.modeSolo()"))
         self.assertEqual(page.locator("#btn-menu-plus").count(), 0)
 
-    def test_themes_clair_et_sombre_bouton_plus(self):
+    def test_themes_clair_et_sombre_boutons_de_l_accueil(self):
         page = self.ouvrir_demo()
         self.passer_en_solo(prenom="Dominique", nom="Clair")
+        self.aller("#/accueil", "#accueil-solo")
         lecture = """() => {
-          const b = document.querySelector('#btn-menu-plus');
-          return { couleur: getComputedStyle(b).color, hauteur: b.getBoundingClientRect().height };
+          const b = document.querySelector('#accueil-signaler');
+          const carte = document.querySelector('#solo-pannes');
+          return { couleur: getComputedStyle(carte).backgroundColor, hauteur: b.getBoundingClientRect().height };
         }"""
         page.evaluate("document.documentElement.dataset.theme = 'clair'")
         clair = page.evaluate(lecture)
         page.evaluate("document.documentElement.removeAttribute('data-theme')")
         sombre = page.evaluate(lecture)
-        # Couleurs prises dans les variables du thème : elles changent avec lui ; zone tactile du menu
+        # Couleurs prises dans les variables du thème : elles changent avec lui (carte) ; gros bouton
         self.assertNotEqual(clair["couleur"], sombre["couleur"])
-        self.assertGreaterEqual(min(clair["hauteur"], sombre["hauteur"]), 44)
+        self.assertGreaterEqual(min(clair["hauteur"], sombre["hauteur"]), 48)
 
 
 if __name__ == "__main__":

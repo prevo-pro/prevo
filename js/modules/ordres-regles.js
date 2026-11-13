@@ -560,6 +560,7 @@ const Ordres = (() => {
    * journal pour ce même OT, technicien, date et habilitations (§7.4).
    */
   function refusHabilitation(ot, technicienId, date) {
+    if (typeof Solo !== 'undefined' && Solo.sansRefusHabilitation()) return null;   // T521 : un rappel en Solo
     const controle = controleHabilitation(ot, technicienId, date);
     const otId = texte(ot && ot.id);
     if (!controle.bloque || derogationAccordee(otId, controle.technicienId, controle.date, controle.manquantes)) return null;
