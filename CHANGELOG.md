@@ -28,6 +28,8 @@ Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 p
   le prénom du technicien. À la clôture, « Un mot pour l'opérateur » (facultatif, dictée possible). En flashant de
   nouveau le QR de la machine, l'opérateur voit ses dernières demandes et où elles en sont. Mêmes droits d'accès
   qu'avant : ni coûts, ni autre donnée personnelle que le prénom du technicien.
+  Bases existantes : au passage au format 5, une demande déjà acceptée dont l'ordre de travail est en cours ou clos
+  prend « En cours » ou « Réparée ». La démo en montre des exemples, certains avec un mot du technicien.
 - **Rôle « Direction », en lecture seule** : tableau de bord, bilan mensuel, historique des machines et des ordres de
   travail. Aucune modification, aucun accès à l'administration (refusés aussi par le serveur). Proposé dans
   l'assistant d'installation et dans Équipe › Accès.
@@ -38,6 +40,8 @@ Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 p
 - **Bilan du mois en cours**, y compris le premier mois d'utilisation, sans rien figer : « Voir le bilan ». Le bilan
   nomme ce qui manque (heures par jour des machines, taux horaires, prix des pièces, coût d'une heure d'arrêt) et dit
   dans quel écran le renseigner ; un coût incomplet est dit « Partiel », jamais donné comme un total.
+- **Après « Démarrer »**, la fiche d'un ordre de travail s'ouvre sur l'onglet Exécution, celui de la check-list. Sur
+  l'accueil du technicien, « Vos OT repris par un collègue » passe en tête.
 - **Étiquettes QR** : la consigne « Connectez-vous au Wi-Fi de l'usine pour déclarer une panne » est imprimée sous le
   QR quand l'adresse de Prévo est locale ou privée (avec le nom du Wi-Fi si vous le donnez). Les écrans Étiquettes,
   Paramètres › Accès et la fiche d'accès préviennent que ces QR ne s'ouvriront pas hors du réseau de l'usine.
@@ -60,6 +64,11 @@ Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 p
   leurs heures de fonctionnement par jour.
 - Le message « Vos données de Prévo 1.2 sont là » n'apparaît plus sur une base que cette version vient de créer vide.
 - Un lien vers un document refusé à votre rôle mène à une page de Prévo qui dit quoi faire, au lieu d'un texte brut.
+- Un lien vers un document ouvert sans être connecté (le rapport mensuel reçu par mail) affiche l'écran de connexion
+  de Prévo, puis le document s'ouvre. Les droits ne changent pas.
+- **Assistant d'installation** : l'attente pendant la fabrication du certificat est dite à côté du bouton grisé.
+- **Fiche d'accès** : les deux QR, qui portaient la même adresse, sont réunis en un seul qui dit les deux usages.
+- **Fiche d'un ordre de travail vue par la Direction** : les informations en texte, sans formulaire grisé.
 
 ### Corrections après une relecture critique de la 2.2.0 bêta 1 (12/11/2026)
 

@@ -771,7 +771,7 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   prend le statut que `suivreOt` lui aurait donné (OT En cours ou En attente → `En cours` ; OT clôturé → `Réparée`,
   date de fin de l'OT, prénom de son technicien, mot vide ; autres OT : inchangée) — `Formats.suiviDesDemandes`
   (complément de l'étape 4→5, phase 3 ter de `Donnees.migrerAuFormatCourant`) et `suivi_des_demandes` de `serveur.py`
-  (même règle) ; une base déjà au format 5 n'est pas reprise ; la démo garde ses DI `Acceptée`. Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
+  (même règle) ; une base déjà au format 5 n'est pas reprise ; la démo suit la même règle dans son générateur (T525). Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
   ne regardent que `Acceptée` : une acceptation écrit toujours `di_id`, seul un import sans `di_id` y passe.
   Le bloc « Vos dernières demandes sur cette machine » relit les tables à son affichage (au plus toutes les 5 s) :
   un téléphone resté sur la page (QR reflashé dans le même onglet) voit le retour sans attendre la surveillance.
