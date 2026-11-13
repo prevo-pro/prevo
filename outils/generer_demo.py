@@ -66,9 +66,9 @@ du jeu (ou une liste triée de lignes, ou un code) qui a la propriété annoncé
     ot_correctif_anomalie            correctif clôturé, issu de la DI liée de preventif_anomalie
   DI (table demandes)
     di_statut_nouvelle               une DI « Nouvelle » (ET-01)
-    di_statut_acceptee               la plus ancienne DI « Acceptée » (avec son OT)
-    di_acceptee_autre                la deuxième DI « Acceptée » (avec son OT)
-    di_statut_regroupee              DI « Regroupée » sur ot_en_cours_regroupe
+    di_statut_acceptee               la plus ancienne DI acceptée (avec son OT) ; « Réparée » depuis T525 (elle suit son OT)
+    di_acceptee_autre                la deuxième DI acceptée (avec son OT) ; « Réparée » depuis T525
+    di_statut_regroupee              DI regroupée sur ot_en_cours_regroupe ; « En cours » depuis T525 (elle suit l'OT)
     di_statut_differee               DI « Différée » (motif renseigné, CV-01)
     di_statut_refusee                la seule DI « Refusée » (motif renseigné, CU-01)
     di_nouvelles                     liste : toutes les DI « Nouvelle »
@@ -1617,6 +1617,7 @@ class Contexte:
         self.maintenant = instant(self.ref, HEURE_COURANTE)
         self.debut = ajouter_mois(self.ref, -mois)    # premier jour de l'historique
         self.avis_wiki = ''                           # wiki figé non repris (autre jeu que la démo standard)
+        self.statut_avant_suivi = {}                  # T525 : statut d'une DI avant qu'elle suive son OT (scénarios)
         self.base = {table: [] for table in NOMS_TABLES}
         self.numeros = {}                             # compteurs d'identifiants
         self.localisations = {}                       # clé interne -> identifiant
@@ -3810,6 +3811,62 @@ def attribuer_identifiants_historique(ctx):
             ligne['id'] = nouvel_identifiant(ctx, table)
 
 
+# T525 (A4 du lot 1 ergonomie) : les DI de la démo suivent leur OT, comme Demandes.suivreOt à chaque transition et
+# comme le passage au format 5 d'une base existante (T526 : Formats.suiviDesDemandes, suivi_des_demandes de
+# serveur.py) : une DI « Acceptée » ou « Regroupée » dont l'OT (ot_id) est En cours ou En attente passe « En cours » ;
+# dont l'OT est clôturé (technique ou administratif), « Réparée » avec date_reparation = date de fin de l'OT (à défaut
+# sa date de clôture technique, puis administrative) et repare_par = prénom du technicien de l'OT (vide sans
+# technicien). Seules ces colonnes de demandes changent : ni identifiant, ni ordre, ni autre table (journal compris).
+# Les DI réparées les plus récentes reçoivent un « mot pour l'opérateur » (MOTS_TECHNICIEN_DEMO, par symptôme) ; la
+# démo n'est pas traduite (valeurs stockées en français, D155).
+STATUTS_OT_EN_COURS_DI = ('En cours', 'En attente')
+MOTS_TECHNICIEN_DEMO = {
+    'Disjonctions intermittentes sur AE-04.':
+        "Une connexion était desserrée dans l'armoire : resserrée, plus de coupure depuis.",
+    "La pompe PO-02 fuit encore à l'arbre, alors que sa garniture vient d'être changée.":
+        "C'était l'alignement de la pompe, pas la garniture : réaligné, la fuite ne devrait plus revenir.",
+    'Défaut cellule à répétition sur la ligne.':
+        'Cellule encrassée, nettoyée et réalignée. Si le défaut revient, appelez-nous.',
+    "Le convoyeur s'arrête tout seul plusieurs fois par heure.":
+        'Capteur nettoyé et réaligné, le convoyeur peut repartir.',
+    "Gouttes d'eau régulières sous la pompe PO-02, le sol est mouillé.":
+        'Garniture changée, plus de fuite. Pensez à éponger le sol.',
+}
+
+
+def suivi_de_l_ot(demande, ot, prenoms):
+    """Champs que prend une DI « Acceptée » ou « Regroupée » qui suit son OT, ou None (OT Créé, Préparé, Planifié,
+    Annulé, ou DI d'un autre statut)."""
+    if demande['statut'] not in ('Acceptée', 'Regroupée') or ot is None:
+        return None
+    if ot['statut'] in STATUTS_OT_EN_COURS_DI:
+        return {'statut': 'En cours', 'mot_technicien': '', 'date_reparation': '', 'repare_par': ''}
+    if ot['statut'] not in STATUTS_CLOTURES:
+        return None
+    date = ot['date_fin'] or ot['date_cloture_tech'] or ot['date_cloture_admin']
+    return {'statut': 'Réparée', 'mot_technicien': '', 'date_reparation': date,
+            'repare_par': prenoms.get(ot['technicien_id'], '')}
+
+
+def faire_suivre_leur_ot_aux_demandes(ctx):
+    """Applique suivi_de_l_ot aux DI (après resoudre_references : identifiants partout), puis pose les mots du
+    technicien sur les DI réparées les plus récentes (une par texte de MOTS_TECHNICIEN_DEMO)."""
+    ordres = {ot['id']: ot for ot in ctx.base['ordres_travail']}
+    prenoms = {technicien['id']: technicien['prenom'] for technicien in ctx.base['techniciens']}
+    for demande in ctx.base['demandes']:
+        champs = suivi_de_l_ot(demande, ordres.get(demande['ot_id']), prenoms)
+        if champs:
+            ctx.statut_avant_suivi[demande['id']] = demande['statut']
+            demande.update(champs)
+    if ctx.volume:
+        return
+    restants = dict(MOTS_TECHNICIEN_DEMO)        # chaque mot sur la DI réparée la plus récente de ce symptôme
+    for demande in sorted((d for d in ctx.base['demandes'] if d['statut'] == 'Réparée'),
+                          key=lambda d: (d['date_reparation'], d['id']), reverse=True):
+        if demande['symptome'] in restants:
+            demande['mot_technicien'] = restants.pop(demande['symptome'])
+
+
 def resoudre_references(ctx):
     """Remplace les renvois vers des lignes (dictionnaires) par leur identifiant."""
     for lignes in ctx.base.values():
@@ -3918,13 +3975,26 @@ def verifier_jeu(ctx):
             erreur('%s : date dans le futur' % ident)
         if ot['origine'] == 'DI':                                      # RG1 et RG2
             demande = demandes.get(ot['di_id'])
-            if demande is None or demande['ot_id'] != ident or demande['statut'] != 'Acceptée':
+            if demande is None or demande['ot_id'] != ident \
+                    or ctx.statut_avant_suivi.get(demande['id'], demande['statut']) != 'Acceptée':
                 erreur('%s : demande liée incohérente' % ident)
             elif ot['priorite'] != priorite_calculee(equipements[ot['equipement_id']]['criticite'], demande['impact']):
                 erreur('%s : priorité %s contraire à la matrice' % (ident, ot['priorite']))
+    prenoms = {technicien['id']: technicien['prenom'] for technicien in base['techniciens']}
+    ordres_par_id = {o['id']: o for o in base['ordres_travail']}
     for demande in base['demandes']:                                   # RG1
         statut = demande['statut']
-        if statut in ('Acceptée', 'Regroupée') and not demande['ot_id']:
+        ot_de_la_demande = ordres_par_id.get(demande['ot_id'])
+        if suivi_de_l_ot(demande, ot_de_la_demande, prenoms):                                      # T525
+            erreur('%s %s : ne suit pas son OT %s' % (demande['id'], statut, demande['ot_id']))
+        if statut in ('En cours', 'Réparée'):
+            attendu = suivi_de_l_ot(dict(demande, statut=ctx.statut_avant_suivi.get(demande['id'], '')),
+                                    ot_de_la_demande, prenoms)
+            if not attendu or any(demande[c] != v for c, v in attendu.items() if c != 'mot_technicien'):
+                erreur('%s %s incohérente avec son OT %s' % (demande['id'], statut, demande['ot_id']))
+        elif demande['mot_technicien'] or demande['date_reparation'] or demande['repare_par']:
+            erreur('%s %s avec un retour du technicien' % (demande['id'], statut))
+        if statut in ('Acceptée', 'Regroupée', 'En cours', 'Réparée') and not demande['ot_id']:
             erreur('%s %s sans OT' % (demande['id'], statut))
         if statut in ('Nouvelle', 'Différée', 'Refusée') and demande['ot_id']:
             erreur('%s %s avec un OT' % (demande['id'], statut))
@@ -4428,7 +4498,8 @@ def verifier_cas_anomalies(base, ouvertes, cle, suggestion):
             correctif = ordres.get(demande['ot_id'])
             if not (visite['statut'] == 'Clôturé administrativement'
                     and visite['date_cloture_admin'] <= demande['date_heure']
-                    and demande['equipement_id'] == visite['equipement_id'] and demande['statut'] == 'Acceptée'
+                    and demande['equipement_id'] == visite['equipement_id']
+                    and demande['statut'] in ('Acceptée', 'Réparée')
                     and correctif and correctif['statut'] in STATUTS_CLOTURES
                     and correctif['symptome_code'] == demande['symptome_code']):
                 erreurs.append('%s : DI liée %s incohérente avec la visite %s' % (cle, demande['id'], visite['id']))
@@ -4538,7 +4609,9 @@ def scenarios_du_jeu(ctx):
         administratifs, key=lambda o: (o['date_cloture_admin'], o['id']))['id']
     preventifs = [o for o in ordres if o['origine'] == 'préventif' and o['statut'].startswith('Clôturé')]
     scenarios['ot_preventif_cloture'] = min(preventifs, key=lambda o: (o['date_creation'], o['id']))['id']
-    acceptees = [d for d in base['demandes'] if d['statut'] == 'Acceptée' and d['ot_id']]     # ordre chronologique
+    # Statut d'avant le suivi de l'OT (T525) : les rôles de scénario gardent leurs identifiants
+    acceptees = [d for d in base['demandes']
+                 if ctx.statut_avant_suivi.get(d['id'], d['statut']) == 'Acceptée' and d['ot_id']]  # chronologique
     scenarios['di_statut_acceptee'] = acceptees[0]['id']
     scenarios['ot_de_di_acceptee'] = acceptees[0]['ot_id']
     scenarios['di_acceptee_autre'] = acceptees[1]['id']
@@ -4952,6 +5025,13 @@ def statut_contrat_v22(contrat, jour, delai=DELAI_ALERTE_V22):
     return 'termine' if avant_fin < 0 else 'en_cours'
 
 
+def verifier_mots_du_technicien(ctx):
+    """T525 : la démo montre de 3 à 6 DI réparées avec un mot du technicien."""
+    avec_mot = [d['id'] for d in ctx.base['demandes'] if d['mot_technicien']]
+    if not 3 <= len(avec_mot) <= 6:
+        raise ErreurCoherence('%d DI avec un mot du technicien (3 à 6 attendues) : %s' % (len(avec_mot), avec_mot))
+
+
 def verifier_demo_v22(ctx):
     """Auto-vérification des garanties et contrats de la démo : statuts attendus à la date de référence, une
     garantie sur un équipement qui a des pannes, au moins un contrat tacite et un contrat sans montant."""
@@ -5027,6 +5107,7 @@ def construire_jeu(mois=MOIS_PAR_DEFAUT, volume=None, dossier_wiki=None):
         with hasard_du_lot6(ctx):
             generer_journal(ctx, garder=lambda ot: id(ot) in scenario_lot6)
         ctx.base['journal'].sort(key=lambda entree: (entree['date_heure'], entree['id']))
+    faire_suivre_leur_ot_aux_demandes(ctx)    # T525 : après le journal, qui garde l'acceptation de chaque DI
     # Le wiki figé a été fabriqué sur la démo standard (ses OT, leurs numéros et leurs dates) : une autre durée
     # d'historique ou le jeu de charge garde les tables du wiki vides (§20.12, D115).
     if not volume and mois == MOIS_PAR_DEFAUT:
@@ -5037,6 +5118,8 @@ def construire_jeu(mois=MOIS_PAR_DEFAUT, volume=None, dossier_wiki=None):
     if not volume:
         verifier_demo_lot3(ctx)
         verifier_demo_v22(ctx)
+        if mois == MOIS_PAR_DEFAUT:
+            verifier_mots_du_technicien(ctx)
     return ctx
 
 

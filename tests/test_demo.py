@@ -701,11 +701,11 @@ class TestContenuDemo(unittest.TestCase):
             liees = [d for d in self.t['demandes'] if d['ot_origine_id'] == ot['id']]
             self.assertEqual(len(liees), 1, ot['id'])
             statuts.append(liees[0]['statut'])
-            if liees[0]['statut'] == 'Acceptée':
+            if liees[0]['statut'] in ('Acceptée', 'Réparée'):      # T525 : réparée, son correctif est clos
                 correctif = self.ot_par_id[liees[0]['ot_id']]
                 self.assertTrue(correctif['type'].startswith('correctif'))
                 self.assertTrue(correctif['statut'].startswith('Clôturé'))
-        self.assertIn('Acceptée', statuts)
+        self.assertIn('Réparée', statuts)
         self.assertIn('Nouvelle', statuts)
         for demande in self.t['demandes']:
             if demande['ot_origine_id']:
@@ -988,11 +988,16 @@ class TestContenuDemo(unittest.TestCase):
         for demande in self.t['demandes']:
             if demande['statut'] == 'Refusée':
                 self.assertGreaterEqual(len(demande['motif_decision']), 10)
-            if demande['statut'] in ('Acceptée', 'Regroupée'):
+            if demande['statut'] in ('Acceptée', 'Regroupée', 'En cours', 'Réparée'):
                 self.assertIn(demande['ot_id'], self.ot_par_id)
             if demande['statut'] in ('Nouvelle', 'Différée', 'Refusée'):
                 self.assertEqual(demande['ot_id'], '')
-        self.assertGreaterEqual(statuts.count('Regroupée'), 1)
+        # T525 : les DI suivent leur OT ; les regroupées le sont toutes avec un OT en cours ou clos
+        self.assertGreaterEqual(len([d for d in self.t['demandes'] if d['motif_decision'].startswith('Regroupée')]), 1)
+        self.assertGreaterEqual(statuts.count('En cours'), 2)
+        self.assertGreaterEqual(statuts.count('Réparée'), 100)
+        self.assertGreaterEqual(statuts.count('Acceptée'), 3)
+        self.assertTrue(3 <= len([d for d in self.t['demandes'] if d['mot_technicien']]) <= 6)
         self.assertTrue(any(d['statut'] == 'Nouvelle' and d['impact'] == 'sécurité' for d in self.t['demandes']))
 
     def test_ot_ouverts_dans_tous_les_statuts(self):
@@ -1276,8 +1281,9 @@ class TestScenariosDemo(unittest.TestCase):
         correctif = self.ot('ot_correctif_anomalie')
         self.assertEqual((preventif['origine'], preventif['anomalie_constatee']), ('préventif', '1'))
         self.assertTrue(preventif['statut'].startswith('Clôturé'))
+        # T525 : acceptée, elle a suivi son correctif clos : « Réparée »
         self.assertEqual((demande['ot_origine_id'], demande['statut'], demande['ot_id']),
-                         (preventif['id'], 'Acceptée', correctif['id']))
+                         (preventif['id'], 'Réparée', correctif['id']))
         self.assertTrue(correctif['type'].startswith('correctif') and correctif['statut'].startswith('Clôturé'))
         self.assertEqual(correctif['symptome_code'], demande['symptome_code'])
         nouvelle = self.ot('preventif_anomalie_nouvelle')
@@ -1293,8 +1299,10 @@ class TestScenariosDemo(unittest.TestCase):
     # -- DI
 
     def test_di_par_statut_et_remarquables(self):
-        for cle, statut in (('di_statut_nouvelle', 'Nouvelle'), ('di_statut_acceptee', 'Acceptée'),
-                            ('di_statut_regroupee', 'Regroupée'), ('di_statut_differee', 'Différée'),
+        # T525 : les DI suivent leur OT ; les rôles gardent leurs identifiants (la plus ancienne DI acceptée est
+        # aujourd'hui réparée, la regroupée suit un OT en cours)
+        for cle, statut in (('di_statut_nouvelle', 'Nouvelle'), ('di_statut_acceptee', 'Réparée'),
+                            ('di_statut_regroupee', 'En cours'), ('di_statut_differee', 'Différée'),
                             ('di_statut_refusee', 'Refusée')):
             self.assertEqual(self.di(cle)['statut'], statut, cle)
         self.assertGreaterEqual(len(self.di('di_statut_differee')['motif_decision']), 10)
@@ -1319,9 +1327,10 @@ class TestScenariosDemo(unittest.TestCase):
         premiere = self.di('di_plus_ancienne')
         self.assertEqual(premiere['id'], min(d['id'] for d in self.t['demandes']))
         self.assertEqual(premiere['id'], self.t['demandes'][0]['id'])
-        self.assertEqual(premiere['statut'], 'Acceptée')
+        self.assertEqual(premiere['statut'], 'Réparée')            # T525 : acceptée, puis son OT a été clos
         self.assertTrue(premiere['date_decision'])
-        acceptees = [d for d in self.t['demandes'] if d['statut'] == 'Acceptée' and d['ot_id']]
+        acceptees = [d for d in self.t['demandes'] if d['statut'] in ('Acceptée', 'En cours', 'Réparée')
+                     and d['ot_id'] and not d['motif_decision'].startswith('Regroupée')]
         self.assertEqual([self.s['di_statut_acceptee'], self.s['di_acceptee_autre']], [d['id'] for d in acceptees[:2]])
         causes = self.di('di_causes_equipement')
         self.assertEqual((causes['equipement_id'], causes['symptome_code']),
@@ -1673,7 +1682,8 @@ class TestDemoLot3(unittest.TestCase):
             propres = sorted((l for l in self.t['journal'] if l['table'] == 'demandes' and l['id_ligne'] == demande['id']),
                              key=lambda l: (l['date_heure'], l['id']))
             signalee = 'création — demande signalée' + (' pendant ' + demande['ot_origine_id'] if demande['ot_origine_id'] else '')
-            if demande['statut'] == 'Acceptée':
+            # T525 : la DI suit son OT (En cours, Réparée) ; regroupée ou non se lit dans motif_decision
+            if not demande['motif_decision'].startswith('Regroupée'):
                 decision = 'modification : statut, date_decision, ot_id — acceptée → ' + ot['id']
             else:
                 decision = 'modification : statut, motif_decision, date_decision, ot_id — regroupée avec ' + ot['id']
@@ -1777,7 +1787,7 @@ class TestDemoLot3bis(unittest.TestCase):
         technicien = [t for t in self.t['techniciens'] if t['id'] == visite['technicien_id']][0]
         self.assertEqual(demande['demandeur'], '%s %s' % (technicien['prenom'], technicien['nom']))
         self.assertTrue(demande['symptome'] and demande['impact'] in ('sécurité', 'arrêt', 'dégradé', 'gêne'))
-        self.assertEqual(demande['statut'], 'Acceptée')
+        self.assertEqual(demande['statut'], 'Réparée')               # T525 : son correctif est clos
         correctif = self.ot_par_id[demande['ot_id']]
         self.assertEqual((correctif['di_id'], correctif['equipement_id'], correctif['symptome_code']),
                          (demande['id'], demande['equipement_id'], demande['symptome_code']))

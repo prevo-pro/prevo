@@ -42,7 +42,7 @@ DI_INSUFFISANTE = SCENARIOS["di_causes_insuffisantes"]
 DI_SANS_CODE = SCENARIOS["di_sans_symptome_code"]
 OT_PREVENTIF_OUVERT = SCENARIOS["ot_preventif_ouvert"]
 OT_PREVENTIF_VERROUILLE = SCENARIOS["ot_preventif_cloture"]      # préventif « Clôturé administrativement »
-DI_ACCEPTEE = SCENARIOS["di_statut_acceptee"]                   # DI « Acceptée », avec son OT
+DI_ACCEPTEE = SCENARIOS["di_statut_acceptee"]                   # DI acceptée (aujourd'hui « Réparée », T525)
 OT_DE_DI_ACCEPTEE = SCENARIOS["ot_de_di_acceptee"]
 
 STATUTS_CLOTURES = ("Clôturé techniquement", "Clôturé administrativement")
@@ -574,7 +574,8 @@ class TestSuivi(CasDemandesLot2):
         preregler_profil(self.contexte, "demandeur", "Lucie Martin")
         with ServeurPrevo() as serveur:
             demande = ligne_par_id(serveur.dossier / "demandes.csv", DI_ACCEPTEE)
-            self.assertEqual((demande["statut"], demande["ot_id"]), ("Acceptée", OT_DE_DI_ACCEPTEE))
+            # T525 : la DI acceptée suit son OT, clos depuis : « Réparée »
+            self.assertEqual((demande["statut"], demande["ot_id"]), ("Réparée", OT_DE_DI_ACCEPTEE))
             self.assertIsNotNone(ligne_par_id(serveur.dossier / "ordres_travail.csv", OT_DE_DI_ACCEPTEE))
 
             self.ouvrir(serveur, "#/accueil")

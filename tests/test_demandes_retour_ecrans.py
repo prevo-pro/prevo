@@ -54,7 +54,7 @@ class TestRetourALEcran(CasNavigateur):
             self.assertEqual(ot["statut"], "En cours")
             rattachees = [d for d in lire_csv(dossier / "demandes.csv") if d["ot_id"] == OT_EN_COURS]
             origine = next(d for d in rattachees if d["id"] == ot["di_id"])
-            self.assertEqual(origine["statut"], "Acceptée")
+            self.assertEqual(origine["statut"], "En cours")              # T525 : la démo suit déjà l'OT en cours
             technicien = next(t for t in lire_csv(dossier / "techniciens.csv") if t["id"] == ot["technicien_id"])
             codes = lire_csv(dossier / "codes_defaillance.csv")
             cause = next(c["code"] for c in codes if c["famille"] == "cause")
