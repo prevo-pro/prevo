@@ -315,13 +315,14 @@ class TestServeur(CasExport):
             (documents / nom).write_bytes(octets)
         (documents / "orphelin-non-cite.pdf").write_bytes(octets_pdf("orphelin"))     # jamais exporté
         remplacer_une_fois(dossier / "equipements.csv", ";rebut;8;;;;0;2400", ";rebut;8;;;notice-perceuse.pdf;0;2400")
-        remplacer_une_fois(dossier / "demandes.csv", "clignote.;arrêt;;;Acceptée",
-                           "clignote.;arrêt;;20261019-101500-photo-tapis.png;Acceptée")
+        # T525 : ces DI de la démo suivent leur OT clos (« Réparée »)
+        remplacer_une_fois(dossier / "demandes.csv", "clignote.;arrêt;;;Réparée",
+                           "clignote.;arrêt;;20261019-101500-photo-tapis.png;Réparée")
         remplacer_une_fois(dossier / "demandes.csv",
                            "DI-2025-0002;2025-09-30 13:30;Camille Girard;EQ-0001;Défaut température haute, il est tombé "
-                           "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;;Acceptée",
+                           "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;;Réparée",
                            "DI-2025-0002;2025-09-30 13:30;Camille Girard;EQ-0001;Défaut température haute, il est tombé "
-                           "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;%s;Acceptée"
+                           "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;%s;Réparée"
                            % NOM_PIEGE)
         remplacer_une_fois(dossier / "controles_reglementaires.csv", "2026-02-10;2027-02-10;;;1",
                            "2026-02-10;2027-02-10;vgp-pont-2026.pdf;;1")

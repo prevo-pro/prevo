@@ -231,11 +231,12 @@ def base_a():
     """{nom de fichier CSV : octets} de la base A et {nom : octets} de ses documents."""
     fichiers = fichiers_demo()
     remplacer_une_fois(fichiers, "equipements.csv", ";rebut;8;;;;0;2400", ";rebut;8;;;notice-perceuse.pdf;0;2400")
-    remplacer_une_fois(fichiers, "demandes.csv", "clignote.;arrêt;;;Acceptée",
-                       "clignote.;arrêt;;20261019-101500-photo-tapis.png;Acceptée")
+    # T525 : ces DI de la démo suivent leur OT clos (« Réparée »)
+    remplacer_une_fois(fichiers, "demandes.csv", "clignote.;arrêt;;;Réparée",
+                       "clignote.;arrêt;;20261019-101500-photo-tapis.png;Réparée")
     remplacer_une_fois(fichiers, "demandes.csv",
-                       "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;;Acceptée",
-                       "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;%s;Acceptée"
+                       "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;;Réparée",
+                       "en sécurité.;arrêt;Le problème apparaît surtout quand la machine est chaude.;%s;Réparée"
                        % NOM_PIEGE)
     remplacer_une_fois(fichiers, "controles_reglementaires.csv", "2026-02-10;2027-02-10;;;1",
                        "2026-02-10;2027-02-10;vgp-pont-2026.pdf;;1")
