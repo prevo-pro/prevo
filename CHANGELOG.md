@@ -33,7 +33,8 @@ Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 p
   l'assistant d'installation et dans Équipe › Accès.
 - **Codes cause et remède prêts à l'emploi** : une base neuve reçoit une liste de départ (15 causes, 12 remèdes,
   10 symptômes), modifiable ; « Ajouter la liste de départ » pour une base existante. « Autre (préciser) » avec un
-  champ libre.
+  champ libre. À l'import de vos propres codes, un code de départ que rien ne cite laisse sa place au vôtre de
+  même libellé, et l'aperçu le dit.
 - **Bilan du mois en cours**, y compris le premier mois d'utilisation, sans rien figer : « Voir le bilan ». Le bilan
   nomme ce qui manque (heures par jour des machines, taux horaires, prix des pièces, coût d'une heure d'arrêt) et dit
   dans quel écran le renseigner ; un coût incomplet est dit « Partiel », jamais donné comme un total.
