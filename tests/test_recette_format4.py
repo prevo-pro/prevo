@@ -83,7 +83,8 @@ ATTENDUS = {
     "f3-v2.0.0": (3, FORMATS_D_UNE_BASE_3, UNE_RESERVE),
     "f3-v2.1.0": (3, FORMATS_D_UNE_BASE_3, UNE_RESERVE),
     "reserves-a-reprendre": (3, FORMATS_D_UNE_BASE_3, QUINZE_RESERVES),
-    "f4-v2.2.0": (4, {}, None),
+    "f4-v2.2.0": (4, {"demandes": 4, "ordres_travail": 4}, None),     # T513 : passage 4→5, réserves déjà là
+    "f5-v2.2.0": (5, {}, None),                                      # T513 : base au format courant, rien à faire
 }
 JEUX_DE_LA_RECETTE = tuple(ATTENDUS)
 JEU_AVEC_COMPTES = "f3-v2.0.0"
@@ -340,7 +341,7 @@ class TestServeur(VerificationsDuPassage, unittest.TestCase):
         self.assertEqual(donnees(resultat["apres"]), donnees(sans_comptes["apres"]))
         self.assertEqual([(l["table"], l["id_ligne"], l["poste"]) for l in lignes_ajoutees_au_journal(
                              resultat["origine"][JOURNAL], resultat["apres"][JOURNAL])],
-                         [("parametres", "version_schema", "Serveur Prévo")])
+                         [("parametres", "version_schema", "Serveur Prévo")] * 2)      # étapes 3→4 et 4→5 (T513)
 
 
 # ---------------------------------------------------------------------------
@@ -419,8 +420,11 @@ class TestDossier(VerificationsDuPassage, navigateur.CasFormats):
     def test_reserves_a_reprendre_quinze_reserves_seul_l_ecart_a(self):
         self.verifier_dossier("reserves-a-reprendre")
 
-    def test_f4_v2_2_0_rien_a_faire_aucun_octet_ecrit(self):
+    def test_f4_v2_2_0_passe_au_format_5_memes_octets_que_le_serveur(self):
         self.verifier_dossier("f4-v2.2.0")
+
+    def test_f5_v2_2_0_rien_a_faire_aucun_octet_ecrit(self):
+        self.verifier_dossier("f5-v2.2.0")
 
 
 # ---------------------------------------------------------------------------

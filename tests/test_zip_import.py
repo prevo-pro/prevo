@@ -754,7 +754,8 @@ class TestServeur(CasImport):
             entete_f2, lignes_f2 = lire_csv(f2[table + ".csv"])
             self.assertEqual(entete[:len(entete_f2)], entete_f2, table)
             nouvelles = entete[len(entete_f2):]
-            self.assertEqual(nouvelles, COLONNES_AJOUTEES[3].get(table, []) + COLONNES_AJOUTEES[4].get(table, []),
+            self.assertEqual(nouvelles, COLONNES_AJOUTEES[3].get(table, []) + COLONNES_AJOUTEES[4].get(table, [])
+                             + COLONNES_AJOUTEES[5].get(table, []),
                              table)
             if table == "journal":
                 self.assertRegex(lignes.pop()["action"], r"^import ZIP : prevo-export-2025-10-01\.zip, " + str(NB_TABLES) + r" tables, "

@@ -70,10 +70,13 @@ AJOUTS_PAR_FORMAT = {
         "habilitations": [("recyclage_mois", ""), ("justificatif", ""), ("catalogue_id", ""), ("nature_source", "")],
         "controles_reglementaires": [("source_periodicite", "saisie"), ("nature_source", ""), ("catalogue_id", ""),
                                      ("catalogue_relu_le", "")]},
+    5: {"demandes": [("mot_technicien", ""), ("date_reparation", ""), ("repare_par", "")],          # T513
+        "ordres_travail": [("cause_precision", ""), ("remede_precision", ""), ("prises_en_charge", "")]},
 }
 ORDRE_DES_TABLES = ("equipements", "demandes", "ordres_travail", "habilitations", "controles_reglementaires")
 FORMATS_DE_F1 = {"equipements": 1, "demandes": 1, "ordres_travail": 1}
-FORMATS_D_UNE_BASE_3 = {"equipements": 3, "ordres_travail": 3, "habilitations": 3, "controles_reglementaires": 3}
+FORMATS_D_UNE_BASE_3 = {"equipements": 3, "demandes": 3, "ordres_travail": 3, "habilitations": 3,
+                        "controles_reglementaires": 3}
 FORMATS_DE_F2 = dict(FORMATS_D_UNE_BASE_3, ordres_travail=2)     # f2-v1.1.0 et melange : ordres_travail sans astuce
 CLES_DE_L_ETAT = {"base", "courant", "plus_recent", "migration", "tables_abimees", "tables_vides", "table_bloquee",
                   "abimes_depuis"}          # T206 : {table: date} de donnees/fichiers-abimes.json
@@ -674,12 +677,14 @@ class TestCasLimites(CasJeux):
                 self.assertEqual(apres[RESERVES], au_format[RESERVES])
                 self.assertEqual(apres["parametres.csv"], avant["parametres.csv"])
                 nom = sauvegardes_de_format(dossier)[-1]
+                # Console : le format courant ; journal : le format de l'étape qui complète controles_reglementaires
+                # (3→4, « au format 4 »), même dans une base au format 5 (T513 ; navigateur et serveur pareil).
                 self.assertTrue(any("fichiers complétés au format %d : %s (sauvegarde %s faite juste avant)"
                                     % (FORMAT_COURANT, noms_de_fichiers(completes), nom) in m for m in messages),
                                 messages)
                 self.assertEqual(actions_ajoutees(avant["journal.csv"], apres["journal.csv"]),
                                  ["fichiers complétés au format %d : %s ; sauvegarde %s faite juste avant"
-                                  % (FORMAT_COURANT, ", ".join(completes), nom)])
+                                  % (4, ", ".join(completes), nom)])
 
     def test_format_ancien_qu_une_reecriture_abimerait_laisse_tel_quel(self):
         ordres = (RACINE / "tests" / "fixtures" / "formats" / "f2-v1.1.0" / "ordres_travail.csv").read_bytes()

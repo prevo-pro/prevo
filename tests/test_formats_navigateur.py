@@ -7,7 +7,7 @@ toujours dans un dossier temporaire, puis dans l'OPFS du navigateur : jamais de 
 
     dossier  : pour f1, f2-v1.1.0, f3-v1.2.0, f3-v2.0.0, f3-v2.1.0, reserves-a-reprendre, melange, colonnes-en-trop,
                table-absente, sans-bom et entete-tronque (profil demandeur : pas d'OT préventifs générés) :
-                 - la sauvegarde « avant-format-v4 » (et la quotidienne) garde les fichiers d'origine à l'octet : elle
+                 - la sauvegarde « avant-format-v5 » (et la quotidienne) garde les fichiers d'origine à l'octet : elle
                    a été faite avant toute écriture ; aucune sauvegarde quand il n'y a rien à faire ;
                  - seuls les fichiers attendus changent (les tables sans colonne nouvelle restent identiques à
                    l'octet) ; aucune cellule d'origine perdue (comparaison champ à champ avec le fichier d'origine) ;
@@ -27,8 +27,10 @@ toujours dans un dossier temporaire, puis dans l'OPFS du navigateur : jamais de 
                demandeur et technicien « Fichier abîmé : prévenez le responsable », sans jargon ; le responsable garde
                le sien (« laissé tel quel »), et a celui des fichiers abîmés à l'ouverture suivante ;
                sauvegarde impossible : rien n'est écrit, bandeau, pas d'OT préventifs ; l'ouverture suivante passe ;
-    format 4  : f4-v2.2.0 (T394, base au format 4) en dossier → rien à migrer ni à reprendre : aucune sauvegarde
-               avant-format-v4, aucune ligne de journal, aucun fichier changé, réserves, garanties et contrats lus ;
+    format 4  : f4-v2.2.0 (T394) en dossier → passage 4→5 seul (T513) : sauvegarde avant-format-v5, demandes et
+               ordres_travail complétés, réserves gardées ;
+    format 5  : f5-v2.2.0 (T513, base au format courant) en dossier → rien à migrer ni à reprendre : aucune sauvegarde
+               avant-format-v5, aucune ligne de journal, aucun fichier changé, réserves, garanties et contrats lus ;
                en serveur → le démarrage ne réécrit aucune donnée, le navigateur non plus, pas de bandeau ;
     lecture seule (plus-recent, version_schema 5) : dossier → aucun octet modifié dans le dossier (pas même
                verrou.txt), bandeau sur tous les écrans, demande envoyée par l'interface refusée, écritures directes
@@ -56,7 +58,7 @@ from jeux_formats import copier_jeu
 ERREUR_PING_ABSENT = re.compile(r"status of 404.*/api/ping")      # serveur statique : pas de /api/ping
 ERREUR_CSV_ABSENT = re.compile(r"status of 404.*/api/csv/")       # mode serveur : table absente = table vide
 NOM_DOSSIER = "donnees-formats"
-FORMAT_COURANT = 4
+FORMAT_COURANT = 5
 VERROU = "verrou.txt"
 # T188 (D170) : au premier démarrage d'une version, sauvegarde « avant-mise-a-jour » (avant le passage), puis
 # derniere-version.json ; chaque sauvegarde a son manifeste.json (vérifiés par tests/test_sauvegardes_dossier.py).
@@ -69,7 +71,9 @@ MOTIF_QUOTIDIENNE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # §2.1) : anomalie_constatee est un booléen, source_periodicite une liste (défaut « saisie »).
 DEFAUTS = {"valeur_remplacement": "", "symptome_code": "", "ot_origine_id": "", "anomalie_constatee": "0", "astuce": "",
            "cout_arret_h": "", "habilitation_requise": "", "recyclage_mois": "", "justificatif": "", "catalogue_id": "",
-           "nature_source": "", "source_periodicite": "saisie", "catalogue_relu_le": ""}
+           "nature_source": "", "source_periodicite": "saisie", "catalogue_relu_le": "", "mot_technicien": "",
+           "date_reparation": "", "repare_par": "", "cause_precision": "", "remede_precision": "",
+           "prises_en_charge": ""}
 
 # Reprise des observations en réserves (D183, CS170) : reserves_controle.csv, ses colonnes (note de conception du
 # format 4, §2.2), le commentaire fixe des réserves reprises levées, et les réserves attendues des jeux, recopiées de
@@ -120,23 +124,27 @@ QUINZE_RESERVES = [ligne_reprise(*r) for r in RESERVES_DU_LISEZMOI["reserves-a-r
 # Ce que le passage doit écrire, par jeu : fichiers de données changés (hors journal), lignes de journal (table
 # parametres, ligne version_schema), sans la suite « ; sauvegarde … faite juste avant », et lignes attendues de
 # reserves_controle.csv (cellules ; [] : fichier jamais créé).
-TABLES_DU_FORMAT_4 = {"equipements.csv", "ordres_travail.csv", "habilitations.csv", "controles_reglementaires.csv",
-                      "parametres.csv"}
+# (depuis le format 5, T513 : demandes.csv aussi, que l'étape 4→5 complète)
+TABLES_DU_FORMAT_4 = {"equipements.csv", "demandes.csv", "ordres_travail.csv", "habilitations.csv",
+                      "controles_reglementaires.csv", "parametres.csv"}
 PASSAGE_3 = "passage au format 3 du fichier"
 PASSAGE_4 = "passage au format 4 du fichier"
+PASSAGE_5 = "passage au format 5 du fichier"
 ATTENDUS = {
     "f1": ({"demandes.csv", "equipements.csv", "ordres_travail.csv", "parametres.csv"},
-           ["passage au format 2 du fichier", PASSAGE_3, PASSAGE_4], []),
-    "f2-v1.1.0": (TABLES_DU_FORMAT_4, [PASSAGE_3, PASSAGE_4], UNE_RESERVE),
-    "melange": (TABLES_DU_FORMAT_4, ["fichiers complétés au format 3 : ordres_travail", PASSAGE_4], UNE_RESERVE),
-    "f3-v1.2.0": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "f3-v2.0.0": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "f3-v2.1.0": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "reserves-a-reprendre": (TABLES_DU_FORMAT_4, [PASSAGE_4], QUINZE_RESERVES),
-    "colonnes-en-trop": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "table-absente": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "sans-bom": (TABLES_DU_FORMAT_4, [PASSAGE_4], UNE_RESERVE),
-    "entete-tronque": (TABLES_DU_FORMAT_4 - {"ordres_travail.csv"}, [PASSAGE_4], UNE_RESERVE),   # OT abîmé, laissé
+           ["passage au format 2 du fichier", PASSAGE_3, PASSAGE_4, PASSAGE_5], []),
+    "f2-v1.1.0": (TABLES_DU_FORMAT_4, [PASSAGE_3, PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "melange": (TABLES_DU_FORMAT_4, ["fichiers complétés au format 3 : ordres_travail", PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "f3-v1.2.0": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "f3-v2.0.0": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "f3-v2.1.0": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "reserves-a-reprendre": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], QUINZE_RESERVES),
+    "colonnes-en-trop": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "table-absente": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "sans-bom": (TABLES_DU_FORMAT_4, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),
+    "entete-tronque": (TABLES_DU_FORMAT_4 - {"ordres_travail.csv"}, [PASSAGE_4, PASSAGE_5], UNE_RESERVE),   # OT abîmé
+    # T513 : base au format 4, passée au format 5 (demandes et ordres_travail complétés, réserves déjà là)
+    "f4-v2.2.0": ({"demandes.csv", "ordres_travail.csv", "parametres.csv"}, [PASSAGE_5], []),
 }
 # T206a : un jeu abîmé fait noter, à la sauvegarde du jour, la date « abîmé depuis » de ses tables dans
 # fichiers-abimes.json ({"depuis": {"<table>": "AAAA-MM-JJTHH:MM:SS"}}, racine du dossier).
@@ -443,11 +451,12 @@ class TestDossierPassage(CasFormats):
         _, apres = self.verifier_passage("f2-v1.1.0")
         self.assertNotIn("wiki_pages.csv", apres)
         self.assertNotIn("wiki_journal.csv", apres)
-        self.assertEqual(lire_table(apres["ordres_travail.csv"])[0][-2:], ["astuce", "habilitation_requise"])
+        self.assertEqual(lire_table(apres["ordres_travail.csv"])[0][-5:],
+                         ["astuce", "habilitation_requise", "cause_precision", "remede_precision", "prises_en_charge"])
 
     def test_melange_fichier_au_format_2_complete_puis_format_4(self):
         _, apres = self.verifier_passage("melange")
-        self.assertEqual(version_schema(apres["parametres.csv"]), "4")
+        self.assertEqual(version_schema(apres["parametres.csv"]), str(FORMAT_COURANT))
 
     def test_f3_v1_2_0_format_3_vers_4_une_reserve(self):
         self.verifier_passage("f3-v1.2.0")
@@ -500,7 +509,7 @@ class TestDossierPassage(CasFormats):
         attendues = [existante] + [ligne_reprise("RES-%05d" % (41 + n), *r[1:]) for n, r in enumerate(autres)]
         self.assertEqual(len(attendues), 14)
         self.verifier_passage("reserves-a-reprendre", origine=origine,
-                              attendus=(TABLES_DU_FORMAT_4 | {RESERVES}, [PASSAGE_4], attendues))
+                              attendus=(TABLES_DU_FORMAT_4 | {RESERVES}, [PASSAGE_4, PASSAGE_5], attendues))
 
     def verifier_bandeau_laissee(self, profil, fichier):
         """Bandeau « Fichier abîmé » de l'ouverture, selon le profil (règle de T201, T408) : un seul ; au responsable le
@@ -551,8 +560,8 @@ class TestDossierPassage(CasFormats):
         self.assertIn(b"version_schema;'3", origine["parametres.csv"])
         origine["parametres.csv"] = origine["parametres.csv"].replace(b"version_schema;'3", b"version_schema;'2")
         self.verifier_table_laissee(origine, "ordres_travail",
-                                    {"equipements.csv", "habilitations.csv", "controles_reglementaires.csv"},
-                                    [PASSAGE_3, PASSAGE_4], UNE_RESERVE)
+                                    {"equipements.csv", "demandes.csv", "habilitations.csv",
+                                     "controles_reglementaires.csv"}, [PASSAGE_3, PASSAGE_4, PASSAGE_5], UNE_RESERVE)
 
     def test_fichier_au_format_2_avec_une_valeur_au_dela_de_l_en_tete_jamais_reecrit_et_signale(self):
         """CS140 : ordres_travail.csv au format 2 dont la dernière ligne porte une valeur au-delà de l'en-tête. Le
@@ -561,8 +570,8 @@ class TestDossierPassage(CasFormats):
         self.assertTrue(origine["ordres_travail.csv"].endswith(b"\r\n"))
         origine["ordres_travail.csv"] = origine["ordres_travail.csv"][:-2] + b";valeur en trop\r\n"
         self.verifier_table_laissee(origine, "ordres_travail",
-                                    {"equipements.csv", "habilitations.csv", "controles_reglementaires.csv"},
-                                    [PASSAGE_3, PASSAGE_4], UNE_RESERVE)
+                                    {"equipements.csv", "demandes.csv", "habilitations.csv",
+                                     "controles_reglementaires.csv"}, [PASSAGE_3, PASSAGE_4, PASSAGE_5], UNE_RESERVE)
 
     def test_controles_abimes_aucune_reserve_reprise_et_signale(self):
         """Note de conception du format 4, §5.1 : controles_reglementaires.csv abîmé (valeur au-delà de l'en-tête)
@@ -572,7 +581,8 @@ class TestDossierPassage(CasFormats):
         self.assertTrue(origine["controles_reglementaires.csv"].endswith(b"\r\n"))
         origine["controles_reglementaires.csv"] = origine["controles_reglementaires.csv"][:-2] + b";valeur en trop\r\n"
         self.verifier_table_laissee(origine, "controles_reglementaires",
-                                    {"equipements.csv", "ordres_travail.csv", "habilitations.csv"}, [PASSAGE_4], [])
+                                    {"equipements.csv", "demandes.csv", "ordres_travail.csv", "habilitations.csv"},
+                                    [PASSAGE_4, PASSAGE_5], [])
         self.assertEqual(self.page.evaluate("Donnees.lignes('reserves_controle').length"), 0)
 
     def test_entete_tronque_technicien_sans_jargon_puis_bandeau_du_responsable_a_sa_connexion(self):
@@ -630,7 +640,7 @@ class TestDossierPassage(CasFormats):
             self.verifier_reserves(suivant[RESERVES], UNE_RESERVE)
             deja = len(lire_table(origine["journal.csv"])[1])
             actions = journal_de_version(suivant["journal.csv"], deja)
-            for ligne in (PASSAGE_3, PASSAGE_4):
+            for ligne in (PASSAGE_3, PASSAGE_4, PASSAGE_5):
                 self.assertIn("%s ; sauvegarde %s faite juste avant" % (ligne, nom), actions)
 
     def verifier_passage_interrompu(self, table_en_panne):
@@ -672,7 +682,8 @@ class TestDossierPassage(CasFormats):
             self.assertEqual(len(sauvegardes), 2, sauvegardes)          # une par ouverture qui a tenté le passage
             deja = len(lire_table(origine["journal.csv"])[1])
             self.assertEqual(journal_de_version(repris["journal.csv"], deja),
-                             ["%s ; sauvegarde %s faite juste avant" % (PASSAGE_4, sauvegardes[-1])])
+                             ["%s ; sauvegarde %s faite juste avant" % (ligne, sauvegardes[-1])
+                              for ligne in (PASSAGE_4, PASSAGE_5)])
             self.assertEqual(self.page.evaluate("Donnees.etatDuFormat().depart"), FORMAT_COURANT)
 
             # Troisième ouverture : rien n'est écrit.
@@ -818,7 +829,7 @@ class TestLectureSeule(CasFormats):
 
 
 # ---------------------------------------------------------------------------
-# Base déjà au format 4 (f4-v2.2.0, T394) : rien à faire, des deux côtés
+# Base déjà au format courant (f5-v2.2.0, T513 ; f4-v2.2.0 jusqu'au format 4) : rien à faire, des deux côtés
 # ---------------------------------------------------------------------------
 
 class TestFormat4SansPassage(CasFormats):
@@ -840,20 +851,27 @@ class TestFormat4SansPassage(CasFormats):
         self.assertEqual(lues["version"], str(FORMAT_COURANT))
         self.assertEqual(self.page.locator("#bandeau-lecture-seule").count(), 0)
 
-    def test_dossier_f4_rien_a_migrer_aucun_fichier_change(self):
-        """Mode dossier : ni sauvegarde avant-format-v4, ni journal, ni fichier changé (verrou.txt et
+    def test_dossier_f4_passe_au_format_5(self):
+        """T513 : mode dossier, base au format 4 : sauvegarde avant-format-v5, demandes et ordres_travail complétés
+        (aucune cellule changée), une ligne de journal ; réserves, garanties et contrats lus tels quels."""
+        origine, apres = self.verifier_passage("f4-v2.2.0")
+        self.assertEqual(apres[RESERVES], origine[RESERVES])
+        self.verifier_tables_du_format_4()
+
+    def test_dossier_f5_rien_a_migrer_aucun_fichier_change(self):
+        """Mode dossier : ni sauvegarde avant-format-v5, ni journal, ni fichier changé (verrou.txt et
         derniere-version.json mis à part), réserves gardées à l'octet ; seconde ouverture : rien (verifier_passage)."""
-        origine, apres = self.verifier_passage("f4-v2.2.0", attendus=(set(), [], []))
+        origine, apres = self.verifier_passage("f5-v2.2.0", attendus=(set(), [], []))
         self.assertIn(RESERVES, origine)
         self.assertEqual({c: o for c, o in apres.items() if c in origine}, origine)
         self.verifier_tables_du_format_4()
 
-    def test_serveur_f4_demarrage_et_navigateur_n_ecrivent_rien(self):
-        """Mode serveur : le démarrage ne réécrit aucune donnée (ni passage, ni sauvegarde avant-format-v4) ; le
-        navigateur lit la base au format 4 sans rien écrire ni signaler."""
-        origine = fichiers_du_jeu("f4-v2.2.0")
+    def test_serveur_f5_demarrage_et_navigateur_n_ecrivent_rien(self):
+        """Mode serveur : le démarrage ne réécrit aucune donnée (ni passage, ni sauvegarde avant-format-v5) ; le
+        navigateur lit la base au format 5 sans rien écrire ni signaler."""
+        origine = fichiers_du_jeu("f5-v2.2.0")
         with tempfile.TemporaryDirectory(prefix="prevo-formats-") as temporaire:
-            source = copier_jeu("f4-v2.2.0", Path(temporaire) / "donnees")
+            source = copier_jeu("f5-v2.2.0", Path(temporaire) / "donnees")
             self.autoriser_erreur(ERREUR_CSV_ABSENT)
             with ServeurPrevo(source=source) as serveur:
                 avant = {p.relative_to(serveur.dossier).as_posix(): p.read_bytes()
@@ -894,7 +912,8 @@ class TestDemoEtServeur(CasFormats):
         actions = self.page.evaluate("""Donnees.lignes('journal').filter((l) => l.table === 'parametres'
             && l.id_ligne === 'version_schema').map((l) => l.action)""")
         self.assertEqual(actions, [ligne + " ; sans sauvegarde (démo)"
-                                   for ligne in ("passage au format 2 du fichier", PASSAGE_3, PASSAGE_4)])
+                                   for ligne in ("passage au format 2 du fichier", PASSAGE_3, PASSAGE_4,
+                                                PASSAGE_5)])
         self.assertEqual(self.page.evaluate("Donnees.lignes('reserves_controle').length"), 0)   # aucun contrôle
         # Les tables réécrites (en mémoire) gardent toutes leurs cellules.
         for table in ("demandes", "equipements", "ordres_travail"):

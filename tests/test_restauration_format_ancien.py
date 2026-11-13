@@ -7,9 +7,10 @@ courant, aucune ligne), après la copie de sécurité « avant-restauration », 
 nom, absente de la sauvegarde mais présente dans la base (annulation d'un import qui l'a créée), est vidée de même.
 
     serveur (sans navigateur, serveur réel de tests/commun.py, jeux de tests/jeux_formats.py)
-        avant-format-v4    base 2.1 passée en 2.2, réserve, garanties et contrats ajoutés, restauration complète de
-                           « avant-format-v4 » : plus aucune ligne dans les trois tables, la copie de sécurité les
-                           contient à l'octet ; au redémarrage, le passage 3 → 4 redonne exactement les réserves du
+        avant-format-v5    base 2.1 passée au format courant (5 depuis T513 ; une seule sauvegarde avant le passage
+                           3 → 5), réserve, garanties et contrats ajoutés, restauration complète de
+                           « avant-format-v5 » : plus aucune ligne dans les trois tables, la copie de sécurité les
+                           contient à l'octet ; au redémarrage, le passage 3 → 5 redonne exactement les réserves du
                            premier passage (ni doublon, ni reste) ;
         annuler un import  tables touchées dont une n'existait pas avant (garanties) : 200, la table d'avant revient,
                            l'autre est vidée ; une table absente de la sauvegarde ET de la base : 400, aucune copie ;
@@ -36,7 +37,7 @@ from jeux_formats import copier_jeu
 
 BOM = b"\xef\xbb\xbf"
 NOUVELLES = ["reserves_controle", "garanties", "contrats_prestataires"]       # tables nées au format 4
-JEU_COURANT = RACINE / "tests" / "fixtures" / "formats" / "f4-v2.2.0"
+JEU_COURANT = RACINE / "tests" / "fixtures" / "formats" / "f4-v2.2.0"   # ses 3 tables du format 4 = celles du f5
 
 
 def lignes_de_donnees(octets):
@@ -103,7 +104,7 @@ class TestRestaurationAvantFormat4(CasServeur):
 
     def test_restauration_complete_puis_redemarrage(self):
         serveur = self.lancer_jeu("reserves-a-reprendre")
-        avant_format = self.sauvegardes(serveur, "_avant-format-v4")
+        avant_format = self.sauvegardes(serveur, "_avant-format-v5")
         self.assertEqual(len(avant_format), 1)
         reserves_du_passage = self.lire(serveur, "reserves_controle")
         self.assertTrue(lignes_de_donnees(reserves_du_passage), "le passage doit avoir repris des réserves")
@@ -137,7 +138,7 @@ class TestRestaurationAvantFormat4(CasServeur):
         self.assertEqual(self.lire(second, "reserves_controle"), reserves_du_passage)
         for table in ("garanties", "contrats_prestataires"):
             self.assertEqual(lignes_de_donnees(self.lire(second, table)), [], table)
-        self.assertIn(b"version_schema;'4", self.lire(second, "parametres"))
+        self.assertIn(b"version_schema;'5", self.lire(second, "parametres"))
 
 
 class TestAnnulerUnImport(CasServeur):
@@ -174,7 +175,7 @@ class TestAnnulerUnImport(CasServeur):
 class TestTemoins(CasServeur):
 
     def test_format_courant_et_une_seule_table(self):
-        serveur = self.lancer_jeu("f4-v2.2.0")
+        serveur = self.lancer_jeu("f5-v2.2.0")
         depart = fichiers_csv(serveur.dossier)
         self.assertEqual(len(depart), 27)
         statut, reponse = self.poster(serveur, "/api/sauvegarde")
@@ -284,7 +285,7 @@ class TestMessageDeFin(CasNavigateur):
         self.derniere_copie = ""
         with ServeurPrevo(source=copier_jeu("f3-v2.1.0", temporaire / "f3")) as serveur:
             avant_format = sorted(d.name for d in (serveur.dossier / "sauvegardes").iterdir()
-                                  if d.name.endswith("_avant-format-v4"))
+                                  if d.name.endswith("_avant-format-v5"))
             self.assertEqual(len(avant_format), 1)
             for table in ("garanties", "contrats_prestataires"):       # travail fait en 2.2
                 shutil.copyfile(str(JEU_COURANT / (table + ".csv")), str(serveur.dossier / (table + ".csv")))

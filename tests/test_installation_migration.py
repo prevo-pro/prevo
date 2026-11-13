@@ -359,7 +359,9 @@ class TestJeuDeDemo(unittest.TestCase):
                 changees = {entete[i] for a, b in zip(avant, apres) for i in range(len(a)) if a[i] != b[i]}
                 dates_presentes = {entete[i] for a in avant for i in range(len(a)) if MOTIF_DEBUT_DE_DATE.match(a[i])}
                 if avant:    # table du format 4 vide dans la démo (garanties, contrats) : rien à comparer
-                    self.assertEqual(dates_presentes, types[table])          # le serveur décale par la valeur : même jeu
+                    # le serveur décale par la valeur : même jeu ; demandes.date_reparation (format 5, T513) est
+                    # encore vide dans toute la démo
+                    self.assertEqual(dates_presentes, types[table] - {"date_reparation"})
                 else:
                     self.assertEqual(dates_presentes, set())
                 self.assertEqual(changees, dates_presentes - set(serveur.COLONNES_NON_DECALEES.get(table, ())))

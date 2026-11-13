@@ -480,7 +480,7 @@ class TestRoutes(CasCopies):
             self.assertEqual(chemin.read_bytes(), modifie)
 
     def test_demandeur_avec_comptes_sur_demandes_abime(self):
-        source = self.jeu("f3-v1.2.0")
+        source = self.jeu("f5-v2.2.0")              # base au format courant (T513 : demandes du format 5)
         octets = (source / "demandes.csv").read_bytes()
         entete, lignes = lire_tableau(octets)
         ancienne = [""] * len(entete)

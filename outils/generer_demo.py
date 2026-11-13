@@ -229,9 +229,10 @@ DEFINITION_SCHEMA = {
     'demandes': (
         'id:id date_heure:date_heure demandeur:texte equipement_id:ref>equipements '
         'symptome:texte_long impact:choix[sécurité|arrêt|dégradé|gêne] description:texte_long '
-        'photo:document statut:choix[Nouvelle|Acceptée|Regroupée|Différée|Refusée] '
+        'photo:document statut:choix[Nouvelle|Acceptée|En cours|Réparée|Regroupée|Différée|Refusée] '
         'motif_decision:texte_long date_decision:date_heure ot_id:ref>ordres_travail '
-        'symptome_code:ref>codes_defaillance.code=symptôme ot_origine_id:ref>ordres_travail'),
+        'symptome_code:ref>codes_defaillance.code=symptôme ot_origine_id:ref>ordres_travail '
+        'mot_technicien:texte_long date_reparation:date_heure repare_par:texte'),
     'ordres_travail': (
         'id:id origine:choix[DI|préventif|urgence|manuel] di_id:ref>demandes gamme_id:ref>gammes '
         'equipement_id:ref>equipements '
@@ -246,7 +247,8 @@ DEFINITION_SCHEMA = {
         'cause_code:ref>codes_defaillance.code=cause remede_code:ref>codes_defaillance.code=remède '
         'compte_rendu:texte_long remise_service:booleen cout_soustraitance:decimal '
         'date_cloture_tech:date_heure date_cloture_admin:date_heure motif_annulation:texte_long '
-        'ot_lie_id:ref>ordres_travail anomalie_constatee:booleen astuce:texte_long habilitation_requise:texte'),
+        'ot_lie_id:ref>ordres_travail anomalie_constatee:booleen astuce:texte_long habilitation_requise:texte '
+        'cause_precision:texte remede_precision:texte prises_en_charge:texte_long'),
     'ot_operations': (
         'id:id ot_id:ref>ordres_travail ordre:entier operation:texte valeur_attendue:texte '
         'fait:booleen valeur_mesuree:texte'),
@@ -2236,13 +2238,14 @@ def generer_reserves_ae01(ctx):
 
 
 def generer_parametres(ctx):
-    # version_schema = Schema.version (js/schema.js : 4 depuis la 2.2, 3 depuis le lot 6, §20.2) ; priorite_preventif et
-    # horizon_calendrier_semaines sont les clés ajoutées par le lot 2 (ARCHITECTURE.md §14.1).
+    # version_schema = Schema.version (js/schema.js : 5 depuis le lot 1 ergonomie, 4 depuis la 2.2, 3 depuis le lot 6,
+    # §20.2) ; priorite_preventif et horizon_calendrier_semaines sont les clés ajoutées par le lot 2 (ARCHITECTURE.md
+    # §14.1).
     for cle, valeur in [('entreprise_nom', NOM_ENTREPRISE), ('delai_p1_h', 0), ('delai_p2_h', 24),
                         ('delai_p3_h', 168), ('delai_p4', 'prochain arrêt'), ('heures_fonct_defaut', 8),
                         ('tolerance_preventif_pct', 10), ('rafraichissement_s', 20),
                         ('priorite_preventif', 'P3'), ('horizon_calendrier_semaines', 12),
-                        ('version_schema', 4)]:
+                        ('version_schema', 5)]:
         creer_ligne(ctx, 'parametres', cle=cle, valeur=valeur)
 
 

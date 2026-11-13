@@ -36,23 +36,31 @@ from commun import DOSSIER_DEMO, RACINE, SCRIPTS_TRADUCTION, CasNavigateur, Serv
 DOSSIER_V1 = RACINE / "tests" / "fixtures" / "v1"
 BOM = b"\xef\xbb\xbf"
 
-# Les quatre fichiers de référence et les colonnes que les versions 2, 3 et 4 ajoutent à chacun (§14.1 ; lot 6 :
+# Les quatre fichiers de référence et les colonnes que les versions 2 à 5 ajoutent à chacun (§14.1 ; lot 6 :
 # la colonne astuce des OT, §20.10 ; 2.2 : cout_arret_h, D188, et habilitation_requise des OT, D191), toujours
 # en fin de ligne, dans l'ordre du schéma.
 COLONNES_V2 = {
     "equipements": ["valeur_remplacement", "cout_arret_h"],
-    "demandes": ["symptome_code", "ot_origine_id"],
-    "ordres_travail": ["anomalie_constatee", "astuce", "habilitation_requise"],
+    "demandes": ["symptome_code", "ot_origine_id", "mot_technicien", "date_reparation", "repare_par"],
+    "ordres_travail": ["anomalie_constatee", "astuce", "habilitation_requise", "cause_precision", "remede_precision",
+                       "prises_en_charge"],
     "parametres": [],
 }
 # Valeur par défaut de chaque nouveau champ (js/schema.js) : anomalie_constatee est un booléen faux.
 DEFAUTS_V2 = {"valeur_remplacement": "", "symptome_code": "", "ot_origine_id": "", "anomalie_constatee": "0", "astuce": "",
-              "cout_arret_h": "", "habilitation_requise": ""}
+              "cout_arret_h": "", "habilitation_requise": "", "mot_technicien": "", "date_reparation": "",
+              "repare_par": "", "cause_precision": "", "remede_precision": "", "prises_en_charge": ""}
 LIBELLES_TABLES = {"equipements": "Équipements", "demandes": "Demandes d'intervention",
                    "ordres_travail": "Ordres de travail"}
 MESSAGE_INFO = "ajoutée par la version %d du format, écrite au prochain enregistrement"
 # depuisVersion du schéma (js/schema.js) ; les autres colonnes : version 2
-VERSION_COLONNE = {"astuce": 3, "cout_arret_h": 4, "habilitation_requise": 4}
+# Informations « colonne ajoutée par la version 5 » attendues sur les fichiers v1 (T513)
+INFOS_DU_FORMAT_5 = ([["info", "demandes", c] for c in ("mot_technicien", "date_reparation", "repare_par")]
+                     + [["info", "ordres_travail", c] for c in ("cause_precision", "remede_precision",
+                                                                "prises_en_charge")])
+VERSION_COLONNE = {"astuce": 3, "cout_arret_h": 4, "habilitation_requise": 4, "mot_technicien": 5,
+                   "date_reparation": 5, "repare_par": 5, "cause_precision": 5, "remede_precision": 5,
+                   "prises_en_charge": 5}
 
 SCRIPTS = ["js/lib/papaparse.min.js", "js/schema.js", "js/donnees.js"]
 SCRIPTS_SERVEUR = SCRIPTS_TRADUCTION + SCRIPTS + ["js/stockage-serveur.js"]   # moteur de traduction d'abord (Lot 2)
@@ -318,12 +326,12 @@ class TestFormatV2ModeServeur(CasNavigateur):
                                                 ["info", "demandes", "ot_origine_id"],
                                                 ["info", "ordres_travail", "anomalie_constatee"],
                                                 ["info", "ordres_travail", "astuce"],
-                                                ["info", "ordres_travail", "habilitation_requise"]]))
+                                                ["info", "ordres_travail", "habilitation_requise"]] + INFOS_DU_FORMAT_5))
         self.assertEqual(sorted(apres), sorted([["info", "demandes", "symptome_code"],
                                                 ["info", "demandes", "ot_origine_id"],
                                                 ["info", "ordres_travail", "anomalie_constatee"],
                                                 ["info", "ordres_travail", "astuce"],
-                                                ["info", "ordres_travail", "habilitation_requise"]]))
+                                                ["info", "ordres_travail", "habilitation_requise"]] + INFOS_DU_FORMAT_5))
         # Sur le disque : format §3.1, valeur_remplacement puis cout_arret_h (format 4) en dernières colonnes,
         # le reste identique au v1.
         verifier_format_ecriture(self, octets, "equipements.csv")
@@ -370,7 +378,7 @@ class TestFormatV2ModeServeur(CasNavigateur):
             anomalie = ordres[0].index("anomalie_constatee")
             ordres[1][anomalie] = "non"
             ordres[2][anomalie] = "x"
-            demandes[1][-2] = " S02 "
+            demandes[1][demandes[0].index("symptome_code")] = " S02 "
             ecrire_lignes_csv(dossier / "equipements.csv", equipements)
             ecrire_lignes_csv(dossier / "ordres_travail.csv", ordres)
             ecrire_lignes_csv(dossier / "demandes.csv", demandes)
@@ -379,8 +387,8 @@ class TestFormatV2ModeServeur(CasNavigateur):
             self.assertEqual(relu["problemes"], [])
 
             # 3. Références contrôlées : un code de cause n'est pas un symptôme, un OT inexistant est signalé.
-            demandes[1][-2] = "C01"
-            demandes[1][-1] = "OT-1999-0001"
+            demandes[1][demandes[0].index("symptome_code")] = "C01"
+            demandes[1][demandes[0].index("ot_origine_id")] = "OT-1999-0001"
             ecrire_lignes_csv(dossier / "demandes.csv", demandes)
             relu = self.relire(equipement_id, ot_id, autre_ot_id, di_id)
             self.assertEqual(relu["valeurs"][3:], ["C01", "OT-1999-0001"])

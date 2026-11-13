@@ -269,7 +269,7 @@ Les brouillons restent dans le navigateur de l'appareil ; les sauvegardes et la 
 
 ## Format des données
 
-Les données sont 27 fichiers CSV (format 4 depuis la 2.2) : séparateur `;`, UTF-8 avec BOM,
+Les données sont 27 fichiers CSV (format 5 depuis la 2.2 ; format 4 pour la 2.2.0 bêta 1) : séparateur `;`, UTF-8 avec BOM,
 fins de ligne CRLF. Ils s'ouvrent et se modifient dans Excel. Comme Excel abîme certaines valeurs
 (zéros de tête, formules, fractions prises pour des dates), Prévo les protège par une apostrophe
 en tête de cellule et la retire à la lecture. À la lecture, il accepte aussi les dates écrites

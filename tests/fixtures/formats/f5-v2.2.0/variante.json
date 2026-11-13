@@ -1,0 +1,6 @@
+{
+  "base": "f4-v2.2.0",
+  "description": "Base au format 5 (2.2, après la bêta 1 : lot 1 ergonomie) : f4-v2.2.0 complétée par le générateur (jamais par serveur.py ni js/formats.js), version_schema 5, 27 tables ; colonnes du format 5 en fin de demandes (mot_technicien, date_reparation, repare_par) et d'ordres_travail (cause_precision, remede_precision, prises_en_charge), avec des valeurs (une demande « Réparée » avec le mot pour le demandeur, une prise puis une reprise d'OT, deux précisions de cause « Autre », une de remède) ; les 11 autres demandes restent « Acceptée ». Jeu canonique : rien à migrer, relu et réécrit aux mêmes octets des deux côtés.",
+  "supprimer": [],
+  "vider": []
+}

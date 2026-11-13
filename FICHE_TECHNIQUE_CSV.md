@@ -2,7 +2,7 @@
 
 Document généré par `outils/generer_fiche_csv.py` d'après `js/schema.js` (et, pour la section 4, `js/modules/import-types.js` ; pour la section 5, `serveur.py` et `js/modules/parametres-reglages.js`) : ne pas le modifier à la main.
 
-Prévo range ses données dans **27 fichiers CSV** (format **version 4**), dans le dossier de données (`donnees/` à côté de `serveur.py`, ou le dossier choisi en mode dossier). Ils s'ouvrent et se modifient dans Excel. Le paramètre `version_schema` de `parametres.csv` indique la version du format.
+Prévo range ses données dans **27 fichiers CSV** (format **version 5**), dans le dossier de données (`donnees/` à côté de `serveur.py`, ou le dossier choisi en mode dossier). Ils s'ouvrent et se modifient dans Excel. Le paramètre `version_schema` de `parametres.csv` indique la version du format.
 
 ## 1. Règles communes à tous les fichiers
 
@@ -119,12 +119,15 @@ Demandes d'intervention (DI) signalées par les demandeurs.
 | `impact` | Impact | `choix` | oui | `sécurité`, `arrêt`, `dégradé`, `gêne` |  |  |
 | `description` | Description | `texte_long` |  |  |  |  |
 | `photo` | Photo | `document` |  |  |  |  |
-| `statut` | Statut | `choix` |  | `Nouvelle`, `Acceptée`, `Regroupée`, `Différée`, `Refusée` | `Nouvelle` |  |
+| `statut` | Statut | `choix` |  | `Nouvelle`, `Acceptée`, `En cours`, `Réparée`, `Regroupée`, `Différée`, `Refusée` | `Nouvelle` |  |
 | `motif_decision` | Motif de la décision | `texte_long` |  |  |  |  |
 | `date_decision` | Date de la décision | `date_heure` |  |  |  |  |
 | `ot_id` | Ordre de travail lié | `ref` |  | réf. `ordres_travail.csv` |  |  |
 | `symptome_code` | Code symptôme | `ref` |  | réf. `codes_defaillance.csv` (colonne `code`), famille = symptôme |  | depuis le format 2 |
 | `ot_origine_id` | OT d'origine (préventif) | `ref` |  | réf. `ordres_travail.csv` |  | depuis le format 2 |
+| `mot_technicien` | Mot du technicien pour le demandeur | `texte_long` |  |  |  | depuis le format 5 |
+| `date_reparation` | Date de la réparation | `date_heure` |  |  |  | depuis le format 5 |
+| `repare_par` | Réparée par | `texte` |  |  |  | depuis le format 5 |
 
 ### 3.4 `ordres_travail.csv` — Ordres de travail
 
@@ -167,6 +170,9 @@ Ordres de travail (OT) : correctifs, préventifs, réglementaires, amélioration
 | `anomalie_constatee` | Anomalie constatée | `booleen` |  |  | `0` | depuis le format 2 |
 | `astuce` | Astuce pour la prochaine fois | `texte_long` |  |  |  | depuis le format 3 |
 | `habilitation_requise` | Habilitation exigée par l'OT | `texte` |  |  |  | depuis le format 4 |
+| `cause_precision` | Cause (précision) | `texte` |  |  |  | depuis le format 5 |
+| `remede_precision` | Remède (précision) | `texte` |  |  |  | depuis le format 5 |
+| `prises_en_charge` | Prises en charge | `texte_long` |  |  |  | depuis le format 5 |
 
 ### 3.5 `ot_operations.csv` — Opérations d'ordre de travail
 

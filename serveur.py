@@ -148,7 +148,7 @@ TABLES = (
     'contrats_prestataires',
 )
 
-# Colonnes de chaque table, dans l'ordre où Prévo les écrit (recopie de js/schema.js, version 4 ; cohérence
+# Colonnes de chaque table, dans l'ordre où Prévo les écrit (recopie de js/schema.js, version 5 ; cohérence
 # vérifiée par tests/test_audit_csv.py). Le serveur exige qu'un CSV reçu commence par ces colonnes (audit E2) ;
 # les colonnes ajoutées à la main dans Excel restent permises après elles (lecture tolérante, §3.3).
 COLONNES_PAR_TABLE = {
@@ -160,14 +160,16 @@ COLONNES_PAR_TABLE = {
     ),
     'demandes': (
         'id', 'date_heure', 'demandeur', 'equipement_id', 'symptome', 'impact', 'description', 'photo', 'statut',
-        'motif_decision', 'date_decision', 'ot_id', 'symptome_code', 'ot_origine_id',
+        'motif_decision', 'date_decision', 'ot_id', 'symptome_code', 'ot_origine_id', 'mot_technicien',
+        'date_reparation', 'repare_par',
     ),
     'ordres_travail': (
         'id', 'origine', 'di_id', 'gamme_id', 'equipement_id', 'type', 'priorite', 'statut', 'motif_attente',
         'titre', 'travail_a_faire', 'consignes', 'date_creation', 'date_prevue', 'technicien_id', 'temps_prevu_h',
         'date_debut', 'date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code', 'remede_code',
         'compte_rendu', 'remise_service', 'cout_soustraitance', 'date_cloture_tech', 'date_cloture_admin',
-        'motif_annulation', 'ot_lie_id', 'anomalie_constatee', 'astuce', 'habilitation_requise',
+        'motif_annulation', 'ot_lie_id', 'anomalie_constatee', 'astuce', 'habilitation_requise', 'cause_precision',
+        'remede_precision', 'prises_en_charge',
     ),
     'ot_operations': ('id', 'ot_id', 'ordre', 'operation', 'valeur_attendue', 'fait', 'valeur_mesuree'),
     'ot_pieces': ('id', 'ot_id', 'article_id', 'quantite_prevue'),
@@ -243,8 +245,8 @@ MOTIF_NOM_SAUVEGARDE = re.compile(
 # Motifs acceptés par POST /api/sauvegarde {"motif": "…"} : liste FERMÉE (tout autre motif → 400).
 # Le motif devient la fin du nom de la sauvegarde (« _avant-format-v2 »). Règle générale :
 # « avant-format-v<N> » ; on n'ajoute ici que les versions que Prévo sait vraiment produire.
-MOTIFS_SAUVEGARDE = ('avant-format-v2', 'avant-format-v3', 'avant-format-v4', 'avant-import', 'avant-import-zip',
-                     'avant-mise-a-jour')
+MOTIFS_SAUVEGARDE = ('avant-format-v2', 'avant-format-v3', 'avant-format-v4', 'avant-format-v5', 'avant-import',
+                     'avant-import-zip', 'avant-mise-a-jour')
 
 # Types MIME des documents acceptés (l'extension décide du type, jamais le contenu ; toute autre extension : 415).
 # Audit F4 (§22.12) : « .doc » et « .xls » (formats binaires à macros) ne sont plus acceptés.
@@ -2753,7 +2755,7 @@ DOSSIER_CONSEILLE_WINDOWS = 'C:\\Prevo'
 DOSSIERS_JAMAIS_COPIES = ('.git', '__pycache__')
 NOM_LANCEUR_WINDOWS, NOM_LANCEUR_AUTRE = 'Lancer_GMAO.bat', 'lancer.sh'
 NOM_SCRIPT_REINITIALISATION = 'Reinitialiser_mot_de_passe.bat'
-VERSION_SCHEMA_CSV = 4                  # « version » de js/schema.js (§14.1) : posée dans un parametres.csv créé ici
+VERSION_SCHEMA_CSV = 5                  # « version » de js/schema.js (§14.1) : posée dans un parametres.csv créé ici
 DELAI_RELANCE_S = 2                     # le serveur s'arrête 2 s après la réponse de « terminer » ou « deplacer »
 ATTENTE_AVANT_RELANCE_S = 3             # le lanceur repart 3 s plus tard, une fois le port rendu
 # « terminer » sur une base absente au départ (T171) : rien de plus (« vide » : parametres.csv seul, avec version_schema
@@ -4194,8 +4196,9 @@ PREMIER_FORMAT_DES_TABLES = {'wiki_pages': 3, 'wiki_journal': 3, 'reserves_contr
                              'contrats_prestataires': 4}
 PREMIER_FORMAT_DES_COLONNES = {
     'equipements': {'valeur_remplacement': 2, 'cout_arret_h': 4},
-    'demandes': {'symptome_code': 2, 'ot_origine_id': 2},
-    'ordres_travail': {'anomalie_constatee': 2, 'astuce': 3, 'habilitation_requise': 4},
+    'demandes': {'symptome_code': 2, 'ot_origine_id': 2, 'mot_technicien': 5, 'date_reparation': 5, 'repare_par': 5},
+    'ordres_travail': {'anomalie_constatee': 2, 'astuce': 3, 'habilitation_requise': 4, 'cause_precision': 5,
+                       'remede_precision': 5, 'prises_en_charge': 5},
     'habilitations': {'recyclage_mois': 4, 'justificatif': 4, 'catalogue_id': 4, 'nature_source': 4},
     'controles_reglementaires': {'source_periodicite': 4, 'nature_source': 4, 'catalogue_id': 4,
                                  'catalogue_relu_le': 4},
@@ -4630,6 +4633,10 @@ ETAPES_FORMAT = (
                         'controles_reglementaires.catalogue_relu_le en fin de table ; tables reserves_controle '
                         '(observations reprises, une réserve par ligne, D183), garanties et contrats_prestataires '
                         '(vides).', reprendre_observations),
+    EtapeDeFormat(4, 5, 'Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, '
+                        'demandes.date_reparation, demandes.repare_par, ordres_travail.cause_precision, '
+                        'ordres_travail.remede_precision et ordres_travail.prises_en_charge en fin de table (vides) ; '
+                        'statuts de demande « En cours » et « Réparée » ; aucune valeur existante changée.'),
 )
 
 
@@ -4703,8 +4710,9 @@ VERSION_INCONNUE = 'inconnue'                   # « de » du manifeste quand de
 # avec js/schema.js vérifiée par tests/test_sauvegardes_lot7.py.
 COLONNES_DES_FORMATS_SUIVANTS = {
     'equipements': ('valeur_remplacement', 'cout_arret_h'),
-    'demandes': ('symptome_code', 'ot_origine_id'),
-    'ordres_travail': ('anomalie_constatee', 'astuce', 'habilitation_requise'),
+    'demandes': ('symptome_code', 'ot_origine_id', 'mot_technicien', 'date_reparation', 'repare_par'),
+    'ordres_travail': ('anomalie_constatee', 'astuce', 'habilitation_requise', 'cause_precision', 'remede_precision',
+                       'prises_en_charge'),
     'habilitations': ('recyclage_mois', 'justificatif', 'catalogue_id', 'nature_source'),
     'controles_reglementaires': ('source_periodicite', 'nature_source', 'catalogue_id', 'catalogue_relu_le'),
 }
@@ -6615,9 +6623,11 @@ COLONNES_CACHEES_PAR_ROLE = {
 LIGNES_CACHEES_PAR_ROLE = {
     'demandeur': {'wiki_pages': ('type', ('technicien', 'intervention'))},
 }
-# Demande créée par le demandeur : statut « Nouvelle », champs de la décision du responsable vides.
+# Demande créée par le demandeur : statut « Nouvelle », champs de la décision du responsable vides, et (format 5)
+# champs du retour de la réparation vides (le mot pour l'opérateur, la date et le prénom viennent de la clôture).
 STATUT_DEMANDE_NOUVELLE = 'Nouvelle'
 CHAMPS_DE_DECISION = ('motif_decision', 'date_decision', 'ot_id')
+CHAMPS_DU_RETOUR = ('mot_technicien', 'date_reparation', 'repare_par')
 MESSAGE_RESERVE_AU_RESPONSABLE = traduisible('acces.reserve_au_responsable', 'Accès refusé : réservé au responsable.')
 # T520 (A7) : le refus d'un document dit quoi faire, sans changer le droit (D196, T478) ; ouvert par un lien dans le
 # navigateur (navigation), il mène à une page de Prévo au lieu d'un JSON brut (envoyer_erreur, ROUTE_DOCUMENT_FERME).
@@ -6934,8 +6944,8 @@ def refus_ajout_seulement(raison):
 
 
 def verifier_demande_nouvelle(ligne, deja_prises):
-    """Ligne nouvelle du demandeur : id présent et pas déjà pris, statut « Nouvelle », champs de décision vides ; 403
-    sinon. deja_prises : ids du fichier et des nouvelles lignes déjà vues (complété ici)."""
+    """Ligne nouvelle du demandeur : id présent et pas déjà pris, statut « Nouvelle », champs de décision et du retour
+    de la réparation (format 5) vides ; 403 sinon. deja_prises : ids du fichier et des nouvelles lignes déjà vues (complété ici)."""
     identifiant = ligne.get('id', '').strip()
     if not identifiant:
         raise refus_ajout_seulement(traduisible('demandes.numero_obligatoire',
@@ -6951,6 +6961,10 @@ def verifier_demande_nouvelle(ligne, deja_prises):
     if any(ligne.get(cle_entete(champ), '').strip() for champ in CHAMPS_DE_DECISION):
         raise refus_ajout_seulement(traduisible('demandes.decision_reservee',
                                                 'la décision (motif, date, ordre de travail) revient au responsable.'))
+    if any(ligne.get(cle_entete(champ), '').strip() for champ in CHAMPS_DU_RETOUR):
+        raise refus_ajout_seulement(traduisible('demandes.retour_reserve',
+                                                'le retour de la réparation (mot, date, technicien) vient de la '
+                                                'clôture de l\'intervention.'))
 
 
 def garder_les_demandes_actuelles(octets_recus, octets_actuels):

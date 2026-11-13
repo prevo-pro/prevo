@@ -180,7 +180,7 @@ Propriété garantie (testée) : `relire(champ, écrire(champ, v)) === v` pour t
 
 ```js
 const Schema = {
-  version: 4,                          // version du format des fichiers (§14.1, §20.2, §25) ; 1 au lot 1
+  version: 5,                          // version du format des fichiers (§14.1, §20.2, §25, §25.1) ; 1 au lot 1
   tables: {
     equipements: {
       fichier: 'equipements.csv', libelle: 'Équipements',
@@ -197,7 +197,7 @@ const Schema = {
       ],
     },
     // … 27 tables (22 du brief, 2 du format 3, 3 du format 4) : d'abord exactement les champs du §6 du brief, dans
-    // le même ordre, puis, en fin de table, les champs ajoutés par les formats 2 à 4 (depuisVersion: 2, 3 ou 4)
+    // le même ordre, puis, en fin de table, les champs ajoutés par les formats 2 à 5 (depuisVersion: 2 à 5)
   },
 };
 ```
@@ -5138,13 +5138,37 @@ la 2.2 afficheront.
   `version_schema` écrit en dernier (§5.6).
 - **Export et import ZIP** : `ZipDonnees.CHAMPS_DOCUMENTS` est dérivé du schéma (les champs `document` des tables
   nouvelles et `habilitations.justificatif` sont donc exportés) ; l'import d'un ZIP de la 2.1 le passe au format 4
-  (réserves reprises) sans annoncer la table nouvelle comme « vidée » ; un ZIP du format 5 est refusé.
-- **Compatibilité** : la 2.2 ouvre un format 5 en lecture seule ; une 2.0.0-beta.2, 2.0.0 ou 2.1.0 ouvre un format 4
+  (réserves reprises) sans annoncer la table nouvelle comme « vidée » ; la bêta 1 refuse un ZIP du format 5.
+- **Compatibilité** : la 2.2.0 bêta 1 (format 4) ouvre un format 5 en lecture seule ; une 2.0.0-beta.2, 2.0.0 ou
+  2.1.0 ouvre un format 4
   en lecture seule (sauvegardes de démarrage limitées à leurs 24 tables) ; une 1.2.x ou 2.0.0-beta.1 n'a pas de
   garde (FORMAT.md §7).
 - **Écarts connus** (tests `expectedFailure` de `tests/test_formats_serveur.py`) : place d'une colonne inconnue de
   `controles_reglementaires` (écart A, navigateur et serveur ne la rangent pas au même endroit) ; colonnes
   manquantes complétées en fin par l'étape (B) ; dates d'Excel normalisées par le navigateur seulement (C).
+
+### 25.1 Format 5 (2.2 après la bêta 1, lot 1 ergonomie ; T513)
+
+Socle de données des corrections A2, A3 et A4 du lot 1 ergonomie ; aucun écran à lui seul. Règles de migration et de
+compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
+
+- `Schema.version` = **5** ; toujours **27 tables**. `serveur.py` reste le miroir exact (`VERSION_SCHEMA_CSV`,
+  `COLONNES_PAR_TABLE`, `PREMIER_FORMAT_DES_COLONNES`, `COLONNES_DES_FORMATS_SUIVANTS`, `ETAPES_FORMAT`).
+- **`demandes`**, en fin de table (`depuisVersion(5)`) : `mot_technicien` (texte_long, le « mot pour l'opérateur »
+  écrit à la clôture), `date_reparation` (date_heure), `repare_par` (texte : prénom du technicien, rien d'autre).
+  **`demandes.statut`** : `Nouvelle`, `Acceptée`, `En cours`, `Réparée`, `Regroupée`, `Différée`, `Refusée`.
+- **`ordres_travail`**, en fin de table : `cause_precision` et `remede_precision` (texte : le champ libre de
+  « Autre (préciser) »), `prises_en_charge` (texte_long : une ligne par prise ou reprise de l'OT,
+  `date_heure|technicien_id|technicien_precedent_id`, le dernier vide pour une première prise).
+- **Étape 4→5** (`etape(4, 5, …)` et `EtapeDeFormat(4, 5, …)`, même description) : colonnes ajoutées vides, aucune
+  valeur existante changée (une demande « Acceptée » le reste) ; sauvegarde `avant-format-v5` dans les deux modes
+  (`MOTIFS_SAUVEGARDE` de `serveur.py` et de `js/stockage-dossier.js`). La démo naît au format 5.
+- **Serveur** : une demande ajoutée par un demandeur ou un appareil enrôlé (`verifier_demande_nouvelle`) doit avoir
+  le statut `Nouvelle` et `mot_technicien`, `date_reparation`, `repare_par` vides (`CHAMPS_DU_RETOUR`), comme les
+  champs de la décision ; 403 sinon (`serveur.demandes.retour_reserve`). Aucun autre droit ne change.
+- **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
+  `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
+  4→5.
 
 ## 26. Garanties et contrats de prestataires (2.2, lot L4 ; D182, D187, D190, CS173, CS175)
 

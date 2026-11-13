@@ -178,6 +178,15 @@ CHAMPS_FORMAT_4 = {
         ("catalogue_id", "texte", "Ligne du catalogue"), ("catalogue_relu_le", "date", "Catalogue relu le")],
 }
 
+# Colonnes du format 5 (T513, lot 1 ergonomie) : en fin de demandes et d'ordres_travail, sans défaut.
+CHAMPS_FORMAT_5 = {
+    "demandes": [("mot_technicien", "texte_long", "Mot du technicien pour le demandeur"),
+                 ("date_reparation", "date_heure", "Date de la réparation"), ("repare_par", "texte", "Réparée par")],
+    "ordres_travail": [("cause_precision", "texte", "Cause (précision)"),
+                       ("remede_precision", "texte", "Remède (précision)"),
+                       ("prises_en_charge", "texte_long", "Prises en charge")],
+}
+
 # Valeurs par défaut du format 4 (les autres champs nouveaux n'en ont pas).
 DEFAUTS_FORMAT_4 = {
     ("controles_reglementaires", "source_periodicite"): "saisie", ("reserves_controle", "levee"): "0",
@@ -209,7 +218,7 @@ OBLIGATOIRES = {
 
 # Valeurs canoniques des listes : (table, champ) -> valeurs, accents compris
 VALEURS_CANONIQUES = {
-    ("demandes", "statut"): ["Nouvelle", "Acceptée", "Regroupée", "Différée", "Refusée"],
+    ("demandes", "statut"): ["Nouvelle", "Acceptée", "En cours", "Réparée", "Regroupée", "Différée", "Refusée"],
     ("demandes", "impact"): ["sécurité", "arrêt", "dégradé", "gêne"],
     ("ordres_travail", "statut"): ["Créé", "Préparé", "Planifié", "En cours", "En attente",
                                    "Clôturé techniquement", "Clôturé administrativement", "Annulé"],
@@ -405,7 +414,7 @@ class TestSchema(CasNavigateur):
         """Colonnes ajoutées aux tables existantes : type, libellé français, depuisVersion 4, jamais obligatoires
         (un fichier au format 3 n'a pas la colonne), placées après toutes les autres."""
         for nom_table, champs in CHAMPS_FORMAT_4.items():
-            noms = [c["nom"] for c in self.tables[nom_table]["champs"]]
+            noms = [c["nom"] for c in self.tables[nom_table]["champs"] if c.get("depuisVersion") != 5]
             self.assertEqual(noms[-len(champs):], [nom for nom, _, _ in champs], nom_table)
             for nom, type_attendu, libelle in champs:
                 with self.subTest(table=nom_table, champ=nom):
@@ -413,6 +422,26 @@ class TestSchema(CasNavigateur):
                     self.assertEqual((champ["type"], champ["libelle"]), (type_attendu, libelle))
                     self.assertIs(champ.get("depuisVersion"), 4)
                     self.assertFalse(champ.get("obligatoire", False))
+
+    def test_colonnes_du_format_5_en_fin_de_table(self):
+        """T513 : colonnes du format 5, après toutes les autres, depuisVersion 5, jamais obligatoires ni de défaut ;
+        statuts « En cours » et « Réparée » des demandes, juste après « Acceptée », avec leur libellé."""
+        for nom_table, champs in CHAMPS_FORMAT_5.items():
+            noms = [c["nom"] for c in self.tables[nom_table]["champs"]]
+            self.assertEqual(noms[-len(champs):], [nom for nom, _, _ in champs], nom_table)
+            for nom, type_attendu, libelle in champs:
+                with self.subTest(table=nom_table, champ=nom):
+                    champ = self.champs_de(nom_table)[nom]
+                    self.assertEqual((champ["type"], champ["libelle"]), (type_attendu, libelle))
+                    self.assertIs(champ.get("depuisVersion"), 5)
+                    self.assertFalse(champ.get("obligatoire", False))
+                    self.assertNotIn("defaut", champ)
+        statut = self.champs_de("demandes")["statut"]
+        self.assertEqual(statut["valeurs"][1:4], ["Acceptée", "En cours", "Réparée"])
+        self.assertEqual(statut["defaut"], "Nouvelle")
+        affichees = self.page.evaluate("""() => [Schema.libelleValeur('demandes', 'statut', 'En cours'),
+          Schema.libelleValeur('demandes', 'statut', 'Réparée')]""")
+        self.assertEqual(affichees, ["En cours", "Réparée"])
 
     def test_defauts_et_libelles_des_valeurs_du_format_4(self):
         nouveaux = {(t, nom) for t, champs in TABLES_FORMAT_4.items() for nom, _, _ in champs}
@@ -438,7 +467,7 @@ class TestSchema(CasNavigateur):
         })
 
     def test_version_du_format(self):
-        self.assertEqual(self.schema["version"], 4)
+        self.assertEqual(self.schema["version"], 5)
 
     def test_champs_du_brief_en_tete_puis_exactement_les_champs_v2(self):
         """Chaque table : les champs du brief §6, dans le même ordre, sont le début exact de la liste ;
@@ -451,7 +480,8 @@ class TestSchema(CasNavigateur):
                 champs_v2 = [nom for nom, _, _ in self.version_2.get(nom_table, [])]
                 champs_v3 = [nom for nom, _, _ in CHAMPS_FORMAT_3.get(nom_table, [])]
                 champs_v4 = [nom for nom, _, _ in CHAMPS_FORMAT_4.get(nom_table, [])]
-                self.assertEqual(noms[len(champs_brief):], champs_v2 + champs_v3 + champs_v4)
+                champs_v5 = [nom for nom, _, _ in CHAMPS_FORMAT_5.get(nom_table, [])]
+                self.assertEqual(noms[len(champs_brief):], champs_v2 + champs_v3 + champs_v4 + champs_v5)
 
     def test_champs_v2_types_libelles_et_depuis_version(self):
         for nom_table, champs_v2 in self.version_2.items():
@@ -469,6 +499,7 @@ class TestSchema(CasNavigateur):
         attendus = {(t, nom) for t, champs in self.version_2.items() for nom, _, _ in champs}
         attendus |= {(t, nom) for t, champs in CHAMPS_FORMAT_3.items() for nom, _, _ in champs}
         attendus |= {(t, nom) for t, champs in CHAMPS_FORMAT_4.items() for nom, _, _ in champs}
+        attendus |= {(t, nom) for t, champs in CHAMPS_FORMAT_5.items() for nom, _, _ in champs}
         trouves = {(t, c["nom"]) for t, c in self.tous_les_champs() if "depuisVersion" in c}
         self.assertEqual(trouves, attendus)
         tables_datees = {t: table["depuisVersion"] for t, table in self.tables.items() if "depuisVersion" in table}

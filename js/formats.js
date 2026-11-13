@@ -1,7 +1,7 @@
 'use strict';
 // Formats : registre des formats des fichiers de données (chantier « socle de données », décisions D167 et D168).
 // Contrat : docs/ARCHITECTURE.md §1 (chargé juste après js/schema.js), §4 (schéma), §5.6 (passage au format
-// courant), §14.1 (format 2) et §20.2 (format 3) ; docs/FORMAT.md (format 4).
+// courant), §14.1 (format 2) et §20.2 (format 3) ; docs/FORMAT.md (formats 4 et 5).
 // Le format est un entier (Schema.version), distinct de la version de l'application (2.0.0) ; celui d'une base est
 // parametres.version_schema (absent ou illisible : format 1). Tout est dérivé de Schema : une table ou un champ qui
 // porte depuisVersion: N n'existe qu'à partir du format N ; les autres existent depuis le format 1.
@@ -12,7 +12,10 @@
 //   - format 4 (2.2) : + equipements.cout_arret_h, ordres_travail.habilitation_requise, quatre colonnes
 //                d'habilitations et quatre de controles_reglementaires, et les tables reserves_controle, garanties,
 //                contrats_prestataires (27 tables) ; l'étape 3→4 reprend aussi les observations des contrôles en
-//                réserves (D183, reservesReprises ci-dessous).
+//                réserves (D183, reservesReprises ci-dessous) ;
+//   - format 5 (2.2, après la bêta 1 : lot 1 ergonomie) : + demandes.mot_technicien, demandes.date_reparation,
+//                demandes.repare_par, ordres_travail.cause_precision, ordres_travail.remede_precision,
+//                ordres_travail.prises_en_charge (vides) ; statuts de demande « En cours » et « Réparée ».
 // Place des colonnes (toutes les étapes) : les colonnes du fichier, connues ou inconnues du schéma, restent dans leur
 // ordre ; les colonnes que l'étape ajoute vont en fin d'en-tête, après elles, dans l'ordre du schéma (serveur.py fait
 // de même).
@@ -416,6 +419,10 @@ const Formats = (function () {
       + 'controles_reglementaires.nature_source, controles_reglementaires.catalogue_id et '
       + 'controles_reglementaires.catalogue_relu_le en fin de table ; tables reserves_controle (observations '
       + 'reprises, une réserve par ligne, D183), garanties et contrats_prestataires (vides).', reprendreObservations),
+    etape(4, 5, 'Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, '
+      + 'demandes.date_reparation, demandes.repare_par, ordres_travail.cause_precision, '
+      + 'ordres_travail.remede_precision et ordres_travail.prises_en_charge en fin de table (vides) ; '
+      + 'statuts de demande « En cours » et « Réparée » ; aucune valeur existante changée.'),
   ]);
 
   // Ligne de journal d'une étape : texte exact relu par la suggestion S4.

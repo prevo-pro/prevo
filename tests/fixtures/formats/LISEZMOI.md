@@ -1,8 +1,8 @@
 # Jeux de fichiers d'exemple des formats de données
 
 Ces jeux servent aux tests des migrations (format 1 vers 2 vers 3, puis 3 vers 4 avec la reprise des observations
-en réserves), de l'ouverture d'une base déjà au format 4 (rien à migrer), de la garde « données plus récentes » et de
-l'import ZIP, en mode serveur comme en mode dossier.
+en réserves, puis 4 vers 5), de l'ouverture d'une base déjà au format 5 (rien à migrer), de la garde « données plus
+récentes » et de l'import ZIP, en mode serveur comme en mode dossier.
 Données fictives, petites (12 enregistrements au plus par table, `parametres.csv` entier), reproductibles octet
 pour octet.
 
@@ -72,10 +72,31 @@ ouverte, `RES-00003` levée à une date connue. Le journal est celui de f3-v2.1.
 passage). Jeu canonique (dates AAAA-MM-JJ, booléens `0`/`1`, nombres avec un point, aucune cellule nouvelle à
 protéger par l'apostrophe, écrit comme Prévo l'écrit). Un lecteur doit la lire au format 4 sans rien migrer ni
 reprendre (chaque contrôle à observations a déjà sa réserve), ne rien écrire à l'ouverture (ni sauvegarde
-`avant-format-v4`, ni ligne de journal), et la réécrire aux mêmes octets, navigateur comme serveur. C'est le jeu des
-cas « sans passage de format » de la 2.2.
+`avant-format-v4`, ni ligne de journal), et la réécrire aux mêmes octets, navigateur comme serveur. C'était le jeu des
+cas « sans passage de format » de la 2.2 bêta 1 ; depuis le format 5 (T513), un lecteur au format 5 le passe au
+format 5 (sauvegarde `avant-format-v5`, colonnes du format 5 vides, aucune valeur changée : ses 12 demandes restent
+« Acceptée »).
 
-## Variantes (tirées de f3-v1.2.0, sauf reserves-a-reprendre, tirée de f3-v2.1.0, et plus-recent, tirée de f4-v2.2.0)
+## Jeu au format 5 (variante de f4-v2.2.0, T513)
+
+**f5-v2.2.0** : une base de la 2.2 après la bêta 1 (lot 1 ergonomie), au format 5 : `version_schema;'5`, 27 tables.
+Le générateur la tire de f4-v2.2.0 par son propre code (jamais par `serveur.py` ni `js/formats.js`) ; elle est
+stockée comme une variante (`demandes.csv`, `ordres_travail.csv`, `parametres.csv`). `demandes` reçoit en fin
+`mot_technicien`, `date_reparation`, `repare_par` ; `ordres_travail` reçoit en fin `cause_precision`,
+`remede_precision`, `prises_en_charge` ; toutes vides, sauf :
+
+- `DI-2025-0001` : statut `Réparée` (au lieu d'`Acceptée`), `mot_technicien` « Capteur nettoyé et réglé, le tapis
+  repart normalement. », `date_reparation` `2025-09-25 14:51`, `repare_par` `Julien` ; les 11 autres demandes
+  restent `Acceptée` ;
+- `OT-2025-0002` : `prises_en_charge` sur deux lignes (fin de ligne LF dans la cellule) :
+  `2025-09-25 13:40|TEC-0002|` (première prise) puis `2025-09-25 13:51|TEC-0001|TEC-0002` (reprise) ;
+- `OT-2025-0001` et `OT-2025-0005` (cause `C99`) : `cause_precision` ; `OT-2025-0005` : `remede_precision`.
+
+Jeu canonique, comme f4-v2.2.0. Un lecteur au format 5 doit la lire sans rien migrer, ne rien écrire à l'ouverture
+(ni sauvegarde `avant-format-v5`, ni ligne de journal), et la réécrire aux mêmes octets, navigateur comme serveur.
+Une 2.2 bêta 1 (format 4) l'ouvre en lecture seule. C'est le jeu des cas « sans passage de format » depuis T513.
+
+## Variantes (tirées de f3-v1.2.0, sauf reserves-a-reprendre, tirée de f3-v2.1.0, et plus-recent, tirée de f5-v2.2.0)
 
 **f3-v2.0.0** : f3-v1.2.0 plus, dans `parametres.csv`, les clés de la 2.0 (`mode_solo`, `cloture_une_etape`,
 `solo_technicien_id`), et `acces/comptes.json` (`{"version": 1, "comptes": [...]}`, format écrit par `serveur.py`)
@@ -114,11 +135,11 @@ après un enregistrement par Excel (les caractères hors Windows-1252 sont deven
 l'encodage, relire les dates en AAAA-MM-JJ, et réécrire en UTF-8 avec BOM. Base au format 3 : en 2.2, le passage au
 format 4 réécrit ce fichier en UTF-8 avant tout contrôle (le même fichier sans passage : `f4-windows-1252`).
 
-**plus-recent** : données d'une version plus récente : f4-v2.2.0 (toutes les tables et colonnes du format 4) avec
-`version_schema;'5` (format 5 simulé : la 2.2 écrit le format 4), une colonne inconnue `nouvelle_colonne_v5` en fin
-d'`ordres_travail.csv` (`v5-1`, `v5-2`…), une table inconnue `pieces_v5.csv` (3 colonnes, 2 lignes), et
-`habilitations.justificatif` vide (le jeu ne cite ainsi aucun document : un export en lecture seule n'en cherche
-aucun) ; les autres fichiers sont ceux de f4-v2.2.0 (28 fichiers CSV). Un lecteur doit refuser d'écrire (garde
+**plus-recent** : données d'une version plus récente : f5-v2.2.0 (toutes les tables et colonnes du format 5) avec
+`version_schema;'6` (format 6 simulé : Prévo écrit le format 5 depuis T513), une colonne inconnue
+`nouvelle_colonne_v6` en fin d'`ordres_travail.csv` (`v6-1`, `v6-2`…), une table inconnue `pieces_v6.csv`
+(3 colonnes, 2 lignes), et `habilitations.justificatif` vide (le jeu ne cite ainsi aucun document : un export en
+lecture seule n'en cherche aucun) ; les autres fichiers sont ceux de f5-v2.2.0 (28 fichiers CSV). Un lecteur doit refuser d'écrire (garde
 « données plus récentes », demande de mettre Prévo à jour) et ne rien modifier ; en lecture seule, il peut ouvrir
 ce qu'il connaît.
 
@@ -195,3 +216,16 @@ réécrire le fichier en UTF-8 avec BOM à la première écriture de la table, l
 de f4-v2.2.0, intactes et plus larges que l'en-tête. Un lecteur doit signaler le fichier et ne jamais le réécrire ;
 le serveur n'a rien à faire au démarrage (`GET /api/info`, `format` : `migration` = `rien`, `tables_abimees` =
 `["ordres_travail"]`).
+
+Depuis le format 5 (T513), ces deux bases au format 4 passent d'abord au format 5 (sauvegarde `avant-format-v5`,
+`demandes.csv` complété ; le fichier abîmé est laissé tel quel et signalé) : le cas pur est désormais donné par les
+deux variantes suivantes.
+
+## Fichiers abîmés dans une base au format 5 (variantes de f5-v2.2.0, T513)
+
+**f5-windows-1252** : le même `equipements.csv` que f4-windows-1252 (cette table ne change pas au format 5), dans
+f5-v2.2.0 (`version_schema;'5`). Rien à migrer : ni sauvegarde `avant-format-v5`, ni ligne de journal de passage.
+
+**f5-entete-tronque** : l'en-tête d'`ordres_travail.csv` de f5-v2.2.0 coupé au même endroit que dans
+`entete-tronque` (il finit par `temps_pr`) ; les lignes de données sont celles de f5-v2.2.0, intactes et plus larges
+que l'en-tête. Mêmes attentes que f4-entete-tronque au format 4 : signalé, jamais réécrit, rien à faire au démarrage.

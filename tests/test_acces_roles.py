@@ -795,12 +795,20 @@ class TestDemandeur(unittest.TestCase):
             ("numéro pris", lignes + [nouvelle(lignes[0][0], symptome="Bruit")]),
             ("numéro vide", lignes + [nouvelle("")]),
             ("deux fois le même numéro", lignes + [nouvelle("DI-2026-9005"), nouvelle("DI-2026-9005")]),
+            # Format 5 (T513) : statuts du retour vers l'opérateur et champs écrits à la clôture, jamais par lui
+            ("statut : En cours", lignes + [nouvelle("DI-2026-9010", statut="En cours")]),
+            ("statut : Réparée", lignes + [nouvelle("DI-2026-9011", statut="Réparée")]),
+            ("retour : mot", lignes + [nouvelle("DI-2026-9012", mot_technicien="Réparé, vous pouvez redémarrer")]),
+            ("retour : date", lignes + [nouvelle("DI-2026-9013", date_reparation="2026-10-26 11:00")]),
+            ("retour : réparé par", lignes + [nouvelle("DI-2026-9014", repare_par="Julien")]),
         ]
         for cas, envoyees in refus:
             with self.subTest(cas=cas):
                 reponse = self.envoyer_demandes(entete, envoyees)
                 self.assertEqual(reponse.statut, 403, reponse.octets)
                 self.assertTrue(reponse.json()["erreur"].startswith("Accès refusé : le demandeur ne peut qu'ajouter"))
+                if cas.startswith("retour"):
+                    self.assertIn("retour de la réparation", reponse.json()["erreur"])
                 self.assertEqual(chemin.read_bytes(), octets)
         perimee = self.envoyer_demandes(entete, [modifiee] + lignes[1:], version="0123456789abcdef")
         self.assertEqual(perimee.statut, 409, perimee.octets)                  # la version d'abord, comme toujours

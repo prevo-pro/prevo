@@ -2,7 +2,8 @@
 // Schema : description des 27 tables de Prévo (champs, types, identifiants).
 // Contrat : docs/ARCHITECTURE.md §4, §14.1 et §20.2 (format 3 : tables wiki_pages et wiki_journal, colonne
 // ordres_travail.astuce, lot 6) ; format 4 (version 2.2, docs/FORMAT.md) : tables reserves_controle, garanties et
-// contrats_prestataires, colonnes de equipements, ordres_travail, habilitations et controles_reglementaires.
+// contrats_prestataires, colonnes de equipements, ordres_travail, habilitations et controles_reglementaires ;
+// format 5 (lot 1 ergonomie) : statuts « En cours » et « Réparée » des demandes, colonnes de demandes et ordres_travail.
 // Les champs de chaque table sont d'abord exactement
 // ceux du tableau du brief §6, dans le même ordre (l'ordre des champs = l'ordre des colonnes CSV),
 // puis, en fin de table, les champs ajoutés par les versions suivantes du format (attribut depuisVersion: N).
@@ -162,7 +163,8 @@ const Schema = (function () {
         choix('impact', ['sécurité', 'arrêt', 'dégradé', 'gêne'], { obligatoire: true }),
         champ('description', 'texte_long'),
         champ('photo', 'document'),
-        choix('statut', ['Nouvelle', 'Acceptée', 'Regroupée', 'Différée', 'Refusée'], {
+        // « En cours » et « Réparée » : format 5 (lot 1 ergonomie, retour vers l'opérateur)
+        choix('statut', ['Nouvelle', 'Acceptée', 'En cours', 'Réparée', 'Regroupée', 'Différée', 'Refusée'], {
           defaut: 'Nouvelle',
         }),
         champ('motif_decision', 'texte_long'),
@@ -171,6 +173,11 @@ const Schema = (function () {
         // Version 2 du format (ARCHITECTURE.md §14.1)
         depuisVersion(2, codeDefaillance('symptome_code', 'symptôme')),
         depuisVersion(2, reference('ot_origine_id', 'ordres_travail')),
+        // Version 5 du format (lot 1 ergonomie, docs/FORMAT.md) : retour vers l'opérateur ; repare_par = prénom du
+        // technicien seulement
+        depuisVersion(5, champ('mot_technicien', 'texte_long')),
+        depuisVersion(5, champ('date_reparation', 'date_heure')),
+        depuisVersion(5, champ('repare_par', 'texte')),
       ],
     },
 
@@ -223,6 +230,12 @@ const Schema = (function () {
         // Version 4 du format (2.2, D191) : intitulés séparés par « , » ou « / », comme
         // equipements.habilitation_requise
         depuisVersion(4, champ('habilitation_requise', 'texte')),
+        // Version 5 du format (lot 1 ergonomie, docs/FORMAT.md) : texte libre de « Autre (préciser) » ;
+        // prises_en_charge : une ligne par prise ou reprise, « date_heure|technicien_id|technicien_precedent_id »
+        // (le dernier vide pour une première prise)
+        depuisVersion(5, champ('cause_precision', 'texte')),
+        depuisVersion(5, champ('remede_precision', 'texte')),
+        depuisVersion(5, champ('prises_en_charge', 'texte_long')),
       ],
     },
 
@@ -731,7 +744,8 @@ const Schema = (function () {
   }
 
   return {
-    version: 4,                        // version du format des fichiers (ARCHITECTURE.md §14.1, §20.2 ; 4 : 2.2)
+    version: 5,                        // version du format des fichiers (ARCHITECTURE.md §14.1, §20.2 ; 4 : 2.2 ;
+                                       // 5 : lot 1 ergonomie)
     tables: tables,
     table: table,
     champ: champDeTable,

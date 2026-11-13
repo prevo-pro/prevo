@@ -1,7 +1,7 @@
 """Tests du registre des formats côté serveur (serveur.py, section « Formats des données (miroir de js/formats.js,
 T184) ») : cle_de_colonne, colonnes_du_format, tables_du_format, format_du_fichier, version_de_base, ETAPES_FORMAT,
 migrer_tables, reserves_reprises (chantier « socle de données », T184 ; format 4 de la 2.2, T385 ; reprise des
-observations en réserves, T390 ; décisions D167, D168, D183 ; ARCHITECTURE.md §5.6, §14.1, §20.2 ; CS169, CS170).
+observations en réserves, T390 ; format 5, T513 ; décisions D167, D168, D183 ; ARCHITECTURE.md §5.6, §14.1, §20.2 ; CS169, CS170).
 
 Chaque jeu de tests/fixtures/formats (tests/jeux_formats.py) est copié dans un dossier temporaire (règle du chantier :
 jamais ailleurs). Côté serveur, une base est {table: {'entete', 'lignes': [{colonne: cellule}]}}, cellules lues par
@@ -11,10 +11,11 @@ lire_csv_tolerant (apostrophe de protection comprise) et réécrites par ecrire_
    ajoutées avec COLONNES_PAR_TABLE et COLONNES_DES_FORMATS_SUIVANTS ; pour chaque jeu, format_du_fichier,
    version_de_base et migrer_tables : aucune cellule d'origine perdue ni modifiée (champ à champ), colonnes nouvelles
    en fin avec leur défaut (après les colonnes inconnues, qui restent à leur place), tables créées (wiki et format 4
-   compris), journal (f1 3 lignes, f2 2, f3 1), idempotence, pureté (entrée inchangée), plus-recent (version 5)
-   laissé intact par migrer_tables(base, 5, 4) ; f4-v2.2.0 (T394, base au format 4) : rien à migrer, au démarrage
-   du serveur non plus (migrer_donnees_au_demarrage : « rien », aucun octet écrit) ; détail de l'étape 3→4 sur les
-   bases 2.1.0 ; cas fabriqués et
+   compris), journal (f1 4 lignes, f2 3, f3 2, f4 1), idempotence, pureté (entrée inchangée), plus-recent
+   (version 6) laissé intact par migrer_tables(base, 6, 5) ; f5-v2.2.0 (T513, base au format 5) : rien à migrer, au
+   démarrage du serveur non plus (migrer_donnees_au_demarrage : « rien », aucun octet écrit) ; f4-v2.2.0 au démarrage :
+   sauvegarde avant-format-v5, demandes et ordres_travail complétés, aucune valeur changée ; détail de l'étape 3→4
+   sur les bases 2.1.0 et de l'étape 4→5 sur f4-v2.2.0 ; cas fabriqués et
    erreurs. Reprise des observations en réserves (D183, CS170) : réserves du LISEZMOI des jeux (cellules écrites
    comme Prévo les écrit), cas fabriqués (formes d'Excel, numérotation en texte au-delà de la limite de chiffres de
    int(), réserve déjà là), étape 3→4 rejouée sans rien de plus.
@@ -23,7 +24,7 @@ lire_csv_tolerant (apostrophe de protection comprise) et réécrites par ecrire_
    Donnees.csv.relireValeur / ecrireValeur sur des cas fabriqués ; pour chaque jeu, lecture + migration + écriture
    côté navigateur (Donnees.csv.analyser, Formats.migrer, Donnees.csv.serialiser) et côté serveur
    (lire_csv_tolerant, migrer_tables, ecrire_tableau_csv) → mêmes octets par table (reserves_controle reprise
-   comprise), mêmes formats, même journal (f4-v2.2.0 et plus-recent : les octets du fichier, des deux côtés) ;
+   comprise), mêmes formats, même journal (f5-v2.2.0 et plus-recent : les octets du fichier, des deux côtés) ;
    reserves_reprises donne les lignes de Formats.reservesReprises (écrites
    par Donnees.csv.ecrireValeur) sur des fichiers fabriqués (oui, x, vrai, JJ/MM/AAAA, U+2028 et U+0085 qui ne
    coupent pas une ligne, apostrophes, « ; », guillemets, réserve déjà là), et ses copies de lecture des dates et
@@ -39,8 +40,8 @@ exactement celui décrit, rien d'autre) ; à trancher par l'orchestrateur :
     B. colonnes-manquantes : Donnees.csv.analyser complète chaque ligne avec tous les champs du schéma (défaut) et
        serialiser écrit toujours toutes les colonnes du schéma à leur place ; l'étape 3→4 ajoute aux deux en-têtes
        migrés (identiques) les colonnes manquantes en fin (modele, valeur_remplacement, cout_arret_h), et le serveur
-       réécrit cet en-tête tel quel (modele en fin). Le jeu plus-recent (base au format 5, rien n'est migré) n'est
-       plus un écart depuis T394 : tiré de f4-v2.2.0, il a toutes les colonnes du format 4. Le jeu melange
+       réécrit cet en-tête tel quel (modele en fin). Le jeu plus-recent (base au format 6, rien n'est migré) n'est
+       plus un écart depuis T394 : tiré de f5-v2.2.0 (T513), il a toutes les colonnes du format 5. Le jeu melange
        (ordres_travail sans astuce dans une base au format 3) n'est plus un écart depuis le format 4 : l'étape 3→4
        ajoute astuce puis habilitation_requise en fin, à leur place du schéma.
     C. windows-1252 : Donnees.csv.analyser normalise les valeurs à la lecture (date_mes 12/03/2019 → 2019-03-12) ;
@@ -77,7 +78,7 @@ def charger_serveur():
 serveur = charger_serveur()
 
 SCRIPTS = ["js/lib/papaparse.min.js", "js/schema.js", "js/formats.js", "js/donnees.js"]
-FORMAT_COURANT = 4
+FORMAT_COURANT = 5
 CARACTERE_BOM = chr(0xFEFF)
 INSECABLE, INSECABLE_FINE, CADRATIN, IDEOGRAPHIQUE = chr(0xA0), chr(0x202F), chr(0x2003), chr(0x3000)
 ESPACE_NULLE, LIGNE_SUIVANTE, SEPARATEUR_DE_FICHIER = chr(0x200B), chr(0x85), chr(0x1C)
@@ -91,13 +92,17 @@ COLONNES_AJOUTEES = {
     4: {"equipements": ["cout_arret_h"], "ordres_travail": ["habilitation_requise"],
         "habilitations": ["recyclage_mois", "justificatif", "catalogue_id", "nature_source"],
         "controles_reglementaires": ["source_periodicite", "nature_source", "catalogue_id", "catalogue_relu_le"]},
+    # Format 5 (T513, lot 1 ergonomie) : consigne du socle, noms qui font foi
+    5: {"demandes": ["mot_technicien", "date_reparation", "repare_par"],
+        "ordres_travail": ["cause_precision", "remede_precision", "prises_en_charge"]},
 }
 TABLES_AJOUTEES = {2: [], 3: ["wiki_pages", "wiki_journal"], 4: ["reserves_controle", "garanties",
-                                                                 "contrats_prestataires"]}
+                                                                 "contrats_prestataires"], 5: []}
 DEFAUTS_AJOUTES = {"valeur_remplacement": "", "symptome_code": "", "ot_origine_id": "", "anomalie_constatee": "0",
                    "astuce": "", "cout_arret_h": "", "habilitation_requise": "", "recyclage_mois": "",
                    "justificatif": "", "catalogue_id": "", "nature_source": "", "source_periodicite": "saisie",
-                   "catalogue_relu_le": ""}
+                   "catalogue_relu_le": "", "mot_technicien": "", "date_reparation": "", "repare_par": "",
+                   "cause_precision": "", "remede_precision": "", "prises_en_charge": ""}
 # Défauts des champs des tables du format 4 (note de conception §2.3), sans apostrophe.
 DEFAUTS_DES_TABLES_AJOUTEES = {"reserves_controle": {"levee": "0"}, "garanties": {"actif": "1"},
                                "contrats_prestataires": {"reconduction_tacite": "0", "actif": "1"}}
@@ -109,31 +114,41 @@ DESCRIPTION_FORMAT_4 = (
     "controles_reglementaires.catalogue_id et controles_reglementaires.catalogue_relu_le en fin de table ; tables "
     "reserves_controle (observations reprises, une réserve par ligne, D183), garanties et contrats_prestataires "
     "(vides).")
+# Description de l'étape 4→5 (T513), la même dans js/formats.js.
+DESCRIPTION_FORMAT_5 = (
+    "Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, demandes.date_reparation, "
+    "demandes.repare_par, ordres_travail.cause_precision, ordres_travail.remede_precision et "
+    "ordres_travail.prises_en_charge en fin de table (vides) ; statuts de demande « En cours » et « Réparée » ; aucune "
+    "valeur existante changée.")
 # Format des fichiers de chaque jeu et format de la base (version_schema) ; les autres jeux : format 3 (2.0 et 2.1).
 FORMAT_DES_JEUX = 3
-FORMAT_DES_FICHIERS = {"f1": 1, "f2-v1.1.0": 2, "f4-v2.2.0": 4, "plus-recent": 4, "f4-windows-1252": 4,
-                       "f4-entete-tronque": 4}
-VERSION_DE_BASE = {"f1": 1, "f2-v1.1.0": 2, "f4-v2.2.0": 4, "plus-recent": 5, "f4-windows-1252": 4,
-                   "f4-entete-tronque": 4}
+FORMAT_DES_FICHIERS = {"f1": 1, "f2-v1.1.0": 2, "f4-v2.2.0": 4, "plus-recent": 5, "f4-windows-1252": 4,
+                       "f4-entete-tronque": 4, "f5-v2.2.0": 5, "f5-windows-1252": 5, "f5-entete-tronque": 5}
+VERSION_DE_BASE = {"f1": 1, "f2-v1.1.0": 2, "f4-v2.2.0": 4, "plus-recent": 6, "f4-windows-1252": 4,
+                   "f4-entete-tronque": 4, "f5-v2.2.0": 5, "f5-windows-1252": 5, "f5-entete-tronque": 5}
 FORMATS_PARTICULIERS = {
     ("entete-tronque", "ordres_travail"): 0,     # en-tête coupé dans temps_prevu_h : colonnes du format 1 manquantes
     ("f4-entete-tronque", "ordres_travail"): 0,  # le même, dans une base au format 4 (T404)
+    ("f5-entete-tronque", "ordres_travail"): 0,  # le même, dans une base au format 5 (T513)
     ("colonnes-manquantes", "equipements"): 0,   # sans modele (format 1) ni valeur_remplacement
     ("vide", "equipements"): 0,                  # 0 octet : aucun en-tête
     ("melange", "ordres_travail"): 2,            # sans astuce, dans une base au format 3
-    ("plus-recent", "pieces_v5"): None,          # table inconnue du schéma
+    ("plus-recent", "pieces_v6"): None,          # table inconnue du schéma
 }
 LIGNES_DE_JOURNAL = {
-    1: ["passage au format 2 du fichier", "passage au format 3 du fichier", "passage au format 4 du fichier"],
-    2: ["passage au format 3 du fichier", "passage au format 4 du fichier"],
-    3: ["passage au format 4 du fichier"],
+    1: ["passage au format 2 du fichier", "passage au format 3 du fichier", "passage au format 4 du fichier",
+        "passage au format 5 du fichier"],
+    2: ["passage au format 3 du fichier", "passage au format 4 du fichier", "passage au format 5 du fichier"],
+    3: ["passage au format 4 du fichier", "passage au format 5 du fichier"],
+    4: ["passage au format 5 du fichier"],
 }
 # Concordance navigateur / serveur : jeux dont les octets doivent être identiques, table par table.
 JEUX_CONCORDANTS = ("f1", "f2-v1.1.0", "f3-v1.2.0", "f3-v2.0.0", "sans-bom", "table-absente", "plus-recent",
-                    "f3-v2.1.0", "melange", "f4-v2.2.0")
-# Jeux déjà au format 4 ou plus récents (T394) : rien n'est migré, chaque table connue se réécrit aux octets du fichier
-# (variantes abîmées de f4-v2.2.0, T404 : hors leur fichier abîmé, voir ECARTS_DOCUMENTES et JEUX_ABIMES)
-JEUX_SANS_PASSAGE = ("f4-v2.2.0", "plus-recent", "f4-windows-1252", "f4-entete-tronque")
+                    "f3-v2.1.0", "melange", "f4-v2.2.0", "f5-v2.2.0")
+# Jeux déjà au format courant ou plus récents (T394 ; format 5 : T513) : rien n'est migré, chaque table connue se
+# réécrit aux octets du fichier (variantes abîmées de f5-v2.2.0 : hors leur fichier abîmé, voir ECARTS_DOCUMENTES et
+# JEUX_ABIMES)
+JEUX_SANS_PASSAGE = ("f5-v2.2.0", "plus-recent", "f5-windows-1252", "f5-entete-tronque")
 # Écarts préexistants entre lecteurs/écrivains (docstring du module) : jeu → (table touchée, nature de l'écart).
 ECARTS_DOCUMENTES = {
     "colonnes-en-trop": ("equipements", "colonnes"),      # A : colonnes inconnues réécrites en fin par serialiser
@@ -141,8 +156,10 @@ ECARTS_DOCUMENTES = {
     "colonnes-manquantes": ("equipements", "colonnes"),   # B : colonnes du schéma toujours écrites par serialiser
     "windows-1252": ("equipements", "valeurs"),           # C : dates normalisées par analyser
     "f4-windows-1252": ("equipements", "valeurs"),        # C : le même, dans une base au format 4 (T404)
+    "f5-windows-1252": ("equipements", "valeurs"),        # C : le même, dans une base au format 5 (T513)
 }
-JEUX_ABIMES = {"vide": "equipements", "entete-tronque": "ordres_travail", "f4-entete-tronque": "ordres_travail"}
+JEUX_ABIMES = {"vide": "equipements", "entete-tronque": "ordres_travail", "f4-entete-tronque": "ordres_travail",
+               "f5-entete-tronque": "ordres_travail"}
 
 # Reprise des observations en réserves (D183, CS170) : texte fixe du commentaire de levée, colonnes de
 # reserves_controle (note de conception du format 4, §2.2) et réserves attendues des deux jeux de la 2.2, recopiées de
@@ -398,13 +415,14 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         self.assertEqual(serveur.tables_du_format(2), tables_du_brief)
         self.assertEqual(serveur.tables_du_format(3), tables_du_brief + TABLES_AJOUTEES[3])
         self.assertEqual(serveur.tables_du_format(4), list(serveur.TABLES))
+        self.assertEqual(serveur.tables_du_format(5), list(serveur.TABLES))
         self.assertEqual(serveur.tables_du_format(), list(serveur.TABLES))
         for table in serveur.TABLES:
             with self.subTest(table=table):
                 for format in range(1, FORMAT_COURANT + 1):
                     self.assertEqual(serveur.colonnes_du_format(table, format), colonnes_attendues(table, format))
                 self.assertEqual(serveur.colonnes_du_format(table), list(serveur.COLONNES_PAR_TABLE[table]))
-        self.assertEqual(serveur.colonnes_du_format("pieces_v5", 3), [])
+        self.assertEqual(serveur.colonnes_du_format("pieces_v6", 3), [])
         self.assertEqual(serveur.colonnes_du_format("wiki_pages", 2), [])
         self.assertEqual(serveur.colonnes_du_format("reserves_controle", 3), [])
         self.assertEqual(serveur.colonnes_du_format("controles_reglementaires", 3)[-1], "observations_levees")
@@ -469,12 +487,12 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
                     self.assertEqual(serveur.format_du_fichier(table, contenu["entete"]), attendu)
         self.assertEqual(vus, set(FORMATS_PARTICULIERS), "cas particuliers absents des jeux")
         # Jeux de la 2.1.0 : les quatre tables que le format 4 complète sont au format 3 (colonne inconnue en fin de
-        # controles_reglementaires comprise) ; une table que le format 4 n'a pas changée est au format 4
+        # controles_reglementaires comprise) ; une table qu'aucun format n'a changée est au format courant
         for jeu in ("f3-v2.1.0", "reserves-a-reprendre"):
             base = self.base(jeu)
             for table in COLONNES_AJOUTEES[4]:
                 self.assertEqual(serveur.format_du_fichier(table, base[table]["entete"]), 3, (jeu, table))
-            self.assertEqual(serveur.format_du_fichier("fournisseurs", base["fournisseurs"]["entete"]), 4)
+            self.assertEqual(serveur.format_du_fichier("fournisseurs", base["fournisseurs"]["entete"]), FORMAT_COURANT)
 
     def test_format_du_fichier_en_tetes_fabriques_sans_exception(self):
         ot = lambda format: serveur.colonnes_du_format("ordres_travail", format)  # noqa: E731
@@ -504,12 +522,16 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         self.assertEqual(serveur.format_du_fichier(
             "controles_reglementaires", [n for n in controles if n != "catalogue_relu_le"]), 3)
         reserves = serveur.colonnes_du_format("reserves_controle")
-        self.assertEqual(serveur.format_du_fichier("reserves_controle", reserves), 4)
+        self.assertEqual(serveur.format_du_fichier("reserves_controle", reserves), FORMAT_COURANT)
         self.assertEqual(serveur.format_du_fichier("reserves_controle", reserves[:-1]), 0)
         self.assertEqual(serveur.format_du_fichier("garanties", []), 0)
         self.assertEqual(serveur.format_du_fichier(
-            "contrats_prestataires", serveur.colonnes_du_format("contrats_prestataires", 4)), 4)
-        self.assertIsNone(serveur.format_du_fichier("pieces_v5", ["id"]))
+            "contrats_prestataires", serveur.colonnes_du_format("contrats_prestataires", 4)), FORMAT_COURANT)
+        self.assertEqual(serveur.format_du_fichier("demandes", serveur.colonnes_du_format("demandes", 4)), 4)
+        self.assertEqual(serveur.format_du_fichier("demandes", serveur.colonnes_du_format("demandes", 5)), 5)
+        self.assertEqual(serveur.format_du_fichier(
+            "ordres_travail", [n for n in ot(5) if n != "prises_en_charge"]), 4)
+        self.assertIsNone(serveur.format_du_fichier("pieces_v6", ["id"]))
         self.assertIsNone(serveur.format_du_fichier(None, ["id"]))
         self.assertIsNone(serveur.format_du_fichier(["ordres_travail"], ["id"]))
         etranges = [None, "id;origine", 42, {}, [None, None, 3, {}], [Etrange()], ot(3) + [Etrange()]]
@@ -625,32 +647,35 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         self.assertEqual(sorted(avant), ["demandes", "equipements", "ordres_travail", "parametres"])
         self.assertEqual(len(apres), NB_TABLES)
         self.assertEqual(journal, LIGNES_DE_JOURNAL[1])
-        self.assertEqual(apres["ordres_travail"]["entete"][-3:], ["anomalie_constatee", "astuce", "habilitation_requise"])
-        self.assertEqual(apres["demandes"]["entete"][-2:], ["symptome_code", "ot_origine_id"])
+        self.assertEqual(apres["ordres_travail"]["entete"][-6:], ["anomalie_constatee", "astuce", "habilitation_requise"]
+                         + COLONNES_AJOUTEES[5]["ordres_travail"])
+        self.assertEqual(apres["demandes"]["entete"][-5:], ["symptome_code", "ot_origine_id"]
+                         + COLONNES_AJOUTEES[5]["demandes"])
         self.assertEqual(apres["equipements"]["entete"][-2:], ["valeur_remplacement", "cout_arret_h"])
         self.assertTrue(all(l["anomalie_constatee"] == "0" and l["astuce"] == "" and l["habilitation_requise"] == ""
                             for l in apres["ordres_travail"]["lignes"]))
         self.assertEqual(len(apres["ordres_travail"]["lignes"]), 12)
-        # parametres.csv de f1 porte version_schema;'1 (dernière ligne) : la cellule devient '4, rien d'autre ne change
+        # parametres.csv de f1 porte version_schema;'1 (dernière ligne) : la cellule devient '5, rien d'autre ne change
         self.assertEqual(avant["parametres"]["lignes"][-1], {"cle": "version_schema", "valeur": "'1"})
         self.assertEqual(apres["parametres"]["lignes"][:-1], avant["parametres"]["lignes"][:-1])
-        self.assertEqual(apres["parametres"]["lignes"][-1], {"cle": "version_schema", "valeur": "'4"})
+        self.assertEqual(apres["parametres"]["lignes"][-1], {"cle": "version_schema", "valeur": "'5"})
         sans_version = {"parametres": {"entete": avant["parametres"]["entete"],
                                        "lignes": avant["parametres"]["lignes"][:-1]}}
         self.assertEqual(serveur.version_de_base(sans_version["parametres"]["lignes"]), 1)
         ajoutee = serveur.migrer_tables(sans_version, 1, FORMAT_COURANT)[0]["parametres"]["lignes"]
-        self.assertEqual(ajoutee, avant["parametres"]["lignes"][:-1] + [{"cle": "version_schema", "valeur": "'4"}])
+        self.assertEqual(ajoutee, avant["parametres"]["lignes"][:-1] + [{"cle": "version_schema", "valeur": "'5"}])
         avant2 = self.base("f2-v1.1.0")
         apres2, journal2, _ = serveur.migrer_tables(avant2, 2, FORMAT_COURANT)
         self.assertEqual(journal2, LIGNES_DE_JOURNAL[2])
         self.assertEqual(len(avant2), 22)
         self.assertEqual(sorted(set(apres2) - set(avant2)), sorted(tables_ajoutees_apres(2)))
         self.assertEqual(apres2["ordres_travail"]["entete"],
-                         avant2["ordres_travail"]["entete"] + ["astuce", "habilitation_requise"])
+                         avant2["ordres_travail"]["entete"] + ["astuce", "habilitation_requise"]
+                         + COLONNES_AJOUTEES[5]["ordres_travail"])
         for table in avant2:
             self.assertEqual(apres2[table]["entete"],
                              avant2[table]["entete"] + COLONNES_AJOUTEES[3].get(table, [])
-                             + COLONNES_AJOUTEES[4].get(table, []), table)
+                             + COLONNES_AJOUTEES[4].get(table, []) + COLONNES_AJOUTEES[5].get(table, []), table)
         self.assertEqual(len(apres2["parametres"]["lignes"]), len(avant2["parametres"]["lignes"]))
 
     def test_migration_f3_au_format_4_detail(self):
@@ -663,7 +688,7 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         for jeu in ("f3-v2.1.0", "reserves-a-reprendre"):
             with self.subTest(jeu=jeu):
                 avant = self.base(jeu)
-                apres, journal, etapes = serveur.migrer_tables(avant, 3, FORMAT_COURANT)
+                apres, journal, etapes = serveur.migrer_tables(avant, 3, 4)
                 self.assertEqual(journal, ["passage au format 4 du fichier"])
                 self.assertEqual(etapes, [{"de": 3, "vers": 4, "description": DESCRIPTION_FORMAT_4}])
                 self.assertEqual(sorted(set(apres) - set(avant)), sorted(TABLES_AJOUTEES[4]))
@@ -688,7 +713,7 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
                 self.assertEqual([l["valeur"] for l in apres["parametres"]["lignes"] if l["cle"] == "version_schema"],
                                  ["'4"])
         avant = self.base("reserves-a-reprendre")
-        controles = serveur.migrer_tables(avant, 3, FORMAT_COURANT)[0]["controles_reglementaires"]
+        controles = serveur.migrer_tables(avant, 3, 4)[0]["controles_reglementaires"]
         self.assertEqual(controles["entete"][-6:], ["observations_levees", "remarque_maison"]
                          + COLONNES_AJOUTEES[4]["controles_reglementaires"])
         self.assertEqual([l["remarque_maison"] for l in controles["lignes"]],
@@ -699,11 +724,50 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
                          [(l["observations"], l["observations_levees"])
                           for l in avant["controles_reglementaires"]["lignes"]])
 
-    def test_f4_au_demarrage_du_serveur_rien_a_faire(self):
-        """f4-v2.2.0 (T394) : migrer_donnees_au_demarrage sur une copie (console interceptée) : départ au format 4,
-        aucun fichier laissé, migration « rien », aucun octet écrit ni sauvegarde avant-format-v4."""
+    def test_f4_au_demarrage_du_serveur_passe_au_format_5(self):
+        """f4-v2.2.0 (T513) : migrer_donnees_au_demarrage sur une copie (console interceptée) : départ au format 4,
+        une sauvegarde avant-format-v5 aux octets d'origine, seuls demandes, ordres_travail, parametres et journal
+        réécrits ; colonnes du format 5 vides en fin, toutes les cellules d'origine gardées (12 demandes « Acceptée »
+        qui le restent), une ligne de journal « passage au format 5 du fichier »."""
         with tempfile.TemporaryDirectory(prefix="prevo-formats-serveur-f4-") as temporaire:
             dossier = copier_jeu("f4-v2.2.0", Path(temporaire) / "donnees")
+            config = serveur.Configuration(str(dossier), [])
+            serveur.creer_dossiers(config)
+            avant = {c.relative_to(dossier).as_posix(): c.read_bytes() for c in sorted(dossier.rglob("*")) if c.is_file()}
+            messages = []
+            with mock.patch.object(serveur, "afficher", side_effect=messages.append):
+                etat = serveur.migrer_donnees_au_demarrage(config)
+            self.assertEqual((etat["base"], etat["plus_recent"], etat["migration"], etat["tables_abimees"]),
+                             (5, False, "faite", []))
+            apres = {c.relative_to(dossier).as_posix(): c.read_bytes() for c in sorted(dossier.rglob("*")) if c.is_file()}
+            sauvegardes = sorted({c.split("/")[1] for c in apres if c.startswith("sauvegardes/")})
+            self.assertEqual(len(sauvegardes), 1)
+            self.assertTrue(sauvegardes[0].endswith("_avant-format-v5"), sauvegardes)
+            for chemin, octets in avant.items():
+                with self.subTest(chemin=chemin):
+                    if chemin.endswith(".csv"):
+                        self.assertEqual(apres["sauvegardes/%s/%s" % (sauvegardes[0], chemin)], octets)
+                    if chemin in ("demandes.csv", "ordres_travail.csv", "parametres.csv", "journal.csv"):
+                        self.assertNotEqual(apres[chemin], octets)
+                    else:
+                        self.assertEqual(apres[chemin], octets)
+            for table, ajoutees in COLONNES_AJOUTEES[5].items():
+                with self.subTest(table=table):
+                    origine = table_de_base(avant[table + ".csv"])
+                    passee = table_de_base(apres[table + ".csv"])
+                    self.assertEqual(passee["entete"], origine["entete"] + ajoutees)
+                    self.assertEqual([{c: l[c] for c in origine["entete"]} for l in passee["lignes"]],
+                                     origine["lignes"])
+                    self.assertEqual({l[c] for l in passee["lignes"] for c in ajoutees}, {""})
+            self.assertEqual({l["statut"] for l in table_de_base(apres["demandes.csv"])["lignes"]}, {"Acceptée"})
+            self.assertIn(b"version_schema;'5", apres["parametres.csv"])
+            self.assertIn("passage au format 5 du fichier".encode("utf-8"), apres["journal.csv"])
+
+    def test_f5_au_demarrage_du_serveur_rien_a_faire(self):
+        """f5-v2.2.0 (T513) : migrer_donnees_au_demarrage sur une copie (console interceptée) : départ au format 5,
+        aucun fichier laissé, migration « rien », aucun octet écrit ni sauvegarde avant-format-v5."""
+        with tempfile.TemporaryDirectory(prefix="prevo-formats-serveur-f5-") as temporaire:
+            dossier = copier_jeu("f5-v2.2.0", Path(temporaire) / "donnees")
             config = serveur.Configuration(str(dossier), [])
             serveur.creer_dossiers(config)
             avant = {c.relative_to(dossier).as_posix(): c.read_bytes() for c in sorted(dossier.rglob("*")) if c.is_file()}
@@ -725,13 +789,13 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         base = base_de_fichiers(fichiers)
         avant = copy.deepcopy(base)
         de = serveur.version_de_base(base["parametres"]["lignes"])
-        self.assertEqual(de, 5)
+        self.assertEqual(de, 6)
         resultat, journal, etapes = serveur.migrer_tables(base, de, FORMAT_COURANT)
         self.assertIs(resultat, base)
         self.assertEqual((journal, etapes), ([], []))
         self.assertEqual(base, avant)
-        self.assertEqual(base["ordres_travail"]["entete"][-1], "nouvelle_colonne_v5")
-        self.assertIsNone(serveur.format_du_fichier("pieces_v5", base["pieces_v5"]["entete"]))
+        self.assertEqual(base["ordres_travail"]["entete"][-1], "nouvelle_colonne_v6")
+        self.assertIsNone(serveur.format_du_fichier("pieces_v6", base["pieces_v6"]["entete"]))
         # Réécrit tel quel, chaque fichier redonne ses octets (table inconnue et colonne inconnue comprises)
         for table, octets in fichiers.items():
             with self.subTest(table=table):
@@ -740,9 +804,10 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
     # -- ETAPES_FORMAT ------------------------------------------------------------------------------------------
 
     def test_etapes_chaine_sans_trou_et_descriptions(self):
-        self.assertEqual([(e.de, e.vers) for e in serveur.ETAPES_FORMAT], [(1, 2), (2, 3), (3, 4)])
+        self.assertEqual([(e.de, e.vers) for e in serveur.ETAPES_FORMAT], [(1, 2), (2, 3), (3, 4), (4, 5)])
         self.assertEqual(serveur.ETAPES_FORMAT[-1].vers, serveur.VERSION_SCHEMA_CSV)
         self.assertEqual(serveur.ETAPES_FORMAT[2].description, DESCRIPTION_FORMAT_4)
+        self.assertEqual(serveur.ETAPES_FORMAT[3].description, DESCRIPTION_FORMAT_5)
         for etape in serveur.ETAPES_FORMAT:
             with self.subTest(etape=etape.vers):
                 for table, colonnes in COLONNES_AJOUTEES[etape.vers].items():
@@ -880,7 +945,7 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         commentaire fixe ; cellules écrites comme Prévo les écrit (apostrophe de protection, guillemets doublés) ;
         contrôles inchangés ; étape rejouée : rien de plus."""
         avant = self.base("reserves-a-reprendre")
-        quatre = serveur.migrer_tables(avant, 3, FORMAT_COURANT)[0]
+        quatre = serveur.migrer_tables(avant, 3, 4)[0]
         reserves = quatre["reserves_controle"]
         self.assertEqual(serveur.COMMENTAIRE_LEVEE_REPRISE, COMMENTAIRE_LEVEE_REPRISE)
         self.assertEqual(reserves["entete"], COLONNES_RESERVES)
@@ -1044,7 +1109,8 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
         self.assertEqual(serveur.migrer_tables(base, 0, FORMAT_COURANT)[1], LIGNES_DE_JOURNAL[1])
         self.assertEqual(serveur.migrer_tables(base, 2.5, FORMAT_COURANT)[1], LIGNES_DE_JOURNAL[2])
         self.assertEqual(serveur.migrer_tables(base, 3.5, FORMAT_COURANT)[1], LIGNES_DE_JOURNAL[3])
-        self.assertEqual(serveur.migrer_tables(base, 1, 4.0)[1], LIGNES_DE_JOURNAL[1])
+        self.assertEqual(serveur.migrer_tables(base, 1, 5.0)[1], LIGNES_DE_JOURNAL[1])
+        self.assertEqual(serveur.migrer_tables(base, 4, FORMAT_COURANT)[1], LIGNES_DE_JOURNAL[4])
         self.assertEqual(serveur.migrer_tables(base, float("-inf"), FORMAT_COURANT)[1], LIGNES_DE_JOURNAL[1])
         vers_trois = serveur.migrer_tables(base, 1, 3)
         self.assertEqual(vers_trois[1], LIGNES_DE_JOURNAL[1][:2])
@@ -1223,7 +1289,7 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
         self.assertIn(0, js)
         self.assertIn(3, js)
         self.assertIn(FORMAT_COURANT, js)
-        autres = {"pieces_v5": ["id"], "parametres": ["Clé", " VALEUR "], "wiki_pages": [],
+        autres = {"pieces_v6": ["id"], "parametres": ["Clé", " VALEUR "], "wiki_pages": [],
                   "reserves_controle": serveur.colonnes_du_format("reserves_controle")[::-1], "garanties": ["id"],
                   "contrats_prestataires": serveur.colonnes_du_format("contrats_prestataires"),
                   "controles_reglementaires": serveur.colonnes_du_format("controles_reglementaires", 3) + ["note"]}
@@ -1299,7 +1365,7 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
 
     def test_reserves_controle_memes_octets_sur_chaque_jeu(self):
         """Sur chaque jeu (abîmés compris : leurs contrôles sont lisibles), reserves_controle migrée aux mêmes octets
-        des deux côtés, avec les réserves reprises ; f4-v2.2.0 et plus-recent (format 4 ou 5, rien n'est migré) :
+        des deux côtés, avec les réserves reprises ; f5-v2.2.0 et plus-recent (format 5 ou 6, rien n'est migré) :
         la table du jeu, réécrite aux octets du fichier des deux côtés (aucune réserve reprise de plus)."""
         for jeu in JEUX:
             with self.subTest(jeu=jeu):
@@ -1307,6 +1373,7 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
                 base = base_de_fichiers(self.fichiers[jeu])
                 if cote_serveur["de"] >= FORMAT_COURANT:
                     self.assertIn(jeu, JEUX_SANS_PASSAGE)
+                if cote_serveur["de"] >= 4:             # reserves_controle déjà là (format 4) : rien de repris
                     self.assertEqual(navigateur["octets"]["reserves_controle"], self.fichiers[jeu]["reserves_controle"])
                     self.assertEqual(cote_serveur["octets"]["reserves_controle"], self.fichiers[jeu]["reserves_controle"])
                     continue
@@ -1351,7 +1418,7 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
                                   {t: base64.b64encode(o).decode("ascii") for t, o in fichiers.items()})
         cote_serveur = chemin_serveur(fichiers)
         self.assertEqual((navigateur["de"], navigateur["journal"]), (cote_serveur["de"], cote_serveur["journal"]))
-        self.assertEqual(cote_serveur["journal"], ["passage au format 4 du fichier"])
+        self.assertEqual(cote_serveur["journal"], LIGNES_DE_JOURNAL[3])
         octets = cote_serveur["octets"]["reserves_controle"]
         self.assertEqual(base64.b64decode(navigateur["octets"]["reserves_controle"]), octets)
         lues = table_de_base(octets)["lignes"]
@@ -1429,19 +1496,29 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
         return navigateur, cote_serveur
 
     def test_concordance_plus_recent(self):
-        # Base au format 5 : rien n'est migré. Tiré de f4-v2.2.0 (T394), le jeu a toutes les colonnes du format 4 :
-        # plus d'écart B ; la colonne inconnue nouvelle_colonne_v5 est en fin (même place des deux côtés) ; la table
-        # inconnue pieces_v5 n'est écrite que par le serveur, telle quelle.
+        # Base au format 6 : rien n'est migré. Tiré de f5-v2.2.0 (T513), le jeu a toutes les colonnes du format 5 :
+        # pas d'écart B ; la colonne inconnue nouvelle_colonne_v6 est en fin (même place des deux côtés) ; la table
+        # inconnue pieces_v6 n'est écrite que par le serveur, telle quelle.
         navigateur, cote_serveur = self.verifier_sans_passage("plus-recent")
-        self.assertEqual(navigateur["de"], 5)
-        self.assertEqual(navigateur["entetes"]["ordres_travail"][-1], "nouvelle_colonne_v5")
-        self.assertNotIn("pieces_v5", navigateur["octets"])
-        self.assertEqual(cote_serveur["octets"]["pieces_v5"], self.fichiers["plus-recent"]["pieces_v5"])
+        self.assertEqual(navigateur["de"], 6)
+        self.assertEqual(navigateur["entetes"]["ordres_travail"][-1], "nouvelle_colonne_v6")
+        self.assertNotIn("pieces_v6", navigateur["octets"])
+        self.assertEqual(cote_serveur["octets"]["pieces_v6"], self.fichiers["plus-recent"]["pieces_v6"])
 
-    def test_concordance_f4_v2_2_0_lu_au_format_4_rien_a_migrer(self):
-        # Base au format 4 (T394) : chaque fichier au format 4 des deux côtés, rien à migrer ni à reprendre, 27 tables
-        # réécrites aux octets du fichier par Donnees.csv.serialiser comme par ecrire_tableau_csv.
-        navigateur, _ = self.verifier_sans_passage("f4-v2.2.0")
+    def test_concordance_f4_v2_2_0_passe_au_format_5(self):
+        # T513 : base au format 4, passée au format 5 des deux côtés : mêmes octets ; demandes et ordres_travail
+        # complétés en fin, aucune cellule changée (demandes « Acceptée »).
+        navigateur, cote_serveur = self.verifier_concordance("f4-v2.2.0")
+        self.assertEqual((navigateur["de"], cote_serveur["de"]), (4, 4))
+        self.assertEqual(navigateur["journal"], LIGNES_DE_JOURNAL[4])
+        for table, ajoutees in COLONNES_AJOUTEES[5].items():
+            self.assertEqual(navigateur["entetes"][table][-len(ajoutees):], ajoutees, table)
+
+    def test_concordance_f5_v2_2_0_lu_au_format_5_rien_a_migrer(self):
+        # Base au format 5 (T513) : chaque fichier au format 5 des deux côtés, rien à migrer ni à reprendre, 27 tables
+        # réécrites aux octets du fichier par Donnees.csv.serialiser comme par ecrire_tableau_csv (statut « Réparée »,
+        # prises_en_charge sur deux lignes comprises).
+        navigateur, _ = self.verifier_sans_passage("f5-v2.2.0")
         self.assertEqual(navigateur["de"], FORMAT_COURANT)
         self.assertEqual(set(navigateur["formats"].values()), {FORMAT_COURANT})
         self.assertEqual(sorted(navigateur["octets"]), sorted(serveur.TABLES))
@@ -1453,7 +1530,8 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
         # Ancien écart B : depuis le format 4, l'étape 3→4 complète ordres_travail (astuce puis habilitation_requise,
         # en fin, à leur place du schéma) des deux côtés : mêmes octets.
         navigateur, _ = self.verifier_concordance("melange")
-        self.assertEqual(navigateur["entetes"]["ordres_travail"][-2:], ["astuce", "habilitation_requise"])
+        self.assertEqual(navigateur["entetes"]["ordres_travail"][-5:],
+                         ["astuce", "habilitation_requise"] + COLONNES_AJOUTEES[5]["ordres_travail"])
 
     def test_reserves_a_reprendre_seule_la_place_de_la_colonne_inconnue_differe(self):
         # Jeu canonique (T378) : toutes les tables ont les mêmes octets des deux côtés, sauf controles_reglementaires
@@ -1536,7 +1614,8 @@ class TestConcordanceNavigateur(JeuxEnCopie, CasNavigateur):
                 self.assertEqual(navigateur["formats"][table], 0)
                 self.assertEqual(navigateur["de"], cote_serveur["de"])
                 self.assertEqual(navigateur["journal"], cote_serveur["journal"])
-                # Base au format 3 : l'étape 3→4 s'applique, des deux côtés ; au format 4 (T404) : rien
+                # Base au format 3 : les étapes 3→4 et 4→5 s'appliquent, des deux côtés ; au format 4 : 4→5 ; au
+                # format 5 (T513) : rien
                 self.assertEqual(cote_serveur["journal"],
                                  LIGNES_DE_JOURNAL.get(VERSION_DE_BASE.get(jeu, FORMAT_DES_JEUX), []))
 

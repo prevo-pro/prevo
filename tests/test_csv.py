@@ -717,8 +717,9 @@ class TestPerformance(CasCsv):
                    problemes: resultat.problemes.length, mediane: durees[1], durees: durees,
                    octets: octets.length };
         }""")
-        # 30 colonnes du brief + anomalie_constatee (version 2) + astuce (version 3, lot 6) + un champ de la version 4 : seuil inchangé.
-        self.assertEqual(mesure["colonnes"], 33)
+        # 30 colonnes du brief + anomalie_constatee (version 2) + astuce (version 3, lot 6) + un champ de la version 4
+        # + trois de la version 5 (T513) : seuil inchangé.
+        self.assertEqual(mesure["colonnes"], 36)
         self.assertEqual(mesure["lignes"], 5000)
         self.assertEqual(mesure["problemes"], 0)
         print("\n    analyse de 5 000 lignes × %d colonnes (%d Ko) : médiane %.0f ms (essais : %s)"
