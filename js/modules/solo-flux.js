@@ -107,6 +107,7 @@ const Solo = (() => {
     const faites = [];
     const demandes = await Donnees.rechargerTable('demandes');
     for (const di of demandesAConvertir(demandes)) {
+      if (!moi()) break;                      // passé en équipe entre-temps : plus rien d'automatique
       try {
         const otId = await accepterSansDecision(di.id);
         if (otId) faites.push({ diId: di.id, otId });

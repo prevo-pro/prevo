@@ -418,14 +418,14 @@ class TestParcoursSolo(CasRecetteAssistant):
                          ["accueil-nouvel-ot", "accueil-signaler"])            # « Nouvel OT » en premier
         self.assertIn("Nouvel OT", tel.inner_text("#accueil-nouvel-ot"))
         self.sans_defilement_horizontal("accueil Solo", tel)
-        # Menu allégé : Équipe et Planning ne sont pas dans la barre du bas, mais sous « Plus ».
+        # Sans la couche équipe (T521) : Équipe et Planning ni dans la barre du bas, ni sous « Plus ».
         en_bas = tel.evaluate("[...document.querySelectorAll('#barre-bas a')].map((a) => a.dataset.ecran)")
         self.assertNotIn("equipe", en_bas)
         self.assertNotIn("planning", en_bas)
         tel.click("#btn-plus")
         tel.wait_for_selector("dialog .liste-plus", state="visible")
-        self.assertEqual(tel.locator("dialog .liste-plus a[href='#/equipe']").count(), 1)
-        self.assertEqual(tel.locator("dialog .liste-plus a[href='#/planning']").count(), 1)
+        self.assertEqual(tel.locator("dialog .liste-plus a[href='#/equipe']").count(), 0)
+        self.assertEqual(tel.locator("dialog .liste-plus a[href='#/planning']").count(), 0)
         self.fermer_dialogue(tel)
         capturer(tel, "solo-accueil-375")
 
@@ -474,7 +474,7 @@ class TestParcoursSolo(CasRecetteAssistant):
         self.assertEqual(tel.locator("#ot-clore").count(), 0)                # OT verrouillé
         # Paramètres : mode Solo et clôture en une étape posés par l'assistant ; l'état du serveur (CS130).
         self.aller(tel, "#/parametres", "#carte-acces #acces-contenu[data-lu]")
-        self.assertEqual(tel.locator("#btn-quitter-solo").count(), 1)
+        self.assertEqual(tel.locator("#btn-passer-equipe").count(), 1)      # T521 : carte « Organisation »
         self.assertTrue(tel.is_checked("#form-parametres [name='cloture_une_etape']"))
         self.assertIn("Terminée", tel.inner_text("#acces-installation"))
         self.assertIn("Seulement sur ce PC", tel.inner_text("#acces-portee"))

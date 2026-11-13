@@ -2926,7 +2926,8 @@ def valeur_parametre_csv(config, cle):
     """Valeur d'une clé de parametres.csv (texte, '' si la ligne ou le fichier manque) ; lecture tolérante."""
     for ligne in dictionnaires_csv(lire_octets(chemin_table(config, 'parametres')), 'parametres'):
         if str(ligne.get('cle', '')).strip() == cle:
-            return str(ligne.get('valeur', '')).strip()
+            # T521 : apostrophe de protection retirée (« '1 », écrit par le navigateur, vaut 1).
+            return relire_valeur_texte(str(ligne.get('valeur', '')).strip())
     return ''
 
 
@@ -7182,6 +7183,36 @@ def garder_le_journal_actuel(octets_recus, octets_actuels, profil):
     return ecrire_tableau_csv(entete, gardees + nouvelles)
 
 
+# T521 (lot 1 ergonomie, B) : le retour en Solo (mode_solo de 0 à 1 dans parametres.csv, écrit par le responsable)
+# n'est permis que s'il ne reste aucun autre compte actif de la maintenance (technicien ou responsable) : l'écran le
+# vérifie aussi (Paramètres › Organisation) et nomme les comptes ; ici, le même refus pour un appel direct.
+ROLES_DE_LA_MAINTENANCE = ('technicien', 'responsable')
+
+
+def valeur_de_parametre(octets, cle):
+    """Valeur d'une clé dans les octets d'un parametres.csv ('' si absente ou fichier absent)."""
+    for ligne in dictionnaires_csv(octets, 'parametres'):
+        if str(ligne.get('cle', '')).strip() == cle:
+            return relire_valeur_texte(str(ligne.get('valeur', '')).strip())      # « '1 » écrit par Prévo : 1
+    return ''
+
+
+def verifier_retour_en_solo(config, identite, recus, actuels):
+    """Contrôle d'écriture de parametres.csv par le responsable (controle_d_ecriture) : mode_solo qui passe à 1 alors
+    que d'autres comptes actifs de la maintenance existent ⇒ 400 au message qui les nomme ; sinon les octets reçus."""
+    if valeur_de_parametre(recus, 'mode_solo') != '1' or valeur_de_parametre(actuels, 'mode_solo') == '1':
+        return recus
+    moi = str(identite.get('identifiant') or '')
+    autres = [compte for compte in comptes_du_serveur(config) if compte.get('actif')
+              and compte.get('role') in ROLES_DE_LA_MAINTENANCE and compte.get('identifiant') != moi]
+    if autres:
+        raise ErreurHttp(400, traduisible('solo.autres_comptes',
+                                          'Retour en Solo impossible : d\'autres comptes de la maintenance sont '
+                                          'actifs ({comptes}). Désactivez-les dans Équipe › Accès.',
+                                          comptes=', '.join(sorted(compte['identifiant'] for compte in autres))))
+    return recus
+
+
 def controle_d_ecriture(identite, table, config=None):
     """Contrôle d'un PUT /api/csv/<table> propre au rôle (§22.5), appelé par enregistrer_csv après le contrôle de version
     (un 409 reste un 409) : (octets reçus, octets actuels) → octets à écrire ; None sans contrôle. config : pour la
@@ -7190,6 +7221,8 @@ def controle_d_ecriture(identite, table, config=None):
         return None
     role = role_effectif(identite)
     if role == 'responsable':
+        if table == 'parametres' and config is not None:     # T521 : retour en Solo, un seul compte de la maintenance
+            return lambda recus, actuels: verifier_retour_en_solo(config, identite, recus, actuels)
         return None
     colonnes = COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
 

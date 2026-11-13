@@ -37,6 +37,8 @@ class TestModeSolo(CasNavigateur):
 
     def passer_en_solo(self, prenom="Camille", nom="Soliste", metier="Mécanicien"):
         page = self.page
+        # T521 : « Revenir en Solo » ne passe que sans autre technicien actif ; ici, aucun : la fiche « moi » est créée.
+        page.evaluate("() => Donnees.modifier('techniciens', (l) => { l.forEach((t) => { t.actif = '0'; }); })")
         self.aller("#/parametres", "#btn-passer-solo")
         page.click("#btn-passer-solo")
         page.wait_for_selector("dialog [name='prenom']", state="visible")
@@ -44,7 +46,10 @@ class TestModeSolo(CasNavigateur):
         page.fill("dialog [name='nom']", nom)
         page.fill("dialog [name='metier']", metier)
         page.click("dialog .fenetre-actions .btn-primaire")
-        page.wait_for_selector("#btn-quitter-solo")
+        # T521 : les OT ouverts des techniciens désactivés passent à son nom, après confirmation.
+        page.wait_for_selector("#solo-confirmation")
+        page.click("dialog[open] .btn-primaire")
+        page.wait_for_selector("#btn-passer-equipe")
         self.assertEqual(page.locator("dialog").count(), 0)
         return page.evaluate("Donnees.parametre('solo_technicien_id', '')")
 
@@ -140,12 +145,14 @@ class TestModeSolo(CasNavigateur):
         page.wait_for_function("location.hash === '#/parametres'")
         self.aller("#/equipement/" + EQUIPEMENT, "#parc-creer-ot")
         self.sans_defilement_horizontal()
-        self.aller("#/parametres", "#btn-quitter-solo")
+        self.aller("#/parametres", "#btn-passer-equipe")
         self.sans_defilement_horizontal()
 
         # Quitter le mode Solo : menu rétabli, technicien gardé
         page.set_viewport_size({"width": 1280, "height": 800})
-        page.click("#btn-quitter-solo")
+        page.click("#btn-passer-equipe")
+        page.wait_for_selector("#solo-ensuite")                       # T521 : quoi faire ensuite, avec les liens
+        page.keyboard.press("Escape")
         page.wait_for_selector("#btn-passer-solo")
         self.assertEqual(page.evaluate("Donnees.parametre('mode_solo', '1')"), "0")
         self.assertFalse(page.evaluate("App.modeSolo()"))

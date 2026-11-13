@@ -210,15 +210,22 @@ class TestClotureUneEtape(CasNavigateur):
 
     def test_passer_en_solo_pose_le_reglage(self):
         page = self.ouvrir_demo()
+        # T521 : « Revenir en Solo » ne passe que sans autre technicien actif ; ici, aucun : la fiche « moi » est créée.
+        page.evaluate("() => Donnees.modifier('techniciens', (l) => { l.forEach((t) => { t.actif = '0'; }); })")
         self.aller(page, "#/parametres", "#btn-passer-solo")
         page.click("#btn-passer-solo")
         page.wait_for_selector("dialog [name='prenom']", state="visible")
         page.fill("dialog [name='prenom']", "Camille")
         page.fill("dialog [name='nom']", "Soliste")
         page.click("dialog .fenetre-actions .btn-primaire")
-        page.wait_for_selector("#btn-quitter-solo")
+        # T521 : les OT ouverts des techniciens désactivés passent à son nom, après confirmation.
+        page.wait_for_selector("#solo-confirmation")
+        page.click("dialog[open] .btn-primaire")
+        page.wait_for_selector("#btn-passer-equipe")
         self.assertEqual(page.evaluate("Donnees.parametre('cloture_une_etape', '0')"), "1")
-        page.click("#btn-quitter-solo")
+        page.click("#btn-passer-equipe")
+        page.wait_for_selector("#solo-ensuite")
+        page.keyboard.press("Escape")
         page.wait_for_selector("#btn-passer-solo")
         self.assertEqual(page.evaluate("Donnees.parametre('cloture_une_etape', '0')"), "1")   # laissé tel quel
 

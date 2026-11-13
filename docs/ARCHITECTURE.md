@@ -4713,6 +4713,23 @@ Une seule base de code : tout ce qui suit ne vaut que si `App.modeSolo()` (mode_
   téléphone ». Rien sur l'équipe (ni « À prendre », ni « Reprises récentes »). Aide à l'écran : variante « solo »
   ajoutée par solo-accueil.js à `AideEcransTextes.accueil.profils` (aide-ecrans.js la choisit en Solo).
 
+**Organisation : seul ou en équipe** (T521 ; `js/modules/parametres-solo.js`, carte `#carte-solo` de Paramètres ;
+`tests/test_solo_organisation.py`). En Solo : le technicien « moi », « Ma fiche » (`#solo-ma-fiche` → `#/equipe/<id>`),
+« Accès : QR des opérateurs, accès de la direction » (`#solo-acces` → `#/equipe/acces`, mode serveur) et
+`#btn-passer-equipe` « Passer en équipe » : `mode_solo` = 0, rien d'autre (les OT gardent leur technicien, le compte
+reste responsable, `cloture_une_etape` et `solo_technicien_id` gardés) ; une fenêtre `#solo-ensuite` dit quoi faire
+ensuite (ajouter un technicien, lui créer un accès), avec les liens. En équipe : `#btn-passer-solo` « Revenir en
+Solo », refusé (message `#solo-refus` qui nomme ce qui l'empêche, avec le lien où le régler) s'il reste plus d'un
+technicien actif dans `techniciens.csv`, ou, en mode comptes, un autre compte actif de rôle technicien ou responsable
+(`GET /api/acces/comptes`, le compte de la session excepté). Aucun technicien actif : prénom, nom, métier → technicien
+« moi » (créé, ou repris sous le même nom). Les OT ouverts sans technicien ou au nom d'un technicien inactif passent au
+nom du technicien seul après une confirmation qui les nomme (`#solo-confirmation` ; une écriture d'`ordres_travail`,
+une ligne de prise en charge chacun), puis `mode_solo` = 1, `solo_technicien_id`, `cloture_une_etape` = 1. Côté
+serveur, `parametres.csv` reste écrit par le responsable seul (droits inchangés) ; `controle_d_ecriture` lui ajoute
+`verifier_retour_en_solo` : une écriture qui fait passer `mode_solo` à 1 alors qu'un autre compte actif de la
+maintenance existe est refusée (400 `serveur.solo.autres_comptes`, comptes nommés, rien d'écrit) ; sans comptes (« ce
+PC », dossier, démo), la règle des techniciens actifs est celle de l'écran.
+
 Précisions de T175 (sauvegardes du serveur, `tests/test_sauvegardes_lot7.py`) :
 
 - **Horloge** : nom du jour, nom horodaté, 2 h du matin, minute du plafond et jours sans copie se lisent sur
