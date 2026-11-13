@@ -50,3 +50,25 @@ def _composer(nom, destination, vus):
             (destination / fichier).unlink()
         for fichier in variante.get("vider", []):
             (destination / fichier).write_bytes(b"")
+
+
+def retour_attendu(base, demande):
+    """Oracle du rattrapage des demandes au passage au format 5 (T526), écrit à part de serveur.py et de js/formats.js :
+    base {table: {"entete", "lignes": [{colonne: valeur}]}} d'avant le passage, une ligne de demandes → les champs
+    {statut, mot_technicien, date_reparation, repare_par} que la demande prend, ou None si elle ne change pas.
+    Valeurs simples des jeux (ni apostrophe, ni blancs de bord)."""
+    if demande.get("statut") not in ("Acceptée", "Regroupée"):
+        return None
+    ots = [ot for ot in base.get("ordres_travail", {"lignes": []})["lignes"] if ot.get("id") == demande.get("ot_id")]
+    if not demande.get("ot_id") or not ots:
+        return None
+    ot = ots[0]
+    if ot.get("statut") in ("En cours", "En attente"):
+        return {"statut": "En cours", "mot_technicien": "", "date_reparation": "", "repare_par": ""}
+    if ot.get("statut") not in ("Clôturé techniquement", "Clôturé administrativement"):
+        return None
+    techniciens = [t for t in base.get("techniciens", {"lignes": []})["lignes"]
+                   if ot.get("technicien_id") and t.get("id") == ot.get("technicien_id")]
+    return {"statut": "Réparée", "mot_technicien": "",
+            "date_reparation": ot.get("date_fin") or ot.get("date_cloture_tech") or ot.get("date_cloture_admin") or "",
+            "repare_par": techniciens[0].get("prenom", "") if techniciens else ""}

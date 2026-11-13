@@ -236,7 +236,9 @@ class VerificationsDuPassage:
 
     def verifier_cellules(self, chemin, avant, apres, ajouts):
         """Toute cellule d'origine sous le même nom de colonne et à la même ligne (version_schema mise à part) ; les
-        colonnes ajoutées sont exactement celles attendues, avec leur défaut."""
+        colonnes ajoutées sont exactement celles attendues, avec leur défaut. Sauf (T526, passage au format 5) une
+        demande « Acceptée » ou « Regroupée » qui suit son OT : « En cours » (retour vide) ou « Réparée » (mot vide ;
+        date et prénom comparés au serveur par verifier_parite)."""
         entete_avant, lignes_avant = dictionnaires(avant)
         entete_apres, lignes_apres = dictionnaires(apres)
         self.assertEqual(sorted(entete_apres), sorted(entete_avant + [colonne for colonne, _ in ajouts]), chemin)
@@ -246,6 +248,11 @@ class VerificationsDuPassage:
             attendue = dict(ligne_avant, **{colonne: defaut for colonne, defaut in ajouts})
             if chemin == PARAMETRES and ligne_avant.get("cle") == "version_schema":
                 attendue["valeur"] = "'%d" % FORMAT_COURANT
+            if (chemin == "demandes.csv" and ligne_avant.get("statut") in ("Acceptée", "Regroupée")
+                    and ligne_apres.get("statut") in ("En cours", "Réparée")):
+                attendue["statut"] = ligne_apres["statut"]
+                if ligne_apres["statut"] == "Réparée":
+                    attendue.update({c: ligne_apres.get(c) for c in ("date_reparation", "repare_par")})
             self.assertEqual(ligne_apres, attendue, "%s, ligne %d" % (chemin, numero))
 
     def verifier_ecritures_du_passage(self, nom_jeu, mode, origine, apres, ajoutes_par_le_mode):

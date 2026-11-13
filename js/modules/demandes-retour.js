@@ -14,8 +14,8 @@
 // date_reparation, repare_par) ; il ne lit ni ordres_travail ni techniciens. L'écriture est faite par celui qui
 // change l'OT (technicien ou responsable), dans le même geste, APRÈS l'écriture de l'OT : un échec (demande
 // disparue, fichier verrouillé) ne défait jamais la transition, il est dit par un avertissement.
-// Bases existantes : aucune reprise des demandes déjà « Acceptée » dont l'OT est clos ; elles suivront à la prochaine
-// transition de leur OT (un OT clôturé administrativement n'en a plus : elles restent « Acceptée »).
+// Bases existantes : au passage au format 5, les demandes « Acceptée » ou « Regroupée » dont l'OT est en cours ou
+// clôturé prennent le statut que suivreOt leur aurait donné (même règle, Formats.suiviDesDemandes et serveur.py, T526).
 // Complète l'objet Demandes (chargé juste après demandes-regles.js).
 
 Object.assign(Demandes, (() => {

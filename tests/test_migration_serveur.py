@@ -280,7 +280,9 @@ class CasJeux(unittest.TestCase):
 
     def verifier_table_completee(self, nom, avant, apres, ajouts):
         """Les colonnes d'origine et leurs cellules intactes (champ à champ), les colonnes du format en fin d'en-tête
-        avec leur valeur par défaut dans chaque ligne."""
+        avec leur valeur par défaut dans chaque ligne. Sauf (T526, passage au format 5) une demande « Acceptée » ou
+        « Regroupée » qui suit son OT : statut « En cours » (retour vide) ou « Réparée » (mot vide ; date et prénom
+        vérifiés dans tests/test_formats_serveur.py et tests/test_format5_rattrapage.py)."""
         entete_avant, lignes_avant = lire_table(avant)
         entete_apres, lignes_apres = lire_table(apres)
         self.assertEqual(entete_apres, entete_avant + [colonne for colonne, _ in ajouts], nom)
@@ -288,6 +290,13 @@ class CasJeux(unittest.TestCase):
         largeur = len(entete_avant)
         for numero, (ligne_avant, ligne_apres) in enumerate(zip(lignes_avant, lignes_apres), 2):
             attendue = (ligne_avant + [""] * largeur)[:largeur] + [defaut for _, defaut in ajouts]
+            if nom == "demandes" and "statut" in entete_avant and "repare_par" in entete_apres:
+                position = entete_avant.index("statut")
+                if attendue[position] in ("Acceptée", "Regroupée") and ligne_apres[position] in ("En cours", "Réparée"):
+                    attendue[position] = ligne_apres[position]
+                    if ligne_apres[position] == "Réparée":
+                        for colonne in ("date_reparation", "repare_par"):
+                            attendue[entete_apres.index(colonne)] = ligne_apres[entete_apres.index(colonne)]
             self.assertEqual(ligne_apres, attendue, "%s, ligne %d" % (nom, numero))
         self.assertTrue(apres.startswith(b"\xef\xbb\xbf"), nom)
 

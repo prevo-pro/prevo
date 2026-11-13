@@ -4665,6 +4665,81 @@ def reprendre_observations(base):
     return base
 
 
+# Rattrapage des demandes au passage au format 5 (T526, A4 du lot 1 ergonomie) : miroir de suiviDesDemandes
+# (js/formats.js), même règle que Demandes.suivreOt (js/modules/demandes-retour.js). Une demande « Acceptée » ou
+# « Regroupée » rattachée à un OT (demandes.ot_id) prend le statut que suivreOt lui aurait donné : OT En cours ou
+# En attente → « En cours » ; OT clôturé techniquement ou administrativement → « Réparée », date_reparation = date de
+# fin de l'OT (à défaut date_cloture_tech, puis date_cloture_admin), repare_par = prénom du technicien de l'OT (vide
+# s'il n'en a pas), mot_technicien vide ; sinon rien. Cellules du fichier : identifiants, statuts et dates bords blancs
+# retirés, prénom relu puis réécrit (apostrophe de protection) comme le navigateur l'écrirait.
+STATUTS_DEMANDE_RATTRAPES = ('Acceptée', 'Regroupée')
+STATUTS_OT_EN_COURS = ('En cours', 'En attente')
+STATUTS_OT_REPARE = ('Clôturé techniquement', 'Clôturé administrativement')
+STATUT_DEMANDE_EN_COURS = 'En cours'
+STATUT_DEMANDE_REPAREE = 'Réparée'
+FORMAT_DU_RETOUR = 5
+
+
+def suivi_des_demandes(lignes_ot, lignes_techniciens):
+    """Lignes d'OT et de techniciens ({colonne: cellule}) → fonction(demande) → {champ: cellule} à poser, ou None."""
+    def dictionnaires(lignes):
+        return [ligne for ligne in (lignes if isinstance(lignes, (list, tuple)) else []) if isinstance(ligne, dict)]
+
+    def cellule(ligne, champ):
+        return sans_blancs_js_aux_bords(cellule_de_champ(ligne, champ))
+
+    ots, prenoms = {}, {}
+    for ot in dictionnaires(lignes_ot):
+        ots.setdefault(cellule(ot, 'id'), ot)
+    for technicien in dictionnaires(lignes_techniciens):
+        prenoms.setdefault(cellule(technicien, 'id'),
+                           sans_blancs_js_aux_bords(relire_valeur_texte(cellule_de_champ(technicien, 'prenom'))))
+    ots.pop('', None)
+    prenoms.pop('', None)
+
+    def suivi(demande):
+        if cellule(demande, 'statut') not in STATUTS_DEMANDE_RATTRAPES:
+            return None
+        ot = ots.get(cellule(demande, 'ot_id'))
+        if ot is None:
+            return None
+        statut_ot = cellule(ot, 'statut')
+        if statut_ot in STATUTS_OT_EN_COURS:
+            return {'statut': STATUT_DEMANDE_EN_COURS, 'mot_technicien': '', 'date_reparation': '', 'repare_par': ''}
+        if statut_ot not in STATUTS_OT_REPARE:
+            return None
+        date = next((cellule(ot, champ) for champ in ('date_fin', 'date_cloture_tech', 'date_cloture_admin')
+                     if cellule(ot, champ)), '')
+        return {'statut': STATUT_DEMANDE_REPAREE, 'mot_technicien': '', 'date_reparation': date,
+                'repare_par': ecrire_valeur_texte(prenoms.get(cellule(ot, 'technicien_id'), ''))}
+    return suivi
+
+
+def poser_champs(ligne, champs):
+    """Pose les cellules {champ: cellule} dans la ligne {colonne: cellule} (colonne nommée comme le fichier) ; rend
+    vrai si une cellule a changé."""
+    change = False
+    for champ, valeur in champs.items():
+        colonne = colonne_de_champ(list(ligne), champ) or champ
+        change = change or ligne.get(colonne, '') != valeur
+        ligne[colonne] = valeur
+    return change
+
+
+def rattraper_demandes(base):
+    """Complément de l'étape 4→5 (rattraperDemandes de js/formats.js), appliqué à la base NOUVELLE que rend
+    passer_au_format(base, 5) : les demandes suivent leur OT ; sans demandes ni OT (une table seule), rien. Modifie la
+    COPIE reçue."""
+    if 'demandes' not in base or 'ordres_travail' not in base:
+        return base
+    suivi = suivi_des_demandes(base['ordres_travail']['lignes'], base.get('techniciens', {}).get('lignes', []))
+    for ligne in base['demandes']['lignes']:
+        champs = suivi(ligne) if isinstance(ligne, dict) else None
+        if champs:
+            poser_champs(ligne, champs)
+    return base
+
+
 class EtapeDeFormat:
     """Une étape du registre : de N à N+1, sa description, et appliquer(base) → nouvelle base (pure, idempotente) :
     passer_au_format, puis le complément propre à l'étape s'il y en a un, appliqué à la nouvelle base."""
@@ -4698,7 +4773,9 @@ ETAPES_FORMAT = (
     EtapeDeFormat(4, 5, 'Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, '
                         'demandes.date_reparation, demandes.repare_par, ordres_travail.cause_precision, '
                         'ordres_travail.remede_precision et ordres_travail.prises_en_charge en fin de table (vides) ; '
-                        'statuts de demande « En cours » et « Réparée » ; aucune valeur existante changée.'),
+                        'statuts de demande « En cours » et « Réparée » ; les demandes acceptées ou regroupées '
+                        'suivent leur OT (En cours, ou Réparée avec la date de fin et le prénom du technicien), aucune '
+                        'autre valeur changée.', rattraper_demandes),
 )
 
 
@@ -5549,6 +5626,8 @@ def etat_copie_externe_public(config):
 #   3 bis. si le passage comprend l'étape qui crée reserves_controle (3→4) : les observations des contrôles sans
 #      réserve y sont reprises (reserves_du_passage, D183), décidées sur l'état lu au démarrage ; la table, créée ou
 #      complétée d'un coup, compte parmi les fichiers complétés de cette étape (console, journal) ;
+#   3 ter. si le passage comprend l'étape 4→5 : les demandes « Acceptée » ou « Regroupée » dont l'OT est en cours ou
+#      clôturé le suivent (demandes_du_passage, T526), écrites avec demandes.csv ;
 #   4. puis version_schema (parametres.csv, créé s'il manque) ; 5. puis une ligne de journal par étape (journal.csv),
 #      mêmes textes que le navigateur. Un fichier tenu par un autre programme (Excel, 423) arrête le passage : ce qui
 #      est écrit l'est en entier, version_schema n'avance pas, le démarrage suivant reprend (étapes idempotentes ;
@@ -5874,6 +5953,34 @@ def reserves_du_passage(lus, laissees):
     return entete, lignes
 
 
+def demandes_du_passage(lus, laissees):
+    """Phase « 3 ter » du passage (T526 ; rattraperDemandesSuivantLeurOt de js/donnees.js), sur l'état lu au
+    démarrage : (en-tête, lignes) de demandes.csv au format courant, ses demandes acceptées ou regroupées ayant suivi
+    leur OT (suivi_des_demandes), ou None si aucune ne change. Rien si demandes ou ordres_travail est absente, vide,
+    laissée ou abîmée ; techniciens illisible : prénoms vides. Idempotente."""
+    def relisible(table):
+        return table in lus and not lus[table]['vide'] and table not in laissees and not lus[table]['pertes']
+
+    if not relisible('demandes') or not relisible('ordres_travail'):
+        return None
+    lu = lus['demandes']
+    if lu['format'] < VERSION_SCHEMA_CSV:
+        entete, lignes = table_au_format_courant('demandes', lu)
+    else:
+        entete = list(lu['entete'])
+        lignes = [cellules_alignees(cellules, len(entete)) for cellules in lu['lignes']]
+    suivi = suivi_des_demandes(lignes_en_dictionnaires(lus['ordres_travail']),
+                               lignes_en_dictionnaires(lus['techniciens']) if relisible('techniciens') else [])
+    change = False
+    for position, cellules in enumerate(lignes):
+        ligne = dict(zip(entete, cellules))
+        champs = suivi(ligne)
+        if champs and poser_champs(ligne, champs):
+            change = True
+            lignes[position] = [ligne[colonne] for colonne in entete]
+    return (entete, lignes) if change else None
+
+
 def noms_de_fichiers(tables):
     """« a.csv, b.csv » pour un message de la console."""
     return ', '.join(table + '.csv' for table in tables)
@@ -5982,9 +6089,19 @@ def passer_les_fichiers_au_format_courant(config, etat, public, suivi):
     reprise = reserves_du_passage(lus, laissees) if etape_des_reserves else None
     if reprise and TABLE_DES_RESERVES not in etape_des_reserves['tables']:
         etape_des_reserves['tables'].append(TABLE_DES_RESERVES)
+    # 3 ter. Si le passage comprend l'étape 4→5 : les demandes acceptées ou regroupées suivent leur OT (T526) ;
+    # demandes.csv est alors écrit avec ce rattrapage (et compte parmi les tables de cette étape).
+    etape_des_demandes = next((etape for etape in etapes if etape['vers'] == FORMAT_DU_RETOUR), None)
+    rattrapees = demandes_du_passage(lus, laissees) if etape_des_demandes else None
+    if rattrapees and 'demandes' not in etape_des_demandes['tables']:
+        etape_des_demandes['tables'].append('demandes')
+    if rattrapees and 'demandes' not in a_ecrire:
+        a_ecrire = [table for table in TABLES if table in a_ecrire or table == 'demandes']
     for table in a_ecrire + ([TABLE_DES_RESERVES] if reprise else []) + (['parametres'] if version_a_ecrire else []):
         if table == 'parametres':
             entete, lignes = parametres_au_format_courant(parametres)         # 4. version_schema
+        elif table == 'demandes' and rattrapees:
+            entete, lignes = rattrapees                                         # 3 ter. les demandes suivent leur OT
         elif table in a_ecrire:
             entete, lignes = table_au_format_courant(table, lus[table])
         else:

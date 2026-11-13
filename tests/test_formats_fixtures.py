@@ -32,7 +32,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jeux_formats import DOSSIER_JEUX, JEUX, copier_jeu, lire_variante
+from jeux_formats import DOSSIER_JEUX, JEUX, copier_jeu, lire_variante, retour_attendu
 
 RACINE = Path(__file__).resolve().parent.parent
 GENERATEUR = RACINE / "outils" / "generer_fixtures_formats.py"
@@ -318,8 +318,9 @@ class TestJeux(unittest.TestCase):
         # 27 tables, chacune aux colonnes exactes du format 4, base au format 4 : rien à reprendre (CTR-0004 a sa
         # réserve) ; relue et réécrite par le serveur, chaque table redonne ses octets. Depuis le format 5 (T513) :
         # format_du_fichier 4 pour demandes et ordres_travail (colonnes du format 5 absentes), 5 pour les autres ; le
-        # passage 4→5 ajoute les colonnes du format 5, vides, en fin, et ne change aucune valeur (12 demandes
-        # « Acceptée » qui le restent).
+        # passage 4→5 ajoute les colonnes du format 5, vides, en fin, et ne change aucune autre valeur que le retour
+        # des 5 demandes « Acceptée » dont l'OT est clôturé (T526 : « Réparée », date de fin, prénom du technicien ;
+        # les 7 autres renvoient à un OT absent du jeu).
         dossier = self.jeu(JEU_F4)
         fichiers = {c.stem: c.read_bytes() for c in sorted(dossier.glob("*.csv"))}
         self.assertEqual(sorted(fichiers), sorted(serveur.tables_du_format(4)))
@@ -342,11 +343,14 @@ class TestJeux(unittest.TestCase):
                 if table == "parametres":
                     continue
                 self.assertEqual(migree[table]["entete"], base[table]["entete"] + ajoutees)
+                retours = [(retour_attendu(base, l) if table == "demandes" else None) or {}
+                           for l in base[table]["lignes"]]
                 self.assertEqual([{c: l[c] for c in base[table]["entete"]} for l in migree[table]["lignes"]],
-                                 base[table]["lignes"])
-                self.assertEqual({l[c] for l in migree[table]["lignes"] for c in ajoutees}, set() if not ajoutees
-                                 else {""})
-        self.assertEqual({l["statut"] for l in migree["demandes"]["lignes"]}, {"Acceptée"})
+                                 [dict(l, **{c: v for c, v in r.items() if c == "statut"})
+                                  for l, r in zip(base[table]["lignes"], retours)])
+                self.assertEqual([{c: l[c] for c in ajoutees} for l in migree[table]["lignes"]],
+                                 [{c: r.get(c, "") for c in ajoutees} for r in retours])
+        self.assertEqual([l["statut"] for l in migree["demandes"]["lignes"]], ["Réparée"] * 5 + ["Acceptée"] * 7)
         self.assertEqual(serveur.version_de_base(migree["parametres"]["lignes"]), 5)
         self.assertEqual(serveur.reserves_reprises(base["controles_reglementaires"]["lignes"],
                                                    base["reserves_controle"]["lignes"]), [])

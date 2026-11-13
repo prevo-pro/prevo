@@ -307,7 +307,9 @@ class CasFormats(CasNavigateur):
 
     def verifier_cellules_gardees(self, nom_fichier, avant, apres):
         """Toute cellule du fichier d'origine se retrouve, sous le même nom de colonne et à la même ligne ; les
-        colonnes ajoutées portent leur valeur par défaut ; seule la valeur de version_schema peut changer."""
+        colonnes ajoutées portent leur valeur par défaut ; seule la valeur de version_schema peut changer, et (T526,
+        passage au format 5) le statut d'une demande « Acceptée » ou « Regroupée » qui suit son OT : « En cours »
+        (retour vide) ou « Réparée » (mot vide ; date et prénom comparés au serveur par tests/test_recette_format4.py)."""
         entete_avant, lignes_avant = lire_table(avant)
         entete_apres, lignes_apres = lire_table(apres)
         ajoutees = [nom for nom in entete_apres if nom not in entete_avant]
@@ -319,6 +321,11 @@ class CasFormats(CasNavigateur):
             self.assertEqual(len(lignes_apres), len(lignes_avant), nom_fichier + " : nombre de lignes")
         for numero, ligne_avant in enumerate(lignes_avant):
             ligne_apres = lignes_apres[numero]
+            suit_son_ot = repare = False
+            if nom_fichier == "demandes.csv" and "statut" in entete_avant and "repare_par" in entete_apres:
+                suit_son_ot = (cellule(ligne_avant, entete_avant.index("statut")) in ("Acceptée", "Regroupée")
+                               and cellule(ligne_apres, entete_apres.index("statut")) in ("En cours", "Réparée"))
+                repare = cellule(ligne_apres, entete_apres.index("statut")) == "Réparée"
             for position, nom in enumerate(entete_avant):
                 if not nom.strip():
                     continue
@@ -326,9 +333,13 @@ class CasFormats(CasNavigateur):
                 attendu = cellule(ligne_avant, position)
                 if nom_fichier == "parametres.csv" and nom == "valeur" and cellule(ligne_avant, 0) == "version_schema":
                     attendu = "'%d" % FORMAT_COURANT
+                if suit_son_ot and nom == "statut":
+                    continue
                 self.assertEqual(cellule(ligne_apres, entete_apres.index(nom)), attendu,
                                  "%s, ligne %d, colonne %s" % (nom_fichier, numero + 2, nom))
             for nom in ajoutees:
+                if suit_son_ot and repare and nom in ("date_reparation", "repare_par"):
+                    continue
                 self.assertEqual(cellule(ligne_apres, entete_apres.index(nom)), DEFAUTS[nom],
                                  "%s, ligne %d, colonne ajoutée %s" % (nom_fichier, numero + 2, nom))
 
@@ -675,6 +686,18 @@ class TestDossierPassage(CasFormats):
             if table_en_panne != "reserves_controle":
                 self.assertEqual(repris[RESERVES], interrompu[RESERVES])
             for fichier in TABLES_DU_FORMAT_4 - {"parametres.csv"}:
+                if fichier == "demandes.csv" and table_en_panne == "reserves_controle":
+                    # T526 : passage arrêté avant que les demandes suivent leur OT (phase 3 ter) : la reprise le fait,
+                    # sans rien changer d'autre que statut, date_reparation et repare_par.
+                    entete_i, lignes_i = lire_table(interrompu[fichier])
+                    entete_r, lignes_r = lire_table(repris[fichier])
+                    self.assertEqual(entete_r, entete_i)
+                    gardees = [i for i, nom in enumerate(entete_i)
+                               if nom not in ("statut", "date_reparation", "repare_par")]
+                    self.assertEqual([[l[i] for i in gardees] for l in lignes_r],
+                                     [[l[i] for i in gardees] for l in lignes_i])
+                    self.assertIn("Réparée", [l[entete_r.index("statut")] for l in lignes_r])
+                    continue
                 self.assertEqual(repris[fichier], interrompu[fichier], fichier + " réécrit à la reprise")
             self.assertEqual(version_schema(repris["parametres.csv"]), str(FORMAT_COURANT))
             sauvegardes = sorted({c.split("/")[1] for c in repris if c.startswith("sauvegardes/")

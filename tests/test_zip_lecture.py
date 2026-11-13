@@ -333,7 +333,9 @@ class CasZip(CasNavigateur):
 
     def verifier_cellules_gardees(self, nom_fichier, avant, apres):
         """Toute cellule du fichier d'origine se retrouve, sous le même nom de colonne et à la même ligne ; les
-        colonnes ajoutées portent leur valeur par défaut ; seule la valeur de version_schema change (format courant)."""
+        colonnes ajoutées portent leur valeur par défaut ; seule la valeur de version_schema change (format courant),
+        et (T526, passage au format 5) le statut d'une demande « Acceptée » ou « Regroupée » qui suit son OT : « En
+        cours » (retour vide) ou « Réparée » (mot vide ; date et prénom : tests/test_format5_rattrapage.py)."""
         entete_avant, lignes_avant = lire_table(avant)
         entete_apres, lignes_apres = lire_table(apres)
         ajoutees = [nom for nom in entete_apres if nom not in entete_avant]
@@ -345,6 +347,11 @@ class CasZip(CasNavigateur):
             self.assertEqual(len(lignes_apres), len(lignes_avant), nom_fichier + " : nombre de lignes")
         for numero, ligne_avant in enumerate(lignes_avant):
             ligne_apres = lignes_apres[numero]
+            suit_son_ot = repare = False
+            if nom_fichier == "demandes.csv" and "statut" in entete_avant and "repare_par" in entete_apres:
+                suit_son_ot = (cellule(ligne_avant, entete_avant.index("statut")) in ("Acceptée", "Regroupée")
+                               and cellule(ligne_apres, entete_apres.index("statut")) in ("En cours", "Réparée"))
+                repare = cellule(ligne_apres, entete_apres.index("statut")) == "Réparée"
             for position, nom in enumerate(entete_avant):
                 if not nom.strip():
                     continue
@@ -352,9 +359,13 @@ class CasZip(CasNavigateur):
                 attendu = cellule(ligne_avant, position)
                 if nom_fichier == "parametres.csv" and nom == "valeur" and cellule(ligne_avant, 0) == "version_schema":
                     attendu = "'%d" % FORMAT_COURANT
+                if suit_son_ot and nom == "statut":
+                    continue
                 self.assertEqual(cellule(ligne_apres, entete_apres.index(nom)), attendu,
                                  "%s, ligne %d, colonne %s" % (nom_fichier, numero + 2, nom))
             for nom in ajoutees:
+                if suit_son_ot and repare and nom in ("date_reparation", "repare_par"):
+                    continue
                 self.assertEqual(cellule(ligne_apres, entete_apres.index(nom)), DEFAUTS[nom],
                                  "%s, ligne %d, colonne ajoutée %s" % (nom_fichier, numero + 2, nom))
 

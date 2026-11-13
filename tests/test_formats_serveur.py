@@ -65,7 +65,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from commun import NB_TABLES, RACINE, CasNavigateur, charger_scripts  # noqa: E402
-from jeux_formats import JEUX, copier_jeu  # noqa: E402
+from jeux_formats import JEUX, copier_jeu, retour_attendu  # noqa: E402
 
 
 def charger_serveur():
@@ -118,8 +118,9 @@ DESCRIPTION_FORMAT_4 = (
 DESCRIPTION_FORMAT_5 = (
     "Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, demandes.date_reparation, "
     "demandes.repare_par, ordres_travail.cause_precision, ordres_travail.remede_precision et "
-    "ordres_travail.prises_en_charge en fin de table (vides) ; statuts de demande « En cours » et « Réparée » ; aucune "
-    "valeur existante changée.")
+    "ordres_travail.prises_en_charge en fin de table (vides) ; statuts de demande « En cours » et « Réparée » ; les "
+    "demandes acceptées ou regroupées suivent leur OT (En cours, ou Réparée avec la date de fin et le prénom du "
+    "technicien), aucune autre valeur changée.")
 # Format des fichiers de chaque jeu et format de la base (version_schema) ; les autres jeux : format 3 (2.0 et 2.1).
 FORMAT_DES_JEUX = 3
 FORMAT_DES_FICHIERS = {"f1": 1, "f2-v1.1.0": 2, "f4-v2.2.0": 4, "plus-recent": 5, "f4-windows-1252": 4,
@@ -360,7 +361,8 @@ def chemin_serveur(fichiers):
 
 
 def ecarts_de_cellules(avant, apres):
-    """Cellules d'origine perdues ou modifiées (sauf la valeur de parametres.version_schema, que l'étape pose)."""
+    """Cellules d'origine perdues ou modifiées (sauf la valeur de parametres.version_schema, que l'étape pose, et le
+    statut d'une demande acceptée ou regroupée qui suit son OT au passage au format 5, T526)."""
     ecarts = []
     for table, contenu in avant.items():
         if table not in apres:
@@ -372,6 +374,9 @@ def ecarts_de_cellules(avant, apres):
         for numero, (ligne, ligne_apres) in enumerate(zip(contenu["lignes"], lignes_apres), start=1):
             for colonne, valeur in ligne.items():
                 if table == "parametres" and colonne == "valeur" and ligne.get("cle") == "version_schema":
+                    continue
+                if (table == "demandes" and colonne == "statut" and valeur in ("Acceptée", "Regroupée")
+                        and ligne_apres.get(colonne) in ("En cours", "Réparée")):
                     continue
                 if colonne not in ligne_apres or ligne_apres[colonne] != valeur:
                     ecarts.append("%s ligne %d, %s : %r devenu %r" % (table, numero, colonne, valeur,
@@ -614,8 +619,13 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
                         nouvelles = [c for c in serveur.COLONNES_PAR_TABLE[table] if c not in entete_avant]
                         self.assertEqual(contenu["entete"], entete_avant + nouvelles)     # nouvelles en fin
                         defauts = serveur.DEFAUTS_DES_CHAMPS.get(table, {})
-                        for ligne in contenu["lignes"]:
-                            self.assertEqual({c: ligne[c] for c in nouvelles}, {c: defauts.get(c, "") for c in nouvelles})
+                        for ligne, ligne_avant in zip(contenu["lignes"], avant[table]["lignes"]):
+                            attendu = {c: defauts.get(c, "") for c in nouvelles}
+                            retour = retour_attendu(avant, ligne_avant) if table == "demandes" else None
+                            if retour:              # T526 : la demande suit son OT (statut vérifié à part)
+                                attendu.update({c: v for c, v in retour.items() if c in nouvelles})
+                                self.assertEqual(ligne["statut"], retour["statut"])
+                            self.assertEqual({c: ligne[c] for c in nouvelles}, attendu)
                         ajoutees = [c for f in range(de + 1, FORMAT_COURANT + 1)
                                     for c in COLONNES_AJOUTEES[f].get(table, [])]
                         self.assertEqual(nouvelles[len(nouvelles) - len(ajoutees):], ajoutees)
@@ -727,8 +737,9 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
     def test_f4_au_demarrage_du_serveur_passe_au_format_5(self):
         """f4-v2.2.0 (T513) : migrer_donnees_au_demarrage sur une copie (console interceptée) : départ au format 4,
         une sauvegarde avant-format-v5 aux octets d'origine, seuls demandes, ordres_travail, parametres et journal
-        réécrits ; colonnes du format 5 vides en fin, toutes les cellules d'origine gardées (12 demandes « Acceptée »
-        qui le restent), une ligne de journal « passage au format 5 du fichier »."""
+        réécrits ; colonnes du format 5 en fin, toutes les cellules d'origine gardées sauf le statut des 5 demandes
+        « Acceptée » dont l'OT est clôturé (les 7 autres renvoient à un OT absent du jeu), qui passent « Réparée » avec la date de fin et le prénom du technicien de
+        l'OT (T526) ; une ligne de journal « passage au format 5 du fichier »."""
         with tempfile.TemporaryDirectory(prefix="prevo-formats-serveur-f4-") as temporaire:
             dossier = copier_jeu("f4-v2.2.0", Path(temporaire) / "donnees")
             config = serveur.Configuration(str(dossier), [])
@@ -751,15 +762,25 @@ class TestRegistreServeur(JeuxEnCopie, unittest.TestCase):
                         self.assertNotEqual(apres[chemin], octets)
                     else:
                         self.assertEqual(apres[chemin], octets)
+            base_avant = {chemin[:-4]: table_de_base(octets) for chemin, octets in avant.items()
+                          if chemin.endswith(".csv") and "/" not in chemin}
             for table, ajoutees in COLONNES_AJOUTEES[5].items():
                 with self.subTest(table=table):
-                    origine = table_de_base(avant[table + ".csv"])
+                    origine = base_avant[table]
                     passee = table_de_base(apres[table + ".csv"])
                     self.assertEqual(passee["entete"], origine["entete"] + ajoutees)
-                    self.assertEqual([{c: l[c] for c in origine["entete"]} for l in passee["lignes"]],
-                                     origine["lignes"])
-                    self.assertEqual({l[c] for l in passee["lignes"] for c in ajoutees}, {""})
-            self.assertEqual({l["statut"] for l in table_de_base(apres["demandes.csv"])["lignes"]}, {"Acceptée"})
+                    for ligne, ligne_avant in zip(passee["lignes"], origine["lignes"]):
+                        retour = (retour_attendu(base_avant, ligne_avant) if table == "demandes" else None) or {}
+                        self.assertEqual({c: ligne[c] for c in origine["entete"]},
+                                         dict(ligne_avant, **{c: v for c, v in retour.items() if c == "statut"}))
+                        self.assertEqual({c: ligne[c] for c in ajoutees},
+                                         {c: retour.get(c, "") for c in ajoutees})
+                    self.assertEqual(len(passee["lignes"]), len(origine["lignes"]))
+            demandes = table_de_base(apres["demandes.csv"])["lignes"]
+            # DI-2025-0001 à 0005 : OT clôturés ; les suivantes renvoient à des OT absents du jeu (restent acceptées)
+            self.assertEqual([l["statut"] for l in demandes], ["Réparée"] * 5 + ["Acceptée"] * 7)
+            self.assertEqual((demandes[0]["date_reparation"], demandes[0]["repare_par"], demandes[0]["mot_technicien"]),
+                             ("2025-09-25 14:51", "Julien", ""))
             self.assertIn(b"version_schema;'5", apres["parametres.csv"])
             self.assertIn("passage au format 5 du fichier".encode("utf-8"), apres["journal.csv"])
 

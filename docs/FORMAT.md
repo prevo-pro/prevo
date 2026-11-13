@@ -101,7 +101,7 @@ La source de vérité est l'attribut `depuisVersion` dans [js/schema.js](../js/s
   (rejouée, elle ne change rien) et **additive** : elle ajoute des colonnes en fin de table ou des tables, et
   pose `version_schema`. Les colonnes et tables inconnues sont gardées telles quelles. Les étapes 1→2, 2→3 et 4→5 ne
   créent que des tables ou des colonnes vides ; **l'étape 3→4 crée aussi une table et la remplit** (voir « Reprise des
-  observations »). Règle nouvelle : une étape peut remplir ce qu'elle crée, à condition de rester additive (rien
+  observations ») ; **l'étape 4→5 fait suivre leur OT aux demandes acceptées** (voir « Pour le passage 4→5 »). Règle nouvelle : une étape peut remplir ce qu'elle crée, à condition de rester additive (rien
   d'existant n'est changé ni retiré) et idempotente.
 - **Reprise des observations (étape 3→4, D183)** : avant la 2.2, les réserves d'un contrôle réglementaire étaient un
   texte libre, `controles_reglementaires.observations` (une réserve par ligne), avec `observations_levees`. L'étape
@@ -146,9 +146,13 @@ La source de vérité est l'attribut `depuisVersion` dans [js/schema.js](../js/s
 
   Pour le passage 4→5, dans cet ordre : la sauvegarde `avant-format-v5` ; `demandes.csv` et `ordres_travail.csv`
   (s'ils sont présents et lisibles), réécrits avec les trois colonnes du format 5, vides, en fin ; puis
-  `parametres.csv` (`version_schema` à 5) et la ligne de journal « passage au format 5 du fichier ». Aucune cellule
-  existante ne change : une demande « Acceptée » le reste, et aucune demande ne passe « En cours » ni « Réparée » par
-  le passage. Une base au format 3 enchaîne 3→4 puis 4→5 après une seule sauvegarde, `avant-format-v5`.
+  `parametres.csv` (`version_schema` à 5) et la ligne de journal « passage au format 5 du fichier ». Une seule sorte
+  de cellule existante change (T526) : le statut d'une demande « Acceptée » ou « Regroupée » rattachée (`ot_id`) à un
+  OT en cours ou en attente devient « En cours » ; à un OT clôturé (techniquement ou administrativement), « Réparée »,
+  avec `date_reparation` = date de fin de l'OT (à défaut sa date de clôture technique, puis administrative),
+  `repare_par` = prénom du technicien de l'OT (vide s'il n'en a pas) et `mot_technicien` vide. OT créé, préparé,
+  planifié ou annulé, OT absent : rien. Même règle que l'écran à chaque transition d'un OT ; rejouée, elle ne change
+  plus rien ; une base déjà au format 5 n'est pas reprise. Une base au format 3 enchaîne 3→4 puis 4→5 après une seule sauvegarde, `avant-format-v5`.
 
   Seule différence entre les deux modes : la **sauvegarde du jour** (`AAAA-MM-JJ`, §8), qui n'appartient pas au
   passage. Quand elle n'existe pas encore, le serveur la fait au démarrage **après** le passage (elle a les fichiers

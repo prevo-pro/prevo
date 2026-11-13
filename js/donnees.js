@@ -1924,6 +1924,31 @@ const Donnees = (() => {
     });
   }
 
+  // Phase « 3 ter » du passage, si celui-ci comprend l'étape 4→5 (T526, A4) : les demandes « Acceptée » ou
+  // « Regroupée » suivent leur OT (Formats.suiviDesDemandes, même règle que l'étape et que serveur.py), écrites par
+  // le chemin habituel (modifier : conflit → table relue et règle réappliquée), sans ligne de journal par demande
+  // (le passage a la sienne). Rien si demandes ou ordres_travail est absente, abîmée, ou si demandes n'est pas au
+  // format courant (laissée telle quelle). Idempotente. Rend le nombre de demandes changées.
+  const FORMAT_DU_RETOUR = 5;
+  async function rattraperDemandesSuivantLeurOt() {
+    for (const nomTable of ['demandes', 'ordres_travail']) {
+      const entree = entreeDe(nomTable);
+      if (entree.absente || entree.abime || Formats.formatDuFichier(nomTable, entree.entete) === 0) { return 0; }
+    }
+    if (Formats.formatDuFichier('demandes', entreeDe('demandes').entete) < Schema.version) { return 0; }
+    const techniciens = entreeDe('techniciens');
+    const suivi = Formats.suiviDesDemandes(entreeDe('ordres_travail').lignes,
+      techniciens.absente || techniciens.abime ? [] : techniciens.lignes);
+    return modifier('demandes', (lignes) => {
+      let changees = 0;
+      for (const ligne of lignes) {
+        const champs = suivi(ligne);
+        if (champs) { Object.assign(ligne, champs); changees += 1; }
+      }
+      return changees;
+    }, { journal: false });
+  }
+
   // Passage au format courant (mode dossier et démo, D168). Sans effet (rien n'est écrit) en mode serveur, en
   // lecture seule, sur une base vide ou déjà au format courant ; idempotent : un second appel n'écrit rien.
   //   0. parametres.csv abîmé (sauf démo) : ErreurFichierAbime et RIEN n'est écrit, pas même la sauvegarde (T204) ;
@@ -1936,6 +1961,8 @@ const Donnees = (() => {
   //   3 bis. si le passage comprend l'étape qui crée reserves_controle (3→4) : les observations des contrôles sans
   //      réserve y sont reprises (reprendreObservationsEnReserves) ; la table, créée ou complétée, compte parmi les
   //      tables de cette étape (journal, résultat). Avant 4 : version_schema au format 4 ⇒ reprise faite ;
+  //   3 ter. si le passage comprend l'étape 4→5 : les demandes « Acceptée » ou « Regroupée » suivent leur OT
+  //      (rattraperDemandesSuivantLeurOt, T526) ;
   //   4. parametres.version_schema, décidé sur les lignes FRAÎCHES (rien si un autre poste l'a déjà mis) ;
   //   5. une ligne de journal par étape (table parametres, ligne version_schema) : « passage au format N du
   //      fichier ; sauvegarde … faite juste avant » (texte relu par la suggestion S4) ; pour une étape qui ne fait
@@ -1990,6 +2017,13 @@ const Donnees = (() => {
     if (etapeDesReserves && await reprendreObservationsEnReserves()) {
       if (!etapeDesReserves.tables.includes(TABLE_DES_RESERVES)) { etapeDesReserves.tables.push(TABLE_DES_RESERVES); }
       resultat.tables.push(TABLE_DES_RESERVES);
+    }
+
+    // 3 ter. Les demandes suivent leur OT (T526), après les tables complétées et avant version_schema.
+    const etapeDesDemandes = etapes.find((etape) => etape.vers === FORMAT_DU_RETOUR);
+    if (etapeDesDemandes && await rattraperDemandesSuivantLeurOt() > 0 && !resultat.tables.includes('demandes')) {
+      if (!etapeDesDemandes.tables.includes('demandes')) { etapeDesDemandes.tables.push('demandes'); }
+      resultat.tables.push('demandes');
     }
 
     // 4. Puis version_schema, décidée sur les lignes FRAÎCHES (modifier relit la table en cas de conflit et

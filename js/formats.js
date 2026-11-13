@@ -391,6 +391,61 @@ const Formats = (function () {
     return base;
   }
 
+  // Rattrapage des demandes au passage au format 5 (T526, A4 du lot 1 ergonomie) : avant le format 5, une demande
+  // restait « Acceptée » quoi que devienne son OT. Au passage, une demande « Acceptée » ou « Regroupée » rattachée à
+  // un OT (demandes.ot_id, la règle de rattachement de Demandes.suivreOt, js/modules/demandes-retour.js) prend le
+  // statut que suivreOt lui aurait donné : OT En cours ou En attente → « En cours » ; OT clôturé techniquement ou
+  // administrativement → « Réparée », date_reparation = date de fin de l'OT (à défaut sa date de clôture technique,
+  // puis administrative), repare_par = PRÉNOM du technicien de l'OT (vide s'il n'en a pas), mot_technicien vide ;
+  // OT Créé, Préparé, Planifié ou Annulé, OT introuvable, autres statuts de demande : rien. Fonction PURE et
+  // idempotente (une demande « En cours » ou « Réparée » n'est plus touchée) : lignes d'OT et de techniciens telles
+  // qu'en mémoire → fonction(demande) → les champs à poser, ou null. Miroir : suivi_des_demandes de serveur.py.
+  const STATUTS_DEMANDE_RATTRAPES = ['Acceptée', 'Regroupée'];
+  const STATUTS_OT_EN_COURS = ['En cours', 'En attente'];
+  const STATUTS_OT_REPARE = ['Clôturé techniquement', 'Clôturé administrativement'];
+  function suiviDesDemandes(lignesOt, lignesTechniciens) {
+    const ots = new Map();
+    for (const ot of lignesObjets(lignesOt)) {
+      const id = enTexte(ot.id).trim();
+      if (id !== '' && !ots.has(id)) { ots.set(id, ot); }
+    }
+    const prenoms = new Map();
+    for (const technicien of lignesObjets(lignesTechniciens)) {
+      const id = enTexte(technicien.id).trim();
+      if (id !== '' && !prenoms.has(id)) { prenoms.set(id, enTexte(technicien.prenom).trim()); }
+    }
+    return function (demande) {
+      if (!demande || !STATUTS_DEMANDE_RATTRAPES.includes(enTexte(demande.statut).trim())) { return null; }
+      const ot = ots.get(enTexte(demande.ot_id).trim());
+      if (!ot) { return null; }
+      const statutOt = enTexte(ot.statut).trim();
+      if (STATUTS_OT_EN_COURS.includes(statutOt)) {
+        return { statut: 'En cours', mot_technicien: '', date_reparation: '', repare_par: '' };
+      }
+      if (!STATUTS_OT_REPARE.includes(statutOt)) { return null; }
+      const date = [ot.date_fin, ot.date_cloture_tech, ot.date_cloture_admin].map(function (valeur) {
+        return enTexte(valeur).trim();
+      }).find(Boolean) || '';
+      return { statut: 'Réparée', mot_technicien: '', date_reparation: date,
+        repare_par: prenoms.get(enTexte(ot.technicien_id).trim()) || '' };
+    };
+  }
+
+  // Complément de l'étape 4→5, appliqué à la base NOUVELLE que rend passerAuFormat(base, 5) : les demandes de la
+  // copie suivent leur OT (suiviDesDemandes) ; sans demandes ni OT dans la base (passage d'une table seule), rien.
+  // Modifie la COPIE reçue.
+  function rattraperDemandes(base) {
+    const demandes = base.tables.demandes;
+    const ots = base.tables.ordres_travail;
+    if (!demandes || !ots) { return base; }
+    const suivi = suiviDesDemandes(ots.lignes, base.tables.techniciens ? base.tables.techniciens.lignes : []);
+    for (const ligne of lignesObjets(demandes.lignes)) {
+      const champs = suivi(ligne);
+      if (champs) { Object.assign(ligne, champs); }
+    }
+    return base;
+  }
+
   // Une étape du registre : de N à N+1, une description, et sa fonction pure appliquer(base) → nouvelle base
   // (passerAuFormat, puis le complément propre à l'étape s'il y en a un, appliqué à la nouvelle base).
   function etape(de, vers, description, complement) {
@@ -422,7 +477,9 @@ const Formats = (function () {
     etape(4, 5, 'Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, '
       + 'demandes.date_reparation, demandes.repare_par, ordres_travail.cause_precision, '
       + 'ordres_travail.remede_precision et ordres_travail.prises_en_charge en fin de table (vides) ; '
-      + 'statuts de demande « En cours » et « Réparée » ; aucune valeur existante changée.'),
+      + 'statuts de demande « En cours » et « Réparée » ; les demandes acceptées ou regroupées suivent leur OT '
+      + '(En cours, ou Réparée avec la date de fin et le prénom du technicien), aucune autre valeur changée.',
+    rattraperDemandes),
   ]);
 
   // Ligne de journal d'une étape : texte exact relu par la suggestion S4.
@@ -577,6 +634,7 @@ const Formats = (function () {
     ETAPES: ETAPES,
     migrer: migrer,
     reservesReprises: reservesReprises,                    // reprise des observations en réserves (D183, étape 3→4)
+    suiviDesDemandes: suiviDesDemandes,                    // les demandes suivent leur OT (T526, étape 4→5)
     COMMENTAIRE_LEVEE_REPRISE: COMMENTAIRE_LEVEE_REPRISE,  // commentaire de levée des réserves reprises levées
     manifeste: manifeste,
   };

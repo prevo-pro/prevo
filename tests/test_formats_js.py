@@ -47,7 +47,7 @@ import unittest
 from pathlib import Path
 
 from commun import NB_TABLES, RACINE, CasNavigateur, charger_scripts
-from jeux_formats import JEUX, copier_jeu
+from jeux_formats import JEUX, copier_jeu, retour_attendu
 
 SCRIPTS = ["js/lib/papaparse.min.js", "js/schema.js", "js/formats.js", "js/donnees.js"]
 BOM = b"\xef\xbb\xbf"
@@ -86,8 +86,9 @@ DESCRIPTION_FORMAT_4 = (
 DESCRIPTION_FORMAT_5 = (
     "Format 5 (version 2.2, après la bêta 1) : colonnes demandes.mot_technicien, demandes.date_reparation, "
     "demandes.repare_par, ordres_travail.cause_precision, ordres_travail.remede_precision et "
-    "ordres_travail.prises_en_charge en fin de table (vides) ; statuts de demande « En cours » et « Réparée » ; aucune "
-    "valeur existante changée.")
+    "ordres_travail.prises_en_charge en fin de table (vides) ; statuts de demande « En cours » et « Réparée » ; les "
+    "demandes acceptées ou regroupées suivent leur OT (En cours, ou Réparée avec la date de fin et le prénom du "
+    "technicien), aucune autre valeur changée.")
 
 # Format des fichiers de chaque jeu et format de la base (version_schema) ; les autres jeux : format 3 (2.0 et 2.1).
 FORMAT_DES_JEUX = 3
@@ -504,7 +505,8 @@ class TestFormats(CasNavigateur):
         }""", {"fichiers": self.fichiers[jeu], "vers": vers})
 
     def ecarts_de_cellules(self, avant, apres):
-        """Cellules d'origine perdues ou modifiées (sauf parametres.version_schema, que la migration pose)."""
+        """Cellules d'origine perdues ou modifiées (sauf parametres.version_schema, que la migration pose, et le statut
+        d'une demande acceptée ou regroupée qui suit son OT au passage au format 5, T526)."""
         ecarts = []
         for table, contenu in avant["tables"].items():
             if table not in apres["tables"]:
@@ -516,6 +518,9 @@ class TestFormats(CasNavigateur):
             for numero, (ligne, ligne_apres) in enumerate(zip(contenu["lignes"], lignes_apres), start=1):
                 for colonne, valeur in ligne.items():
                     if table == "parametres" and colonne == "valeur" and ligne.get("cle") == "version_schema":
+                        continue
+                    if (table == "demandes" and colonne == "statut" and valeur in ("Acceptée", "Regroupée")
+                            and ligne_apres.get(colonne) in ("En cours", "Réparée")):
                         continue
                     if ligne_apres.get(colonne) != valeur:
                         ecarts.append("%s ligne %d, %s : %r devenu %r" % (table, numero, colonne, valeur,
@@ -553,9 +558,13 @@ class TestFormats(CasNavigateur):
                         entete_avant = avant["tables"][table]["entete"]
                         nouvelles = [c for c in schema[table]["colonnes"] if c not in entete_avant]
                         self.assertEqual(contenu["entete"], entete_avant + nouvelles)
-                        for ligne in contenu["lignes"]:
-                            self.assertEqual({c: ligne[c] for c in nouvelles},
-                                             {c: schema[table]["defauts"][c] for c in nouvelles})
+                        for ligne, ligne_avant in zip(contenu["lignes"], avant["tables"][table]["lignes"]):
+                            attendu = {c: schema[table]["defauts"][c] for c in nouvelles}
+                            retour = retour_attendu(avant["tables"], ligne_avant) if table == "demandes" else None
+                            if retour:              # T526 : la demande suit son OT (statut vérifié à part)
+                                attendu.update({c: v for c, v in retour.items() if c in nouvelles})
+                                self.assertEqual(ligne["statut"], retour["statut"])
+                            self.assertEqual({c: ligne[c] for c in nouvelles}, attendu)
                         self.assertEqual(r["formats"][table], FORMAT_COURANT)
                 self.assertEqual(sorted(apres["tables"]), sorted(schema))
                 # Chaque jeu tiré de la démo a un contrôle à observations (CTR-0004) : une réserve au moins ; f1 n'a
@@ -641,8 +650,9 @@ class TestFormats(CasNavigateur):
     def test_f4_rien_a_reprendre_passe_au_format_5(self):
         """f4-v2.2.0 (T394) : base au format 4, 27 tables ; aucune réserve à reprendre (CTR-0004 a la sienne) ;
         l'étape 3→4 rejouée (fonction pure) rend les mêmes tables. Depuis T513 : migrer applique la seule étape 4→5,
-        qui ajoute les colonnes du format 5 vides en fin de demandes et d'ordres_travail et ne change aucune valeur
-        (les 12 demandes « Acceptée » le restent)."""
+        qui ajoute les colonnes du format 5 en fin de demandes et d'ordres_travail ; seules changent les 5 demandes
+        « Acceptée » dont l'OT est clôturé : « Réparée », date de fin et prénom du technicien de l'OT (T526 ; les 7
+        autres renvoient à un OT absent du jeu)."""
         r = self.evaluer("""(fichiers) => {
           const base = baseDesFichiers(fichiers);
           const avant = JSON.stringify(base);
@@ -653,7 +663,8 @@ class TestFormats(CasNavigateur):
             reprises: Formats.reservesReprises(base.tables.controles_reglementaires.lignes,
               base.tables.reserves_controle.lignes),
             rejouee: JSON.stringify(Formats.ETAPES[2].appliquer(base).tables) === JSON.stringify(base.tables),
-            avant: { demandes: base.tables.demandes, ordres_travail: base.tables.ordres_travail },
+            avant: { demandes: base.tables.demandes, ordres_travail: base.tables.ordres_travail,
+              techniciens: base.tables.techniciens },
             apres: { demandes: t.demandes, ordres_travail: t.ordres_travail },
             autres: Object.keys(t).filter((n) => !['demandes', 'ordres_travail', 'parametres'].includes(n))
               .every((n) => JSON.stringify(t[n]) === JSON.stringify(base.tables[n])),
@@ -671,12 +682,19 @@ class TestFormats(CasNavigateur):
             with self.subTest(table=table):
                 avant, apres = r["avant"][table], r["apres"][table]
                 self.assertEqual(apres["entete"], avant["entete"] + ajoutees)
-                self.assertEqual(apres["lignes"], [dict(l, **{c: "" for c in ajoutees}) for l in avant["lignes"]])
-        self.assertEqual({l["statut"] for l in r["apres"]["demandes"]["lignes"]}, {"Acceptée"})
+                base_avant = {"ordres_travail": r["avant"]["ordres_travail"], "techniciens": r["avant"]["techniciens"]}
+                self.assertEqual(apres["lignes"], [dict(l, **dict({c: "" for c in ajoutees},
+                                                                  **((retour_attendu(base_avant, l) or {})
+                                                                     if table == "demandes" else {})))
+                                                   for l in avant["lignes"]])
+        demandes = r["apres"]["demandes"]["lignes"]
+        self.assertEqual([l["statut"] for l in demandes], ["Réparée"] * 5 + ["Acceptée"] * 7)
+        self.assertEqual((demandes[0]["date_reparation"], demandes[0]["repare_par"], demandes[0]["mot_technicien"]),
+                         ("2025-09-25 14:51", "Julien", ""))
 
     def test_f5_rien_a_migrer_ni_a_reprendre(self):
         """f5-v2.2.0 (T513) : base au format 5, 27 tables ; migrer rend la base telle quelle ; aucune réserve à reprendre
-        (CTR-0004 a la sienne) ; l'étape 4→5 rejouée (fonction pure) rend les mêmes tables ; statut « Réparée » et
+        (CTR-0004 a la sienne) ; l'étape 4→5 rejouée sur sa propre sortie ne change plus rien ; statut « Réparée » et
         prises_en_charge sur deux lignes lus tels quels."""
         r = self.evaluer("""(fichiers) => {
           const base = baseDesFichiers(fichiers);
@@ -686,7 +704,8 @@ class TestFormats(CasNavigateur):
             tables: Object.keys(base.tables).sort(), nomsTables: Schema.nomsTables().slice().sort(),
             reprises: Formats.reservesReprises(base.tables.controles_reglementaires.lignes,
               base.tables.reserves_controle.lignes),
-            rejouee: JSON.stringify(Formats.ETAPES[3].appliquer(base).tables) === JSON.stringify(base.tables),
+            rejouee: JSON.stringify(Formats.ETAPES[3].appliquer(Formats.ETAPES[3].appliquer(base)).tables)
+              === JSON.stringify(Formats.ETAPES[3].appliquer(base).tables),
             reserves: base.tables.reserves_controle.lignes.map((l) => [l.id, l.controle_id, l.levee, l.date_levee]),
             reparee: base.tables.demandes.lignes[0],
             prises: base.tables.ordres_travail.lignes.find((l) => l.id === 'OT-2025-0002').prises_en_charge };

@@ -90,6 +90,11 @@ CONSTANTES_HORS_CODES = {
     'ETAPES_FORMAT': 'registre des formats (même texte que js/formats.js), jamais montré par le serveur',
     'COMMENTAIRE_LEVEE_REPRISE': 'donnée (D156) : commentaire_levee de reserves_controle.csv écrit par la reprise des '
                                  'observations (D183), même texte que js/formats.js',
+    'STATUTS_DEMANDE_RATTRAPES': 'valeurs stockées des listes (D155) : rattrapage des demandes au format 5 (T526)',
+    'STATUTS_OT_EN_COURS': 'valeurs stockées des listes (D155) : rattrapage des demandes au format 5 (T526)',
+    'STATUTS_OT_REPARE': 'valeurs stockées des listes (D155) : rattrapage des demandes au format 5 (T526)',
+    'STATUT_DEMANDE_EN_COURS': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
+    'STATUT_DEMANDE_REPAREE': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
     'POLITIQUE_CONTENU': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_PORTE': 'technique : en-tête Content-Security-Policy',
 }

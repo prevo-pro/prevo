@@ -64,7 +64,7 @@ from pathlib import Path
 from commun import (RACINE, CasNavigateur, ServeurPrevo, ServeurStatique, attendre_pret, installer_dossier_simule,
                     preregler_profil, url_fichier)
 from commun import FORMAT_COURANT, FORMAT_PLUS_RECENT, NB_TABLES, format_du_jeu
-from jeux_formats import copier_jeu
+from jeux_formats import copier_jeu, retour_attendu
 from test_formats_js import COLONNES_AJOUTEES, DEFAUTS_AJOUTES, TABLES_AJOUTEES
 from test_zip_lecture import MIO, meme_crc32_autre_contenu, octets_pseudo_aleatoires
 
@@ -761,14 +761,17 @@ class TestServeur(CasImport):
                 self.assertRegex(lignes.pop()["action"], r"^import ZIP : prevo-export-2025-10-01\.zip, " + str(NB_TABLES) + r" tables, "
                                                          r"0 document ; sauvegarde .*_avant-import-zip faite juste avant$")
             self.assertEqual(len(lignes), len(lignes_f2), table)
+            base_f2 = {t: {"lignes": lire_csv(f2[t + ".csv"])[1]} for t in ("ordres_travail", "techniciens")}
             for rang, (ligne, ligne_f2) in enumerate(zip(lignes, lignes_f2)):
+                # T526 : une demande acceptée dont l'OT est clôturé suit son OT au passage au format 5
+                retour = (retour_attendu(base_f2, ligne_f2) if table == "demandes" else None) or {}
                 for colonne in entete_f2:
                     if table == "parametres" and ligne_f2["cle"] == "version_schema":
                         continue
-                    self.assertEqual(sans_apostrophe(ligne[colonne]), sans_apostrophe(ligne_f2[colonne]),
+                    self.assertEqual(sans_apostrophe(ligne[colonne]), retour.get(colonne, sans_apostrophe(ligne_f2[colonne])),
                                      "%s ligne %d colonne %s" % (table, rang + 2, colonne))
                 for colonne in nouvelles:
-                    self.assertEqual(ligne[colonne], DEFAUTS_AJOUTES[colonne], (table, rang, colonne))
+                    self.assertEqual(ligne[colonne], retour.get(colonne, DEFAUTS_AJOUTES[colonne]), (table, rang, colonne))
 
     def test_serveur_colonnes_inconnues_du_zip_gardees(self):
         # Jeu colonnes-en-trop : colonne_maison au milieu d'equipements.csv, note_maison à la fin. Remplacer la table

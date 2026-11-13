@@ -767,9 +767,11 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   `motif_decision` et par `di_id` de l'OT). L'écriture (`Demandes.suivreOt`) est faite par celui qui change l'OT
   (technicien ou responsable), **après** l'écriture de l'OT, dans le même geste (`Ordres.changerStatut`,
   `Ordres.clore`) : elle ne lève jamais (demande disparue, `demandes.csv` verrouillé : avertissement, la transition
-  reste faite). Bases existantes : aucune reprise des DI déjà `Acceptée` dont l'OT est clos (elles suivront à la
-  prochaine transition de leur OT ; celles d'un OT clôturé administrativement restent `Acceptée`) ; la démo garde ses
-  DI `Acceptée`. Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
+  reste faite). Bases existantes (T526) : au passage au format 5, une DI `Acceptée` ou `Regroupée` rattachée à un OT
+  prend le statut que `suivreOt` lui aurait donné (OT En cours ou En attente → `En cours` ; OT clôturé → `Réparée`,
+  date de fin de l'OT, prénom de son technicien, mot vide ; autres OT : inchangée) — `Formats.suiviDesDemandes`
+  (complément de l'étape 4→5, phase 3 ter de `Donnees.migrerAuFormatCourant`) et `suivi_des_demandes` de `serveur.py`
+  (même règle) ; une base déjà au format 5 n'est pas reprise ; la démo garde ses DI `Acceptée`. Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
   ne regardent que `Acceptée` : une acceptation écrit toujours `di_id`, seul un import sans `di_id` y passe.
   Le bloc « Vos dernières demandes sur cette machine » relit les tables à son affichage (au plus toutes les 5 s) :
   un téléphone resté sur la page (QR reflashé dans le même onglet) voit le retour sans attendre la surveillance.
@@ -5301,8 +5303,8 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
 - **`ordres_travail`**, en fin de table : `cause_precision` et `remede_precision` (texte : le champ libre de
   « Autre (préciser) »), `prises_en_charge` (texte_long : une ligne par prise ou reprise de l'OT,
   `date_heure|technicien_id|technicien_precedent_id`, le dernier vide pour une première prise).
-- **Étape 4→5** (`etape(4, 5, …)` et `EtapeDeFormat(4, 5, …)`, même description) : colonnes ajoutées vides, aucune
-  valeur existante changée (une demande « Acceptée » le reste) ; sauvegarde `avant-format-v5` dans les deux modes
+- **Étape 4→5** (`etape(4, 5, …)` et `EtapeDeFormat(4, 5, …)`, même description) : colonnes ajoutées vides ; seules
+  changent les demandes « Acceptée » ou « Regroupée » dont l'OT est en cours ou clôturé, qui le suivent (T526, §22) ; sauvegarde `avant-format-v5` dans les deux modes
   (`MOTIFS_SAUVEGARDE` de `serveur.py` et de `js/stockage-dossier.js`). La démo naît au format 5.
 - **Serveur** : une demande ajoutée par un demandeur ou un appareil enrôlé (`verifier_demande_nouvelle`) doit avoir
   le statut `Nouvelle` et `mot_technicien`, `date_reparation`, `repare_par` vides (`CHAMPS_DU_RETOUR`), comme les
