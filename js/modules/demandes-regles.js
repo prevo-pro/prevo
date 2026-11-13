@@ -15,10 +15,11 @@
 //   Demandes.accepter(diId, { priorite, motifPriorite, type })  → identifiant de l'OT
 //   Demandes.regrouper(diId, otId), Demandes.differer(diId, motif), Demandes.refuser(diId, motif)
 //
-// Le module est découpé en cinq fichiers, chargés dans cet ordre par index.html (ARCHITECTURE.md
+// Le module est découpé en six fichiers, chargés dans cet ordre par index.html (ARCHITECTURE.md
 // §14.2, décision D28 : 700 lignes au plus par fichier) :
 //   demandes-regles.js      CE FICHIER, qui crée l'objet Demandes :
 //                             1. Constantes et règles pures (matrice RG2)   2. Libellés partagés
+//   demandes-retour.js      Retour vers l'opérateur (A4) : le statut suit l'OT, mot du technicien, dernières demandes
 //   demandes-ecritures.js   3. Écritures (Donnees.modifier)   4. Photo : nom du fichier
 //   demandes-signaler.js    5. Écran « Signaler un problème » (#/di/nouvelle) et confirmation
 //   demandes-liste.js       6. Liste des demandes (#/di)
@@ -41,7 +42,8 @@ const Demandes = (() => {
   // 1. Constantes et règles pures
   // ===========================================================================================
 
-  const STATUTS = ['Nouvelle', 'Acceptée', 'Regroupée', 'Différée', 'Refusée'];
+  // « En cours » et « Réparée » (format 5, A4) : la demande suit son OT (demandes-retour.js), jamais une décision.
+  const STATUTS = ['Nouvelle', 'Acceptée', 'En cours', 'Réparée', 'Regroupée', 'Différée', 'Refusée'];
   const STATUTS_A_TRAITER = ['Nouvelle', 'Différée'];          // décision encore possible (RG1)
   const STATUTS_OT_FERMES = ['Clôturé techniquement', 'Clôturé administrativement', 'Annulé'];
   const PRIORITES = ['P1', 'P2', 'P3', 'P4'];

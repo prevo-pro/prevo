@@ -30,6 +30,7 @@ Lancer depuis la racine du projet :
 import csv
 import hashlib
 import http.client
+import io
 import importlib.util
 import json
 import shutil
@@ -384,6 +385,41 @@ class TestEnrolement(CasAppareils):
                          [("Téléphone ou tablette Android", "Léa Martin", True), ("iPhone", "Paul Essai", True)])
         self.assertTrue(all("empreinte" not in a for a in liste))
         self.verifier_aucun_secret()
+
+    def test_retour_vers_l_operateur_lu_jamais_ecrit_par_l_appareil(self):
+        """T517 (A4) : l'appareil enrôlé lit le retour de la réparation dans demandes.csv seulement ; il ne peut ni
+        passer une demande existante à « Réparée », ni y écrire un mot, ni en ajouter une déjà « Réparée » (403)."""
+        cookie, _ = self.appareil(nom="Laure Petit")
+        chemin = self.donnees / "demandes.csv"
+        lu = self.client.requete("GET", "/api/csv/demandes", cookie=cookie)
+        self.assertEqual(lu.statut, 200, lu.octets)
+        octets = chemin.read_bytes()
+        self.assertEqual(lu.octets, octets)
+        lignes = [ligne for ligne in csv.reader(io.StringIO(octets.decode("utf-8-sig"), newline=""), delimiter=";")
+                  if ligne]
+        entete = lignes[0]
+        for colonne in ("statut", "mot_technicien", "date_reparation", "repare_par"):
+            self.assertIn(colonne, entete)
+        for table in ("ordres_travail", "techniciens", "ot_temps"):
+            with self.subTest(lecture=table):
+                self.assertEqual(self.client.requete("GET", "/api/csv/" + table, cookie=cookie).statut, 403)
+        rang = next(i for i, ligne in enumerate(lignes) if i and ligne[entete.index("statut")] == "Acceptée")
+        for champ, valeur in (("statut", "Réparée"), ("mot_technicien", "Réparé, vous pouvez redémarrer")):
+            with self.subTest(modification=champ):
+                forgees = [list(ligne) for ligne in lignes]
+                forgees[rang][entete.index(champ)] = valeur
+                sortie = io.StringIO(newline="")
+                csv.writer(sortie, delimiter=";", lineterminator="\r\n").writerows(forgees)
+                corps = octets[:3] + sortie.getvalue().encode("utf-8")
+                reponse = self.client.requete("PUT", "/api/csv/demandes", corps, cookie=cookie,
+                                              entetes={"X-Version-Attendue": lu.entetes["x-version"]})
+                self.assertEqual(reponse.statut, 403, reponse.octets)
+                self.assertIn("la demande " + lignes[rang][0] + " existe déjà", reponse.json()["erreur"])
+                self.assertEqual(chemin.read_bytes(), octets)
+        nouvelle = self.ligne_de_demande(77, "Laure Petit").decode("utf-8").replace(";Nouvelle;", ";Réparée;")
+        ajout = self.client.requete("POST", "/api/csv/demandes/ajout", nouvelle.encode("utf-8"), cookie=cookie)
+        self.assertEqual(ajout.statut, 403, ajout.octets)
+        self.assertEqual(chemin.read_bytes(), octets)
 
     def test_invitation_inconnue_mal_formee_expiree_ou_revoquee(self):
         jeton = self.inviter()["jeton"]

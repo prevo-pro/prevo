@@ -1059,19 +1059,20 @@ const Donnees = (() => {
     const indexOrdres = entreeDe('ordres_travail').index;
     const indexDemandes = entreeDe('demandes').index;
     for (const demande of entreeDe('demandes').lignes) {
-      if (demande.statut !== 'Acceptée') { continue; }
+      // « En cours » et « Réparée » (format 5, A4) : une demande acceptée qui suit son OT, qui doit donc exister.
+      if (!['Acceptée', 'En cours', 'Réparée'].includes(demande.statut)) { continue; }
       if (demande.ot_id === '') {
         resultat.push(probleme('erreur', 'incoherence', 'demandes', null, demande.id, 'ot_id', '',
-          I18n.t('socle.controler_coherence.demande_acceptee_mais_aucun', { id: (demande.id || I18n.t('socle.controler_coherence.sans_identifiant')) })));
+          I18n.t('socle.controler_coherence.demande_acceptee_mais_aucun', { id: (demande.id || I18n.t('socle.controler_coherence.sans_identifiant')), statut: Schema.libelleValeur('demandes', 'statut', demande.statut) })));
       } else if (!indexOrdres.has(demande.ot_id)) {
         resultat.push(probleme('erreur', 'incoherence', 'demandes', null, demande.id, 'ot_id', demande.ot_id,
-          I18n.t('socle.controler_coherence.demande_acceptee_mais_ordre', { id: (demande.id || I18n.t('socle.controler_coherence.sans_identifiant')), ot_id: demande.ot_id })));
+          I18n.t('socle.controler_coherence.demande_acceptee_mais_ordre', { id: (demande.id || I18n.t('socle.controler_coherence.sans_identifiant')), ot_id: demande.ot_id, statut: Schema.libelleValeur('demandes', 'statut', demande.statut) })));
       }
     }
     for (const ordre of entreeDe('ordres_travail').lignes) {
       if (ordre.di_id === '') { continue; }
       const demande = indexDemandes.get(ordre.di_id);
-      if (demande && demande.statut !== 'Acceptée' && demande.statut !== 'Regroupée') {
+      if (demande && !['Acceptée', 'Regroupée', 'En cours', 'Réparée'].includes(demande.statut)) {
         // Cas d'une acceptation interrompue (l'OT est créé avant la DI, §5.3) : accepter de nouveau
         // la demande réutilise cet OT. Pas bloquant, d'où « attention ».
         resultat.push(probleme('attention', 'incoherence', 'ordres_travail', null, ordre.id, 'di_id', ordre.di_id,

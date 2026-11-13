@@ -460,6 +460,10 @@ Object.assign(Parc, (() => {
       else UI.$('.parc-complements', conteneur).before(carteGaranties);
     }
 
+    // A4 : l'opérateur qui flashe le QR voit ses dernières demandes sur cette machine, sous « Signaler ».
+    const dernieres = Demandes.blocDernieresDemandes(equipement.id);
+    if (dernieres) UI.$('.parc-actions', conteneur).after(dernieres);
+
     const zone = UI.$('.parc-complements', conteneur);
     zone.appendChild(carteArticles(equipement));
     zone.appendChild(carteHistoriqueOt(equipement));

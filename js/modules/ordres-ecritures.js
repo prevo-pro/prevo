@@ -151,12 +151,15 @@ Object.assign(Ordres, (() => {
   /**
    * Change le statut d'un OT (RG3). Dans la fonction de mutation : le statut lu doit être encore
    * `statutAttendu` (sinon l'OT a bougé sur un autre poste) et le passage est revérifié.
-   * complement : { motif_attente } ou { motif_annulation }. Renvoie le statut atteint.
+   * complement : { motif_attente } ou { motif_annulation } (et { mot_operateur } à la clôture technique, A4).
+   * Renvoie le statut atteint.
    * Vers « Planifié », RG8 refuse sauf dérogation : options { passerOutreHabilitation, motifDerogation }.
    * Après une clôture technique réussie d'un OT de gamme : mise à jour de la gamme (RG5).
    */
   async function changerStatut(otId, statutAttendu, cible, complement, options) {
     const statut = await ecrireStatut(otId, statutAttendu, cible, complement, options);
+    // A4 : les demandes rattachées suivent l'OT (mot pour l'opérateur : complement.mot_operateur) ; ne lève jamais.
+    if (typeof Demandes !== 'undefined') await Demandes.suivreOt(otId, statutAttendu, (complement || {}).mot_operateur);
     if (statut === 'Clôturé techniquement') await mettreAJourGamme(otId);
     // Lot 6 (§20.5, D104) : l'OT verrouillé entre dans la file du wiki ; un échec n'annule pas la clôture (message).
     if (statut === 'Clôturé administrativement' && typeof Wiki !== 'undefined') await Wiki.mettreEnFile([otId], { annoncer: true });
@@ -367,6 +370,7 @@ Object.assign(Ordres, (() => {
       + ' — statut ' + statutAttendu + ' → Clôturé techniquement');
     await Donnees.journaliser('ordres_travail', actuel.id, 'modification : statut, date_cloture_admin'
       + ' — statut Clôturé techniquement → Clôturé administrativement');
+    if (typeof Demandes !== 'undefined') await Demandes.suivreOt(actuel.id, statutAttendu, valeurs.mot_operateur);   // A4
     await mettreAJourGamme(actuel.id);                                       // RG5, comme changerStatut
     if (typeof Wiki !== 'undefined') await Wiki.mettreEnFile([actuel.id], { annoncer: true });   // §20.5, D104
     return 'Clôturé administrativement';

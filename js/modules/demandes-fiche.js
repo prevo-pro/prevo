@@ -16,6 +16,11 @@ Object.assign(Demandes, (() => {
   // ===========================================================================================
 
   function texteSuivi(demande) {
+    // A4 : l'opérateur lit des mots d'atelier ; « En cours » et « Réparée » suivent l'OT (demandes-retour.js).
+    if (App.estDemandeur() || ['En cours', 'Réparée'].includes(demande.statut)) {
+      const phrase = Demandes.phraseSuivi(demande);
+      if (phrase) return phrase;
+    }
     switch (demande.statut) {
       case 'Nouvelle': return I18n.t('demandes.texte_suivi.attente_decision_responsable_maintenance');
       case 'Acceptée': return I18n.t('demandes.texte_suivi.acceptee_ordre_travail_ete');
@@ -47,7 +52,7 @@ Object.assign(Demandes, (() => {
         <div>
           <div class="fil">${I18n.html('demandes.fiche.demandes_demande_id', { demandeId: demande.id })}</div>
           <h1>${demande.symptome || demande.id}</h1>
-          <p class="di-entete-badges"><b>${demande.id}</b> ${UI.badgeValeur('demandes', 'statut', demande.statut)} ${UI.badgePriorite(priorite)} ${badgeImpact(demande.impact)}</p>
+          <p class="di-entete-badges"><b>${demande.id}</b> ${Demandes.badgeStatut(demande)} ${UI.badgePriorite(priorite)} ${badgeImpact(demande.impact)}</p>
         </div>
       </div>
       <div class="di-zone-securite"></div>
@@ -75,8 +80,9 @@ Object.assign(Demandes, (() => {
         <aside class="c4 di-cote">
           <article class="carte di-suivi">
             <h2>${I18n.t('demandes.fiche.suivi')}</h2>
-            <p>${UI.badgeValeur('demandes', 'statut', demande.statut)} ${texteSuivi(demande)}</p>
+            <p>${Demandes.badgeStatut(demande)} ${texteSuivi(demande)}</p>
             <dl class="valeurs">
+              ${Demandes.suiviRetour(demande)}
               ${demande.date_decision ? UI.html`<dt>${I18n.t('demandes.fiche.decision')}</dt><dd>${UI.dateHeureFr(demande.date_decision)}</dd>` : ''}
               ${demande.motif_decision ? UI.html`<dt>${I18n.t('demandes.fiche.motif')}</dt><dd class="di-motif-fiche">${demande.motif_decision}</dd>` : ''}
               ${demande.ot_id ? UI.html`<dt>${I18n.t('demandes.fiche.ordre_travail')}</dt><dd>${lienOt(demande.ot_id)}

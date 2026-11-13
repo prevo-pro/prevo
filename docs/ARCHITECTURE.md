@@ -247,7 +247,8 @@ Identifiants (calculés **dans** la fonction de mutation, §5.3) :
 | parametres | clé = `cle` | | journal | `J-AAAAMMJJHHMMSS-XXXX` (horodaté + 4 caractères aléatoires) |
 
 Valeurs canoniques des listes (accents compris) :
-- DI `statut` : `Nouvelle`, `Acceptée`, `Regroupée`, `Différée`, `Refusée` ; `impact` :
+- DI `statut` : `Nouvelle`, `Acceptée`, `En cours`, `Réparée`, `Regroupée`, `Différée`, `Refusée` (`En cours` et
+  `Réparée` : format 5, la demande suit son OT, RG1) ; `impact` :
   `sécurité`, `arrêt`, `dégradé`, `gêne`.
 - OT `statut` : `Créé`, `Préparé`, `Planifié`, `En cours`, `En attente`,
   `Clôturé techniquement`, `Clôturé administrativement`, `Annulé` ; `origine` : `DI`,
@@ -752,6 +753,23 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
 - **RG1** DI : `Nouvelle` → `Acceptée` (crée un OT, `ot_id` renseigné) · `Regroupée`
   (rattachée à un OT ouvert du même équipement) · `Différée` · `Refusée` (motif obligatoire,
   visible du demandeur). Une DI `Différée` peut ensuite être acceptée, regroupée ou refusée.
+  **Cycle d'une demande qui suit son OT** (T517, A4 du lot 1 ergonomie ; `js/modules/demandes-retour.js`) : une DI
+  `Acceptée` ou `Regroupée` (`ot_id` renseigné) suit l'OT : elle reste `Acceptée` (ou `Regroupée`) tant que l'OT est
+  Créé, Préparé ou Planifié, passe `En cours` quand l'OT passe En cours (et le reste pendant En attente : l'opérateur
+  lit « En cours », le motif d'attente est une donnée de l'OT qu'il ne lit pas), puis `Réparée` à la clôture technique
+  (ou à « Clore », §22.11) avec `date_reparation` = date de fin de l'OT, `repare_par` = **prénom** du technicien de l'OT
+  (`techniciens.prenom` ; vide s'il n'y en a pas, jamais le nom ni l'identifiant) et `mot_technicien` = le « mot pour
+  l'opérateur » facultatif saisi à la clôture (300 caractères, une ligne, avec la dictée). OT rouvert → `En cours`, les
+  trois champs du retour effacés ; OT annulé → la DI reprend `Acceptée` si l'OT a été créé pour elle (`di_id`),
+  `Regroupée` sinon (jamais dite réparée) ; la clôture administrative après la clôture technique ne réécrit rien.
+  Toutes les DI rattachées suivent, la regroupée comme celle d'origine (le regroupement reste lisible par
+  `motif_decision` et par `di_id` de l'OT). L'écriture (`Demandes.suivreOt`) est faite par celui qui change l'OT
+  (technicien ou responsable), **après** l'écriture de l'OT, dans le même geste (`Ordres.changerStatut`,
+  `Ordres.clore`) : elle ne lève jamais (demande disparue, `demandes.csv` verrouillé : avertissement, la transition
+  reste faite). Bases existantes : aucune reprise des DI déjà `Acceptée` dont l'OT est clos (elles suivront à la
+  prochaine transition de leur OT ; celles d'un OT clôturé administrativement restent `Acceptée`) ; la démo garde ses
+  DI `Acceptée`. Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
+  ne regardent que `Acceptée` : une acceptation écrit toujours `di_id`, seul un import sans `di_id` y passe.
 - **RG2** priorité = matrice criticité × impact ; `sécurité` → P1 et bandeau rouge.
 
   | Criticité \ Impact | gêne | dégradé | arrêt |
@@ -1486,7 +1504,7 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   ```
   apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
-  demandes-regles.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
+  demandes-regles.js  demandes-retour.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
   ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js
   ordres-impression.js  ordres-habilitations.js  ordres-prise.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
@@ -4005,6 +4023,15 @@ ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne
 | `POST /api/installation/<etape>` | non | non | non | oui | non |
 
 Tables du demandeur : `localisations`, `equipements`, `demandes`, `compteurs`, `releves`, `codes_defaillance`, `parametres`, `wiki_pages`.
+
+Retour vers l'opérateur (T517, A4 ; droits inchangés) : tout ce que le demandeur et l'appareil enrôlé lisent du retour
+d'une réparation est dans `demandes.csv` (`statut`, `mot_technicien`, `date_reparation`, `repare_par` = prénom du
+technicien seul) : ni `ordres_travail`, ni `techniciens`, ni `ot_temps`, aucun coût ni compte rendu technique. Le
+serveur ne filtre pas les lignes de `demandes` (il ne sait pas qui a écrit une demande : `demandeur` est un nom libre) ;
+« ses demandes » est une règle d'écran, la même qu'avant (nom du profil : `Mes demandes`, accueil du demandeur, bloc
+« Vos dernières demandes sur cette machine »). En écriture, rien ne change : le demandeur et l'appareil n'ajoutent
+qu'une demande `Nouvelle` au retour vide (`verifier_demande_nouvelle`, T513) et ne modifient aucune ligne existante
+(`garder_les_demandes_actuelles` : 403) ; la Direction n'écrit rien ; le technicien écrit `demandes` comme avant.
 
 Rôle « direction » (T520, correction A7 de l'étude d'ergonomie : le patron n'avait le choix qu'entre trop de droits et
 rien) : **lecture seule**. Elle lit `TABLES_DE_LA_DIRECTION` (toutes sauf `habilitations`, `wiki_pages`, `wiki_journal`)

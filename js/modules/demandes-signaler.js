@@ -76,6 +76,7 @@ Object.assign(Demandes, (() => {
           <h1>${I18n.t('demandes.nouvelle.signaler_probleme')}</h1>
           <p>${I18n.t('demandes.nouvelle.cinq_questions_minute_responsable')}</p>
         </div></div>
+        <div class="di-dernieres-zone"></div>
         <div class="di-brouillon"></div>
         <div class="di-origine"></div>
         <div class="di-alerte-equipement"></div>
@@ -173,8 +174,17 @@ Object.assign(Demandes, (() => {
         effacerErreur('equipement_id');
         mettreAJourPriorite();
         Wiki.poserRechercheDemande(champSymptome, selecteur.valeur());   // « Déjà vu sur cette machine ? » (§20.7)
+        poserDernieres();
       },
     });
+    // A4 : « Vos dernières demandes sur cette machine » (demandeur), au-dessus du formulaire.
+    function poserDernieres() {
+      const zone = UI.$('.di-dernieres-zone', conteneur);
+      zone.textContent = '';
+      const bloc = Demandes.blocDernieresDemandes(selecteur.valeur());
+      if (bloc) zone.appendChild(bloc);
+    }
+    poserDernieres();
     Wiki.poserRechercheDemande(champSymptome, selecteur.valeur());
     if (equipementDemande && !selecteur.valeur()) {
       UI.$('.di-alerte-equipement', conteneur).appendChild(UI.bandeau('attention',

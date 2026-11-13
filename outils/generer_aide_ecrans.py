@@ -92,7 +92,8 @@ ECRANS = {
             "Cinq questions, depuis un PC ou un téléphone : quel équipement (recherche ou scan de son "
             "étiquette QR), que constatez-vous, quel impact, des précisions, une photo. Prévo calcule la "
             "priorité dès l'impact choisi, d'après la criticité de l'équipement : un impact Sécurité donne "
-            "toujours P1."
+            "toujours P1. En flashant le QR d'une machine, le demandeur revoit ses dernières demandes sur "
+            "cette machine, où elles en sont et le mot du technicien."
         ),
         "essayez": "tapez « compresseur », choisissez l'impact Arrêt et regardez la priorité s'afficher.",
     },
@@ -117,8 +118,9 @@ ECRANS = {
             },
             "demandeur": {
                 "texte": (
-                    "Les demandes d'intervention et leur statut. Un refus ou un report affiche toujours son "
-                    "motif."
+                    "Vos demandes et où elles en sont : Reçue, Acceptée, En cours, puis Réparée (le jour, "
+                    "l'heure et le prénom du technicien), avec le mot qu'il vous a laissé. Un refus ou un "
+                    "report affiche toujours son motif."
                 ),
                 "essayez": "ouvrez une demande pour voir son équipement et son historique.",
             },
@@ -129,7 +131,7 @@ ECRANS = {
         "ancre": "demandes",
         "texte": (
             "Le détail d'une demande : équipement, constat, impact, priorité calculée, photo, et sa suite "
-            "(ordre de travail créé, report, refus). L'encart « causes fréquentes » rappelle ce qui a déjà "
+            "(ordre de travail créé, en cours, réparée avec le mot du technicien, report, refus). L'encart « causes fréquentes » rappelle ce qui a déjà "
             "expliqué le même symptôme sur cette machine : une statistique de l'historique, pas un diagnostic."
         ),
         "essayez": "le bouton Accepter, si vous êtes responsable.",
@@ -478,7 +480,9 @@ ECRANS_EN = {
         "texte": (
             "Five questions, from a PC or a phone: which equipment (search for it or scan its QR label), what "
             "you have noticed, what the impact is, any details, a photo. Prévo works out the priority as soon "
-            "as you choose the impact, from the equipment's criticality: a Safety impact always gives P1."
+            "as you choose the impact, from the equipment's criticality: a Safety impact always gives P1. "
+            "When scanning a machine's QR code, requesters see their latest requests for that machine, where "
+            "they stand and the technician's note."
         ),
         "essayez": "type “compressor”, choose the Stoppage impact and watch the priority appear.",
     },
@@ -501,7 +505,9 @@ ECRANS_EN = {
             },
             "demandeur": {
                 "texte": (
-                    "The requests and their status. A refusal or a deferral always shows its reason."
+                    "Your requests and where they stand: Received, Accepted, In progress, then Repaired (the day, "
+                    "the time and the technician's first name), with the note they left you. A refusal or a "
+                    "deferral always shows its reason."
                 ),
                 "essayez": "open a request to see its equipment and its history.",
             },
@@ -511,7 +517,7 @@ ECRANS_EN = {
         "titre": "Request",
         "texte": (
             "The details of a request: equipment, fault, impact, calculated priority, photo, and what followed "
-            "(work order created, deferral, refusal). The “common causes” panel recalls what has already "
+            "(work order created, in progress, repaired with the technician's note, deferral, refusal). The “common causes” panel recalls what has already "
             "explained the same symptom on this machine: a statistic from the history, not a diagnosis."
         ),
         "essayez": "the Accept button, if you are a manager.",

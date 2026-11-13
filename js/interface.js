@@ -323,6 +323,7 @@ const UI = (function () {
   const TONS_STATUT = {
     // demandes d'intervention
     'nouvelle': 'info', 'acceptée': 'ok', 'regroupée': 'violet', 'différée': 'attention', 'refusée': 'ko',
+    'réparée': 'ok',                                                       // format 5 (A4) ; « en cours » : ci-dessous
     // ordres de travail
     'créé': 'neutre', 'préparé': 'info', 'planifié': 'violet', 'en cours': 'cyan', 'en attente': 'attention',
     'clôturé techniquement': 'ok', 'clôturé administrativement': 'ok', 'annulé': 'neutre barre',

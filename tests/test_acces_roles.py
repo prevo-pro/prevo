@@ -820,6 +820,52 @@ class TestDemandeur(unittest.TestCase):
         self.assertTrue(apres.startswith(octets))                              # lignes actuelles intactes
         self.assertEqual(lire_tableau(apres)[1], lignes + [nouvelle("DI-2026-9006")])
 
+    def test_retour_vers_l_operateur_lu_dans_demandes_seulement_et_jamais_ecrit_par_lui(self):
+        """T517 (A4) : le demandeur lit le retour de la réparation dans demandes.csv (statut, mot, date, prénom) et
+        rien d'autre (ni OT, ni techniciens, ni temps) ; il ne peut ni passer une demande existante à « En cours » ou
+        « Réparée », ni y écrire un mot, une date ou un prénom (403, fichier intact) ; la Direction n'écrit rien ;
+        le technicien écrit demandes comme avant (la clôture de son OT y met le retour)."""
+        chemin = self.serveur.dossier / "demandes.csv"
+        recu = self.requete("GET", "/api/csv/demandes")
+        self.assertEqual(recu.statut, 200, recu.octets)
+        self.assertEqual(recu.octets, chemin.read_bytes())                      # aucune colonne cachée, aucun ajout
+        entete_recu, _ = lire_tableau(recu.octets)
+        for colonne in ("statut", "mot_technicien", "date_reparation", "repare_par"):
+            self.assertIn(colonne, entete_recu)
+        for table in ("ordres_travail", "techniciens", "ot_temps"):
+            with self.subTest(lecture=table):
+                self.assertTrue(self.requete("GET", "/api/csv/" + table).refus_de_role())
+        octets = chemin.read_bytes()
+        entete, lignes = lire_tableau(octets)
+        rang = next(i for i, ligne in enumerate(lignes) if ligne[entete.index("statut")] == "Acceptée")
+        for champ, valeur in (("statut", "Réparée"), ("statut", "En cours"),
+                              ("mot_technicien", "Courroie changée, vous pouvez redémarrer"),
+                              ("date_reparation", "2026-11-13 14:10"), ("repare_par", "Julien")):
+            with self.subTest(demandeur=champ + " = " + valeur):
+                forgees = [list(ligne) for ligne in lignes]
+                forgees[rang][entete.index(champ)] = valeur
+                reponse = self.envoyer_demandes(entete, forgees)
+                self.assertEqual(reponse.statut, 403, reponse.octets)
+                self.assertTrue(reponse.json()["erreur"].startswith("Accès refusé : le demandeur ne peut qu'ajouter"))
+                self.assertEqual(chemin.read_bytes(), octets)
+        reparee = [list(ligne) for ligne in lignes]
+        for champ, valeur in (("statut", "Réparée"), ("mot_technicien", "Courroie changée, vous pouvez redémarrer"),
+                              ("date_reparation", "2026-11-13 14:10"), ("repare_par", "Julien")):
+            reparee[rang][entete.index(champ)] = valeur
+        corps = ecrire_tableau(entete, reparee)
+        direction = self.client.requete("PUT", "/api/csv/demandes", corps, cookie=self.cookies["direction"],
+                                        entetes={"X-Version-Attendue": version_de(octets)})
+        self.assertTrue(direction.refus_de_role(), direction.octets)
+        self.assertEqual(chemin.read_bytes(), octets)
+        technicien = self.client.requete("PUT", "/api/csv/demandes", corps, cookie=self.cookies["technicien"],
+                                         entetes={"X-Version-Attendue": version_de(octets)})
+        self.assertEqual(technicien.statut, 200, technicien.octets)
+        self.assertEqual(lire_tableau(chemin.read_bytes())[1][rang], reparee[rang])
+        # Ce que le demandeur relit ensuite : le retour, tel quel.
+        relu = lire_tableau(self.requete("GET", "/api/csv/demandes").octets)[1][rang]
+        self.assertEqual(relu[entete.index("repare_par")], "Julien")
+        self.assertEqual(relu[entete.index("mot_technicien")], "Courroie changée, vous pouvez redémarrer")
+
     def test_demande_recrite_par_excel_reconnue_et_gardee_telle_quelle(self):
         chemin = self.serveur.dossier / "demandes.csv"
         entete, lignes = lire_tableau(chemin.read_bytes())

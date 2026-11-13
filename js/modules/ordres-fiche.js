@@ -232,6 +232,7 @@ Object.assign(Ordres, (() => {
       ${ot.date_cloture_admin ? UI.html`<dt>${I18n.t('ordres.reperes.cloture_administrative')}</dt><dd>${UI.dateHeureFr(ot.date_cloture_admin)}</dd>` : ''}
       ${ot.ot_lie_id ? UI.html`<dt>${I18n.t('ordres.reperes.reprend_ot')}</dt><dd>${lienOt(ot.ot_lie_id)}</dd>` : ''}
       ${lies.length ? UI.html`<dt>${I18n.t('ordres.reperes.repris')}</dt><dd>${lies.map((l, rang) => UI.html`${rang ? ', ' : ''}${lienOt(l.id)}`)}</dd>` : ''}
+      ${Demandes.reperesRetour(ot)}
     </dl>`;
   }
 
@@ -477,7 +478,9 @@ Object.assign(Ordres, (() => {
     if (cible === 'Clôturé administrativement' && !(await UI.confirmer(
       I18n.t('ordres.demander_transition.ot_sera_verrouille_plus', { actuelId: actuel.id }),
       { titre: I18n.t('ordres.cloture_administrativement.cloturer_administrativement'), oui: I18n.t('ordres.demander_transition.cloturer_verrouiller') }))) return;
-    const reussi = await pendant(bouton, () => Ordres.avecDerogation((options) => changerStatut(actuel.id, actuel.statut, cible, complement, options)), I18n.t('ordres.demander_transition.changement_statut'));
+    const mot = cible === 'Clôturé techniquement' ? await Demandes.demanderMotOperateur(actuel) : {};   // A4 : facultatif
+    if (mot === null) return;
+    const reussi = await pendant(bouton, () => Ordres.avecDerogation((options) => changerStatut(actuel.id, actuel.statut, cible, Object.assign({}, complement, mot), options)), I18n.t('ordres.demander_transition.changement_statut'));
     if (reussi === undefined) return;
     await apresEnregistrement();
     // Clôture d'un préventif dont la gamme n'a pas pu être mise à jour (RG5) : l'avertissement
@@ -603,6 +606,7 @@ Object.assign(Ordres, (() => {
       champOt('compte_rendu', ot.compte_rendu, {
         aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
       }),
+      ...Demandes.champsMotOperateur(ot),                         // A4 : mot pour l'opérateur, si l'OT vient d'une demande
       champOt('astuce', ot.astuce, { aide: aideAstuce() }),
       remise,
     ];

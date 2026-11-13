@@ -194,3 +194,17 @@
 @media print {
   .di-panneau-decision, .di-suggestions, .di-bouton-photo { display: none !important; }
 }
+
+/* A4 — retour vers l'opérateur : statut qui suit l'OT, mot du technicien, dernières demandes sur la machine */
+.di-retour { display: flex; flex-direction: column; gap: .15rem; margin-top: .25rem; font-size: .9375rem; color: var(--texte-2); overflow-wrap: anywhere; }
+.di-retour-phrase { display: block; color: var(--texte-2); }
+.di-mot { display: block; color: var(--texte); }
+.di-mot b { font-weight: 600; margin-right: .25rem; }
+.di-dernieres { margin-bottom: 1rem; }
+.di-dernieres h2 { font-size: 1.0625rem; margin: 0 0 .5rem; }
+.di-dernieres-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.di-dernieres-liste a { display: flex; flex-direction: column; gap: .2rem; padding: .6rem .75rem; border: 1px solid var(--trait-2); border-radius: .5rem; color: inherit; text-decoration: none; }
+.di-dernieres-tete { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.di-dernieres-date { font-weight: 600; }
+.di-dernieres-symptome { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ot-mot-operateur-lu, .di-mot-fiche { overflow-wrap: anywhere; }

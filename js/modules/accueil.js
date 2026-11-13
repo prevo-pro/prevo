@@ -163,10 +163,10 @@ const Accueil = (() => {
       ? UI.html`<p class="accueil-motif"><b>${di.statut === 'Refusée' ? I18n.t('accueil.carte_demande.motif_refus') : I18n.t('accueil.carte_demande.motif_report')} :</b> ${di.motif_decision}</p>`
       : '';
     return UI.html`<li><a href="#/di/${encodeURIComponent(di.id)}" class="${di.impact === 'sécurité' ? 'accent-p1' : ''}">
-      <div class="carte-tete"><b>${di.id}</b>${avecMotif ? UI.badgeValeur('demandes', 'statut', di.statut) : badgeImpact(di.impact)}</div>
+      <div class="carte-tete"><b>${di.id}</b>${avecMotif ? Demandes.badgeStatut(di) : badgeImpact(di.impact)}</div>
       <div class="carte-titre">${di.symptome}</div>
       <div class="carte-meta"><span>${libelleEquipement(di.equipement_id)}</span>${avecMotif ? '' : UI.html`<span>${di.demandeur}</span>`}<span>${UI.dateHeureFr(di.date_heure)}</span></div>
-      ${motif}
+      ${motif}${avecMotif ? Demandes.retourHtml(di) : ''}
     </a></li>`;
   }
 
