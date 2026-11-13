@@ -758,7 +758,8 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   Créé, Préparé ou Planifié, passe `En cours` quand l'OT passe En cours (et le reste pendant En attente : l'opérateur
   lit « En cours », le motif d'attente est une donnée de l'OT qu'il ne lit pas), puis `Réparée` à la clôture technique
   (ou à « Clore », §22.11) avec `date_reparation` = date de fin de l'OT, `repare_par` = **prénom** du technicien de l'OT
-  (`techniciens.prenom` ; vide s'il n'y en a pas, jamais le nom ni l'identifiant) et `mot_technicien` = le « mot pour
+  (`techniciens.prenom` ; OT sans technicien : celui du technicien qui clôture ; vide sinon, jamais le nom ni
+  l'identifiant) et `mot_technicien` = le « mot pour
   l'opérateur » facultatif saisi à la clôture (300 caractères, une ligne, avec la dictée). OT rouvert → `En cours`, les
   trois champs du retour effacés ; OT annulé → la DI reprend `Acceptée` si l'OT a été créé pour elle (`di_id`),
   `Regroupée` sinon (jamais dite réparée) ; la clôture administrative après la clôture technique ne réécrit rien.
@@ -770,6 +771,8 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   prochaine transition de leur OT ; celles d'un OT clôturé administrativement restent `Acceptée`) ; la démo garde ses
   DI `Acceptée`. Les secours qui cherchent « la plus ancienne DI acceptée » d'un OT sans `di_id` (indicateurs, wiki)
   ne regardent que `Acceptée` : une acceptation écrit toujours `di_id`, seul un import sans `di_id` y passe.
+  Le bloc « Vos dernières demandes sur cette machine » relit les tables à son affichage (au plus toutes les 5 s) :
+  un téléphone resté sur la page (QR reflashé dans le même onglet) voit le retour sans attendre la surveillance.
 - **RG2** priorité = matrice criticité × impact ; `sécurité` → P1 et bandeau rouge.
 
   | Criticité \ Impact | gêne | dégradé | arrêt |

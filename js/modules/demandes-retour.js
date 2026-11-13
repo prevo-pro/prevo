@@ -57,9 +57,15 @@ Object.assign(Demandes, (() => {
     return Array.from(texte(mot).replace(/\s+/g, ' ')).slice(0, MOT_MAX).join('').trim();
   }
 
-  /** Prénom du technicien de l'OT (jamais son nom ni son identifiant) ; '' s'il n'est pas connu. */
+  /**
+   * Prénom du technicien de l'OT (jamais son nom ni son identifiant) ; sans technicien sur l'OT, celui du technicien
+   * qui fait la clôture (profil technicien lié à une fiche) ; '' s'il n'est pas connu.
+   */
   function prenomTechnicien(technicienId) {
-    const technicien = texte(technicienId) ? Donnees.trouver('techniciens', texte(technicienId)) : null;
+    const profil = typeof App !== 'undefined' && App && App.profil;
+    const repli = profil && profil.type === 'technicien' ? texte(profil.technicienId) : '';
+    const id = texte(technicienId) || repli;
+    const technicien = id ? Donnees.trouver('techniciens', id) : null;
     return technicien ? texte(technicien.prenom) : '';
   }
 
@@ -232,12 +238,24 @@ Object.assign(Demandes, (() => {
       .slice(0, DERNIERES_NOMBRE);
   }
 
+  // Le téléphone de l'opérateur peut avoir gardé la page ouverte (QR reflashé dans le même onglet) : à l'affichage
+  // du bloc, les tables sont relues aussitôt (au plus une fois toutes les 5 s) au lieu d'attendre la surveillance
+  // (20 s) ; une demande changée ailleurs réaffiche l'écran (App, événement « changement »).
+  let derniereRelecture = 0;
+  function relireBientot() {
+    const maintenant = Date.now();
+    if (maintenant - derniereRelecture < 5000 || typeof Donnees.rafraichir !== 'function') return;
+    derniereRelecture = maintenant;
+    Donnees.rafraichir().catch((erreur) => console.warn('Prévo (demandes) : relecture impossible.', erreur));
+  }
+
   /**
    * « Vos dernières demandes sur cette machine » (demandeur seulement ; null s'il n'en a aucune, ou pour un autre
    * profil) : date, début du symptôme (deux lignes au plus), statut en mots d'atelier, phrase de suivi et mot du technicien.
    */
   function blocDernieresDemandes(equipementId) {
     if (!App.estDemandeur() || !texte(equipementId)) return null;
+    relireBientot();
     const lignes = dernieresDemandes(equipementId);
     if (!lignes.length) return null;
     return UI.element(UI.html`<section class="carte di-dernieres" aria-labelledby="di-dernieres-titre">
@@ -249,12 +267,10 @@ Object.assign(Demandes, (() => {
         ${retourHtml(d)}</a></li>`)}</ul></section>`);
   }
 
-  /** Bloc « Suivi » de la fiche d'une demande : phrase pour l'opérateur, puis réparation et mot du technicien. */
+  /** Bloc « Suivi » de la fiche d'une demande réparée : le mot du technicien (la phrase « Réparée le … » est au-dessus). */
   function suiviRetour(demande) {
-    if (texte(demande.statut) !== 'Réparée') return '';
-    const mot = texte(demande.mot_technicien);
-    return UI.html`<dt>${I18n.t('demandes.retour.reparation')}</dt><dd class="di-reparation">${phraseReparee(demande)}</dd>
-      ${mot ? UI.html`<dt>${I18n.t('demandes.retour.mot_du_technicien')}</dt><dd class="di-mot-fiche">${mot}</dd>` : ''}`;
+    const mot = texte(demande.statut) === 'Réparée' ? texte(demande.mot_technicien) : '';
+    return mot ? UI.html`<dt>${I18n.t('demandes.retour.mot_du_technicien_titre')}</dt><dd class="di-mot-fiche">${mot}</dd>` : '';
   }
 
   return {

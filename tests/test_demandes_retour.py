@@ -12,7 +12,8 @@ aucune donnée réelle. Ce qui est vérifié :
   3. « Clore » (clôture en une étape) : « Réparée » avec le mot ; la clôture administrative après la clôture technique
      ne réécrit pas le mot ;
   4. la transition aboutit même si demandes.csv ne peut pas être écrit (avertissement seulement) ;
-  5. le mot est réduit à une ligne de 300 caractères ; le prénom seul, jamais le nom ni l'identifiant du technicien ;
+  5. le mot est réduit à une ligne de 300 caractères ; le prénom seul, jamais le nom ni l'identifiant du technicien
+     (OT sans technicien : le prénom du technicien qui clôture) ;
   6. textes pour l'opérateur (« Reçue », « Réparée le 13/11 à 14 h 10 par Karim ») et « Vos dernières demandes » : la
      même règle que l'accueil du demandeur (nom du profil), 3 au plus, 90 jours au plus.
 """
@@ -31,9 +32,9 @@ const RACINE = process.argv[2];
 const SCRIPTS = ['js/i18n.js', 'js/i18n/langues.js', 'js/i18n/fr.js', 'js/lib/papaparse.min.js', 'js/schema.js',
   'js/donnees.js', 'js/stockage-demo.js', 'js/interface.js', null, 'js/modules/demandes-regles.js',
   'js/modules/demandes-retour.js', 'js/modules/ordres-regles.js', 'js/modules/ordres-ecritures.js'];
-const APP = `var profil = 'responsable'; var nomProfil = '';
+const APP = `var profil = 'responsable'; var nomProfil = ''; var technicienProfil = '';
   var App = { estResponsable: () => profil === 'responsable', estTechnicien: () => profil === 'technicien',
-    estDemandeur: () => profil === 'demandeur', get profil() { return { type: profil, nom: nomProfil }; },
+    estDemandeur: () => profil === 'demandeur', get profil() { return { type: profil, nom: nomProfil, technicienId: technicienProfil }; },
     comptesExiges: () => false, session: null, raisonErreur: (e) => e.message, technicienSolo: () => '' };`;
 const csv = (entete, lignes) => [entete].concat(lignes).join('\r\n') + '\r\n';
 const DEMANDES = 'id;date_heure;demandeur;equipement_id;symptome;impact;statut;motif_decision;date_decision;ot_id;mot_technicien;date_reparation;repare_par';
@@ -152,6 +153,11 @@ const CHANGER = (id, de, vers, complement) => `Ordres.changerStatut('${id}', '${
   await c.run(`Donnees.modifier('techniciens', (l) => { l[0].prenom = ''; })`);
   await c.essai(CHANGER('OT-2026-0001', 'En cours', 'Clôturé techniquement'));
   r.sans_prenom = (await c.demandes())['DI-2026-0001'];
+  // OT sans technicien, clôturé par un technicien (profil lié à TEC-0001) : son prénom.
+  c = await contexte([OT('OT-2026-0001', 'En cours', 'DI-2026-0001').replace(';TEC-0001;', ';;')], BASE);
+  c.run(`profil = 'technicien'; technicienProfil = 'TEC-0001'`);
+  r.ot_sans_technicien = await c.essai(CHANGER('OT-2026-0001', 'En cours', 'Clôturé techniquement'));
+  r.prenom_du_profil = (await c.demandes())['DI-2026-0001'];
 
   // 6. Textes pour l'opérateur et « Vos dernières demandes ».
   c = await contexte([], [
@@ -252,6 +258,10 @@ class RetourVersLOperateur(unittest.TestCase):
         self.assertEqual(r["panne_ot"], "En cours")
         self.assertEqual(r["panne_demandes"]["DI-2026-0001"][0], "Acceptée")
         self.assertEqual(r["disparue"].get("rendu"), "En cours", r["disparue"])
+
+    def test_ot_sans_technicien_prenom_de_celui_qui_cloture(self):
+        self.assertEqual(self.r["ot_sans_technicien"].get("rendu"), "Clôturé techniquement", self.r["ot_sans_technicien"])
+        self.assertEqual(self.r["prenom_du_profil"][0::3], ["Réparée", "Karim"])
 
     def test_prenom_seul_jamais_le_nom(self):
         self.assertEqual(self.r["sans_prenom"][0], "Réparée")
