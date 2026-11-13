@@ -22,7 +22,7 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const RACINE = process.argv[2];
 const SCRIPTS = ['js/i18n.js', 'js/i18n/langues.js', 'js/i18n/fr.js', 'js/lib/papaparse.min.js', 'js/schema.js',
   'js/donnees.js', 'js/stockage-demo.js', 'js/interface.js', null, 'js/modules/ordres-regles.js',
-  'js/modules/ordres-ecritures.js', 'js/modules/equipe-regles.js', 'js/modules/planning-regles.js',
+  'js/modules/ordres-ecritures.js', 'js/modules/ordres-prise.js', 'js/modules/equipe-regles.js', 'js/modules/planning-regles.js',
   'js/modules/planning-ecritures.js'];
 const APP = `var profil = 'responsable'; var comptes = false;
   var App = { estResponsable: () => profil === 'responsable', estTechnicien: () => profil === 'technicien',
