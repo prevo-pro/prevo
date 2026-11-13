@@ -4885,6 +4885,7 @@ I18n.ajouter('en', {
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Choose how Prévo gets its certificate.',
   'installation.formulaire_certificat.cle_privee_fichier_pem': 'Private key (PEM file)',
   'installation.formulaire_certificat.derriere_mon_mandataire_inverse': 'Behind my reverse proxy',
+  'installation.formulaire_certificat.fabrication_en_cours': 'Making the certificate… a few seconds.',
   'installation.formulaire_certificat.fourni_pki_entreprise': 'Provided by the company PKI.',
   'installation.formulaire_certificat.iis_nginx_caddy_tailscale': 'IIS, nginx, Caddy or tailscale serve handle HTTPS; Prévo listens on 127.0.0.1.',
   'installation.formulaire_certificat.mkcert_introuvable_outils_tiers': 'mkcert cannot be found in outils-tiers/: put it back (it is in the Prévo zip), or choose another route.',

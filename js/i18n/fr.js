@@ -4883,6 +4883,7 @@ I18n.ajouter('fr', {
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Choisissez comment Prévo obtient son certificat.',
   'installation.formulaire_certificat.cle_privee_fichier_pem': 'Clé privée (fichier PEM)',
   'installation.formulaire_certificat.derriere_mon_mandataire_inverse': 'Derrière mon mandataire inverse',
+  'installation.formulaire_certificat.fabrication_en_cours': 'Fabrication du certificat… quelques secondes.',
   'installation.formulaire_certificat.fourni_pki_entreprise': 'Fourni par la PKI de l\'entreprise.',
   'installation.formulaire_certificat.iis_nginx_caddy_tailscale': 'IIS, nginx, Caddy ou tailscale serve portent le https ; Prévo écoute sur 127.0.0.1.',
   'installation.formulaire_certificat.mkcert_introuvable_outils_tiers': 'mkcert est introuvable dans outils-tiers/ : remettez-le (il est dans le zip de Prévo), ou choisissez une autre voie.',

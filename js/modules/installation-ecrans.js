@@ -193,7 +193,7 @@ const Installation = (() => {
         <p class="erreur-champ installation-erreur" id="inst-erreur-${etape.cle}" role="alert" hidden></p>
         <div class="actions installation-actions">
           ${!unePage && i > 0 ? UI.html`<button type="button" class="btn btn-fantome" id="inst-precedent">${I18n.t('installation.section_etape.precedent')}</button>` : ''}
-          <span class="espace"></span>
+          ${formulaire.attente ? UI.html`<span class="espace installation-patience" id="inst-patience-${etape.cle}" role="status"></span>` : UI.html`<span class="espace"></span>`}
           ${principal}
           ${recap ? UI.html`<button type="button" class="btn btn-primaire" id="inst-terminer">${I18n.t('installation.section_etape.terminer_ouvrir_prevo')}</button>` : ''}
         </div>
@@ -299,7 +299,14 @@ const Installation = (() => {
     const corps = formulaire.lire ? formulaire.lire(section) : {};
     if (!corps) { montrerErreur(etape.cle, formulaire.message || I18n.t('installation.envoyer.completez_etape')); return; }
     if (corps.probleme) { montrerErreur(etape.cle, corps.probleme); return; }
-    await poster(etape, etape.cle, corps, unePage, formulaire, section);
+    // T527 : une étape longue (certificat fabriqué par mkcert) dit ce qui se passe à côté du bouton grisé.
+    const patience = formulaire.attente ? UI.$('#inst-patience-' + etape.cle, section) : null;
+    if (patience) patience.textContent = formulaire.attente(corps) || '';
+    try {
+      await poster(etape, etape.cle, corps, unePage, formulaire, section);
+    } finally {
+      if (patience) patience.textContent = '';
+    }
   }
 
   async function poster(etape, route, corps, unePage, formulaire, section) {

@@ -4888,6 +4888,7 @@ I18n.ajouter('tr', {
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Prévo\'nun sertifikasını nasıl alacağını seçin.',
   'installation.formulaire_certificat.cle_privee_fichier_pem': 'Özel anahtar (PEM dosyası)',
   'installation.formulaire_certificat.derriere_mon_mandataire_inverse': 'Ters proxy\'min arkasında',
+  'installation.formulaire_certificat.fabrication_en_cours': 'Sertifika oluşturuluyor… birkaç saniye.',
   'installation.formulaire_certificat.fourni_pki_entreprise': 'Şirketin PKI\'si tarafından sağlanır.',
   'installation.formulaire_certificat.iis_nginx_caddy_tailscale': 'IIS, nginx, Caddy veya tailscale serve https\'yi taşır; Prévo 127.0.0.1 üzerinde dinler.',
   'installation.formulaire_certificat.mkcert_introuvable_outils_tiers': 'mkcert, outils-tiers/ içinde bulunamadı: yerine koyun (Prévo\'nun zip dosyasında var) veya başka bir yol seçin.',

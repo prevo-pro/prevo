@@ -301,7 +301,19 @@ class TestParcours(CasInstallation):
         self.verifier_autrement()
         self.assertTrue(page.is_checked('#installation-contenu input[name="mode"][value="automatique"]'))
         self.assertEqual(page.locator('#installation-contenu input[name="mode"][value="reseau_prive"]').count(), 0)   # pas « dehors »
+        # T527 : pendant la fabrication du certificat (réponse retenue ici), le bouton grisé est expliqué à côté, en
+        # zone annoncée aux lecteurs d'écran ; rien avant le clic.
+        self.assertEqual(page.inner_text("#inst-patience-certificat"), "")
+        self.assertEqual(page.get_attribute("#inst-patience-certificat", "role"), "status")
+        retenues = []
+        page.route("**/api/installation/certificat", lambda route: retenues.append(route))
         self.continuer()
+        page.wait_for_function("(document.querySelector('#inst-patience-certificat') || {}).textContent"
+                               " === 'Fabrication du certificat… quelques secondes.'")
+        self.assertTrue(page.is_disabled("#inst-continuer"))
+        self.assertEqual(len(retenues), 1)
+        retenues[0].continue_()
+        page.unroute("**/api/installation/certificat")
         # Tailscale sans objet sur le Wi-Fi : sauté.
         self.attendre_etape("demarrage")
         self.assertEqual(len(self.lignes_sautees()), 1)

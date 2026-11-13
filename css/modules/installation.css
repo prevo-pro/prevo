@@ -72,6 +72,8 @@
 .installation-etape .btn { min-height: 48px; }
 .installation-actions { margin-top: 0; }
 .installation-actions .espace { flex: 1 1 auto; }
+/* T527 : « Fabrication du certificat… » dans l'espace à côté du bouton grisé ; vide, rien ne bouge. */
+.installation-actions .installation-patience { align-self: center; text-align: right; color: var(--texte-2); font-size: .875rem; }
 .installation-actions-etape { margin-top: 0; }
 .installation-erreur[hidden] { display: none; }
 .installation-resultat { border: 1px solid var(--bord-vert); background: var(--teinte-vert-faible); border-radius: 12px; padding: 10px 14px; }
@@ -142,6 +144,7 @@
   .installation-recap dd { margin-bottom: 8px; }
   .installation-actions .btn, .installation-actions-etape .btn, .installation-dossier .btn { flex: 1 1 100%; }
   .installation-actions .espace { display: none; }
+  .installation-actions .installation-patience:not(:empty) { display: block; flex: 1 1 100%; text-align: left; }
   .fiche-entete .btn { flex: 1 1 100%; }
   .fiche-qr { max-width: none; }
 }

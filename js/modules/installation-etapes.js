@@ -287,6 +287,9 @@ const InstallationEtapes = (() => {
         return corps;
       },
       message: I18n.t('installation.formulaire_certificat.choisissez_comment_prevo_obtient'),
+      attente(corps) {   // T527 : la fabrication du certificat prend quelques secondes, dites à côté du bouton.
+        return corps.mode === 'automatique' ? I18n.t('installation.formulaire_certificat.fabrication_en_cours') : '';
+      },
       reussite(donnees) {
         const noms = (donnees.noms_certificat || []).join(', ');
         if (donnees.mode === 'automatique') return I18n.t('installation.formulaire_certificat.certificat_pret_etiquettes_qr', { noms });

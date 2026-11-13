@@ -4887,6 +4887,7 @@ I18n.ajouter('pt-PT', {
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Escolha como o Prévo obtém o seu certificado.',
   'installation.formulaire_certificat.cle_privee_fichier_pem': 'Chave privada (ficheiro PEM)',
   'installation.formulaire_certificat.derriere_mon_mandataire_inverse': 'Atrás do meu proxy inverso',
+  'installation.formulaire_certificat.fabrication_en_cours': 'A criar o certificado… alguns segundos.',
   'installation.formulaire_certificat.fourni_pki_entreprise': 'Fornecido pela PKI da empresa.',
   'installation.formulaire_certificat.iis_nginx_caddy_tailscale': 'IIS, nginx, Caddy ou tailscale serve tratam do https; o Prévo escuta em 127.0.0.1.',
   'installation.formulaire_certificat.mkcert_introuvable_outils_tiers': 'O mkcert não foi encontrado em outils-tiers/: volte a colocá-lo lá (está no zip do Prévo) ou escolha outra via.',
