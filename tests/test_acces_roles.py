@@ -4,7 +4,8 @@ Ce qui est vérifié :
     table          ROLES_PAR_ROUTE de serveur.py a une ligne par route de ROUTES_API, comme ATTENDU, la table du
                    contrat recopiée ici ; la table de §22.5 de docs/ARCHITECTURE.md dit la même chose qu'ATTENDU ;
     cases          chaque case route × rôle d'ATTENDU (jamais déduite du code) rend 403 « Accès refusé… » ou 200/201 :
-                   trois vraies sessions (demandeur, technicien, responsable) sur un serveur réel, et l'appareil enrôlé
+                   quatre vraies sessions (demandeur, technicien, responsable, direction : T520, lecture seule ;
+                   ses refus propres dans tests/test_acces_direction.py) sur un serveur réel, et l'appareil enrôlé
                    (D125, T153) par une identité simulée dans un serveur du processus ; les 24 tables pour csv/<table>,
                    une photo de demande, un document d'équipement et un autre document pour documents/<nom> ;
     technicien     ni taux_horaire (techniciens) ni prix_unitaire (articles, achats) dans les octets reçus, en-tête
@@ -66,8 +67,10 @@ serveur = charger_serveur()
 # ---------------------------------------------------------------------------
 
 OUI, NON = "oui", "non"
-ROLES = ("demandeur", "appareil", "technicien", "responsable")
+ROLES = ("demandeur", "appareil", "technicien", "responsable", "direction")
 TOUTES_LES_TABLES = frozenset(serveur.TABLES)
+# T520 (A7) : la Direction lit tout sauf les habilitations (justificatifs, D196) et le wiki, et n'écrit rien.
+TABLES_DE_LA_DIRECTION = TOUTES_LES_TABLES - {"habilitations", "wiki_pages", "wiki_journal"}
 TABLES_DU_DEMANDEUR = frozenset({"localisations", "equipements", "demandes", "compteurs", "releves",
                                  "codes_defaillance", "parametres", "wiki_pages"})
 # habilitations : T445, D195 ; documents réservés : tests/test_droits_format4.py.
@@ -76,12 +79,12 @@ ECRITURE_DU_TECHNICIEN = TOUTES_LES_TABLES - {"parametres", "techniciens", "four
                                               "garanties", "contrats_prestataires", "habilitations"}
 PHOTOS = "photos de demandes"
 PHOTOS_ET_EQUIPEMENTS = "photos de demandes, documents des équipements"
-TOUS = (OUI, OUI, OUI, OUI)
-RESPONSABLE = (NON, NON, NON, OUI)
-INTERVENANTS = (NON, NON, OUI, OUI)
+TOUS = (OUI, OUI, OUI, OUI, OUI)
+RESPONSABLE = (NON, NON, NON, OUI, NON)
+INTERVENANTS = (NON, NON, OUI, OUI, NON)
 
 ATTENDU = {
-    # route                                        demandeur, appareil, technicien, responsable
+    # route                                        demandeur, appareil, technicien, responsable, direction
     ("GET", "ping"): TOUS,
     ("GET", "session"): TOUS,
     ("POST", "connexion"): TOUS,
@@ -100,12 +103,13 @@ ATTENDU = {
     ("POST", "acces/invitations/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/revoquer-tous"): RESPONSABLE,
-    ("GET", "csv/<table>"): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI),
-    ("PUT", "csv/<table>"): (frozenset({"demandes"}), frozenset({"demandes"}), ECRITURE_DU_TECHNICIEN, OUI),
+    ("GET", "csv/<table>"): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI, TABLES_DE_LA_DIRECTION),
+    ("PUT", "csv/<table>"): (frozenset({"demandes"}), frozenset({"demandes"}), ECRITURE_DU_TECHNICIEN, OUI, NON),
     ("POST", "csv/<table>/ajout"): (frozenset({"demandes", "journal"}), frozenset({"demandes", "journal"}),
-                                    ECRITURE_DU_TECHNICIEN, OUI),
-    ("GET", "documents/<nom>"): (PHOTOS_ET_EQUIPEMENTS, PHOTOS_ET_EQUIPEMENTS, OUI, OUI),
-    ("PUT", "documents/<nom>"): (PHOTOS, PHOTOS, OUI, OUI),
+                                    ECRITURE_DU_TECHNICIEN, OUI, NON),
+    # Direction : « oui » sauf documents réservés (D196), rapports figés compris (tests/test_acces_direction.py).
+    ("GET", "documents/<nom>"): (PHOTOS_ET_EQUIPEMENTS, PHOTOS_ET_EQUIPEMENTS, OUI, OUI, OUI),
+    ("PUT", "documents/<nom>"): (PHOTOS, PHOTOS, OUI, OUI, NON),
     ("POST", "sauvegarde"): RESPONSABLE,
     ("POST", "sauvegarde/tester"): RESPONSABLE,
     ("GET", "sauvegardes"): RESPONSABLE,
@@ -155,7 +159,8 @@ def regle_du_contrat(cellule, tables_du_demandeur):
 
 
 def table_du_contrat():
-    """({route: (demandeur, appareil, technicien, responsable)}, tables du demandeur) lus dans §22.5 du contrat."""
+    """({route: (demandeur, appareil, technicien, responsable, direction)}, tables du demandeur) lus dans §22.5 du
+    contrat."""
     texte = CONTRAT.read_text(encoding="utf-8")
     debut = texte.index("### 22.5 ")
     section = texte[debut:texte.index("\n### ", debut + 1)]
@@ -181,8 +186,10 @@ MOTS_DE_PASSE = {
     "julien.moreau": "cle a molette et graisse",
     "lea.martin": "une demande de lea 2026",
     "paul.essai": "compte jetable pour les essais",
+    "claire.dupont": "la direction lit le bilan",
 }
-SESSIONS = {"demandeur": "lea.martin", "technicien": "julien.moreau", "responsable": "nicolas.briand"}
+SESSIONS = {"demandeur": "lea.martin", "technicien": "julien.moreau", "responsable": "nicolas.briand",
+            "direction": "claire.dupont"}
 AGENT = "Navigateur-de-test/1.0"
 BOM = bytes((0xEF, 0xBB, 0xBF))
 JPEG = bytes((0xFF, 0xD8, 0xFF, 0xE0, 0, 16)) + b"JFIF" + bytes(64) + bytes((0xFF, 0xD9))
@@ -214,6 +221,7 @@ def setUpModule():
                              technicien_id="TEC-0001")
         serveur.creer_compte(config, "Léa", "Martin", "demandeur", MOTS_DE_PASSE["lea.martin"])
         serveur.creer_compte(config, "Paul", "Essai", "demandeur", MOTS_DE_PASSE["paul.essai"])
+        serveur.creer_compte(config, "Claire", "Dupont", "direction", MOTS_DE_PASSE["claire.dupont"])
         COMPTES_JSON = (dossier / "donnees" / "acces" / "comptes.json").read_bytes()
     finally:
         shutil.rmtree(dossier, ignore_errors=True)
@@ -289,11 +297,13 @@ class Reponse:
         return valeur.split(";")[0] if valeur else None
 
     def refus_de_role(self):
-        """Vrai pour le 403 de verifier_role (« Accès refusé… »), pas un autre 403 (X-Prevo, mot de passe…)."""
+        """Vrai pour le 403 de verifier_role (« Accès refusé… », ou le document réservé qui dit quoi faire, T520), pas
+        un autre 403 (X-Prevo, mot de passe…)."""
         if self.statut != 403:
             return False
         try:
-            return self.json()["erreur"].startswith("Accès refusé")
+            donnees = self.json()
+            return donnees["erreur"].startswith("Accès refusé") or donnees.get("erreur_code") == "acces.document_ferme"
         except (ValueError, KeyError):
             return False
 
@@ -528,6 +538,9 @@ class TestCasesDesRoles(JoueurDeCases, unittest.TestCase):
 
     def test_cases_du_technicien(self):
         self.jouer_les_cases("technicien")
+
+    def test_cases_de_la_direction(self):
+        self.jouer_les_cases("direction")
 
 
 class TestCasesDeLAppareil(JoueurDeCases, unittest.TestCase):
@@ -959,7 +972,9 @@ class TestComptesDuResponsable(unittest.TestCase):
         self.verifier_jamais_ecrit(second)
 
     def test_dernier_responsable_garde_et_demandes_refusees(self):
-        for corps in ({"action": "desactiver"}, {"action": "modifier", "role": "technicien", "technicien_id": "TEC-0001"}):
+        # T520 : un compte Direction ne compte pas comme responsable.
+        for corps in ({"action": "desactiver"}, {"action": "modifier", "role": "technicien", "technicien_id": "TEC-0001"},
+                      {"action": "modifier", "role": "direction"}):
             with self.subTest(corps=corps):
                 reponse = self.requete("POST", "/api/acces/comptes/nicolas.briand", corps)
                 self.assertEqual(reponse.statut, 400, reponse.octets)
@@ -978,7 +993,7 @@ class TestComptesDuResponsable(unittest.TestCase):
         self.assertFalse(sans_prevo.refus_de_role())
         identifiants = {c["identifiant"] for c in self.requete("GET", "/api/acces/comptes").json()["comptes"]}
         self.assertNotIn("zoe", identifiants)
-        for role in ("technicien", "demandeur"):
+        for role in ("technicien", "demandeur", "direction"):
             for methode, chemin, corps in (("GET", "/api/acces/comptes", None), ("GET", "/api/acces/journal", None),
                                            ("POST", "/api/acces/comptes", {"prenom": "Zoe", "role": "responsable"}),
                                            ("POST", "/api/acces/comptes/" + SESSIONS[role], {"action": "modifier",

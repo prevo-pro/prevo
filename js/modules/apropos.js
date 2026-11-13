@@ -193,7 +193,7 @@ const Apropos = (() => {
       route: /^#\/apropos$/,
       get titre() { return I18n.t('apropos.ecran.titre'); },
       menu: { get libelle() { return I18n.t('apropos.menu.libelle'); }, icone: 'apropos', ordre: 100 },
-      profils: ['demandeur', 'technicien', 'responsable'],
+      profils: ['demandeur', 'technicien', 'responsable', 'direction'],
       tables: [],
       afficher,
     });

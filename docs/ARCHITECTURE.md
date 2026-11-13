@@ -3923,45 +3923,68 @@ posée en cookie par `poser_session` ; l'écran de connexion lui-même est test�
 `ROLES_PAR_ROUTE` dans `serveur.py`, appliquée par `verifier_role` dans `controler_acces` (T152) : quand `comptes` est
 vrai, toute route `/api/` exige une session ou un appareil (401), puis le rôle : 403 `{"erreur": "Accès refusé : …"}`,
 au message qui dit ce qui est réservé et à qui, avant `X-Prevo` et la lecture du corps. La table est recopiée ici et
-dans `tests/test_acces_roles.py`, qui en joue chaque case (vraies sessions de demandeur, technicien et responsable ;
+dans `tests/test_acces_roles.py`, qui en joue chaque case (vraies sessions de demandeur, technicien, responsable et direction ;
 appareil simulé dans ce test, appareil réellement enrôlé dans `tests/test_acces_appareils.py`, T153) et vérifie que
 ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne fait échouer le test.
 
-| Route | demandeur | appareil | technicien | responsable |
-| --- | --- | --- | --- | --- |
-| `GET /api/ping` | oui | oui | oui | oui |
-| `GET /api/session` | oui | oui | oui | oui |
-| `POST /api/connexion` | oui | oui | oui | oui |
-| `POST /api/deconnexion` | oui | oui | oui | oui |
-| `POST /api/mot-de-passe` | oui | oui | oui | oui |
-| `GET /api/info` | oui | oui | oui | oui |
-| `GET /api/versions` | oui (ses tables seulement) | oui (ses tables seulement) | oui | oui |
-| `POST /api/acces/deconnecter-partout` | oui (soi-même) | oui (soi-même) | oui (soi-même) | oui |
-| `GET /api/acces/comptes` | non | non | non | oui |
-| `POST /api/acces/comptes` | non | non | non | oui |
-| `POST /api/acces/comptes/<identifiant>` | non | non | non | oui |
-| `GET /api/acces/journal` | non | non | non | oui |
-| `POST /api/enroler` | oui | oui | oui | oui |
-| `GET /api/acces/invitations` | non | non | non | oui |
-| `POST /api/acces/invitations` | non | non | non | oui |
-| `POST /api/acces/invitations/<id>/revoquer` | non | non | non | oui |
-| `POST /api/acces/appareils/<id>/revoquer` | non | non | non | oui |
-| `POST /api/acces/appareils/revoquer-tous` | non | non | non | oui |
-| `GET /api/csv/<table>` | tables du demandeur | tables du demandeur | toutes (colonnes retirées) | toutes |
-| `PUT /api/csv/<table>` | `demandes` (ajout seulement) | `demandes` (ajout seulement) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : ajout seulement) | toutes |
-| `POST /api/csv/<table>/ajout` | `demandes`, `journal` (à son profil) | `demandes`, `journal` (à son profil) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : à son profil) | toutes |
-| `GET /api/documents/<nom>` | photos de demandes, documents des équipements (sauf documents réservés) | photos de demandes, documents des équipements (sauf documents réservés) | oui (sauf documents réservés) | oui |
-| `PUT /api/documents/<nom>` | photos de demandes | photos de demandes | oui | oui |
-| `POST /api/sauvegarde` | non | non | non | oui |
-| `POST /api/sauvegarde/tester` | non | non | non | oui |
-| `GET /api/sauvegardes` | non | non | non | oui |
-| `POST /api/restauration` | non | non | non | oui |
-| `POST /api/ia` | non | non | oui | oui |
-| `GET /api/ia/reglages` | non | non | oui | oui |
-| `GET /api/installation/<etape>` | non | non | non | oui |
-| `POST /api/installation/<etape>` | non | non | non | oui |
+| Route | demandeur | appareil | technicien | responsable | direction |
+| --- | --- | --- | --- | --- | --- |
+| `GET /api/ping` | oui | oui | oui | oui | oui |
+| `GET /api/session` | oui | oui | oui | oui | oui |
+| `POST /api/connexion` | oui | oui | oui | oui | oui |
+| `POST /api/deconnexion` | oui | oui | oui | oui | oui |
+| `POST /api/mot-de-passe` | oui | oui | oui | oui | oui |
+| `GET /api/info` | oui | oui | oui | oui | oui (le port seulement) |
+| `GET /api/versions` | oui (ses tables seulement) | oui (ses tables seulement) | oui | oui | oui (ses tables seulement) |
+| `POST /api/acces/deconnecter-partout` | oui (soi-même) | oui (soi-même) | oui (soi-même) | oui | oui (soi-même) |
+| `GET /api/acces/comptes` | non | non | non | oui | non |
+| `POST /api/acces/comptes` | non | non | non | oui | non |
+| `POST /api/acces/comptes/<identifiant>` | non | non | non | oui | non |
+| `GET /api/acces/journal` | non | non | non | oui | non |
+| `POST /api/enroler` | oui | oui | oui | oui | oui |
+| `GET /api/acces/invitations` | non | non | non | oui | non |
+| `POST /api/acces/invitations` | non | non | non | oui | non |
+| `POST /api/acces/invitations/<id>/revoquer` | non | non | non | oui | non |
+| `POST /api/acces/appareils/<id>/revoquer` | non | non | non | oui | non |
+| `POST /api/acces/appareils/revoquer-tous` | non | non | non | oui | non |
+| `GET /api/csv/<table>` | tables du demandeur | tables du demandeur | toutes (colonnes retirées) | toutes | toutes sauf `habilitations`, `wiki_pages`, `wiki_journal` (aucune colonne retirée) |
+| `PUT /api/csv/<table>` | `demandes` (ajout seulement) | `demandes` (ajout seulement) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : ajout seulement) | toutes | non |
+| `POST /api/csv/<table>/ajout` | `demandes`, `journal` (à son profil) | `demandes`, `journal` (à son profil) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : à son profil) | toutes | non |
+| `GET /api/documents/<nom>` | photos de demandes, documents des équipements (sauf documents réservés) | photos de demandes, documents des équipements (sauf documents réservés) | oui (sauf documents réservés) | oui | oui (sauf documents réservés par D196 ; rapports mensuels figés compris) |
+| `PUT /api/documents/<nom>` | photos de demandes | photos de demandes | oui | oui | non |
+| `POST /api/sauvegarde` | non | non | non | oui | non |
+| `POST /api/sauvegarde/tester` | non | non | non | oui | non |
+| `GET /api/sauvegardes` | non | non | non | oui | non |
+| `POST /api/restauration` | non | non | non | oui | non |
+| `POST /api/ia` | non | non | oui | oui | non |
+| `GET /api/ia/reglages` | non | non | oui | oui | non |
+| `GET /api/installation/<etape>` | non | non | non | oui | non |
+| `POST /api/installation/<etape>` | non | non | non | oui | non |
 
 Tables du demandeur : `localisations`, `equipements`, `demandes`, `compteurs`, `releves`, `codes_defaillance`, `parametres`, `wiki_pages`.
+
+Rôle « direction » (T520, correction A7 de l'étude d'ergonomie : le patron n'avait le choix qu'entre trop de droits et
+rien) : **lecture seule**. Elle lit `TABLES_DE_LA_DIRECTION` (toutes sauf `habilitations`, `wiki_pages`, `wiki_journal`)
+sans aucune colonne retirée (taux horaires, prix, coût d'arrêt : comme le responsable), et les documents sauf ceux que
+D196 réserve au responsable (justificatifs, documents de contrats, par colonne et par nom), **rapports mensuels figés
+compris** (`DOCUMENTS_DE_LA_DIRECTION`, `documents_reserves(config, rapports_compris=False)`). Elle n'écrit rien :
+`PUT` et ajout de table, envoi de document, comptes, invitations, appareils, sauvegardes, restauration, IA et
+installation lui répondent 403 (`acces.direction_lecture_seule` pour une écriture, `acces.reserve_au_responsable` pour
+une route du responsable) ; seules restent les routes de tout compte (session, mot de passe et langue, déconnexion).
+`GET /api/info` ne lui rend que le port. Un compte Direction n'a jamais de technicien lié (`comptes.direction_sans_technicien`,
+création et modification) et ne compte pas comme responsable (au moins un responsable actif reste exigé). L'assistant
+d'installation le propose à l'étape « compte » (champ facultatif `direction` : `{prenom, nom}`, compte créé avec un mot
+de passe provisoire rendu une fois). Côté navigateur, profil `direction` (`App.estDirection`) : Accueil (quatre portes),
+Ordres de travail, Parc et fiches (OT, équipement, demande) en lecture, Indicateurs avec le coût de l'arrêt, onglet
+Rapports mensuels (ouvrir, imprimer, télécharger ; « Bilan d'un mois » calculé sans rien écrire) ; un écran qui ne lui
+est pas ouvert, adresse tapée à la main, montre une page « Cet écran n'est pas ouvert à la Direction ». Sans comptes,
+le profil se choisit sur le poste comme les autres, et c'est l'écran qui fait foi.
+
+Document refusé (T520, tous les rôles, droit inchangé) : `acces.document_ferme` dit quoi faire (« réservé au
+responsable : demandez-lui de vous l'envoyer ») ; ouvert comme une page (`Sec-Fetch-Mode: navigate`, ou sans cet
+en-tête un `Accept` qui demande du HTML, jamais avec `X-Prevo`), le refus devient une redirection 303 vers
+`/#/document-ferme`, page de Prévo dans la langue de l'écran, au lieu du JSON brut ; un appel de l'application garde
+son 403.
 
 Précisions de T152 :
 
@@ -4043,7 +4066,7 @@ Précisions de T152 :
 - **Rapports mensuels figés** (T478, **décidé** : D126, aucun coût pour le technicien ; écart trouvé par la recette
   T476) — changement de sécurité : un document cité par le paramètre `rapports_mensuels` de `parametres.csv`
   (`PARAMETRE_DES_RAPPORTS_FIGES` ; noms séparés par des virgules comme `Rapport.rapportsFiges`, relus à chaque requête,
-  apostrophe de protection et espaces de bord retirés, casse ignorée) n'est servi qu'au responsable :
+  apostrophe de protection et espaces de bord retirés, casse ignorée) n'est servi qu'au responsable (et à la Direction, T520, qui a les coûts) :
   `GET /api/documents/<nom>` répond 403 `acces.document_ferme` au technicien, au demandeur et à l'appareil. Le rapport
   porte le coût de l'arrêt et les heures d'arrêt par équipement (d'où le coût horaire caché par T473) et le coût de
   maintenance ; avant T478, le technicien, qui lit `parametres` et donc ces noms, le recevait. Même mécanisme que les

@@ -371,11 +371,33 @@ const Accueil = (() => {
         I18n.t('accueil.accueil_demandeur.aucune_demande_moment'), I18n.t('accueil.accueil_demandeur.demandes_creez_apparaitront_ici'), 'demandes')}`;
   }
 
+  /**
+   * Direction (T520, A7) : lecture seule — quatre portes (tableau de bord, bilan du mois, parc et historique, ordres
+   * de travail) ; aucun bouton d'écriture, ni la carte « Connecter un téléphone ».
+   */
+  function accueilDirection() {
+    const porte = (lien, icone, titre, detail) => UI.html`<a href="${lien}" class="btn btn-secondaire btn-gros">${UI.icone(icone)}<span>${titre}<small>${detail}</small></span></a>`;
+    const nom = App.profil.nom.trim();
+    return UI.html`
+      <div class="entete-page"><div>
+        <h1>${I18n.t('accueil.accueil_technicien.accueil')}</h1>
+        <p>${nom ? I18n.t('accueil.accueil_direction.bonjour_nom', { profilNom: nom }) : I18n.t('accueil.accueil_direction.bonjour')}</p>
+      </div></div>
+      <p class="note">${I18n.t('accueil.accueil_direction.lecture_seule')}</p>
+      <div class="pile-gros accueil-direction">
+        ${porte('#/indicateurs', 'indicateurs', I18n.t('accueil.accueil_direction.tableau_de_bord'), I18n.t('accueil.accueil_direction.tableau_de_bord_detail'))}
+        ${porte('#/indicateurs?onglet=rapports', 'imprimer', I18n.t('accueil.accueil_direction.bilan'), I18n.t('accueil.accueil_direction.bilan_detail'))}
+        ${porte('#/parc', 'parc', I18n.t('accueil.accueil_direction.parc'), I18n.t('accueil.accueil_direction.parc_detail'))}
+        ${porte('#/ot', 'ordres', I18n.t('accueil.accueil_direction.ordres'), I18n.t('accueil.accueil_direction.ordres_detail'))}
+      </div>`;
+  }
+
   // ===========================================================================================
   // 5. Écran
   // ===========================================================================================
 
   async function afficher(conteneur) {
+    if (App.estDirection()) { UI.remplir(conteneur, accueilDirection()); return; }
     // Carte « Connecter un téléphone » : en mode serveur, sauf sur un téléphone (D31 : il est déjà
     // connecté, et le QR ne se scanne pas sur son propre écran). On lit l'adresse réseau AVANT
     // d'écrire l'écran (un seul remplissage).
@@ -397,7 +419,7 @@ const Accueil = (() => {
     App.ecran({
       id: 'accueil', route: /^#\/accueil$/, get titre() { return I18n.t('accueil.accueil_technicien.accueil'); },
       menu: { get libelle() { return I18n.t('accueil.accueil_technicien.accueil'); }, icone: 'accueil', ordre: 10 },
-      profils: ['demandeur', 'technicien', 'responsable'],
+      profils: ['demandeur', 'technicien', 'responsable', 'direction'],
       // Les compteurs viennent de demandes et ordres_travail ; l'alerte de contrôle peut venir de
       // n'importe quelle table (sauf le journal, qui change à chaque action).
       tables: Schema.nomsTables().filter((nomTable) => nomTable !== 'journal'),

@@ -15,7 +15,8 @@
 const EquipeAcces = (() => {
 
   // Rôles d'un compte : valeurs stockées par le serveur (D155), jamais traduites ; seul leur affichage passe par une clé.
-  const ROLES = ['responsable', 'technicien', 'demandeur'];
+  // T520 (A7) : « direction », lecture seule (tableau de bord, bilan, historique), sans technicien lié.
+  const ROLES = ['responsable', 'technicien', 'demandeur', 'direction'];
   const DUREE_PAR_DEFAUT_H = 24;
   const LIGNES_JOURNAL_AFFICHEES = 300;
 
@@ -24,6 +25,7 @@ const EquipeAcces = (() => {
     if (role === 'responsable') return I18n.t('equipe.role.responsable');
     if (role === 'technicien') return I18n.t('equipe.role.technicien');
     if (role === 'demandeur') return I18n.t('equipe.role.demandeur');
+    if (role === 'direction') return I18n.t('equipe.role.direction');
     return '';
   }
 
@@ -31,6 +33,7 @@ const EquipeAcces = (() => {
   function libelleRoleListe(role) {
     if (role === 'responsable') return I18n.t('equipe.role_liste.responsable');
     if (role === 'technicien') return I18n.t('equipe.role_liste.technicien');
+    if (role === 'direction') return I18n.t('equipe.role_liste.direction');
     return I18n.t('equipe.role_liste.demandeur');
   }
 
@@ -225,7 +228,7 @@ const EquipeAcces = (() => {
     const valeur = (nom) => (compte ? compte[nom] : undefined);
     const champRole = UI.champ(definition('role', 'choix', I18n.t('equipe.champs_compte.role'), { valeurs: ROLES, obligatoire: true }),
       valeur('role') || 'demandeur',
-      { aide: I18n.t('equipe.champs_compte.responsable_tout_reglages_compris') });
+      { aide: I18n.t('equipe.champs_compte.responsable_tout_reglages_compris') + ' ' + I18n.t('equipe.champs_compte.role_direction_aide') });
     // Valeurs stockées (D155) : chaque option montre le libellé de son rôle, la valeur reste le code.
     UI.$$('option', champRole).forEach((option) => { if (ROLES.includes(option.value)) option.textContent = libelleRoleListe(option.value); });
     return [

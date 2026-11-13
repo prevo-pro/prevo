@@ -938,7 +938,9 @@ JOURNAL_SERVEUR = None          # JournalServeur quand le serveur tourne sans co
 
 LONGUEUR_MIN_MOT_DE_PASSE = 12
 LONGUEUR_MAX_MOT_DE_PASSE = 256
-ROLES_COMPTES = ('responsable', 'technicien', 'demandeur')
+# T520 (A7) : « direction », lecture seule (tableau de bord, rapports mensuels, historique ; ROLES_PAR_ROUTE, §22.5),
+# jamais de technicien lié ; elle ne compte pas comme responsable (au moins un responsable actif reste exigé).
+ROLES_COMPTES = ('responsable', 'technicien', 'demandeur', 'direction')
 ALGO_SCRYPT = 'scrypt-n15-r8-p3'                 # OWASP : N = 2^15, r = 8, p = 3 (tenable sur un Raspberry Pi)
 ALGO_PBKDF2 = 'pbkdf2-sha256-600000'             # repli si hashlib.scrypt manque (OpenSSL ancien)
 SCRYPT_MEMOIRE_MAX = 64 * 1024 * 1024
@@ -956,6 +958,8 @@ DUREE_JOURNAL_ACCES_JOURS = 366
 # (copie externe sur une clé USB ou un NAS) et se refabrique au démarrage si elle manque (preparer_certificat_local).
 FICHIERS_ACCES_NON_SAUVEGARDES = ('sessions.json', 'cle.pem')
 VERROU_ACCES = threading.Lock()
+MESSAGE_DIRECTION_SANS_TECHNICIEN = traduisible('comptes.direction_sans_technicien',
+                                                'Un compte Direction n\'est lié à aucun technicien.')
 
 
 class ErreurCompte(Exception):
@@ -1142,6 +1146,8 @@ def creer_compte(config, prenom, nom, role, mot_de_passe, technicien_id='', a_ch
     if role == 'technicien' and not technicien_id:
         raise ErreurCompte(traduisible('comptes.technicien_obligatoire',
                                        'Un compte de technicien est lié à un technicien de l\'équipe.'))
+    if role == 'direction' and technicien_id:
+        raise ErreurCompte(MESSAGE_DIRECTION_SANS_TECHNICIEN)
     verifier_mot_de_passe_choisi(mot_de_passe)
     with VERROU_ACCES:
         comptes = lire_comptes(config)
@@ -1301,6 +1307,8 @@ def modifier_compte(config, identifiant, origine=('', '', ''), **champs):
         if compte['role'] == 'technicien' and not compte.get('technicien_id'):
             raise ErreurCompte(traduisible('comptes.technicien_obligatoire',
                                            'Un compte de technicien est lié à un technicien de l\'équipe.'))
+        if compte['role'] == 'direction' and compte.get('technicien_id'):
+            raise ErreurCompte(MESSAGE_DIRECTION_SANS_TECHNICIEN)
         if not any(c['role'] == 'responsable' and c.get('actif') for c in comptes):
             raise ErreurCompte(traduisible('comptes.dernier_responsable',
                                            'Il faut garder au moins un compte responsable actif.'))
@@ -6477,7 +6485,8 @@ def segment_de_route(motif, morceaux):
 
 OUI, NON = 'oui', 'non'
 # Colonnes de ROLES_PAR_ROUTE, dans cet ordre. « appareil » : téléphone enrôlé (D125, T153), droits du demandeur.
-ORDRE_DES_ROLES = ('demandeur', 'appareil', 'technicien', 'responsable')
+# « direction » (T520, A7) : lecture seule, en dernière colonne.
+ORDRE_DES_ROLES = ('demandeur', 'appareil', 'technicien', 'responsable', 'direction')
 # Tables lues par le demandeur (liste fermée, D126 : aucune table de coût ni de techniciens) : celles de ses écrans
 # (accueil, Signaler, demandes, parc, fiche d'équipement avec ses compteurs et relevés, wiki, Ce poste).
 TABLES_DU_DEMANDEUR = ('localisations', 'equipements', 'demandes', 'compteurs', 'releves', 'codes_defaillance',
@@ -6493,7 +6502,8 @@ DOCUMENTS_RESERVES_AU_RESPONSABLE = (('habilitations', 'justificatif'), ('contra
 # Rapports mensuels figés (T478, DÉCIDÉ : D126, aucun coût pour le technicien ; écart trouvé par la recette T476), à
 # part des colonnes ci-dessus : coût de l'arrêt et heures d'arrêt par équipement, coût de maintenance. Leurs noms
 # sont la valeur de ce paramètre de parametres.csv (séparés par des virgules, comme Rapport.rapportsFiges), relue à
-# chaque requête (documents_reserves) : servis au seul responsable, comme ci-dessus.
+# chaque requête (documents_reserves) : servis au seul responsable, comme ci-dessus (et à la Direction, T520, qui a
+# les coûts : DOCUMENTS_DE_LA_DIRECTION).
 PARAMETRE_DES_RAPPORTS_FIGES = 'rapports_mensuels'
 # Écritures : le demandeur crée des demandes (PUT de demandes.csv en ajout seulement) et la ligne de journal qui va
 # avec ; le technicien écrit tout sauf les tables du responsable, qu'il lit (techniciens sans taux horaire,
@@ -6526,16 +6536,28 @@ PHOTOS_DE_DEMANDES = 'photos de demandes'
 DOCUMENTS_DU_DEMANDEUR = 'photos de demandes et documents des équipements'
 # Documents du technicien : tous, sauf ceux que documents_reserves réserve au responsable (D196, T478) ; marqueur.
 DOCUMENTS_DU_TECHNICIEN = 'documents_sauf_reserves'
-TOUS = (OUI, OUI, OUI, OUI)
-RESPONSABLE = (NON, NON, NON, OUI)
-INTERVENANTS = (NON, NON, OUI, OUI)     # technicien et responsable (l'IA : arbitrage de Nicolas du 2026-10-28)
+# --- Direction (T520, A7 de l'étude d'ergonomie) : le patron lit, n'écrit rien -------------------------------------
+# Elle lit les tables du tableau de bord (Indicateurs), des rapports mensuels et de l'historique (parc, OT, demandes,
+# temps passés, pièces sorties), coûts compris (aucune colonne cachée : taux horaires, prix, coût d'arrêt, comme au
+# responsable) ; pas les habilitations (justificatifs, D196) ni le wiki, dont ses écrans ne se servent pas.
+# Documents : tous sauf ceux que D196 réserve au responsable (justificatifs, documents de contrats, par colonne ou par
+# nom), rapports mensuels figés compris (T478 les réserve au responsable pour leurs coûts, que la Direction voit).
+# Aucune écriture (table, document, compte, sauvegarde, restauration, IA, installation) : NON ; seules restent les
+# routes de tout compte (session, mot de passe, langue, déconnexion). GET /api/info : réponse réduite au port
+# (api_info : ni adresses, ni état des sauvegardes, ni Tailscale, ni format des données).
+TABLES_FERMEES_A_LA_DIRECTION = ('habilitations', 'wiki_pages', 'wiki_journal')
+TABLES_DE_LA_DIRECTION = tuple(table for table in TABLES if table not in TABLES_FERMEES_A_LA_DIRECTION)
+DOCUMENTS_DE_LA_DIRECTION = 'documents_sauf_reserves_rapports_compris'
+TOUS = (OUI, OUI, OUI, OUI, OUI)
+RESPONSABLE = (NON, NON, NON, OUI, NON)
+INTERVENANTS = (NON, NON, OUI, OUI, NON)     # technicien et responsable (l'IA : arbitrage de Nicolas du 2026-10-28)
 
 # Route → règle de chaque rôle (ORDRE_DES_ROLES) : OUI, NON (403), ou ce que le rôle y peut (tables permises, règle
 # des documents). Chaque route de ROUTES_API a sa ligne. Les routes publiques et celles du mot de passe provisoire
 # sont contrôlées avant (controler_acces) ; « déconnecter partout » pour un autre compte : responsable seulement
 # (api_deconnecter_partout).
 ROLES_PAR_ROUTE = {
-    # route                                 demandeur, appareil, technicien, responsable
+    # route                                 demandeur, appareil, technicien, responsable, direction
     ('GET', 'ping'): TOUS,
     ('GET', 'session'): TOUS,
     ('POST', 'connexion'): TOUS,
@@ -6554,13 +6576,14 @@ ROLES_PAR_ROUTE = {
     ('POST', 'acces/invitations/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/revoquer-tous'): RESPONSABLE,
-    ('GET', 'csv/<table>'): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI),
+    ('GET', 'csv/<table>'): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI, TABLES_DE_LA_DIRECTION),
     ('PUT', 'csv/<table>'): (TABLES_DU_DEMANDEUR_EN_ECRITURE, TABLES_DU_DEMANDEUR_EN_ECRITURE,
-                             TABLES_DU_TECHNICIEN_EN_ECRITURE, OUI),
+                             TABLES_DU_TECHNICIEN_EN_ECRITURE, OUI, NON),
     ('POST', 'csv/<table>/ajout'): (TABLES_DU_DEMANDEUR_EN_AJOUT, TABLES_DU_DEMANDEUR_EN_AJOUT,
-                                    TABLES_DU_TECHNICIEN_EN_ECRITURE, OUI),
-    ('GET', 'documents/<nom>'): (DOCUMENTS_DU_DEMANDEUR, DOCUMENTS_DU_DEMANDEUR, DOCUMENTS_DU_TECHNICIEN, OUI),
-    ('PUT', 'documents/<nom>'): (PHOTOS_DE_DEMANDES, PHOTOS_DE_DEMANDES, OUI, OUI),
+                                    TABLES_DU_TECHNICIEN_EN_ECRITURE, OUI, NON),
+    ('GET', 'documents/<nom>'): (DOCUMENTS_DU_DEMANDEUR, DOCUMENTS_DU_DEMANDEUR, DOCUMENTS_DU_TECHNICIEN, OUI,
+                                 DOCUMENTS_DE_LA_DIRECTION),
+    ('PUT', 'documents/<nom>'): (PHOTOS_DE_DEMANDES, PHOTOS_DE_DEMANDES, OUI, OUI, NON),
     ('POST', 'sauvegarde'): RESPONSABLE,
     ('POST', 'sauvegarde/tester'): RESPONSABLE,
     ('GET', 'sauvegardes'): RESPONSABLE,
@@ -6596,6 +6619,11 @@ LIGNES_CACHEES_PAR_ROLE = {
 STATUT_DEMANDE_NOUVELLE = 'Nouvelle'
 CHAMPS_DE_DECISION = ('motif_decision', 'date_decision', 'ot_id')
 MESSAGE_RESERVE_AU_RESPONSABLE = traduisible('acces.reserve_au_responsable', 'Accès refusé : réservé au responsable.')
+# T520 (A7) : le refus d'un document dit quoi faire, sans changer le droit (D196, T478) ; ouvert par un lien dans le
+# navigateur (navigation), il mène à une page de Prévo au lieu d'un JSON brut (envoyer_erreur, ROUTE_DOCUMENT_FERME).
+MESSAGE_DOCUMENT_FERME = traduisible('acces.document_ferme',
+                                     'Ce document est réservé au responsable : demandez-lui de vous l\'envoyer.')
+ROUTE_DOCUMENT_FERME = '/#/document-ferme'
 
 
 def role_effectif(identite):
@@ -6677,13 +6705,16 @@ def rapports_figes(config):
     return noms
 
 
-def documents_reserves(config):
+def documents_reserves(config, rapports_compris=True):
     """Noms des documents servis au seul responsable, en minuscules (le dossier des documents ne distingue pas la
     casse sous Windows ni macOS : « JUSTIF.PDF » ouvrirait « justif.pdf ») : ceux des colonnes de
-    DOCUMENTS_RESERVES_AU_RESPONSABLE (D196) et les rapports mensuels figés (T478, D126)."""
+    DOCUMENTS_RESERVES_AU_RESPONSABLE (D196) et les rapports mensuels figés (T478, D126) ; sans ces derniers quand
+    rapports_compris est faux (Direction, T520)."""
     noms = {nom for table, colonne in DOCUMENTS_RESERVES_AU_RESPONSABLE
             for nom in documents_cites(config, table, colonne)}
-    return {nom.lower() for nom in noms | rapports_figes(config)}
+    if rapports_compris:
+        noms |= rapports_figes(config)
+    return {nom.lower() for nom in noms}
 
 
 def segment_permis(config, regle, segment):
@@ -6694,6 +6725,9 @@ def segment_permis(config, regle, segment):
         return False
     if isinstance(regle, tuple):
         return segment in regle
+    if regle == DOCUMENTS_DE_LA_DIRECTION:          # T520 : D196 tenu, rapports mensuels figés ouverts
+        return not (MOTIF_DOCUMENT_RESERVE.fullmatch(segment)
+                    or segment.lower() in documents_reserves(config, rapports_compris=False))
     if regle in (DOCUMENTS_DU_TECHNICIEN, DOCUMENTS_DU_DEMANDEUR) and (
             MOTIF_DOCUMENT_RESERVE.fullmatch(segment) or segment.lower() in documents_reserves(config)):
         return False
@@ -6710,6 +6744,10 @@ def message_refus(identite, route, segment):
     methode, motif = route
     if ROLES_PAR_ROUTE.get(route) == RESPONSABLE:
         return MESSAGE_RESERVE_AU_RESPONSABLE
+    if role == 'direction' and methode != 'GET':
+        return traduisible('acces.direction_lecture_seule',
+                           'Accès refusé : le compte Direction lit Prévo sans rien modifier. Demandez ce changement '
+                           'au responsable.')
     if motif == 'csv/<table>' and methode == 'GET':
         return traduisible('acces.table_fermee', 'Accès refusé : la table « {table} » n\'est pas ouverte au {role}.',
                            table=segment, role=role)
@@ -6724,8 +6762,7 @@ def message_refus(identite, route, segment):
         return traduisible('acces.photo_seulement', 'Accès refusé : le {role} ne joint que la photo d\'une demande.',
                            role=role)
     if motif == 'documents/<nom>':
-        return traduisible('acces.document_ferme', 'Accès refusé : ce document n\'est pas ouvert au {role}.',
-                           role=role)
+        return MESSAGE_DOCUMENT_FERME
     return traduisible('acces.role_refuse', 'Accès refusé : votre rôle ({role}) ne permet pas cette action.',
                        role=role)
 
@@ -7164,7 +7201,8 @@ def champs_de_compte(config, demande, obligatoires=()):
             raise ErreurHttp(400, traduisible('comptes.champ_obligatoire', '« {champ} » est obligatoire.', champ=cle))
     if 'role' in champs and champs['role'] not in ROLES_COMPTES:
         raise ErreurHttp(400, traduisible('comptes.role_inconnu_liste',
-                                          'Rôle inconnu : « {role} » (responsable, technicien ou demandeur).',
+                                          'Rôle inconnu : « {role} » (responsable, technicien, demandeur ou '
+                                          'direction).',
                                           role=champs['role'][:60]))
     if champs.get('technicien_id') and not technicien_existe(config, champs['technicien_id']):
         raise ErreurHttp(400, traduisible('comptes.technicien_inconnu',
@@ -7502,7 +7540,11 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         """GET /api/info : port, adresses (celles de la porte hors de « ce PC », §22.6), « porte » vrai quand elle est
         ouverte (la carte « Connecter un téléphone » rappelle alors « Faites confiance au PC atelier »), et l'état de
         la copie externe des sauvegardes (D133 ; None sans dossier) et de Tailscale (D128, §22.8 ; None quand il n'est
-        pas attendu). Jamais le port https : il n'est pas une adresse que Prévo donne (CS137)."""
+        pas attendu). Jamais le port https : il n'est pas une adresse que Prévo donne (CS137). T520 : à la Direction,
+        le port seul (aucun de ses écrans ne montre l'état du PC serveur)."""
+        if self.session is not None and role_effectif(self.session) == 'direction':
+            self.envoyer_json(200, {'port': self.config.port})
+            return
         adresse_locale, adresses_reseau = self.adresses_donnees()
         self.envoyer_json(200, {'port': self.config.port,
                                 'adresse_locale': adresse_locale,
@@ -8091,6 +8133,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             verifier_mot_de_passe_choisi(demande.get('mot_de_passe'))
         except ErreurCompte as erreur:
             raise ErreurHttp(400, traduisible_de(erreur))
+        direction = self.direction_de_l_installation(demande, prenom, nom)
         technicien_id = ''
         if solo:
             with VERROU_ECRITURE:
@@ -8102,7 +8145,41 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             raise ErreurHttp(400, traduisible_de(erreur))
         brouillon['solo_technicien_id'] = technicien_id
         reponse = self.garder_brouillon(brouillon, 'compte')
-        return dict(reponse, compte=compte, technicien_id=technicien_id)
+        reponse = dict(reponse, compte=compte, technicien_id=technicien_id)
+        if direction is not None:
+            # T520 (A7) : accès facultatif de la direction (lecture seule), mot de passe provisoire rendu une seule
+            # fois, comme Équipe › Accès (api_compte_creer) ; un échec ne défait pas le compte du responsable.
+            provisoire = mot_de_passe_provisoire()
+            try:
+                reponse['direction'] = {
+                    'compte': creer_compte(self.config, direction[0], direction[1], 'direction', provisoire,
+                                           a_changer=True, origine=self.origine()),
+                    'mot_de_passe_provisoire': provisoire}
+            except ErreurCompte as erreur:
+                reponse['direction'] = {'erreur': traduisible_de(erreur)}
+        return reponse
+
+    @staticmethod
+    def direction_de_l_installation(demande, prenom, nom):
+        """(prénom, nom) de l'accès facultatif de la direction de l'étape « compte » (T520), None sans lui ; 400 si
+        la forme est fausse, sans prénom, ou si c'est la personne du compte responsable (contrôlé avant toute
+        écriture)."""
+        direction = demande.get('direction')
+        if direction is None:
+            return None
+        if not isinstance(direction, dict) or not all(isinstance(direction.get(cle, ''), str) for cle in ('prenom', 'nom')):
+            raise ErreurHttp(400, traduisible('installation.direction_forme',
+                                              '« direction » : {"prenom": …, "nom": …} est attendu.'))
+        prenom_direction = direction.get('prenom', '').strip()
+        nom_direction = direction.get('nom', '').strip()
+        if not prenom_direction:
+            raise ErreurHttp(400, traduisible('installation.direction_prenom',
+                                              'Accès de la direction : le prénom est obligatoire.'))
+        if (prenom_direction.casefold(), nom_direction.casefold()) == (prenom.casefold(), nom.casefold()):
+            raise ErreurHttp(400, traduisible('installation.direction_meme_personne',
+                                              'L\'accès de la direction est pour une autre personne que le '
+                                              'responsable : le responsable voit déjà tout.'))
+        return prenom_direction[:80], nom_direction[:80]
 
     def installation_certificat(self, brouillon, demande):
         """{"mode": automatique | reseau_prive | fichiers | mandataire, "certificat"?, "cle"?, "noms"?} : automatique ⇒
@@ -8429,7 +8506,25 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             self.jeter_le_corps()           # refus avant la lecture du corps (hôte, session, X-Prevo…)
         if not getattr(self, 'corps_lu', False):
             self.close_connection = True     # le corps n'a pas (entièrement) été lu
+        if erreur.statut == 403 and self.navigation_vers_un_document():
+            # T520 (A7) : un lien de document refusé, ouvert dans le navigateur (le bilan envoyé au patron), mène à une
+            # page de Prévo qui dit quoi faire, dans la langue de l'écran, au lieu du JSON brut ; le droit est le même
+            # (rien du document n'est servi) et un appel de l'application (fetch) garde son 403.
+            self.envoyer(303, b'', 'text/plain; charset=utf-8', {'Location': ROUTE_DOCUMENT_FERME})
+            return
         self.envoyer_json(erreur.statut, donnees, erreur.entetes)
+
+    def navigation_vers_un_document(self):
+        """Vrai pour GET /api/documents/<nom> ouvert comme une page (Sec-Fetch-Mode « navigate » ou, sans cet en-tête,
+        Accept qui demande du HTML), jamais pour un appel de l'application (X-Prevo, fetch)."""
+        if self.command != 'GET' or not self.path.split('?', 1)[0].startswith('/api/documents/'):
+            return False
+        if self.headers.get('X-Prevo'):
+            return False
+        mode = (self.headers.get('Sec-Fetch-Mode') or '').strip().lower()
+        if mode:
+            return mode == 'navigate'
+        return 'text/html' in (self.headers.get('Accept') or '').lower()
 
     def jeter_le_corps(self):
         """Refus prononcé avant la lecture du corps : le lit et le jette s'il fait au plus 64 Ko, pour que le navigateur

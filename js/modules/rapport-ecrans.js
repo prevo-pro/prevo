@@ -123,6 +123,30 @@ Object.assign(Rapport, (() => {
     UI.telecharger(nom, blob);
   }
 
+  /**
+   * Direction (T520, A7) : le bilan d'un mois calculé à la demande et ouvert dans un nouvel onglet, sans rien écrire
+   * (ni document ni rapports_mensuels : figer reste au responsable).
+   */
+  function carteBilan(proposables) {
+    return UI.html`<article class="carte rapports-bilan">
+      <div class="entete-carte"><h2>${I18n.t('rapport.bilan.titre')}</h2></div>
+      <p class="note">${I18n.t('rapport.bilan.explication')}</p>
+      ${proposables.length ? UI.html`<div class="rapports-bilan-formulaire">
+        <div class="champ"><label class="libelle" for="rapports-bilan-mois">${I18n.t('rapport.onglet.mois')}</label>
+          <select id="rapports-bilan-mois" data-hors-saisie>${proposables.map((mois) => UI.html`<option value="${mois}">${libelleMois(mois)}</option>`)}</select></div>
+        <button type="button" class="btn btn-primaire" data-action="voir-bilan">${I18n.t('rapport.bilan.voir')}</button>
+      </div>` : UI.html`<p>${I18n.t('rapport.onglet.aucun_mois_complet_historique')}</p>`}
+    </article>`;
+  }
+
+  async function voirBilan(mois) {
+    const onglet = window.open('', '_blank');           // ouvert au clic (sinon bloqué), rempli une fois calculé
+    const page = await Rapport.html(mois, {});
+    const adresse = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
+    if (onglet) onglet.location.href = adresse; else window.open(adresse, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(adresse), 60000);
+  }
+
   function messageFige(resultat) {
     return UI.html`${I18n.html('rapport.message_fige.rapport_fige', { mois: deMois(resultat.rapport.mois), nom: resultat.nom, adresse: lienCourriel(resultat.rapport) })}`;
   }
@@ -131,9 +155,10 @@ Object.assign(Rapport, (() => {
     const proposables = moisProposables();
     const rapports = lignesDesRapports();
     const demo = App.mode === 'demo';
+    const direction = App.estDirection();        // T520 : lecture seule — bilan d'un mois sans le figer, rapports figés
     UI.remplir(conteneur, UI.html`<div class="rapports">
       <div id="rapports-message"></div>
-      <article class="carte rapports-figer">
+      ${direction ? carteBilan(proposables) : UI.html`<article class="carte rapports-figer">
         <div class="entete-carte"><h2>${I18n.t('rapport.onglet.figer_rapport_mensuel')}</h2></div>
         <p class="note">${I18n.t('rapport.onglet.page_4_direction_disponibilite')}</p>
         ${proposables.length ? UI.html`<form class="rapports-formulaire" data-hors-saisie>
@@ -145,7 +170,7 @@ Object.assign(Rapport, (() => {
             <textarea id="rapports-commentaire" rows="4" maxlength="4000" data-dictee></textarea></div>
           <button type="submit" class="btn btn-primaire">${I18n.t('rapport.onglet.figer_rapport')}</button>
         </form>` : UI.html`<p>${I18n.t('rapport.onglet.aucun_mois_complet_historique')}</p>`}
-      </article>
+      </article>`}
       <article class="carte rapports-liste">
         <div class="entete-carte"><h2>${I18n.t('rapport.onglet.rapports_figes')}</h2><span class="badge ${rapports.length ? 'info' : 'neutre'}">${rapports.length}</span></div>
         ${rapports.length ? UI.html`<div class="table-defile"><table class="table">
@@ -156,10 +181,11 @@ Object.assign(Rapport, (() => {
             <td class="actions">
               <button type="button" class="btn btn-secondaire" data-action="ouvrir" data-nom="${ligne.nom}">${I18n.t('rapport.onglet.ouvrir')}</button>
               <button type="button" class="btn btn-secondaire" data-action="imprimer" data-nom="${ligne.nom}">${I18n.t('commun.bouton.imprimer')}</button>
-              ${ligne.mois ? UI.html`<button type="button" class="btn btn-fantome" data-action="recalculer" data-mois="${ligne.mois}">${I18n.t('rapport.onglet.recalculer')}</button>` : ''}
-              ${demo ? UI.html`<button type="button" class="btn btn-fantome" data-action="telecharger" data-nom="${ligne.nom}">${I18n.t('rapport.onglet.telecharger')}</button>` : ''}
+              ${ligne.mois && !direction ? UI.html`<button type="button" class="btn btn-fantome" data-action="recalculer" data-mois="${ligne.mois}">${I18n.t('rapport.onglet.recalculer')}</button>` : ''}
+              ${demo || direction ? UI.html`<button type="button" class="btn btn-fantome" data-action="telecharger" data-nom="${ligne.nom}">${I18n.t('rapport.onglet.telecharger')}</button>` : ''}
             </td></tr>`)}</tbody></table></div>`
-          : UI.vide(I18n.t('rapport.onglet.aucun_rapport_fige'), I18n.t('rapport.onglet.figez_mois_ecoule_garder'), 'indicateurs')}
+          : UI.vide(I18n.t('rapport.onglet.aucun_rapport_fige'), direction ? I18n.t('rapport.bilan.aucun_rapport_fige_direction')
+            : I18n.t('rapport.onglet.figez_mois_ecoule_garder'), 'indicateurs')}
       </article></div>`);
     const racine = conteneur.querySelector('.rapports');
     const message = (type, contenu) => UI.remplir(racine.querySelector('#rapports-message'), UI.bandeau(type, contenu));
@@ -192,6 +218,7 @@ Object.assign(Rapport, (() => {
       const actions = {
         ouvrir: () => ouvrir(bouton.dataset.nom), imprimer: () => imprimer(bouton.dataset.nom),
         telecharger: () => telecharger(bouton.dataset.nom),
+        'voir-bilan': () => voirBilan(racine.querySelector('#rapports-bilan-mois').value),
       };
       if (bouton.dataset.action === 'recalculer') {
         const choixLangue = racine.querySelector('#rapports-langue');       // recalculer : dans la langue proposée au formulaire

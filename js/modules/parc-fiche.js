@@ -395,6 +395,8 @@ Object.assign(Parc, (() => {
     // Le demandeur consulte : pas de saisie de relevé, ni de lien vers les gammes et les OT
     // (écrans qui lui sont fermés), ni de carte Préventif (D27 : il ne voit pas le préventif).
     const intervenant = App.estTechnicien() || responsable;
+    // Direction (T520) : lecture seule — ni Signaler ni wiki (table qu'elle ne lit pas) ; historique, coûts compris.
+    const direction = App.estDirection();
     const adresse = await adresseDocument(equipement.document);
     const idUrl = encodeURIComponent(equipement.id);
     const actif = estActif(equipement);
@@ -409,15 +411,15 @@ Object.assign(Parc, (() => {
             <p class="parc-badges-fiche">${badgeCriticite(equipement.criticite)} ${equipement.statut ? UI.badgeValeur('equipements', 'statut', equipement.statut) : ''}
               ${intervenant && typeof Garanties !== 'undefined' ? Garanties.badgeEquipement(equipement) : ''}
               ${actif ? '' : UI.html`<span class="badge neutre barre">${I18n.t('parc.fiche.inactif')}</span>`}</p>
-            <p><a id="lien-wiki-equipement" href="#/wiki/${idUrl}">${UI.icone('wiki')}${I18n.t('parc.fiche.wiki_equipement')}</a></p>
+            ${direction ? '' : UI.html`<p><a id="lien-wiki-equipement" href="#/wiki/${idUrl}">${UI.icone('wiki')}${I18n.t('parc.fiche.wiki_equipement')}</a></p>`}
           </div>
         </div>
 
         <div class="parc-actions">
           ${solo ? UI.html`<a class="btn btn-primaire btn-gros parc-creer-ot" id="parc-creer-ot" href="#/ot/nouveau?equipement=${idUrl}">${UI.icone('ordres')}
             <span>${I18n.html('parc.fiche.creer_ot_intervenez_meme')}</span></a>` : ''}
-          <a class="btn ${solo ? 'btn-secondaire' : 'btn-primaire'} btn-gros parc-signaler" href="#/di/nouvelle?equipement=${idUrl}">${UI.icone('alerte')}
-            <span>${I18n.html('parc.fiche.signaler_probleme_panne_fuite')}</span></a>
+          ${direction ? UI.html`<p class="note parc-lecture-seule">${I18n.t('parc.fiche.direction_lecture_seule')}</p>` : UI.html`<a class="btn ${solo ? 'btn-secondaire' : 'btn-primaire'} btn-gros parc-signaler" href="#/di/nouvelle?equipement=${idUrl}">${UI.icone('alerte')}
+            <span>${I18n.html('parc.fiche.signaler_probleme_panne_fuite')}</span></a>`}
           ${responsable ? UI.html`<div class="actions">
             ${solo ? '' : UI.html`<a class="btn btn-secondaire" href="#/ot/nouveau?equipement=${idUrl}">${UI.icone('ordres')}${I18n.t('parc.fiche.creer_ot')}</a>`}
             <a class="btn btn-secondaire" href="#/equipement/${idUrl}/modifier">${UI.icone('cle')}${I18n.t('commun.bouton.modifier')}</a>
@@ -477,7 +479,7 @@ Object.assign(Parc, (() => {
   // ===========================================================================================
 
   document.addEventListener('DOMContentLoaded', () => {
-    const tous = ['demandeur', 'technicien', 'responsable'];
+    const tous = ['demandeur', 'technicien', 'responsable', 'direction'];      // Direction (T520) : en lecture
     App.ecran({
       id: 'parc', route: /^#\/parc$/, get titre() { return I18n.t('parc.fiche.parc'); },
       menu: { get libelle() { return I18n.t('parc.fiche.parc'); }, icone: 'parc', ordre: 40 },

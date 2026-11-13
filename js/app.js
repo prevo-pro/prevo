@@ -74,7 +74,9 @@ const App = (() => {
   const CLE_RECHARGEMENT_LANGUE = 'prevo.langue.rechargement';
   const PARAMETRE_LANGUE = 'langue_defaut';
   const ROUTE_ACCUEIL = '#/accueil';
-  const TYPES_PROFIL = ['demandeur', 'technicien', 'responsable'];
+  // « direction » (T520, A7) : lecture seule — accueil, Indicateurs et rapports, Parc et OT ; aucun bouton d'écriture.
+  // En mode comptes le serveur fait foi (ROLES_PAR_ROUTE) ; sans comptes, c'est l'écran, comme pour les autres profils.
+  const TYPES_PROFIL = ['demandeur', 'technicien', 'responsable', 'direction'];
   const ENTREES_BARRE_BAS = 4;
   // Mode Solo (D132, §22.11) : réglage mode_solo de parametres.csv, profil responsable seulement. Ces écrans
   // passent sous « Plus » (repliable dans le menu latéral, feuille « Plus » au téléphone) ; leurs routes restent.
@@ -1144,6 +1146,7 @@ const App = (() => {
       case 'demandeur': return I18n.t('socle.libelle_type.demandeur');
       case 'technicien': return I18n.t('socle.libelle_type.technicien');
       case 'responsable': return I18n.t('socle.libelle_type.responsable');
+      case 'direction': return I18n.t('socle.libelle_type.direction');
       default: return undefined;
     }
   }
@@ -1159,7 +1162,8 @@ const App = (() => {
   // Texte affiché dans le menu : « Technicien · Julien Moreau ».
   function libelleAffiche(p) {
     if (!p) return '';
-    return p.type === 'responsable' ? libelleType('responsable') : libelleType(p.type) + ' · ' + p.nom;
+    if (p.type === 'responsable' || (p.type === 'direction' && !p.nom)) return libelleType(p.type);
+    return libelleType(p.type) + ' · ' + p.nom;
   }
 
   // Texte du menu en mode comptes : « Nicolas Briand · Responsable » (le compte fait foi, pas le poste).
@@ -1259,6 +1263,8 @@ const App = (() => {
   function estResponsable() { return Boolean(profil) && profil.type === 'responsable'; }
   function estTechnicien() { return Boolean(profil) && profil.type === 'technicien'; }
   function estDemandeur() { return Boolean(profil) && profil.type === 'demandeur'; }
+  /** Direction (T520) : lit, n'écrit rien ; elle voit les coûts comme le responsable. */
+  function estDirection() { return Boolean(profil) && profil.type === 'direction'; }
 
   /** Mode Solo (D132) : mode_solo = 1 dans parametres.csv ET profil responsable (pas un quatrième profil). */
   function modeSolo() {
@@ -1537,6 +1543,10 @@ const App = (() => {
     }
     const { chemin, requete } = analyserHash(location.hash);
     const trouve = trouverEcran(chemin);
+    if (trouve && !ecranAutorise(trouve.ecran) && estDirection()) {
+      afficherEcranFerme(trouve.ecran);       // T520 : adresse tapée à la main → page lisible, pas un renvoi muet
+      return;
+    }
     if (!trouve || !ecranAutorise(trouve.ecran)) {
       if (trouve) UI.toast(I18n.t('socle.route.ecran_pas_disponible_profil', { ecranTitre: trouve.ecran.titre, profil: libelleType(profil.type) }), 'attention');
       const accueil = trouverEcran(ROUTE_ACCUEIL);
@@ -1553,6 +1563,18 @@ const App = (() => {
     const parametres = { groupes: correspondance.slice(1).map(decoder), requete, chemin };
     Object.keys(correspondance.groups || {}).forEach((nom) => { parametres[nom] = decoder(correspondance.groups[nom]); });
     await rendre(trouve.ecran, parametres, garderDefilement);
+  }
+
+  /** Direction (T520) : écran qui ne lui est pas ouvert (Paramètres, Équipe, Signaler…) → une page qui le dit. */
+  function afficherEcranFerme(ecranFerme) {
+    numeroAffichage += 1;
+    ecranCourant = null;
+    definirTitre(ecranFerme.titre);
+    allumerMenus();
+    UI.remplir(UI.$('#contenu'), UI.html`<div class="ecran-ferme">
+      <div class="entete-page"><div><h1>${ecranFerme.titre}</h1></div></div>
+      ${UI.vide(I18n.t('socle.ecran_ferme.titre'), I18n.t('socle.ecran_ferme.texte'), 'cle')}
+      <p><a class="btn btn-secondaire" href="${ROUTE_ACCUEIL}">${I18n.t('socle.ecran_ferme.retour_accueil')}</a></p></div>`);
   }
 
   async function rendre(ecranAAfficher, parametres, garderDefilement) {
@@ -1580,7 +1602,8 @@ const App = (() => {
     }
     if (numero !== numeroAffichage) return;
     // Aide à l'écran (§23) : encart de la première visite, après un affichage réussi d'un écran nouveau.
-    if (nouvelEcran && typeof AideEcrans !== 'undefined' && conteneur.childElementCount
+    // Direction (T520) : pas d'encart (ses gestes « Essayez » invitent à écrire).
+    if (nouvelEcran && !estDirection() && typeof AideEcrans !== 'undefined' && conteneur.childElementCount
         && !conteneur.querySelector(':scope > .entete-page + .alerte.important')) {
       try { AideEcrans.apresAffichage(ecranAAfficher, conteneur); } catch (erreur) { console.warn('Prévo : aide à l\'écran non affichée.', erreur); }
     }
@@ -1723,6 +1746,7 @@ const App = (() => {
 
     // Profil
     UI.$('#profil-responsable').addEventListener('click', () => terminerProfil({ type: 'responsable', nom: '', technicienId: '' }));
+    UI.$('#profil-direction').addEventListener('click', () => terminerProfil({ type: 'direction', nom: '', technicienId: '' }));
     UI.$('#profil-demandeur').addEventListener('click', () => { montrerPanneauProfil('profil-panneau-demandeur'); UI.$('#profil-nom').focus(); });
     UI.$('#profil-technicien').addEventListener('click', () => {
       montrerPanneauProfil('profil-panneau-technicien');
@@ -1779,6 +1803,19 @@ const App = (() => {
     });
   }
 
+  // T520 (A7) : un lien de document refusé ouvert dans le navigateur (le bilan envoyé au patron) arrive ici, renvoyé
+  // par le serveur (303 vers #/document-ferme) au lieu d'un message brut ; tous les profils, aucune entrée de menu.
+  ecran({
+    id: 'document-ferme', route: /^#\/document-ferme$/, get titre() { return I18n.t('socle.document_ferme.titre'); },
+    profils: TYPES_PROFIL, tables: [],
+    afficher(conteneur) {
+      UI.remplir(conteneur, UI.html`<div class="document-ferme">
+        <div class="entete-page"><div><h1>${I18n.t('socle.document_ferme.titre')}</h1></div></div>
+        ${UI.vide(I18n.t('socle.document_ferme.titre'), I18n.t('socle.document_ferme.texte'), 'cle')}
+        <p><a class="btn btn-secondaire" href="${ROUTE_ACCUEIL}">${I18n.t('socle.ecran_ferme.retour_accueil')}</a></p></div>`);
+    },
+  });
+
   // js/app.js est le dernier script : les modules ont déjà ajouté leurs écouteurs DOMContentLoaded
   // (qui enregistrent leurs écrans) ; celui-ci passe après eux.
   if (document.readyState === 'loading') {
@@ -1806,6 +1843,7 @@ const App = (() => {
     estResponsable,
     estTechnicien,
     estDemandeur,
+    estDirection,
     modeSolo,
     technicienSolo,
     libelleProfil: () => libelleAffiche(profil),

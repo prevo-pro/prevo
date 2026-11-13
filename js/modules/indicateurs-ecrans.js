@@ -149,8 +149,8 @@ Object.assign(Indicateurs, (() => {
     const filtres = { criticite: reglages.criticite, atelier: reglages.atelier };
     const global = Indicateurs.global(periode, filtres, jour);
     // Coût de l'arrêt (D188) : montré au seul profil qui a les coûts (D126 : le serveur cache cout_arret_h au
-    // technicien et au demandeur, qui y verraient de faux « non chiffré »).
-    const coutArret = App.estResponsable() ? Indicateurs.coutArret(periode, filtres) : null;
+    // technicien et au demandeur, qui y verraient de faux « non chiffré ») ; et à la Direction (T520), qui a les coûts.
+    const coutArret = App.estResponsable() || App.estDirection() ? Indicateurs.coutArret(periode, filtres) : null;
     UI.$('#indicateurs-periode', formulaire).value = periode.code;
     UI.$$('.indicateurs-date', formulaire).forEach((bloc) => { bloc.hidden = periode.code !== 'du-au'; });
     Object.assign(zone.dataset, {
@@ -568,7 +568,7 @@ Object.assign(Indicateurs, (() => {
     App.ecran({
       id: 'indicateurs', route: /^#\/indicateurs$/, get titre() { return I18n.t('indicateurs.ecran.indicateurs'); },
       menu: { get libelle() { return I18n.t('indicateurs.ecran.indicateurs'); }, icone: 'indicateurs', ordre: 50 },
-      profils: ['responsable'], tables: TABLES,
+      profils: ['responsable', 'direction'], tables: TABLES,           // Direction (T520) : en lecture
       afficher: afficherEcran,
     });
   });

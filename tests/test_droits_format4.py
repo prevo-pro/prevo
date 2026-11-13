@@ -51,7 +51,8 @@ NOUVEAU = "20261109-080000-titre-habilitation-H0V.pdf"         # cité ensuite p
 DOCUMENTS = (JUSTIFICATIF, CONTRAT, PARTAGE, GARANTIE, DOCUMENT_EQUIPEMENT, AUTRE, NOUVEAU)
 
 REFUS_TABLE = "Accès refusé : la table « habilitations » ne se modifie que par le responsable."
-REFUS_DOCUMENT = "Accès refusé : ce document n'est pas ouvert au {role}."
+# T520 (A7) : la phrase dit quoi faire, le droit ne change pas (le rôle n'y est plus ; .format l'ignore).
+REFUS_DOCUMENT = "Ce document est réservé au responsable : demandez-lui de vous l'envoyer."
 
 # ---------------------------------------------------------------------------
 # Données d'essai : CSV au format de Prévo, documents

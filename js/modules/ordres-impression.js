@@ -118,7 +118,8 @@ Object.assign(Ordres, (() => {
       id: 'liste-ot', route: /^#\/ot$/,
       get titre() { return I18n.t('ordres.ecran.liste_titre'); },
       menu: { get libelle() { return I18n.t('ordres.menu.libelle'); }, get court() { return I18n.t('ordres.menu.court'); }, icone: 'ordres', ordre: 30 },
-      profils: ['technicien', 'responsable'], tables: ['ordres_travail', 'equipements', 'techniciens'],
+      // Direction (T520) : liste et fiche en lecture (historique), aucun bouton d'écriture (ordres-fiche.js).
+      profils: ['technicien', 'responsable', 'direction'], tables: ['ordres_travail', 'equipements', 'techniciens'],
       afficher: afficherListe,
     });
     // « #/ot/nouveau » avant « #/ot/<id> » : la première route qui correspond gagne ; la route
@@ -132,7 +133,7 @@ Object.assign(Ordres, (() => {
     App.ecran({
       id: 'fiche-ot', route: /^#\/ot\/(?!nouveau$)(?<id>[^/?]+)$/, parent: 'liste-ot',
       get titre() { return I18n.t('ordres.ecran.fiche_titre'); },
-      profils: ['technicien', 'responsable'], tables: tablesFiche,
+      profils: ['technicien', 'responsable', 'direction'], tables: tablesFiche,
       afficher: afficherFiche,
     });
   });

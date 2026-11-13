@@ -350,7 +350,8 @@ Object.assign(Demandes, (() => {
     App.ecran({
       id: 'fiche-di', route: /^#\/di\/(?!nouvelle$)(?<id>[^/?]+)$/, parent: 'liste-di',
       get titre() { return I18n.t('demandes.ecran.fiche_titre'); },
-      profils: tousProfils, tables: ['demandes', 'ordres_travail', 'equipements', 'codes_defaillance'],
+      // Direction (T520) : la fiche en lecture (historique d'un équipement) ; ni Signaler ni la liste.
+      profils: tousProfils.concat('direction'), tables: ['demandes', 'ordres_travail', 'equipements', 'codes_defaillance'],
       afficher: afficherFiche,
     });
   });

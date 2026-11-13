@@ -130,6 +130,31 @@ const InstallationEtapes = (() => {
     return I18n.t('installation.indication_force.solide', { n: longueur });
   }
 
+  // T520 (A7) : accès facultatif de la direction (lecture seule : tableau de bord, bilan, historique), créé avec le
+  // compte du responsable ; son mot de passe provisoire est montré une fois par l'écran (installation-ecrans.js).
+  function blocDirection() {
+    return UI.html`<fieldset class="installation-direction">
+      <legend>${I18n.t('installation.direction.titre')}</legend>
+      <p class="note">${I18n.t('installation.direction.explication')}</p>
+      <div class="form-colonne">
+        <div class="champ"><label class="libelle" for="inst-direction-prenom">${I18n.t('commun.champ.prenom')}</label>
+          <input type="text" id="inst-direction-prenom" name="direction_prenom" autocomplete="off" maxlength="80"></div>
+        <div class="champ"><label class="libelle" for="inst-direction-nom">${I18n.t('installation.formulaire_compte.nom')}</label>
+          <input type="text" id="inst-direction-nom" name="direction_nom" autocomplete="off" maxlength="80"></div>
+      </div>
+    </fieldset>`;
+  }
+
+  /** { prenom, nom } de l'accès de la direction, null s'il est laissé vide, { probleme } sans prénom. */
+  function lireDirection(section) {
+    const prenom = UI.$('#inst-direction-prenom', section);
+    if (!prenom) return null;
+    const valeurs = { prenom: prenom.value.trim(), nom: UI.$('#inst-direction-nom', section).value.trim() };
+    if (!valeurs.prenom && !valeurs.nom) return null;
+    if (!valeurs.prenom) return { probleme: I18n.t('installation.direction.prenom_obligatoire') };
+    return valeurs;
+  }
+
   function formulaireCompte(c) {
     const b = c.brouillon();
     const sansMotDePasse = b.portee === 'ce-pc';            // Solo sur ce PC : le technicien « moi », sans compte
@@ -150,7 +175,8 @@ const InstallationEtapes = (() => {
             <p class="aide" id="inst-force" aria-live="polite"></p></div>
           <div class="champ"><label class="libelle" for="inst-confirmation">${I18n.t('installation.formulaire_compte.confirmation')}</label>
             <input type="password" id="inst-confirmation" name="confirmation" autocomplete="new-password" maxlength="256"></div>`}
-        </div>`,
+        </div>
+        ${sansMotDePasse || existant ? '' : blocDirection()}`,
       autrement: UI.html`<p class="note">${notePlusTard()}</p>${['session_heures', 'session_longue_jours', 'invitation_heures', 'demandeurs_avec_compte'].map((cle) => reglageLu(c, cle))}`,
       passer: existant,
       lire(section) {
@@ -164,7 +190,9 @@ const InstallationEtapes = (() => {
         }
         if (motDePasse.length > LONGUEUR_MAX_MOT_DE_PASSE) return { probleme: I18n.t('installation.mot_de_passe.trop_long', { n: LONGUEUR_MAX_MOT_DE_PASSE }) };
         if (motDePasse !== UI.$('#inst-confirmation', section).value) return { probleme: I18n.t('installation.formulaire_compte.confirmation_correspond_pas_mot') };
-        return Object.assign(corps, { mot_de_passe: motDePasse });
+        const direction = lireDirection(section);
+        if (direction && direction.probleme) return direction;
+        return Object.assign(corps, { mot_de_passe: motDePasse }, direction ? { direction } : {});
       },
       // Les mots de passe ne restent jamais dans la page : vidés à chaque réponse.
       apres(section) {

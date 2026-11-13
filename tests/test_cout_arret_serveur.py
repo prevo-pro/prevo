@@ -375,7 +375,8 @@ RAPPORT = "20261001-080000-rapport-mensuel-2026-09.html"           # 1er de rapp
 REVISION = "20261002-090000-rapport-mensuel-2026-09-r2.html"       # 2e, après « , » (espace gardée par un tableur)
 PAS_ENCORE = "20261101-080000-rapport-mensuel-2026-10.html"        # sur le disque, cité ensuite par le responsable
 AUTRE = "20261020-101500-notice-libre.pdf"                         # cité nulle part : lisible du technicien
-REFUS_DOCUMENT = "Accès refusé : ce document n'est pas ouvert au {role}."
+# T520 (A7) : la phrase dit quoi faire, le droit ne change pas (le rôle n'y est plus ; .format l'ignore).
+REFUS_DOCUMENT = "Ce document est réservé au responsable : demandez-lui de vous l'envoyer."
 VALEUR = "'%s, %s" % (RAPPORT, REVISION)     # rapports_mensuels au départ (lecture tolérante : apostrophe, espace)
 
 

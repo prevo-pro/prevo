@@ -56,6 +56,9 @@ const Installation = (() => {
   let sautees = [];                // étapes sans objet passées depuis la dernière étape montrée
   let resoudre = null;             // termine Installation.ouvrir (l'assistant quitté sans terminer)
   let fiche = null;                // GET fiche, lue à l'étape 8
+  // T520 : accès de la direction créé à l'étape « compte » ({ compte, mot_de_passe_provisoire } ou { erreur }) ;
+  // gardé en mémoire de la page seulement, montré en tête des étapes suivantes jusqu'à la fin de l'assistant.
+  let accesDirection = null;
 
   // ===========================================================================================
   // 1. Appels au serveur
@@ -100,6 +103,20 @@ const Installation = (() => {
     if (donnees.etapes) etat.etapes = donnees.etapes;
     if (etat.brouillon && etat.brouillon.situation) etat.situation = etat.brouillon.situation;
     if (donnees.compte || donnees.technicien_id) etat.responsable_existe = etat.responsable_existe || Boolean(donnees.compte);
+    if (donnees.direction) accesDirection = donnees.direction;
+  }
+
+  /** Mot de passe provisoire de l'accès de la direction, montré une seule fois (comme Équipe › Accès). */
+  function blocAccesDirection() {
+    if (!accesDirection) return '';
+    if (!accesDirection.compte) {
+      const message = StockageServeur.texte(accesDirection, 'erreur') || '';
+      return UI.html`<div class="alerte attention installation-acces-direction" role="status"><div class="alerte-texte">${I18n.t('installation.direction.non_cree', { message })}</div></div>`;
+    }
+    return UI.html`<div class="alerte info installation-acces-direction" role="status"><div class="alerte-texte">
+      <p>${I18n.html('installation.direction.cree', { identifiant: accesDirection.compte.identifiant })}</p>
+      <p><code class="mot-de-passe-provisoire">${accesDirection.mot_de_passe_provisoire}</code></p>
+      <p>${I18n.t('installation.direction.noter')}</p></div></div>`;
   }
 
   // ===========================================================================================
@@ -202,6 +219,7 @@ const Installation = (() => {
     const formulaire = formulaireDe(etape);
     const zone = UI.$('#installation-contenu');
     UI.remplir(zone, UI.html`${progression()}
+      ${blocAccesDirection()}
       ${sautees.map(ligneSautee)}
       ${sectionEtape(etape, formulaire, false)}`);
     zone.dataset.formulaire = etape.cle;
@@ -214,6 +232,7 @@ const Installation = (() => {
   function rendreUnePage() {
     const zone = UI.$('#installation-contenu');
     UI.remplir(zone, UI.html`<p class="note installation-une-page">${I18n.t('installation.rendre_une_page.situation_informaticien_toutes_etapes')}</p>
+      ${blocAccesDirection()}
       ${ETAPES.slice(1).map((etape) => sectionEtape(etape, formulaireDe(etape), true))}`);
     zone.dataset.formulaire = 'une-page';
     ETAPES.slice(1).forEach((etape) => poserEcouteursEtape(etape, () => formulaireDe(etape), zone, true));
