@@ -156,7 +156,8 @@ class TestAuCentime(CasRapportCoutArret):
         self.assertIn("durée d'arrêt × coût d'une heure d'arrêt", comprendre["Coût de l'arrêt"])
         self.assertIn("Rien n'est estimé", comprendre["Coût de l'arrêt"])
         self.assertIn({"libelle": "Coût de l'arrêt — non chiffré",
-                       "raison": "PO-03 (4\u00a0h d'arrêt) ; OT sans durée : OT-2026-0003 (PO-01, non clôturé)"},
+                       "raison": "PO-03 (4\u00a0h d'arrêt) ; OT sans durée : OT-2026-0003 (PO-01, non clôturé)",
+                       "ou": "Parc › fiche de la machine › Coût d'une heure d'arrêt ; fiche de l'OT › Durée d'arrêt"},
                       r["nonCalculables"])
         # Courriel : la tuile, sa précision et sa comparaison
         self.assertIn("• Coût de l'arrêt : 591,62 € — Partiel : 1 équipement non chiffré, 1 OT sans durée "
@@ -181,7 +182,7 @@ class TestAuCentime(CasRapportCoutArret):
         self.assertEqual(texte.count("<figure>"), 3)
         self.assertIn("<dt>Coût de l'arrêt :</dt>", texte)
         self.assertIn("<li><b>Coût de l'arrêt — non chiffré</b> : PO-03 (4 h d'arrêt) ; OT sans durée : OT-2026-0003 "
-                      "(PO-01, non clôturé)</li>", texte)
+                      "(PO-01, non clôturé) — à renseigner : Parc › fiche de la machine › Coût d'une heure d'arrêt ; fiche de l'OT › Durée d'arrêt</li>", texte)
         lien = re.search(r'href="(mailto:[^"]*)"', document).group(1)
         self.assertIn("Coût de l'arrêt : 591,62 € — Partiel", blancs(urllib.parse.unquote(lien.replace("&amp;", "&"))))
         for interdit in ("NaN", "Infinity", "undefined"):
@@ -194,7 +195,8 @@ class TestAuCentime(CasRapportCoutArret):
         self.assertEqual(blancs(tuile["texteValeur"]), "€591.62")
         self.assertEqual(tuile["precision"], "Partial: 1 equipment not costed, 1 WO with no duration")
         self.assertIn({"libelle": "Downtime cost — not costed",
-                       "raison": "PO-03 (4\u00a0h of downtime); WOs with no duration: OT-2026-0003 (PO-01, not closed)"},
+                       "raison": "PO-03 (4\u00a0h of downtime); WOs with no duration: OT-2026-0003 (PO-01, not closed)",
+                       "ou": "Equipment › machine record › Downtime cost per hour ; WO record › Downtime"},
                       r["nonCalculables"])
         self.assertIn("Downtime cost", dict(r["comprendre"]))
         self.assertEqual(self.page.evaluate("I18n.langue"), "fr")
@@ -236,7 +238,7 @@ class TestComparaisonEtNonChiffre(CasRapportCoutArret):
         self.assertEqual((tuile["raison"], tuile["precision"]), ("1 équipement non chiffré", "1 équipement non chiffré"))
         self.assertEqual(r["paretoCout"], [])
         self.assertEqual(r["coutArret"]["totalCentimes"], 0)
-        self.assertIn({"libelle": "Coût de l'arrêt — non chiffré", "raison": "PO-03 (2\u00a0h d'arrêt)"}, r["nonCalculables"])
+        self.assertIn({"libelle": "Coût de l'arrêt — non chiffré", "raison": "PO-03 (2\u00a0h d'arrêt)", "ou": "Parc › fiche de la machine › Coût d'une heure d'arrêt"}, r["nonCalculables"])
         self.assertNotIn("Coût de l'arrêt", [element["libelle"] for element in r["nonCalculables"]])
         self.assertIn("• Coût de l'arrêt : non chiffré — 1 équipement non chiffré (", blancs(r["courriel"]))
         document = blancs(self.document("2026-09"))
@@ -270,7 +272,8 @@ class TestComparaisonEtNonChiffre(CasRapportCoutArret):
         tuile = self.tuile(r)
         self.assertEqual(tuile["precision"], "Partiel : 2 OT sans durée")
         self.assertIn({"libelle": "Coût de l'arrêt — OT sans durée",
-                       "raison": "OT-2026-0120 (PO-01, non clôturé), OT-2026-0121 (PO-01, non clôturé)"}, r["nonCalculables"])
+                       "raison": "OT-2026-0120 (PO-01, non clôturé), OT-2026-0121 (PO-01, non clôturé)",
+                       "ou": "fiche de l'OT › Durée d'arrêt"}, r["nonCalculables"])
 
 
 class TestPageUnique(CasRapportCoutArret):

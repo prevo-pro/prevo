@@ -10,6 +10,7 @@
 //                          2. Données du rapport (PURES : Rapport.donnees, moisAProposer, texteCourriel)
 //                          3. Page HTML autonome (Rapport.html : sans script ni ressource externe)
 //   rapport-ecrans.js    figer (document daté, révisions), onglet « Rapports mensuels », bandeau de l'accueil
+//                        et (T519) les fonctions pures du bilan : ce qui manque, activité du mois (Rapport.interne)
 //
 // Les chiffres viennent des mêmes règles que l'écran Indicateurs (Indicateurs.global sur le mois) :
 // le rapport et l'écran disent donc la même chose. Une valeur non calculable est dite, jamais
@@ -290,7 +291,9 @@ const Rapport = (() => {
       : equipements.concat(ots).join(', ');
     const autres = calcul.nonChiffres.length + calcul.sansDuree.length - equipements.length - ots.length;
     if (autres > 0) raison = I18n.t('rapport.cout_arret.liste_et_autres', { liste: raison, n: autres });
-    return { libelle: I18n.t(calcul.nonChiffres.length ? 'rapport.cout_arret.titre_non_chiffre' : 'rapport.cout_arret.titre_sans_duree'), raison };
+    const ou = [calcul.nonChiffres.length ? I18n.t('rapport.ou.cout_arret') : '', calcul.sansDuree.length ? I18n.t('rapport.ou.duree_arret') : ''];
+    return { libelle: I18n.t(calcul.nonChiffres.length ? 'rapport.cout_arret.titre_non_chiffre' : 'rapport.cout_arret.titre_sans_duree'), raison,
+      ou: ou.filter(Boolean).join(' ; ') };
   }
 
   /**
@@ -332,7 +335,14 @@ const Rapport = (() => {
         },
       };
     });
-    const nonCalculables = tuiles.filter((tuile) => tuile.valeur === null).map((tuile) => ({ libelle: tuile.libelle, raison: tuile.raison }));
+    const manques = Indicateurs.manquesCout(periode);
+    Rapport.interne.completerTuiles(tuiles, global, manques, {
+      precedent: globalPrecedent ? Indicateurs.manquesCout(Indicateurs.periodeDuMois(precedent)).complet : null,
+      annee: globalAnnee ? Indicateurs.manquesCout(Indicateurs.periodeDuMois(anneePrecedente)).complet : null,
+    }, libelleMois(precedent), libelleMois(anneePrecedente));
+    // Disponibilité sans aucune machine renseignée : dite une seule fois, par la ligne des équipements sans heures.
+    const nonCalculables = tuiles.filter((tuile) => tuile.valeur === null && !(tuile.cle === 'disponibilite' && global.tempsRequis.valeur === null))
+      .map((tuile) => Object.assign({ libelle: tuile.libelle, raison: tuile.raison }, tuile.ou ? { ou: tuile.ou } : {}));
     // Coût de l'arrêt du mois, comparé aux mois couverts par l'historique (mêmes règles que les trois autres tuiles).
     const coutArret = Indicateurs.coutArret(periode);
     const tuileArret = tuileCoutArret(coutArret,
@@ -342,16 +352,23 @@ const Rapport = (() => {
     tuiles.push(tuileArret);
     const remplacement = reparerOuRemplacer(mois);
     if (global.tempsRequis.exclus.length) {
-      nonCalculables.push({ libelle: I18n.t('rapport.donnees.equipements_hors_disponibilite'), raison: I18n.t('rapport.donnees.equipement_sans_heures_fonctionnement', { n: global.tempsRequis.exclus.length, reperes: global.tempsRequis.exclus.slice(0, 6).map((element) => repere(element.id)).join(', ') }) + (global.tempsRequis.exclus.length > 6 ? I18n.t('rapport.donnees.texte') : '') });
+      nonCalculables.push({ libelle: I18n.t('rapport.donnees.equipements_hors_disponibilite'), raison: I18n.t('rapport.donnees.equipement_sans_heures_fonctionnement', { n: global.tempsRequis.exclus.length, reperes: global.tempsRequis.exclus.slice(0, 6).map((element) => repere(element.id)).join(', ') }) + (global.tempsRequis.exclus.length > 6 ? I18n.t('rapport.donnees.texte') : ''),
+        ou: I18n.t('rapport.ou.heures_fonctionnement') });
     }
+    nonCalculables.push(...Rapport.interne.manquesDuCout(manques));
     if (remplacement.sansValeur.length) {
-      nonCalculables.push({ libelle: I18n.t('rapport.donnees.reparer_remplacer'), raison: I18n.t('rapport.donnees.valeur_remplacement_non_renseignee', { n: remplacement.sansValeur.length, reperes: remplacement.sansValeur.slice(0, 6).map(repere).join(', ') }) });
+      nonCalculables.push({ libelle: I18n.t('rapport.donnees.reparer_remplacer'), raison: I18n.t('rapport.donnees.valeur_remplacement_non_renseignee', { n: remplacement.sansValeur.length, reperes: remplacement.sansValeur.slice(0, 6).map(repere).join(', ') }),
+        ou: I18n.t('rapport.ou.valeur_remplacement') });
     }
     const manqueArret = nonCalculableCoutArret(coutArret);
     if (manqueArret) nonCalculables.push(manqueArret);
+    const debut = debutHistorique();
     const resultat = {
       mois, libelleMois: libelleMois(mois), genereLe: texte(maintenant) || Donnees.maintenant(),
       entreprise: texte(Donnees.parametre('entreprise_nom', '')),
+      // T519 : mois en cours (chiffres provisoires, jamais figé) ; premier mois d'utilisation (commencé avant le 1er OT).
+      etat: { provisoire: mois >= jour.slice(0, 7), auJour: jour, depuis: debut > periode.debut && debut <= periode.fin ? debut : '' },
+      activite: Rapport.interne.activiteDuMois(periode, global),
       tuiles, faits: faitsMarquants(periode, global, jour), decisions: decisions(mois, jour, remplacement),
       pareto: Indicateurs.paretoArrets(periode, 5).map((ligne) => ({ repere: repere(ligne.equipementId), heures: ligne.valeur })),
       paretoCout: Indicateurs.paretoCoutArret(periode, 5).map((ligne) => ({ repere: repere(ligne.equipementId), centimes: ligne.centimes, valeur: ligne.valeur })),
@@ -390,10 +407,14 @@ const Rapport = (() => {
   function texteCourriel(rapport) {
     const lignes = [rapport.entreprise ? I18n.t('rapport.texte_courriel.rapport_mensuel_maintenance', { libelleMois: rapport.libelleMois, entreprise: rapport.entreprise })
       : I18n.t('rapport.texte_courriel.rapport_mensuel_maintenance_2', { libelleMois: rapport.libelleMois }), ''];
-    // Le coût de l'arrêt dit ce qui lui manque (« Partiel : … », D188) ; les trois autres tuiles, comme avant la 2.2.
-    rapport.tuiles.forEach((tuile) => lignes.push('• ' + tuile.libelle + ' : ' + (tuile.cle === 'coutArret' && tuile.precision
+    lignes.splice(1, 0, ...lignesEtat(rapport.etat));                       // T519 : mois en cours, premier mois
+    // Le coût de l'arrêt dit ce qui lui manque (« Partiel : … », D188) ; T519 : le coût partiel et la disponibilité à
+    // compléter aussi ; les autres tuiles, comme avant la 2.2.
+    rapport.tuiles.forEach((tuile) => lignes.push('• ' + tuile.libelle + ' : ' + ((tuile.cle === 'coutArret' || tuile.partiel || tuile.ou) && tuile.precision
       ? I18n.t('rapport.texte_courriel.valeur_precision', { valeur: tuile.texteValeur, precision: tuile.precision }) : tuile.texteValeur)
       + ' (' + tuile.tendance.precedent.texte + ')'));
+    lignes.push('', I18n.t('rapport.activite.titre'));
+    Rapport.interne.phrasesActivite(rapport.activite).forEach((phrase) => lignes.push('• ' + phrase));
     lignes.push('', I18n.t('rapport.texte_courriel.faits_marquants'));
     rapport.faits.forEach((fait) => lignes.push('• ' + fait));
     if (rapport.decisions.length) {
@@ -404,6 +425,12 @@ const Rapport = (() => {
     let corps = lignes.join('\r\n');      // RFC 6068 : fins de ligne CRLF (%0D%0A)
     if (corps.length > 1800) corps = I18n.t('rapport.texte_courriel.slice', { slice: corps.slice(0, 1790) });
     return { objet: I18n.t('rapport.texte_courriel.rapport_maintenance', { libelleMois: rapport.libelleMois }), corps };
+  }
+
+  /** Mentions d'un bilan provisoire (mois en cours) ou d'un premier mois d'utilisation (T519) : [] sinon. */
+  function lignesEtat(etat) {
+    return [etat.provisoire ? I18n.t('rapport.provisoire.mois_en_cours', { jour: UI.dateFr(etat.auJour) }) : '',
+      etat.depuis ? I18n.t('rapport.provisoire.premier_mois', { jour: UI.dateFr(etat.depuis) }) : ''].filter(Boolean);
   }
 
   /** Lien mailto: (RFC 6068) : rien n'est envoyé par Prévo, la messagerie du poste s'ouvre. */
@@ -432,7 +459,7 @@ const Rapport = (() => {
   // Trois graphiques côte à côte (2.2) : dessinés à la largeur d'une colonne de la page A4 (186 mm, deux intervalles de
   // 10 px), donc imprimés à leur taille, sans réduction du texte.
   const LARGEUR_GRAPHIQUE = 226;
-  const HAUTEUR_GRAPHIQUE = 150;
+  const HAUTEUR_GRAPHIQUE = 140;          // 150 avant T519 (la ligne « Activité du mois » tient sur la page A4)
 
   function graphiques(lib, rapport) {
     const pareto = rapport.pareto.length ? svg(lib, LARGEUR_GRAPHIQUE, HAUTEUR_GRAPHIQUE, {
@@ -490,9 +517,12 @@ figure { margin: 0; } figcaption { font-weight: 600; margin-bottom: 2px; }
 .graphiques { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
 .graphiques figure { min-width: 0; }
 .graphiques svg { width: 100%; height: auto; }
-.comprendre { border: 1px solid #888; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; font-size: 8.5pt; line-height: 1.25; }
+.comprendre { border: 1px solid #888; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; font-size: 8pt; line-height: 1.2; }
 .comprendre dt { font-weight: 600; display: inline; } .comprendre dd { display: inline; margin: 0; } .comprendre div { margin-bottom: 1px; }
-.non-calculable { font-size: 8.5pt; color: #333; line-height: 1.25; }
+.comprendre dl { margin: 0; column-count: 2; column-gap: 12px; }
+.non-calculable { font-size: 8pt; color: #333; line-height: 1.2; }
+.provisoire { margin: 3px 0 0; padding: 2px 6px; border: 1.5px dashed #7f1d1d; font-weight: 600; }
+.activite { margin: 0 0 6px; font-size: 8pt; line-height: 1.2; }
 .commentaire { border-left: 3px solid #555; padding: 2px 0 2px 8px; margin-bottom: 8px; }
 .commentaire p { margin: 0 0 2px; white-space: pre-line; } .commentaire .mention-ia { font-size: 8pt; font-style: italic; color: #444; }
 .pied { font-size: 8pt; color: #444; margin-top: 4px; }
@@ -522,12 +552,15 @@ figure { margin: 0; } figcaption { font-weight: 600; margin-bottom: 2px; }
 <style>${UI.brut(STYLE)}</style></head>
 <body><main class="page">
 <header><h1>${titre}</h1>
-<p class="sous">${rapport.entreprise ? UI.html`${I18n.html('rapport.html.donnees_rapport_fige_prevo', { entreprise: rapport.entreprise, genereLe: UI.dateHeureFr(rapport.genereLe) })}`
-  : UI.html`${I18n.html('rapport.html.donnees_rapport_fige_prevo_2', { genereLe: UI.dateHeureFr(rapport.genereLe) })}`}</p></header>
+<p class="sous">${reglages.apercu ? [rapport.entreprise, I18n.t('rapport.provisoire.apercu_non_enregistre', { genereLe: UI.dateHeureFr(rapport.genereLe) })].filter(Boolean).join(' · ')
+    : rapport.entreprise ? UI.html`${I18n.html('rapport.html.donnees_rapport_fige_prevo', { entreprise: rapport.entreprise, genereLe: UI.dateHeureFr(rapport.genereLe) })}`
+      : UI.html`${I18n.html('rapport.html.donnees_rapport_fige_prevo_2', { genereLe: UI.dateHeureFr(rapport.genereLe) })}`}</p>
+${lignesEtat(rapport.etat).map((ligne) => UI.html`<p class="provisoire">${ligne}</p>`)}</header>
 <section class="tuiles">${rapport.tuiles.map((tuile) => UI.html`<div class="tuile" data-cle="${tuile.cle}">
   <div class="lib">${tuile.libelle}</div><div class="val">${tuile.texteValeur}</div>
   ${tuile.precision ? UI.html`<div class="raison">${tuile.precision}</div>` : ''}
   ${feu(tuile, tuile.tendance.precedent)}${feu(tuile, tuile.tendance.annee)}</div>`)}</section>
+<p class="activite"><b>${I18n.html('rapport.activite.titre')} :</b> ${Rapport.interne.phrasesActivite(rapport.activite).join(' · ')}.</p>
 <section class="colonnes"><div><h2>${I18n.html('rapport.html.faits_marquants')}</h2><ul>${rapport.faits.map((fait) => UI.html`<li>${fait}</li>`)}</ul></div>
 <div><h2>${I18n.html('rapport.html.decisions_prendre')}</h2>${rapport.decisions.length ? UI.html`<ol>${rapport.decisions.map((decision) => UI.html`<li>${decision}</li>`)}</ol>`
     : UI.html`<p>${I18n.html('rapport.html.aucune_decision_urgente_mois')}</p>`}</div></section>
@@ -542,7 +575,8 @@ ${commentaire ? UI.html`<section class="commentaire"><h2>${I18n.html('rapport.ht
 </section>
 ${mttr}
 <section class="comprendre"><h2>${I18n.html('rapport.html.comprendre')}</h2><dl>${rapport.comprendre.map(([terme, definition]) => UI.html`<div><dt>${terme} :</dt> <dd>${definition}</dd></div>`)}</dl></section>
-${rapport.nonCalculables.length ? UI.html`<section class="non-calculable"><h2>${I18n.html('rapport.html.non_calculable')}</h2><ul>${rapport.nonCalculables.map((element) => UI.html`<li><b>${element.libelle}</b> : ${element.raison}</li>`)}</ul></section>` : ''}
+${rapport.nonCalculables.length ? UI.html`<section class="non-calculable"><h2>${I18n.html('rapport.html.non_calculable')}</h2><ul>${rapport.nonCalculables.map((element) => UI.html`<li><b>${element.libelle}</b> : ${element.raison}${element.ou
+    ? ' — ' + I18n.t('rapport.ou.a_renseigner', { ou: element.ou }) : ''}</li>`)}</ul></section>` : ''}
 <p class="pied sans-impression">${I18n.html('rapport.html.lien_courriel', { adresse: lienCourriel(rapport) })}</p>
 </main></body></html>`;
     return String(page);
@@ -556,7 +590,7 @@ ${rapport.nonCalculables.length ? UI.html`<section class="non-calculable"><h2>${
     const noms = { disponibilite: 'disponibilite', cout: 'cout_du_mois', partPreventif: 'part_preventif' };
     const jetons = {};
     rapport.tuiles.forEach((tuile) => {
-      if (tuile.valeur === null || !noms[tuile.cle]) return;
+      if (tuile.valeur === null || tuile.partiel || !noms[tuile.cle]) return;       // coût partiel : jamais un total (T519)
       jetons[noms[tuile.cle]] = tuile.texteValeur;
       jetons[noms[tuile.cle] + '_evolution'] = tuile.tendance.precedent.texte;
     });
@@ -569,6 +603,6 @@ ${rapport.nonCalculables.length ? UI.html`<section class="non-calculable"><h2>${
     donnees, moisAProposer, texteCourriel, rapportsFiges, jetonsCommentaire,
     html,
     // Usage interne au module (pas une API).
-    interne: { enLangueDuRapport, texte, nomDemande, decalerMois, libelleMois, lienCourriel, estCouvert, debutHistorique },
+    interne: { enLangueDuRapport, texte, nomDemande, decalerMois, libelleMois, lienCourriel, estCouvert, debutHistorique, repere },
   };
 })();

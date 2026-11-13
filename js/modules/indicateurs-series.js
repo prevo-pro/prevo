@@ -221,7 +221,93 @@ Object.assign(Indicateurs, (() => {
     });
   }
 
+  // ===========================================================================================
+  // 9. Bilan du mois (T519, lot 1 ergonomie, A6) : ce qui manque au coût, et l'activité calculable sans réglage
+  // ===========================================================================================
+
+  function jourDansPeriode(valeur, periodeChoisie) {
+    const jour = jourDe(valeur);
+    return jour !== '' && jour >= periodeChoisie.debut && jour <= periodeChoisie.fin;
+  }
+
+  function clotureDansPeriode(ot, periodeChoisie) {
+    return STATUTS_CLOTURES.includes(texte(ot.statut)) && jourDansPeriode(ot.date_fin, periodeChoisie);
+  }
+
+  function trier(valeurs, mesure, identifiant) {
+    return Array.from(valeurs).sort((a, b) => b[mesure] - a[mesure] || a[identifiant].localeCompare(b[identifiant]));
+  }
+
+  /**
+   * Ce qui manque au coût de maintenance (RG7, mêmes OT que Indicateurs.global : clôturés dans la période) →
+   * { techniciens: [{ technicienId, technicien, heures }], articles: [{ articleId, article, quantite }], complet }.
+   * Un taux horaire ou un prix vide (ou illisible) compte pour 0 dans le coût : ces heures et ces pièces y manquent.
+   * Un 0 saisi est une valeur (non listé).
+   */
+  function manquesCout(periodeChoisie, filtres) {
+    const ctx = contexte();
+    const techniciens = new Map();
+    const articles = new Map();
+    ordresFiltres(filtres, ctx).filter((ot) => clotureDansPeriode(ot, periodeChoisie)).forEach((ot) => {
+      (ctx.tempsParOt.get(ot.id) || []).forEach((ligne) => {
+        const heures = nombreOuZero(ligne.heures);
+        const technicien = ctx.techniciens.get(texte(ligne.technicien_id));
+        if (heures <= 0 || (technicien && nombre(technicien.taux_horaire) !== null)) return;
+        const element = techniciens.get(texte(ligne.technicien_id)) || { technicienId: texte(ligne.technicien_id), technicien: technicien || null, heures: 0 };
+        element.heures += heures;
+        techniciens.set(element.technicienId, element);
+      });
+      const quantites = new Map();
+      (ctx.mouvementsParOt.get(ot.id) || []).forEach((mouvement) => {
+        if (mouvement.type !== 'sortie' && mouvement.type !== 'retour') return;
+        quantites.set(texte(mouvement.article_id), (quantites.get(texte(mouvement.article_id)) || 0) + (mouvement.type === 'sortie' ? 1 : -1) * nombreOuZero(mouvement.quantite));
+      });
+      quantites.forEach((quantite, articleId) => {
+        const article = ctx.articles.get(articleId);
+        if (quantite <= 0 || (article && nombre(article.prix_unitaire) !== null)) return;
+        const element = articles.get(articleId) || { articleId, article: article || null, quantite: 0 };
+        element.quantite += quantite;
+        articles.set(articleId, element);
+      });
+    });
+    return { techniciens: trier(techniciens.values(), 'heures', 'technicienId'), articles: trier(articles.values(), 'quantite', 'articleId'),
+      complet: !techniciens.size && !articles.size };
+  }
+
+  /**
+   * Activité du mois, calculable sans aucun réglage → { correctifs, correctifsAvecArret, parMachine, clotures,
+   * cloturesCorrectifs, cloturesPreventifs, ouverts, heures: { correctif, preventif, autres, total } }.
+   * correctifs : OT correctifs non annulés datés dans la période (date de la panne : DI d'origine, sinon création) ;
+   * parMachine : [{ equipementId, n, avecArret }] de ces correctifs, du plus grand nombre ; clotures : OT non annulés
+   * clôturés dans la période ; ouverts : OT ni clôturés ni annulés créés au plus tard à la fin de la période ;
+   * heures : temps passés datés dans la période (heuresParMois).
+   */
+  function activite(periodeChoisie, filtres) {
+    const ctx = contexte();
+    const ordres = ordresFiltres(filtres, ctx).filter((ot) => texte(ot.statut) !== 'Annulé');
+    const correctifs = ordres.filter((ot) => TYPES_CORRECTIFS.includes(texte(ot.type)) && jourDansPeriode(Indicateurs.datePanne(ot, ctx), periodeChoisie));
+    const parMachine = new Map();
+    correctifs.forEach((ot) => {
+      const element = parMachine.get(texte(ot.equipement_id)) || { equipementId: texte(ot.equipement_id), n: 0, avecArret: 0 };
+      element.n += 1;
+      if (texte(ot.arret_production) === '1') element.avecArret += 1;
+      parMachine.set(element.equipementId, element);
+    });
+    const clotures = ordres.filter((ot) => clotureDansPeriode(ot, periodeChoisie));
+    const mois = heuresParMois(periodeChoisie.debut.slice(0, 7), 1, filtres)[0];
+    return {
+      correctifs: correctifs.length, correctifsAvecArret: correctifs.filter((ot) => texte(ot.arret_production) === '1').length,
+      parMachine: trier(parMachine.values(), 'n', 'equipementId'),
+      clotures: clotures.length,
+      cloturesCorrectifs: clotures.filter((ot) => TYPES_CORRECTIFS.includes(texte(ot.type))).length,
+      cloturesPreventifs: clotures.filter((ot) => TYPES_PREVENTIFS.includes(texte(ot.type))).length,
+      ouverts: ordres.filter((ot) => !STATUTS_CLOTURES.includes(texte(ot.statut)) && jourDe(ot.date_creation) !== '' && jourDe(ot.date_creation) <= periodeChoisie.fin).length,
+      heures: { correctif: mois.correctif, preventif: mois.preventif, autres: mois.autres, total: arrondi(mois.correctif + mois.preventif + mois.autres) },
+    };
+  }
+
   Object.assign(Indicateurs.interne, { centimesDuCoutHoraire, dixMilliemesDHeure });
 
-  return { paretoPannes, paretoArrets, heuresParMois, mtbfMttrCriticiteA, causes, chargeCapacite, coutArret, paretoCoutArret };
+  return { paretoPannes, paretoArrets, heuresParMois, mtbfMttrCriticiteA, causes, chargeCapacite, coutArret, paretoCoutArret,
+    manquesCout, activite };
 })());

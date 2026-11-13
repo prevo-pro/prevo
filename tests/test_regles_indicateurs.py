@@ -257,7 +257,10 @@ class TestFiabilite(CasIndicateurs):
         self.assertEqual(g["tempsRequis"]["valeur"], 310)
         self.assertEqual(sorted(e["id"] for e in g["tempsRequis"]["exclus"]), ["EQ-0002", "EQ-0003"])
         self.assertAlmostEqual(g["mtbf"]["valeur"], (310 - 26) / 3, places=9)
-        self.assertEqual(g["pannes"]["valeur"], 3)                          # la panne de PO-02 n'est pas comptée
+        # T519 : la panne de PO-02 (sans heures par jour) n'entre ni dans le MTBF ni dans la disponibilité, mais elle compte
+        # dans le nombre de pannes et la durée d'arrêt (avant : 0 panne et 0 h quand aucune machine n'avait ses heures).
+        self.assertEqual(g["pannesDuPerimetre"]["valeur"], 3)
+        self.assertEqual(g["pannes"]["valeur"], 4)
         atelier_b = self.js("(p) => Indicateurs.global(periodeDe(...p), { atelier: 'LOC-0004' }, '2026-10-20')", MARS)
         self.assertIsNone(atelier_b["mtbf"]["valeur"])
         # Coût global : tous les OT, équipement au rebut compris = Σ coût par équipement (relecture)

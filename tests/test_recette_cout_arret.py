@@ -297,6 +297,10 @@ def non_calculable_fr(reference, reperes):
     ots = ["%s (%s, %s)" % (ot, reperes[e], raison) for ot, e, raison in reference["sans_duree"]]
     raison = ("%s ; OT sans durée : %s" % (", ".join(equipements), ", ".join(ots)) if equipements and ots
               else ", ".join(equipements + ots))
+    # T519 : la ligne dit aussi où renseigner ce qui manque (coût d'une heure d'arrêt, durée d'arrêt de l'OT).
+    ou = [texte for texte, utile in (("Parc › fiche de la machine › Coût d'une heure d'arrêt", equipements),
+                                       ("fiche de l'OT › Durée d'arrêt", ots)) if utile]
+    raison += " — à renseigner : " + " ; ".join(ou)
     return ("Coût de l'arrêt — non chiffré" if equipements else "Coût de l'arrêt — OT sans durée"), raison
 
 

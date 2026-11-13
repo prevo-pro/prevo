@@ -444,8 +444,9 @@ const Indicateurs = (() => {
   }
 
   /**
-   * Indicateurs de l'atelier (filtres { criticite, atelier }) : fiabilité calculée sur les
-   * équipements suivis dont le temps requis est connu (les autres dans tempsRequis.exclus) ; coût,
+   * Indicateurs de l'atelier (filtres { criticite, atelier }) : MTBF et disponibilité calculés sur les
+   * équipements suivis dont le temps requis est connu (les autres dans tempsRequis.exclus ; pannesDuPerimetre :
+   * leurs pannes) ; pannes, durée d'arrêt, MTTR et attente de pièces sur tous les équipements suivis (T519) ; coût,
    * préventif, délais et OT en retard sur tous les équipements filtrés ; valeur du stock globale.
    */
   function global(periodeChoisie, filtres, aujourdhui) {
@@ -460,10 +461,18 @@ const Indicateurs = (() => {
       else { retenus.push(equipement.id); sommeRequis += requis.valeur; }
     });
     const ids = new Set(retenus);
-    const liste = pannes(periodeChoisie, {}, ctx).filter((panne) => ids.has(texte(panne.ot.equipement_id)));
+    const suivis = new Set(equipementsFiltres.map((equipement) => equipement.id));
+    const toutes = pannes(periodeChoisie, {}, ctx).filter((panne) => suivis.has(texte(panne.ot.equipement_id)));
     const requisGlobal = retenus.length ? resultat(sommeRequis, null, { effectif: retenus.length, exclus })
       : resultat(null, I18n.t('indicateurs.global.non_calculable_aucun_equipement'), { exclus });
-    return Object.assign({ tempsRequis: requisGlobal }, fiabilite(liste, requisGlobal), {
+    // T519 (lot 1, A6) : MTBF et disponibilité sur les équipements dont le temps requis est connu ; nombre de pannes,
+    // durée d'arrêt, MTTR et attente de pièces sur TOUS les équipements suivis (ils ne dépendent pas des heures par jour :
+    // avant, aucune machine renseignée donnait « 0 panne, 0,0 h d'arrêt » malgré des pannes saisies).
+    const surPerimetre = fiabilite(toutes.filter((panne) => ids.has(texte(panne.ot.equipement_id))), requisGlobal);
+    const surTous = fiabilite(toutes, requisGlobal);
+    return Object.assign({ tempsRequis: requisGlobal }, surPerimetre, {
+      pannes: surTous.pannes, dureeArret: surTous.dureeArret, mttr: surTous.mttr, attentePieces: surTous.attentePieces,
+      pannesDuPerimetre: surPerimetre.pannes,
       // Coût : tous les OT des équipements filtrés, au rebut ou désactivés compris (l'argent a été
       // dépensé ; même périmètre que coutParEquipement — correction de relecture).
       cout: coutDesOrdres(ordresFiltres(filtres, ctx), periodeChoisie, ctx),

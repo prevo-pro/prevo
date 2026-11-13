@@ -1568,6 +1568,12 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   inactif → exclu ; `heures_fonct_jour` vide ou ≤ 0 → `null`, raison « heures de fonctionnement par
   jour non renseignées » (**jamais** `heures_fonct_defaut` ici).
 - **Durée d'arrêt** = Σ `duree_arret_h` des pannes (une panne sans durée est listée dans `exclus`).
+- Écart retenu (T519, lot 1 ergonomie) : dans `Indicateurs.global`, MTBF et disponibilité portent sur les équipements
+  au temps requis connu (`pannesDuPerimetre` : leurs pannes) ; nombre de pannes, durée d'arrêt, MTTR et attente de
+  pièces sur **tous** les équipements suivis (avant : aucune machine avec ses heures par jour → « 0 panne, 0,0 h
+  d'arrêt » malgré des pannes saisies). `Indicateurs.manquesCout(periode)` liste les heures sans taux horaire et les
+  pièces sans prix des OT clôturés (comptées 0 dans le coût : le tableau de bord le dit sous le coût, au responsable) ;
+  `Indicateurs.activite(periode)` : correctifs du mois, OT clôturés et ouverts, heures passées, correctifs par machine.
 - **MTBF** = (temps requis − durée d'arrêt) / nombre de pannes ; 0 panne → `null`, « aucune panne
   sur la période ».
 - **MTTR** (D36 a) = Σ `duree_arret_h` / nombre de pannes mesurables ; mesurable = clôturée
@@ -1973,6 +1979,16 @@ le rapport de <mois> » (avec élision : « d'octobre », « d'août ») ; rien 
   resserrée (`@page` 11 × 12 mm, « Comprendre » en 8,5 pt) pour tenir toujours sur **une page**.
 - `Rapport.moisAProposer(aujourdhui)` → mois précédent si aucun rapport de ce mois n'est dans
   `rapports_mensuels` et que l'historique couvre ce mois, sinon `null`.
+- **Bilan du mois** (T519, lot 1 ergonomie, A6 ; D35 respectée : aucune valeur par défaut) : ce qui manque est
+  nommé avec l'écran où le renseigner (`nonCalculables[].ou`, section « Ce qui manque, et où le renseigner ») ;
+  disponibilité sans aucune machine aux heures connues : « à compléter » ; coût de maintenance avec des heures sans
+  taux ou des pièces sans prix : « Partiel : … » (jamais comparé, jamais donné à l'IA), « non chiffré » au lieu de
+  0 € ; ligne « Activité du mois » (`activite`, calculable sans réglage) ; `etat` : `provisoire` (mois en cours,
+  « chiffres provisoires au … ») et `depuis` (premier mois d'utilisation, commencé avant le premier OT). Onglet
+  « Rapports mensuels » : « Voir le bilan » (`Rapport.voirBilan(mois)`, `Rapport.html(mois, { apercu: true })`, page
+  isolée dans un nouvel onglet, rien n'est écrit) pour le mois en cours et le premier mois s'il est passé ;
+  `Rapport.figer` refuse le mois en cours. Fonctions du bilan : §7 de `rapport-ecrans.js` (par `Rapport.interne`).
+  Mise en page A4 resserrée (« Comprendre » sur deux colonnes en 8 pt, graphiques de 140 px).
 - `Rapport.texteCourriel(donnees)` → objet et corps (résumé en texte) ; bouton « Préparer un
   courriel » = lien `mailto:?subject=…&body=…` (`encodeURIComponent`, corps < 1 800 caractères) ;
   rien n'est envoyé par Prévo.

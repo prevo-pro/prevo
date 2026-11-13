@@ -148,6 +148,9 @@ Object.assign(Indicateurs, (() => {
     reglages.periode = periode.code;                 // « du-au » sans dates valables → 12 mois
     const filtres = { criticite: reglages.criticite, atelier: reglages.atelier };
     const global = Indicateurs.global(periode, filtres, jour);
+    // T519 : taux horaires et prix manquants (comptés 0 dans le coût) dits sous le coût ; responsable seul (D126 : les
+    // taux horaires sont cachés aux autres profils, qui y verraient de faux manques).
+    global.manquesCout = App.estResponsable() ? Indicateurs.manquesCout(periode, filtres) : null;
     // Coût de l'arrêt (D188) : montré au seul profil qui a les coûts (D126 : le serveur cache cout_arret_h au
     // technicien et au demandeur, qui y verraient de faux « non chiffré ») ; et à la Direction (T520), qui a les coûts.
     const coutArret = App.estResponsable() || App.estDirection() ? Indicateurs.coutArret(periode, filtres) : null;
@@ -232,7 +235,7 @@ Object.assign(Indicateurs, (() => {
 
   function instruments(global, jour) {
     const requis = global.tempsRequis;
-    const nbPannes = global.pannes.valeur;
+    const nbPannes = global.pannesDuPerimetre.valeur;     // disponibilité et MTBF : pannes des équipements au temps requis connu (T519)
     const sansHeures = requis.exclus.length;
     const perimetre = requis.valeur === null ? null : I18n.t('indicateurs.instruments.n_equipements', { n: requis.effectif }) + (sansHeures ? ' ' + I18n.t('indicateurs.instruments.autres_sans_heures_fonctionnement', { n: sansHeures }) : '');
     const mttr = global.mttr;
@@ -261,11 +264,20 @@ Object.assign(Indicateurs, (() => {
         valeurAffichee: (valeur) => valeur, lien: '#/ot?filtre=retard',
         complements: [I18n.t('indicateurs.instruments.date_prevue_depassee', { jour: UI.dateFr(jour) })] }),
       instrument({ cle: 'cout', libelle: I18n.t('indicateurs.instruments.cout_maintenance'), resultat: global.cout, format: formats.euros,
-        valeurAffichee: enEuros, complements: [I18n.t('indicateurs.instruments.ot_clotures_pieces_prix', { n: global.cout.effectif })] }),
+        valeurAffichee: enEuros, complements: [I18n.t('indicateurs.instruments.ot_clotures_pieces_prix', { n: global.cout.effectif }), coutPartiel(global.manquesCout)] }),
       instrument({ cle: 'valeur-stock', libelle: I18n.t('indicateurs.instruments.valeur_stock'), resultat: global.valeurStock, format: formats.euros,
         valeurAffichee: enEuros,
         complements: [I18n.t('indicateurs.instruments.articles_tout_magasin', { n: global.valeurStock.effectif }) + (global.valeurStock.exclus.length ? ' ' + I18n.t('indicateurs.instruments.sans_prix', { nbExclus: global.valeurStock.exclus.length }) : '')] }),
     ];
+  }
+
+  /** « Partiel : 2,5 h sans taux horaire (Équipe), 1 pièce sans prix (Magasin) » ('' si le coût est complet, T519). */
+  function coutPartiel(manques) {
+    if (!manques || manques.complet) return '';
+    const heures = manques.techniciens.reduce((somme, element) => somme + element.heures, 0);
+    const morceaux = [heures ? I18n.t('indicateurs.instruments.heures_sans_taux', { duree: formats.heures(arrondi(heures, 1)) }) : '',
+      manques.articles.length ? I18n.t('indicateurs.instruments.pieces_sans_prix', { n: manques.articles.length }) : ''];
+    return I18n.t('indicateurs.instruments.cout_partiel', { manque: morceaux.filter(Boolean).join(', ') });
   }
 
   /** Ce qui n'a pas pu être calculé sur la sélection, avec la raison. */

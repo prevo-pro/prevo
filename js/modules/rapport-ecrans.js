@@ -5,11 +5,14 @@
 //   4. Figer : écriture du document, liste rapports_mensuels (parametres.csv), journal
 //   5. Onglet « Rapports mensuels » : figer un mois, ouvrir, imprimer, recalculer, télécharger (démo)
 //   6. Tuile de l'accueil (responsable, T90) : « Figer » ou « Plus tard » ; rien n'est écrit sans clic
+//   7. Bilan du mois : ce qui manque et où le renseigner, activité du mois (T519 ; fonctions pures pour Rapport.donnees)
+// T519 (lot 1 ergonomie, A6) : « Voir le bilan » affiche le mois en cours (chiffres provisoires) et le premier mois
+// d'utilisation, sans rien enregistrer ; seul un mois terminé se fige (figer refuse le mois en cours).
 // Complète l'objet Rapport créé par rapport-contenu.js.
 
 Object.assign(Rapport, (() => {
 
-  const { enLangueDuRapport, texte, nomDemande, libelleMois, decalerMois, lienCourriel, estCouvert } = Rapport.interne;
+  const { enLangueDuRapport, texte, nomDemande, libelleMois, decalerMois, lienCourriel, estCouvert, debutHistorique, repere } = Rapport.interne;
   const ESSAIS_DE_NOM = 50;
   const CLE_PLUS_TARD = 'prevo.rapport.plusTard';     // sessionStorage : mois reporté à plus tard
   // Appliqué au nom demandé (nomDemande de rapport-contenu.js : préfixe d'horodatage du serveur retiré, audit F4).
@@ -45,6 +48,10 @@ Object.assign(Rapport, (() => {
   async function figer(mois, options) {
     if (!/^\d{4}-\d{2}$/.test(texte(mois))) throw new Donnees.ErreurValidation(I18n.t('rapport.figer.mois_invalide', { mois }));
     const reglages = options || {};
+    // Un bilan provisoire n'est jamais figé (T519) : seul un mois terminé l'est.
+    if (mois >= (texte(reglages.aujourdhui).slice(0, 10) || Donnees.aujourdhui()).slice(0, 7)) {
+      throw new Donnees.ErreurValidation(I18n.t('rapport.figer.mois_pas_termine', { mois: libelleMois(mois) }));
+    }
     // Langue du rapport (D160) : choisie au moment de figer, sinon celle de l'installation ; son dictionnaire est chargé au besoin.
     const langue = reglages.langue || '';
     if (langue) await I18n.chargerLangue(langue);
@@ -85,6 +92,24 @@ Object.assign(Rapport, (() => {
       if (estCouvert(mois)) liste.push(mois);
     }
     return liste;
+  }
+
+  /** Mois dont on peut voir le bilan sans le figer (T519) : le mois en cours, et le premier mois d'utilisation s'il est
+   *  passé et que l'historique ne le couvre pas (il a commencé avant le premier OT : jamais proposé à figer). */
+  function moisApercu() {
+    const courant = Donnees.aujourdhui().slice(0, 7);
+    const premier = debutHistorique().slice(0, 7);
+    return premier && premier < courant && premier >= decalerMois(courant, -24) && !estCouvert(premier) ? [courant, premier] : [courant];
+  }
+
+  /** Bilan d'un mois affiché dans un nouvel onglet, isolé (Donnees.documentAffichable), sans rien enregistrer. */
+  async function voirBilan(mois, options) {
+    const page = await Rapport.html(mois, options || { apercu: true });
+    const affichable = await Donnees.documentAffichable('bilan-' + mois + '.html', new Blob([page], { type: 'text/html;charset=utf-8' }));
+    const adresse = URL.createObjectURL(affichable);
+    window.open(adresse, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(adresse), 60000);
+    return page;
   }
 
   function lignesDesRapports() {
@@ -139,14 +164,6 @@ Object.assign(Rapport, (() => {
     </article>`;
   }
 
-  async function voirBilan(mois) {
-    const onglet = window.open('', '_blank');           // ouvert au clic (sinon bloqué), rempli une fois calculé
-    const page = await Rapport.html(mois, {});
-    const adresse = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
-    if (onglet) onglet.location.href = adresse; else window.open(adresse, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(adresse), 60000);
-  }
-
   function messageFige(resultat) {
     return UI.html`${I18n.html('rapport.message_fige.rapport_fige', { mois: deMois(resultat.rapport.mois), nom: resultat.nom, adresse: lienCourriel(resultat.rapport) })}`;
   }
@@ -156,8 +173,20 @@ Object.assign(Rapport, (() => {
     const rapports = lignesDesRapports();
     const demo = App.mode === 'demo';
     const direction = App.estDirection();        // T520 : lecture seule — bilan d'un mois sans le figer, rapports figés
+    const apercu = moisApercu();
+    const courant = Donnees.aujourdhui().slice(0, 7);
     UI.remplir(conteneur, UI.html`<div class="rapports">
       <div id="rapports-message"></div>
+      <article class="carte rapports-apercu">
+        <div class="entete-carte"><h2>${I18n.t('rapport.apercu.titre')}</h2></div>
+        <p class="note">${I18n.t('rapport.apercu.note')}</p>
+        <form class="rapports-apercu-formulaire" data-hors-saisie>
+          <div class="champ"><label class="libelle" for="rapports-apercu-mois">${I18n.t('rapport.onglet.mois')}</label>
+            <select id="rapports-apercu-mois">${apercu.map((mois) => UI.html`<option value="${mois}">${I18n.t(mois === courant
+              ? 'rapport.apercu.mois_en_cours' : 'rapport.apercu.premier_mois', { mois: libelleMois(mois) })}</option>`)}</select></div>
+          <button type="submit" class="btn btn-secondaire">${I18n.t('rapport.apercu.voir_bilan')}</button>
+        </form>
+      </article>
       ${direction ? carteBilan(proposables) : UI.html`<article class="carte rapports-figer">
         <div class="entete-carte"><h2>${I18n.t('rapport.onglet.figer_rapport_mensuel')}</h2></div>
         <p class="note">${I18n.t('rapport.onglet.page_4_direction_disponibilite')}</p>
@@ -189,6 +218,14 @@ Object.assign(Rapport, (() => {
       </article></div>`);
     const racine = conteneur.querySelector('.rapports');
     const message = (type, contenu) => UI.remplir(racine.querySelector('#rapports-message'), UI.bandeau(type, contenu));
+    const formulaireApercu = racine.querySelector('.rapports-apercu-formulaire');
+    formulaireApercu.addEventListener('submit', async (evenement) => {
+      evenement.preventDefault();
+      const bouton = formulaireApercu.querySelector('button[type=submit]');
+      bouton.disabled = true;
+      try { await voirBilan(formulaireApercu.querySelector('#rapports-apercu-mois').value); } catch (erreur) { App.signalerErreur(erreur, 'bilan du mois'); }
+      finally { bouton.disabled = false; }
+    });
     const formulaire = racine.querySelector('.rapports-formulaire');
     if (formulaire) {
       const zoneCommentaire = formulaire.querySelector('#rapports-commentaire');
@@ -218,7 +255,7 @@ Object.assign(Rapport, (() => {
       const actions = {
         ouvrir: () => ouvrir(bouton.dataset.nom), imprimer: () => imprimer(bouton.dataset.nom),
         telecharger: () => telecharger(bouton.dataset.nom),
-        'voir-bilan': () => voirBilan(racine.querySelector('#rapports-bilan-mois').value),
+        'voir-bilan': () => voirBilan(racine.querySelector('#rapports-bilan-mois').value, {}),
       };
       if (bouton.dataset.action === 'recalculer') {
         const choixLangue = racine.querySelector('#rapports-langue');       // recalculer : dans la langue proposée au formulaire
@@ -350,5 +387,115 @@ Object.assign(Rapport, (() => {
     return bloc;
   }
 
-  return { figer, afficherOnglet, tuileAccueil };
+  // ===========================================================================================
+  // 7. Bilan du mois : ce qui manque, et où le renseigner ; activité du mois (T519, lot 1 ergonomie, A6). Fonctions
+  //    PURES appelées par Rapport.donnees (rapport-contenu.js, par Rapport.interne). Un réglage absent n'est jamais
+  //    remplacé par une valeur (D35) : il est nommé, avec l'écran où le saisir ; ce qui se calcule sans lui est affiché.
+  // ===========================================================================================
+
+  /** Nombre de noms ou de repères cités au plus par ligne (une page A4). */
+  const NOMS_CITES = 4;
+  /** Machines citées au plus dans l'activité du mois (une page A4). */
+  const MACHINES_CITEES = 3;
+
+  function citer(elements, libeller) {
+    const noms = elements.slice(0, NOMS_CITES).map(libeller).join(', ');
+    return elements.length > NOMS_CITES ? I18n.t('rapport.manque.et_autres', { liste: noms, n: elements.length - NOMS_CITES }) : noms;
+  }
+
+  function nomTechnicien(element) {
+    const technicien = element.technicien;
+    return technicien ? [texte(technicien.prenom), texte(technicien.nom)].filter(Boolean).join(' ') || technicien.id : element.technicienId;
+  }
+
+  function nomArticle(element) {
+    return element.article ? texte(element.article.reference) || texte(element.article.designation) || element.articleId : element.articleId;
+  }
+
+  const enHeures = (valeur) => UI.heures(Math.round(valeur * 10) / 10);
+
+  /** « 2,5 h sans taux horaire, 1 pièce sans prix » ('' si le coût est complet). */
+  function manqueCout(manques) {
+    const morceaux = [];
+    const heures = manques.techniciens.reduce((somme, element) => somme + element.heures, 0);
+    if (heures) morceaux.push(I18n.t('rapport.manque.heures_sans_taux', { duree: enHeures(heures) }));
+    if (manques.articles.length) morceaux.push(I18n.t('rapport.manque.pieces_sans_prix', { n: manques.articles.length }));
+    return morceaux.join(', ');
+  }
+
+  /** Lignes « ce qui manque » du coût de maintenance : main-d'œuvre sans taux horaire, pièces sans prix. */
+  function manquesDuCout(manques) {
+    const lignes = [];
+    if (manques.techniciens.length) {
+      lignes.push({ libelle: I18n.t('rapport.manque.main_oeuvre_non_chiffree'), ou: I18n.t('rapport.ou.taux_horaire'),
+        raison: I18n.t('rapport.manque.taux_horaire_non_renseigne', { n: manques.techniciens.length,
+          liste: citer(manques.techniciens, (element) => nomTechnicien(element) + ' (' + enHeures(element.heures) + ')') }) });
+    }
+    if (manques.articles.length) {
+      lignes.push({ libelle: I18n.t('rapport.manque.pieces_non_chiffrees'), ou: I18n.t('rapport.ou.prix_unitaire'),
+        raison: I18n.t('rapport.manque.prix_non_renseigne', { n: manques.articles.length,
+          liste: citer(manques.articles, (element) => nomArticle(element) + ' (' + UI.nombreFr(element.quantite) + ')') }) });
+    }
+    return lignes;
+  }
+
+  /**
+   * Tuiles « disponibilité » et « coût » quand un réglage manque : la disponibilité dit « à compléter » et ce qui manque
+   * (aucune machine n'a ses heures par jour) ; le coût sans aucun taux ni prix n'est jamais un « 0 € » (« non chiffré »),
+   * un coût partiel garde son montant avec « Partiel : … » et n'est comparé qu'entre deux mois complets.
+   * `references` : { precedent, annee } → true (mois couvert, coût complet), false (couvert, incomplet), null (non couvert).
+   */
+  function completerTuiles(tuiles, global, manques, references, libellePrecedent, libelleAnnee) {
+    tuiles.forEach((tuile) => {
+      if (tuile.cle === 'disponibilite' && global.tempsRequis.valeur === null && global.tempsRequis.exclus.length) {
+        Object.assign(tuile, { texteValeur: I18n.t('rapport.manque.a_completer'), raison: I18n.t('rapport.manque.disponibilite_heures'),
+          precision: I18n.t('rapport.manque.disponibilite_heures'), ou: I18n.t('rapport.ou.heures_fonctionnement') });
+      }
+      if (tuile.cle !== 'cout') return;
+      ['precedent', 'annee'].filter((cle) => references[cle] !== null && (!manques.complet || !references[cle])).forEach((cle) => {
+        const libelleReference = cle === 'precedent' ? libellePrecedent : libelleAnnee;
+        tuile.tendance[cle] = { sens: null, texte: I18n.t('rapport.comparer.non_comparable_cout_incomplet', { libelleReference }) };
+      });
+      if (manques.complet || tuile.valeur === null) return;
+      const manque = manqueCout(manques);
+      tuile.partiel = true;
+      if (tuile.valeur === 0) {
+        Object.assign(tuile, { valeur: null, texteValeur: I18n.t('rapport.cout_arret.non_chiffre'), raison: manque, precision: manque });
+      } else tuile.precision = I18n.t('rapport.cout_arret.partiel', { manque });
+    });
+  }
+
+  /** Activité du mois (Indicateurs.activite) et arrêts saisis (toutes les pannes du mois, sans réglage). */
+  function activiteDuMois(periode, global) {
+    const activite = Indicateurs.activite(periode);
+    return Object.assign(activite, {
+      arret: { heures: global.dureeArret.valeur, pannes: global.dureeArret.effectif, sansDuree: global.dureeArret.exclus.length },
+      parMachine: activite.parMachine.map((element) => Object.assign({ repere: repere(element.equipementId) }, element)),
+    });
+  }
+
+  /** Phrases de l'activité du mois (page et courriel). */
+  function phrasesActivite(activite) {
+    if (!activite.correctifs && !activite.clotures && !activite.heures.total && !activite.ouverts) return [I18n.t('rapport.activite.aucune')];
+    const phrases = [
+      I18n.t('rapport.activite.correctifs', { n: activite.correctifs, avecArret: activite.correctifsAvecArret }),
+      I18n.t('rapport.activite.clotures', { n: activite.clotures, preventifs: activite.cloturesPreventifs })
+        + (activite.ouverts ? I18n.t('rapport.activite.ouverts', { n: activite.ouverts }) : ''),
+      I18n.t('rapport.activite.heures', { total: enHeures(activite.heures.total), correctif: enHeures(activite.heures.correctif), preventif: enHeures(activite.heures.preventif) }),
+    ];
+    if (activite.arret.pannes || activite.arret.sansDuree) {
+      phrases.push(I18n.t('rapport.activite.arrets', { n: activite.arret.pannes, duree: enHeures(activite.arret.heures || 0) })
+        + (activite.arret.sansDuree ? I18n.t('rapport.activite.arrets_sans_duree', { n: activite.arret.sansDuree }) : ''));
+    }
+    if (activite.parMachine.length) {
+      phrases.push(I18n.t('rapport.activite.par_machine', { liste: citer(activite.parMachine.slice(0, MACHINES_CITEES),
+        (element) => I18n.t('rapport.activite.machine', { repere: element.repere, n: element.n })) + (activite.parMachine.length > MACHINES_CITEES
+        ? I18n.t('rapport.activite.autres_machines', { n: activite.parMachine.length - MACHINES_CITEES }) : '') }));
+    }
+    return phrases;
+  }
+
+  Object.assign(Rapport.interne, { completerTuiles, manquesDuCout, activiteDuMois, phrasesActivite });
+
+  return { figer, afficherOnglet, tuileAccueil, voirBilan };
 })());

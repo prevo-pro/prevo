@@ -96,7 +96,7 @@ ATTENDUS_INSTRUMENTS_JS = """() => {
   return { periode: { debut: p.debut, fin: p.fin, code: p.code }, valeurs, raisons,
            attente: { valeur: g.attentePieces.valeur === null ? null : arrondi(g.attentePieces.valeur, 1),
                       effectif: g.attentePieces.effectif, raison: g.attentePieces.raison },
-           pannes: g.pannes.valeur };
+           pannes: g.pannesDuPerimetre.valeur };       // T519 : les pannes du périmètre de la disponibilité, au bandeau
 }"""
 
 LIRE_INSTRUMENTS_JS = """() => {
