@@ -31,7 +31,7 @@ const vm = require('vm'), fs = require('fs'), path = require('path');
 const RACINE = process.argv[2];
 const SCRIPTS = ['js/i18n.js', 'js/i18n/langues.js', 'js/i18n/fr.js', 'js/lib/papaparse.min.js', 'js/schema.js',
   'js/donnees.js', 'js/stockage-demo.js', 'js/interface.js', null, 'js/modules/demandes-regles.js',
-  'js/modules/demandes-retour.js', 'js/modules/ordres-regles.js', 'js/modules/ordres-ecritures.js'];
+  'js/modules/demandes-retour.js', 'js/modules/ordres-regles.js', 'js/modules/ordres-codes.js', 'js/modules/ordres-ecritures.js'];
 const APP = `var profil = 'responsable'; var nomProfil = ''; var technicienProfil = '';
   var App = { estResponsable: () => profil === 'responsable', estTechnicien: () => profil === 'technicien',
     estDemandeur: () => profil === 'demandeur', get profil() { return { type: profil, nom: nomProfil, technicienId: technicienProfil }; },
