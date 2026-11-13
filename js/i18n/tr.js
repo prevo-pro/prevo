@@ -1295,6 +1295,8 @@ I18n.ajouter('tr', {
   'ordres.reperes.reprend_ot': 'Devam ettiği iş emri',
   'ordres.reperes.repris': 'Devam eden iş emri',
   'ordres.reperes.temps_prevu': 'Planlanan süre',
+  'ordres.solo.aide_essayez': '“Başlat”, sonra “Kapat”.',
+  'ordres.solo.aide_texte': 'İş emriniz: zaten sizin adınıza. Gittiğinizde “Başlat”, parça eksikse “Beklemeye al”, bitince “Kapat” (süre, kodlar, rapor tek pencerede). Hazırlık, Uygulama, Rapor ve Ekipman geçmişi gerekirse orada; başlamadan önce hiçbiri zorunlu değil.',
   'ordres.solo.etat_a_faire': 'Yapılacak',
   'ordres.solo.etat_en_attente': 'Beklemede',
   'ordres.solo.etat_en_cours': 'Devam ediyor',

@@ -1295,6 +1295,8 @@ I18n.ajouter('pt-PT', {
   'ordres.reperes.reprend_ot': 'Retoma a OT',
   'ordres.reperes.repris': 'Retomada por',
   'ordres.reperes.temps_prevu': 'Tempo previsto',
+  'ordres.solo.aide_essayez': '«Iniciar» e depois «Encerrar».',
+  'ordres.solo.aide_texte': 'A sua OT: já está em seu nome. «Iniciar» quando for, «Pôr em espera» se faltar uma peça, «Encerrar» quando estiver feita (tempo, códigos, relatório numa janela). Preparação, Execução, Relatório e Histórico do equipamento continuam lá se precisar; nada é obrigatório antes de iniciar.',
   'ordres.solo.etat_a_faire': 'A fazer',
   'ordres.solo.etat_en_attente': 'Em espera',
   'ordres.solo.etat_en_cours': 'Em curso',

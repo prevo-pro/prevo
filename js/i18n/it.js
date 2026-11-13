@@ -1295,6 +1295,8 @@ I18n.ajouter('it', {
   'ordres.reperes.reprend_ot': 'Riprende l\'OdL',
   'ordres.reperes.repris': 'Ripreso da',
   'ordres.reperes.temps_prevu': 'Tempo previsto',
+  'ordres.solo.aide_essayez': '«Avvia», poi «Chiudi».',
+  'ordres.solo.aide_texte': 'Il tuo OdL: è già a tuo nome. «Avvia» quando ci vai, «Metti in attesa» se manca un pezzo, «Chiudi» quando è finito (tempo, codici, resoconto in una finestra). Preparazione, Esecuzione, Resoconto e Storico dell\'attrezzatura restano lì se ti servono; niente è obbligatorio prima di avviare.',
   'ordres.solo.etat_a_faire': 'Da fare',
   'ordres.solo.etat_en_attente': 'In attesa',
   'ordres.solo.etat_en_cours': 'In corso',

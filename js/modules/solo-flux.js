@@ -235,6 +235,15 @@ const Solo = (() => {
       .catch((erreur) => console.warn('Prévo (Solo) : conversion impossible.', erreur));
   }
 
+  // Aide à l'écran de la fiche d'un OT en Solo (variante « solo », lue par aide-ecrans.js) : sans « Planifier » ni
+  // refus d'habilitation, qui ne valent qu'en équipe. AideEcransTextes est produit par un outil : ajout au chargement.
+  if (typeof AideEcransTextes !== 'undefined' && AideEcransTextes['fiche-ot'] && AideEcransTextes['fiche-ot'].profils) {
+    AideEcransTextes['fiche-ot'].profils.solo = {
+      get texte() { return I18n.t('ordres.solo.aide_texte'); },
+      get essayez() { return I18n.t('ordres.solo.aide_essayez'); },
+    };
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     if (typeof Donnees !== 'undefined' && Donnees.evenements) Donnees.evenements.addEventListener('changement', surChangement);
   });

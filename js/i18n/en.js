@@ -1293,6 +1293,8 @@ I18n.ajouter('en', {
   'ordres.reperes.reprend_ot': 'Follows up WO',
   'ordres.reperes.repris': 'Taken up by',
   'ordres.reperes.temps_prevu': 'Planned time',
+  'ordres.solo.aide_essayez': '“Start”, then “Close”.',
+  'ordres.solo.aide_texte': 'Your work order: it is already in your name. “Start” when you go, “Put on hold” if a part is missing, “Close” when it is done (time, codes, job report in one window). Preparation, Execution, Job report and Equipment history stay there if you need them; nothing there is required before starting.',
   'ordres.solo.etat_a_faire': 'To do',
   'ordres.solo.etat_en_attente': 'On hold',
   'ordres.solo.etat_en_cours': 'In progress',

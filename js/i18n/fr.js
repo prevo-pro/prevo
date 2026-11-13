@@ -1291,6 +1291,8 @@ I18n.ajouter('fr', {
   'ordres.reperes.reprend_ot': 'Reprend l\'OT',
   'ordres.reperes.repris': 'Repris par',
   'ordres.reperes.temps_prevu': 'Temps prévu',
+  'ordres.solo.aide_essayez': '« Démarrer », puis « Clore ».',
+  'ordres.solo.aide_texte': 'Votre OT : il est déjà à votre nom. « Démarrer » quand vous y allez, « Mettre en attente » s\'il manque une pièce, « Clore » quand c\'est fini (temps, codes, compte rendu en une fenêtre). Préparation, Exécution, Compte rendu et Historique de l\'équipement restent là si vous en avez besoin ; rien n\'y est obligatoire avant de démarrer.',
   'ordres.solo.etat_a_faire': 'À faire',
   'ordres.solo.etat_en_attente': 'En attente',
   'ordres.solo.etat_en_cours': 'En cours',
