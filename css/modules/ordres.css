@@ -83,6 +83,7 @@
 .ot-sous-titre:not(:first-child) { margin-top: 1.4rem; }
 .ot-champ-lu > .libelle { font-weight: 600; color: var(--texte-2); }
 .ot-valeur { margin: 0; min-height: var(--tactile); display: flex; align-items: center; color: var(--texte); }
+.ot-valeur.ot-valeur-texte { display: block; min-height: 0; padding: .6rem 0; white-space: pre-wrap; }   /* T528 : texte long lu (Direction) */
 .ot-table-saisie input { min-width: 9rem; }
 .ot-table-saisie td.num input { min-width: 0; width: 6.5rem; text-align: right; }
 .ot-table-saisie tr.ot-nouvelle-ligne td { border-bottom: 0; }

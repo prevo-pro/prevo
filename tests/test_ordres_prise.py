@@ -152,6 +152,7 @@ class TestParcoursPrise(CasPrise):
             self.page.click(".onglet[data-onglet='preparation']")
             self.assertEqual(self.page.locator("#form-preparation select[name=technicien_id]").count(), 0)
             self.assertEqual(self.page.locator(".ot-technicien-lecture").count(), 1)
+            self.assertEqual(self.page.locator("#form-preparation fieldset[disabled]").count(), 1)   # T528 : Direction seule en texte
             self.assertEqual(self.page.locator(".ot-prise-preparation button[data-action=prendre-ot]").count(), 1)
             self.assertEqual(self.page.locator(".ot-actions button[data-cible='En cours']").count(), 0)
             self.page.click(".ot-actions button[data-action=prendre-ot]")

@@ -109,6 +109,54 @@ Object.assign(Ordres, (() => {
   }
 
   // ===========================================================================================
+  // 11 bis. Fiche lue par la Direction (lot 1 ergonomie, A7, T528) : les onglets Préparation, Exécution et Compte
+  // rendu montrent leurs valeurs en texte, sans champ grisé ni mention « lecture seule ». Écran seulement : les
+  // droits sont ceux du serveur (T520). Les autres profils gardent leurs formulaires (désactivés s'il le faut).
+  // ===========================================================================================
+
+  function valeurLue(champ) {
+    if (champ.type === 'checkbox') return I18n.t(champ.checked ? 'ordres.lecture.oui' : 'ordres.lecture.non');
+    if (champ.tagName === 'SELECT') return champ.value && champ.selectedIndex >= 0 ? champ.options[champ.selectedIndex].textContent : '';
+    if (champ.type === 'date') return UI.dateFr(champ.value);
+    if (champ.type === 'datetime-local') return UI.dateHeureFr(champ.value);
+    return champ.value;
+  }
+
+  /** Remplace les champs des formulaires désactivés du panneau par leur valeur en texte (Direction seulement). */
+  function ficheEnLecture(panneau) {
+    if (!App.estDirection() || !panneau) return;
+    const lectureSeule = I18n.t('ordres.preparation.lecture_seule');
+    UI.$$('.entete-carte > .aide', panneau).filter((aide) => aide.textContent === lectureSeule).forEach((aide) => aide.remove());
+    UI.$$('fieldset.ot-fieldset[disabled]', panneau).forEach((fieldset) => {
+      UI.$$('.aide', fieldset).forEach((aide) => aide.remove());                 // conseils de saisie
+      UI.$$('input:not([type="hidden"]), select, textarea', fieldset).forEach((champ) => {
+        const valeur = texte(valeurLue(champ)).trim();
+        let lu;
+        if (champ.classList.contains('ot-fait')) {                               // case de la check-list
+          lu = UI.element(UI.html`<span class="badge ${champ.checked ? 'ok' : 'neutre'}">${I18n.t(champ.checked ? 'ordres.lecture.fait' : 'ordres.lecture.non_fait')}</span>`);
+        } else if (champ.classList.contains('ot-mesure')) {                      // valeur mesurée d'une opération
+          lu = valeur ? UI.element(UI.html`<span class="attendu">${I18n.t('ordres.lecture.mesure', { valeur })}</span>`) : null;
+        } else {
+          lu = UI.element(UI.html`<p class="ot-valeur${champ.tagName === 'TEXTAREA' ? ' ot-valeur-texte' : ''}">${valeur || '—'}</p>`);
+        }
+        const bloc = champ.closest('.champ');
+        if (bloc) bloc.classList.add('ot-champ-lu');
+        if (lu) champ.replaceWith(lu); else champ.remove();
+      });
+      UI.$$('label.libelle', fieldset).forEach((etiquette) => {                 // plus de champ à étiqueter
+        const libelle = document.createElement('span');
+        libelle.className = etiquette.className;
+        libelle.append(...etiquette.childNodes);
+        etiquette.replaceWith(libelle);
+      });
+      fieldset.disabled = false;
+      fieldset.classList.add('ot-lecture');
+    });
+  }
+
+  Object.assign(Ordres.interne, { ficheEnLecture });
+
+  // ===========================================================================================
   // 12. Enregistrement des écrans (App est chargé après les modules)
   // ===========================================================================================
 

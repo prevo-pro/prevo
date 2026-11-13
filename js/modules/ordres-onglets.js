@@ -677,7 +677,10 @@ Object.assign(Ordres, (() => {
   }
 
   // Onglets affichés par la fiche (ordres-fiche.js) et aide de l'astuce (fenêtre « Clore ») : usage interne au module.
-  Object.assign(Ordres.interne, { afficherPreparation, afficherExecution, afficherCompteRendu, afficherHistorique, aideAstuce });
+  // T528 : la Direction lit les valeurs en texte (Ordres.interne.ficheEnLecture, ordres-impression.js).
+  const lu = (afficher) => (panneau, ot) => { afficher(panneau, ot); Ordres.interne.ficheEnLecture(panneau); };
+  Object.assign(Ordres.interne, { afficherPreparation: lu(afficherPreparation), afficherExecution: lu(afficherExecution),
+    afficherCompteRendu: lu(afficherCompteRendu), afficherHistorique, aideAstuce });
 
   return {};
 })());

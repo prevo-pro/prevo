@@ -317,6 +317,22 @@ class TestNavigateurDirection(roles.CasNavigateurComptes):
         self.sans_bouton_d_ecriture()
         self.ouvrir("#/ot/" + roles.OT_EN_COURS, ".ot-entete")
         self.sans_bouton_d_ecriture()
+        # T528 : sur la fiche d'un OT (en cours, puis clos), les onglets montrent les informations en texte, sans
+        # champ grisé, sans bouton dans un formulaire, sans la mention « Lecture seule »
+        clos = page.evaluate("() => Donnees.lignes('ordres_travail').find((o) => o.statut === 'Clôturé administrativement'"
+                             " && o.compte_rendu).id")
+        for ot_id in (roles.OT_EN_COURS, clos):
+            self.ouvrir("#/ot/" + ot_id, ".ot-entete")
+            for onglet in ("preparation", "execution", "compte-rendu"):
+                with self.subTest(ot=ot_id, onglet=onglet):
+                    page.click(".onglet[data-onglet='%s']" % onglet)
+                    page.wait_for_selector(".ot-onglets .panneau-onglet[data-onglet=%s] fieldset.ot-lecture" % onglet)
+                    champs = ".ot-onglets fieldset :is(input:not([type=hidden]), select, textarea)"
+                    self.assertEqual(page.locator(champs).count(), 0)
+                    self.assertEqual(page.locator(".ot-onglets fieldset[disabled], .ot-onglets form button").count(), 0)
+                    self.assertNotIn("Lecture seule", page.inner_text(".ot-onglets"))
+        compte_rendu = page.evaluate("id => Donnees.trouver('ordres_travail', id).compte_rendu", clos)
+        self.assertIn(compte_rendu.splitlines()[0].strip(), page.inner_text("#form-compte-rendu .ot-valeur-texte"))
         for route in ("#/parametres", "#/equipe/acces", "#/di/nouvelle", "#/import"):
             with self.subTest(route=route):
                 self.ouvrir(route, ".ecran-ferme")
