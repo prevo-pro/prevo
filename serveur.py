@@ -2768,6 +2768,9 @@ MOTIF_TABLE_DU_JEU_DE_DEMO = re.compile(r'^    ([a-z_]+): ')
 MOTIF_DATE_DU_JEU_DE_DEMO = re.compile(r'^  dateReference: "([0-9]{4}-[0-9]{2}-[0-9]{2})",?$')
 PREFIXE_MORCEAUX_DU_JEU_DE_DEMO = "((m, s) => s.map((r) => m[r]).join(''))("
 MOTIF_DEBUT_DE_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')     # comme MOTIF_DATE de js/stockage-demo.js
+# Base « vide » (T515) : liste de départ des codes de défaillance, lue dans le même fichier que le navigateur.
+FICHIER_CODES_DE_DEPART = os.path.join(DOSSIER_APPLICATION, 'js', 'catalogue', 'codes-depart.js')
+REPERE_DEBUT_CODES_DE_DEPART, REPERE_FIN_CODES_DE_DEPART = '\n// <json>\n', '\n// </json>\n'     # lignes entières
 # Langue de Prévo d'une base neuve (T296 ; D149, D165) : « terminer » reçoit langue_defaut, une langue déclarée par
 # js/i18n/langues.js (une ligne « I18n.declarer({ code: 'xx', … }) » par langue, la même liste que le navigateur), le
 # français sans elle.
@@ -3400,6 +3403,33 @@ def technicien_par_id(config, identifiant):
     """Ligne de techniciens.csv (dict) qui porte cet identifiant, ou None."""
     lignes = dictionnaires_csv(lire_octets(chemin_table(config, 'techniciens')), 'techniciens')
     return next((ligne for ligne in lignes if ligne.get('id', '').strip() == identifiant), None)
+
+
+def codes_de_depart(langue):
+    """Liste de départ des codes de défaillance d'une base neuve (T515, A2 du lot 1 ergonomie) : lignes [id, famille,
+    code, libelle] (CD-0001…) lues dans js/catalogue/codes-depart.js, la même source que le navigateur (le JSON entre
+    les lignes repères « // <json> » et « // </json> »), libellés dans « langue » (repli sur le français). Fichier
+    absent ou illisible : [] (la base reste sans codes ; la clôture ne les exige alors pas)."""
+    octets = lire_octets(FICHIER_CODES_DE_DEPART)
+    try:
+        texte = octets.decode('utf-8') if octets is not None else ''
+        debut = texte.index(REPERE_DEBUT_CODES_DE_DEPART) + len(REPERE_DEBUT_CODES_DE_DEPART)
+        codes = json.loads(texte[debut:texte.index(REPERE_FIN_CODES_DE_DEPART, debut)])['codes']
+        return [['CD-%04d' % rang, code['famille'], code['code'], code['libelle'].get(langue) or code['libelle']['fr']]
+                for rang, code in enumerate(codes, start=1)]
+    except (UnicodeDecodeError, ValueError, KeyError, TypeError, AttributeError):
+        return []
+
+
+def installer_codes_de_depart(config, langue):
+    """« terminer » avec base « vide » sur une base absente au départ (T515) : codes_defaillance.csv écrit avec la liste
+    de départ dans la langue de la base (codes_de_depart), sauf si le fichier existe déjà (jamais remplacé). En tenant
+    VERROU_ECRITURE."""
+    if lire_octets(chemin_table(config, 'codes_defaillance')) is not None:
+        return
+    lignes = codes_de_depart(langue)
+    if lignes:
+        ecrire_table(config, 'codes_defaillance', list(COLONNES_PAR_TABLE['codes_defaillance']), lignes)
 
 
 def installer_jeu_de_demo(config, brouillon, origine=('', '', '')):
@@ -8376,8 +8406,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         prevo.config.json écrit (seulement ici : ecrire_configuration, ou modifier_configuration s'il existe déjà,
         les clés inconnues gardées) ; Solo ⇒ mode_solo dans parametres.csv, base absente au départ ⇒ langue_defaut
         (les autres lignes gardées ; une base présente au départ n'a jamais sa langue changée ici) ; brouillon
-        supprimé ; puis le serveur se relance avec la configuration (config.relancer). Rend {configuration, fichier,
-        relance, base}."""
+        supprimé ; base « vide » absente au départ ⇒ codes_defaillance.csv avec la liste de départ dans sa langue
+        (T515, installer_codes_de_depart) ; puis le serveur se relance avec la configuration (config.relancer). Rend
+        {configuration, fichier, relance, base}."""
         base = demande.get('base', 'vide')
         if base not in BASES_AU_DEPART:
             raise ErreurHttp(400, traduisible('installation.base_inconnue',
@@ -8436,6 +8467,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if a_poser:
             with VERROU_ECRITURE:
                 poser_parametres(self.config, a_poser)
+        if base_neuve and base == 'vide':                     # T515 : liste de départ des codes, dans sa langue
+            with VERROU_ECRITURE:
+                installer_codes_de_depart(self.config, langue)
         supprimer_brouillon(self.config)
         relance = bool(self.config.relancer(None))
         return {'configuration': a_ecrire, 'fichier': chemin, 'relance': relance, 'base': base}

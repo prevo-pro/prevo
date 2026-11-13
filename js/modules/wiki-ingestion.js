@@ -321,9 +321,9 @@ Object.defineProperties(Wiki, Object.getOwnPropertyDescriptors((() => {   // gar
   // 4. Données envoyées (liste blanche, CS99) et lecture de la réponse
   // ===========================================================================================
 
-  function libelleCode(famille, code) {
+  function libelleCode(famille, code, precision) {
     const propre = texte(code);
-    if (!propre) return '';
+    if (!propre) return texte(precision) ? I18n.t('commun.code.autre_precise', { texte: texte(precision) }) : '';   // T515
     const ligne = Donnees.lignes('codes_defaillance').find((c) => texte(c.famille) === famille && texte(c.code) === propre);
     return ligne ? texte(ligne.libelle) : propre;
   }
@@ -395,7 +395,7 @@ Object.defineProperties(Wiki, Object.getOwnPropertyDescriptors((() => {   // gar
       equipement: { repere: texte(equipement.repere), designation: texte(equipement.designation),
         marque: texte(equipement.marque), modele: texte(equipement.modele) },
       titre: texte(ot.titre), travail: texte(ot.travail_a_faire), symptome: libelleCode('symptôme', ot.symptome_code),
-      cause: libelleCode('cause', ot.cause_code), remede: libelleCode('remède', ot.remede_code),
+      cause: libelleCode('cause', ot.cause_code, ot.cause_precision), remede: libelleCode('remède', ot.remede_code, ot.remede_precision),
       compteRendu: ot.compte_rendu || '', astuce: ot.astuce || '',
       pieces: articlesConsommes(texte(ot.id)).map((article) => ({ designation: article.designation,
         reference: article.reference, quantite: String(article.quantite) })),

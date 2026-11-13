@@ -134,6 +134,11 @@ Object.assign(Wiki, (() => {
   }
 
   /** Libellé d'un code de la famille ; le code s'il est inconnu ; '' sans code. */
+  /** « Autre : <précision> » d'une cause ou d'un remède sans code (T515), '' sans précision. */
+  function autrePrecise(precision) {
+    return texte(precision) ? I18n.t('commun.code.autre_precise', { texte: texte(precision) }) : '';
+  }
+
   function libelleCode(ctx, famille, code) {
     const propre = texte(code);
     return propre ? (ctx.libelles.get(famille + '|' + propre) || propre) : '';
@@ -490,8 +495,8 @@ Object.assign(Wiki, (() => {
       faits: [fait(I18n.t('wiki.fait.machine'), machine ? machine.titre : texte(ot.equipement_id), machine && machine.lien)].concat(valeurs,
         [fait(I18n.t('commun.champ.technicien'), technicien ? technicien.nom : '', technicien && technicien.lien)], dates, [
           fait(I18n.t('wiki.fait.arret_production'), texte(ot.arret_production) === '1'), fait(I18n.t('wiki.fait.duree_arret'), Donnees.nombre(ot.duree_arret_h)),
-          fait(I18n.t('wiki.fait.panne'), panne ? panne.libelle : '', panne && panne.lien), fait(I18n.t('wiki.fait.cause'), libelleCode(ctx, 'cause', ot.cause_code)),
-          fait(I18n.t('wiki.fait.remede'), libelleCode(ctx, 'remède', ot.remede_code)), fait(I18n.t('wiki.fait.demande_origine'), demande ? demande.id : ''),
+          fait(I18n.t('wiki.fait.panne'), panne ? panne.libelle : '', panne && panne.lien), fait(I18n.t('wiki.fait.cause'), libelleCode(ctx, 'cause', ot.cause_code) || autrePrecise(ot.cause_precision)),
+          fait(I18n.t('wiki.fait.remede'), libelleCode(ctx, 'remède', ot.remede_code) || autrePrecise(ot.remede_precision)), fait(I18n.t('wiki.fait.demande_origine'), demande ? demande.id : ''),
           fait(I18n.t('wiki.fait.cloture_technique'), texte(ot.date_cloture_tech)), fait(I18n.t('wiki.fait.cloture_administrative'), texte(ot.date_cloture_admin))]),
       sections: {
         demande, travail: texte(ot.travail_a_faire), compteRendu: texte(ot.compte_rendu), astuce: texte(ot.astuce),

@@ -414,8 +414,8 @@ Object.assign(Ordres, (() => {
     const formulaire = UI.$('#form-compte-rendu', panneau);
     const placer = (nom, element) => placerChamp(formulaire, nom, element);
     placer('symptome_code', champOt('symptome_code', ot.symptome_code, { liste: listeCodes('symptôme') }));
-    placer('cause_code', champOt('cause_code', ot.cause_code, { liste: listeCodes('cause') }));
-    placer('remede_code', champOt('remede_code', ot.remede_code, { liste: listeCodes('remède') }));
+    placer('cause_code', Ordres.champCode(ot, 'cause'));             // T515 : « Autre (préciser) », préventif
+    placer('remede_code', Ordres.champCode(ot, 'remede'));
     placer('compte_rendu', champOt('compte_rendu', ot.compte_rendu, {
       aide: I18n.t('ordres.compte_rendu.ete_constate_cause_ete'),
     }));
@@ -450,10 +450,9 @@ Object.assign(Ordres, (() => {
     const refus = longueur > ASTUCE_MAX ? I18n.t('ordres.enregistrer_compte_rendu.astuce_trop_longue_caracteres', { n: longueur, max: ASTUCE_MAX }) : '';
     UI.erreurChamp(formulaire, 'astuce', refus);
     if (refus) { UI.toast(refus, 'erreur'); return false; }
-    const changes = await pendant(UI.$('button[type=submit]', formulaire), () => modifierOt(ot.id, {
-      symptome_code: valeurs.symptome_code, cause_code: valeurs.cause_code, remede_code: valeurs.remede_code,
+    const changes = await pendant(UI.$('button[type=submit]', formulaire), () => modifierOt(ot.id, Object.assign(Ordres.codesSaisis(valeurs), {
       compte_rendu: valeurs.compte_rendu, remise_service: valeurs.remise_service, astuce: valeurs.astuce,
-    }, I18n.donnees('ordres.enregistrer_compte_rendu.compte_rendu')), I18n.t('ordres.enregistrer_compte_rendu.compte_rendu'));
+    }), I18n.donnees('ordres.enregistrer_compte_rendu.compte_rendu')), I18n.t('ordres.enregistrer_compte_rendu.compte_rendu'));
     if (changes === undefined) return false;
     if (ia) await ia.apresEnregistrement(changes, valeurs);
     return true;

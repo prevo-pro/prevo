@@ -322,8 +322,7 @@ const Ordres = (() => {
     else if (texte(ot.date_debut) && texte(ot.date_fin) < texte(ot.date_debut)) manques.push(I18n.t('ordres.verifier_cloture.date_fin_posterieure_date'));
     else if (dateFinDansLeFutur(ot.date_fin)) manques.push(I18n.t('ordres.verifier_cloture.date_fin_soit_pas'));
     if (!temps.some((ligne) => nombre(ligne.heures) > 0)) manques.push(I18n.t('ordres.verifier_cloture.moins_temps_passe_onglet'));
-    if (!texte(ot.cause_code)) manques.push(I18n.t('ordres.verifier_cloture.code_cause'));
-    if (!texte(ot.remede_code)) manques.push(I18n.t('ordres.verifier_cloture.code_remede'));
+    manques.push(...Ordres.manquesDesCodes(ot));       // T515 : ordres-codes.js (préventif, « Autre », liste vide)
     if (estCorrectif(ot) && estRienASignaler(compteRendu)) {
       manques.push(I18n.t('ordres.verifier_cloture.vrai_compte_rendu_ras'));
     } else if (compteRendu.length < 10) {

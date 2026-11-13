@@ -531,10 +531,11 @@ class TestGamme(CasOrdresLot2):
         self.assertTrue(page.evaluate("(id) => Donnees.lignes('ot_temps').some(t => t.ot_id === id)", ot_id))
 
     def remplir_compte_rendu(self, dossier):
-        """Onglet Compte rendu complet (enregistré par la transition de clôture)."""
+        """Onglet Compte rendu complet (enregistré par la transition de clôture). OT préventif de gamme : pas de champ
+        cause (T515, A2 : la cause n'est pas demandée sur un préventif sans anomalie), le remède reste proposé."""
         page = self.page
         self.onglet("compte-rendu")
-        page.select_option("#form-compte-rendu [name=cause_code]", self.premier_code(dossier, "cause"))
+        self.assertEqual(page.locator("#form-compte-rendu [name=cause_code]").count(), 0)
         page.select_option("#form-compte-rendu [name=remede_code]", self.premier_code(dossier, "remède"))
         page.fill("#form-compte-rendu [name=compte_rendu]", "Contrôle mensuel réalisé, tension de bande réglée.")
         page.check("#form-compte-rendu [name=remise_service]")

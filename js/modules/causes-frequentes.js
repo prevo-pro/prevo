@@ -41,13 +41,20 @@ const CausesFrequentes = (() => {
     return texte(valeur).replace(/\s+/g, '').toLowerCase();
   }
 
-  /** Un « cas » : OT correctif clôturé (techniquement ou administrativement), de ce symptôme, avec une cause. */
+  /** Un « cas » : OT correctif clôturé (techniquement ou administrativement), de ce symptôme, avec une cause (un code,
+   *  ou une précision « Autre », T515). */
   function estUnCas(ot, symptomeCode) {
     return /^correctif/.test(texte(ot.type))
       && STATUTS_CLOTURES.includes(ot.statut)
       && texte(ot.symptome_code) === symptomeCode
-      && texte(ot.cause_code) !== '';
+      && (texte(ot.cause_code) !== '' || texte(ot.cause_precision) !== '');
   }
+
+  // T515 : une cause ou un remède sans code mais précisé (« Autre (préciser) ») compte sous la clé AUTRE ; son libellé
+  // est « Autre : <précision du cas le plus récent> ».
+  const AUTRE = '*autre*';
+  const cleDe = (ot, champ, precision) => texte(ot[champ]) || (texte(ot[precision]) ? AUTRE : '');
+  const libelleAutre = (precision) => I18n.t('commun.code.autre_precise', { texte: texte(precision) });
 
   /** Date d'un cas : fin des travaux, sinon clôture technique, sinon création (AAAA-MM-JJ). */
   function dateDuCas(ot) {
@@ -131,14 +138,18 @@ const CausesFrequentes = (() => {
   function remedeLePlusUtilise(casRecentsDabord) {
     const comptes = new Map();         // garde l'ordre d'apparition : le plus récent d'abord
     casRecentsDabord.forEach((ot) => {
-      const code = texte(ot.remede_code);
+      const code = cleDe(ot, 'remede_code', 'remede_precision');
       if (code) comptes.set(code, (comptes.get(code) || 0) + 1);
     });
     let meilleur = null;
     comptes.forEach((nombre, code) => {
       if (!meilleur || nombre > meilleur.nombre) meilleur = { code, nombre };
     });
-    return meilleur ? { code: meilleur.code, libelle: libelleCode('remède', meilleur.code), nombre: meilleur.nombre } : null;
+    if (!meilleur) return null;
+    const libelle = meilleur.code === AUTRE
+      ? libelleAutre(casRecentsDabord.find((ot) => cleDe(ot, 'remede_code', 'remede_precision') === AUTRE).remede_precision)
+      : libelleCode('remède', meilleur.code);
+    return { code: meilleur.code, libelle, nombre: meilleur.nombre };
   }
 
   /**
@@ -148,13 +159,13 @@ const CausesFrequentes = (() => {
   function causesLesPlusFrequentes(cas) {
     const parCause = new Map();
     cas.slice().sort(comparerCasRecentsDabord).forEach((ot) => {
-      const code = texte(ot.cause_code);
+      const code = cleDe(ot, 'cause_code', 'cause_precision');
       if (!parCause.has(code)) parCause.set(code, []);
       parCause.get(code).push(ot);
     });
     const causes = Array.from(parCause.entries()).map(([code, liste]) => ({
       code,
-      libelle: libelleCode('cause', code),
+      libelle: code === AUTRE ? libelleAutre(liste[0].cause_precision) : libelleCode('cause', code),
       nombre: liste.length,
       remede: remedeLePlusUtilise(liste),
       dernierCas: dateDuCas(liste[0]),

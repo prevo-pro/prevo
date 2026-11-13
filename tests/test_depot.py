@@ -42,7 +42,8 @@ NON_IGNORES = ["donnees/demo/equipements.csv", "donnees/.gitkeep", "docs/brief-g
 # controles-reserves-ecrans.js après controles-ecrans.js, equipe-habilitations.js après equipe-ecrans.js,
 # ordres-habilitations.js après ordres-impression.js. Lot L4 (T450) : le module Garanties (garanties-regles.js à
 # garanties-encarts.js) juste après le module Controles (controles-reserves-ecrans.js). Lot L4 (T454) :
-# parametres-reglages.js (le tableau REGLAGES, sorti de parametres.js) juste avant parametres.js.
+# parametres-reglages.js (le tableau REGLAGES, sorti de parametres.js) juste avant parametres.js. Lot 1 ergonomie
+# (T515) : ordres-codes.js (codes cause et remède de la clôture) juste après ordres-regles.js.
 ORDRE_MODULES = [
     "apropos.js", "mise-a-jour.js", "aide-ecrans-textes.js", "aide-ecrans.js", "acces-textes.js", "connexion-ecrans.js",
     "installation-etapes.js", "installation-ecrans.js", "installation-fiche.js",
@@ -50,7 +51,7 @@ ORDRE_MODULES = [
     "ia.js", "ia-masquage.js", "ia-prompts.js", "ia-encadre.js", "ia-serveur.js", "dictee.js", "poste.js", "brouillons.js",
     "parc-regles.js", "parc-arbre.js", "parc-formulaires.js", "parc-etiquettes.js", "parc-fiche.js",
     "demandes-regles.js", "demandes-ecritures.js", "demandes-signaler.js", "demandes-liste.js", "demandes-fiche.js",
-    "ordres-regles.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-onglets.js",
+    "ordres-regles.js", "ordres-codes.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-onglets.js",
     "ordres-pieces.js", "ordres-impression.js", "ordres-habilitations.js",
     "preventif-regles.js", "preventif-ecritures.js", "preventif-ecrans.js", "preventif-calendrier.js",
     "suggestions-regles.js", "suggestions-ecrans.js",
@@ -78,11 +79,12 @@ LIGNES_MAX_MODULE = 700   # décision D28 : aucun fichier de js/modules/ au-del�
 # (« Ordre de chargement dans index.html »). js/formats.js juste après js/schema.js (chantier socle de données, T183).
 # Chantier multilingue (T234) : le moteur de traduction, les langues, le français, l'aide française et le chargeur de la
 # langue active juste avant js/schema.js. Chantier 2.2 (T410) : le catalogue des contrôles et des habilitations
-# (js/catalogue/fr.js, T400, window.CatalogueFR gelé) juste après js/formats.js.
+# (js/catalogue/fr.js, T400, window.CatalogueFR gelé) juste après js/formats.js. Lot 1 ergonomie (T515) : les codes
+# de défaillance de départ (js/catalogue/codes-depart.js, window.CodesDeDepart) juste après js/catalogue/fr.js.
 ORDRE_SOCLE = [
     "js/lib/papaparse.min.js", "js/lib/qrcode.js", "js/lib/jsQR.js",
     "js/i18n.js", "js/i18n/langues.js", "js/i18n/fr.js", "js/i18n/aide/fr.js", "js/i18n-chargeur.js",
-    "js/schema.js", "js/formats.js", "js/catalogue/fr.js", "js/donnees.js",
+    "js/schema.js", "js/formats.js", "js/catalogue/fr.js", "js/catalogue/codes-depart.js", "js/donnees.js",
     "js/stockage-serveur.js", "js/stockage-dossier.js", "js/stockage-demo.js", "js/interface.js",
 ]
 

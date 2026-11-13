@@ -1,8 +1,9 @@
 'use strict';
 // Parametres (2/4) — carte « Codes de défaillance » de l'écran Paramètres (ARCHITECTURE.md §15.11 ;
 // brief §6 « codes_defaillance », §9 E12) : liste par famille (symptôme, cause, remède), ajout d'un
-// code, modification d'un libellé. Ni désactivation ni suppression : la table n'a pas de champ
-// « actif » et les OT anciens citent leurs codes (corriger un libellé suffit).
+// code, modification d'un libellé. Pas de désactivation (la table n'a pas de champ « actif ») ; suppression d'un
+// code qu'aucun OT, aucune demande ni aucune page du wiki ne cite (T515 : la liste de départ d'une base neuve reste
+// entièrement modifiable), et bouton « Ajouter la liste de départ » tant qu'une famille est vide (Ordres, ordres-codes.js).
 // Les listes de codes de la fiche OT et des demandes lisent la même table : un code ajouté y apparaît.
 // La carte est affichée par parametres.js (fonction relais afficherCodes). Complète l'objet Parametres.
 
@@ -124,6 +125,40 @@ Object.assign(Parametres, (() => {
     }, { action: 'libellé du code modifié : ' + nouveau });
   }
 
+  /** Vrai si un OT (symptôme, cause, remède), une demande (symptôme) ou une page du wiki (cause) cite ce code. */
+  function codeCite(ligne) {
+    const code = texte(ligne.code);
+    const cite = (table, champs) => Donnees.lignes(table).some((l) => champs.some((champ) => texte(l[champ]) === code));
+    return cite('ordres_travail', ['symptome_code', 'cause_code', 'remede_code']) || cite('demandes', ['symptome_code'])
+      || cite('wiki_pages', ['cause_code']);
+  }
+
+  /** Supprime un code qu'aucune fiche ne cite (T515) ; refusé sinon. Renvoie vrai si supprimé. */
+  async function supprimerCode(id) {
+    let action = 'code de défaillance supprimé';
+    return Donnees.modifier('codes_defaillance', (lignes) => {
+      const rang = lignes.findIndex((l) => l.id === id);
+      if (rang < 0) throw new Donnees.ErreurValidation(I18n.t('parametres.modifier_libelle_code.code_introuvable', { id }));
+      if (codeCite(lignes[rang])) throw new Donnees.ErreurValidation(I18n.t('parametres.supprimer_code.code_cite', { code: lignes[rang].code }));
+      action = 'code ' + lignes[rang].code + ' (' + lignes[rang].famille + ') supprimé : ' + lignes[rang].libelle;
+      lignes.splice(rang, 1);
+      return true;
+    }, { get action() { return action; } });
+  }
+
+  async function demanderSuppression(ligne, zone) {
+    const ok = await UI.confirmer(I18n.t('parametres.supprimer_code.confirmer', { code: ligne.code, libelle: ligne.libelle }),
+      { oui: I18n.t('parametres.supprimer_code.supprimer'), danger: true });
+    if (!ok) return;
+    try {
+      await supprimerCode(ligne.id);
+      UI.toast(I18n.t('parametres.supprimer_code.code_supprime', { code: ligne.code }), 'succes');
+      remplirCarte(zone);
+    } catch (erreur) {
+      App.signalerErreur(erreur, 'suppression d\'un code de défaillance');
+    }
+  }
+
   // ===========================================================================================
   // 8. Carte « Codes de défaillance »
   // ===========================================================================================
@@ -141,7 +176,9 @@ Object.assign(Parametres, (() => {
         ${codes.length ? UI.html`<ul class="codes-liste">${codes.map((ligne) => UI.html`<li data-code="${ligne.id}">
           <b class="codes-code">${ligne.code}</b><span class="codes-libelle">${ligne.libelle}</span>
           <button type="button" class="btn btn-fantome codes-modifier" data-code-modifier="${ligne.id}"
-            aria-label="${I18n.t('parametres.liste_familles.modifier_libelle_code', { ligneCode: ligne.code })}">${I18n.t('commun.bouton.modifier')}</button></li>`)}</ul>`
+            aria-label="${I18n.t('parametres.liste_familles.modifier_libelle_code', { ligneCode: ligne.code })}">${I18n.t('commun.bouton.modifier')}</button>
+          ${codeCite(ligne) ? '' : UI.html`<button type="button" class="btn btn-fantome codes-supprimer" data-code-supprimer="${ligne.id}"
+            aria-label="${I18n.t('parametres.liste_familles.supprimer_code', { ligneCode: ligne.code })}">${I18n.t('parametres.supprimer_code.supprimer')}</button>`}</li>`)}</ul>`
           : UI.html`<p class="muted">${I18n.t('parametres.liste_familles.aucun_code_famille')}</p>`}
       </section>`;
     });
@@ -236,10 +273,20 @@ Object.assign(Parametres, (() => {
     UI.remplir(zone, UI.html`<article class="carte" id="carte-codes">
       <div class="entete-carte"><h2>${I18n.html('parametres.remplir_carte.codes_defaillance', { nombre: Donnees.lignes('codes_defaillance').length })}</h2></div>
       <p class="note codes-explication">${I18n.t('parametres.remplir_carte.listes_alimentent_demandes_compte')}</p>
+      <div class="codes-zone-depart"></div>
       <div class="codes-zone-ajout"></div>
       <div class="grille codes-familles">${listeFamilles()}</div>
     </article>`);
     UI.$('.codes-zone-ajout', zone).appendChild(formulaireAjout());
+    if (Ordres.listeDeDepartUtile()) {            // T515 : une famille vide (base existante sans codes)
+      const depart = UI.$('.codes-zone-depart', zone);
+      depart.appendChild(UI.element(UI.html`<p class="note">${I18n.t('parametres.remplir_carte.liste_depart_proposee')}</p>`));
+      depart.appendChild(Ordres.boutonListeDeDepart(() => remplirCarte(zone)));
+    }
+    UI.$$('[data-code-supprimer]', zone).forEach((bouton) => bouton.addEventListener('click', () => {
+      const ligne = Donnees.trouver('codes_defaillance', bouton.dataset.codeSupprimer);
+      if (ligne) demanderSuppression(ligne, zone);
+    }));
     UI.$$('[data-code-modifier]', zone).forEach((bouton) => bouton.addEventListener('click', () => {
       const ligne = Donnees.trouver('codes_defaillance', bouton.dataset.codeModifier);
       if (ligne) ouvrirModification(ligne, zone);
@@ -252,6 +299,6 @@ Object.assign(Parametres, (() => {
   return {
     // codes de défaillance (ARCHITECTURE.md §15.11)
     FAMILLES_CODES: FAMILLES.map((definition) => definition.famille),
-    codePropose, verifierCode, ajouterCode, modifierLibelleCode,
+    codePropose, verifierCode, ajouterCode, modifierLibelleCode, codeCite, supprimerCode,
   };
 })());

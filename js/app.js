@@ -823,7 +823,8 @@ const App = (() => {
   }
 
   // Écrit les 23 fichiers (versionAttendue null : aucun ne doit exister, sinon ErreurConflit), avec langue_defaut
-  // dans parametres.csv : la langue choisie sur l'écran (T296), lue ensuite par suivreLangueInstallation.
+  // dans parametres.csv : la langue choisie sur l'écran (T296), lue ensuite par suivreLangueInstallation ; une base
+  // vide reçoit aussi la liste de départ des codes de défaillance dans cette langue (T515).
   async function remplirBaseVide(choix) {
     const contenus = {};
     const choisie = UI.$('#base-vide-langue').value;
@@ -840,6 +841,11 @@ const App = (() => {
       // au premier démarrage (ARCHITECTURE.md §14.1).
       contenus.parametres = Donnees.csv.serialiser('parametres', [{ cle: 'version_schema', valeur: String(Schema.version) },
         { cle: PARAMETRE_LANGUE, valeur: langue }]);
+      // T515 : codes de défaillance de départ (js/catalogue/codes-depart.js), dans la langue choisie, modifiables ensuite.
+      if (typeof CodesDeDepart !== 'undefined') {
+        contenus.codes_defaillance = Donnees.csv.serialiser('codes_defaillance', CodesDeDepart.lignes(langue)
+          .map((code, rang) => Object.assign({ id: 'CD-' + String(rang + 1).padStart(4, '0') }, code)));
+      }
     }
     for (const nomTable of Schema.nomsTables()) {
       if (contenus[nomTable]) await adaptateur.enregistrer(nomTable, contenus[nomTable], null);

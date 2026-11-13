@@ -577,7 +577,7 @@ Object.assign(Ordres, (() => {
   // Champs de la fenêtre « Clore » : ceux des onglets Exécution et Compte rendu (mêmes libellés et
   // aides), le temps passé et une pièce sortie du magasin (facultative, Magasin.sortir).
   function champsClore(ot) {
-    const { lignesDeLOt, listeCodes, libelleArticle, nombre, aideAstuce } = Ordres.interne;
+    const { lignesDeLOt, libelleArticle, nombre, aideAstuce } = Ordres.interne;
     const total = lignesDeLOt('ot_temps', ot.id).reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
     const technicien = App.technicienSolo() || ot.technicien_id || '';
     const articles = Donnees.lignes('articles').filter((a) => texte(a.actif) !== '0')
@@ -597,9 +597,7 @@ Object.assign(Ordres, (() => {
       champOt('technicien_id', technicien, { liste: listeTechniciens(technicien), libelle: I18n.t('ordres.champs_clore.technicien_temps_passe') }),
       UI.champ({ nom: 'article_id', type: 'ref', libelle: I18n.t('ordres.champs_clore.piece_sortie_magasin_facultatif') }, '', { liste: articles }),
       UI.champ({ nom: 'quantite', type: 'decimal', libelle: I18n.t('ordres.champs_clore.quantite_sortie') }, '1'),
-      champOt('symptome_code', ot.symptome_code, { liste: listeCodes('symptôme') }),
-      champOt('cause_code', ot.cause_code, { liste: listeCodes('cause') }),
-      champOt('remede_code', ot.remede_code, { liste: listeCodes('remède') }),
+      ...Ordres.champsCodes(ot),                 // T515 : symptôme, cause (sauf préventif), remède, « Autre »
       champOt('compte_rendu', ot.compte_rendu, {
         aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
       }),
@@ -636,7 +634,8 @@ Object.assign(Ordres, (() => {
   // formulaire d'un OT modifiable, avec un avertissement si le compte rendu a été enregistré ailleurs depuis (rien
   // n'est fusionné : la personne relit avant d'enregistrer) ; sinon montré à recopier. Rend le suivi ({ terminer }),
   // ou null (OT non modifiable).
-  const CHAMPS_COMPTE_RENDU = ['symptome_code', 'cause_code', 'remede_code', 'compte_rendu', 'astuce', 'remise_service'];
+  const CHAMPS_COMPTE_RENDU = ['symptome_code', 'cause_code', 'remede_code', 'cause_precision', 'remede_precision',
+    'compte_rendu', 'astuce', 'remise_service'];
   const brouillonCompteRendu = (ot) => 'compte-rendu|' + ot.id;
 
   function garderLeCompteRendu(panneau, formulaire, ot, modifiable) {

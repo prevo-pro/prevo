@@ -610,7 +610,9 @@ In progress.</p>
     you: “Call the supplier before any work?” (the reminder blocks nothing).</li>
   <li><b>Technical closure</b> requires: end date, time spent, cause code, remedy code, a job
     report of at least 10 characters (“NTR” is not accepted on a corrective job) and the “Equipment returned to service
-    safely” box. The equipment's isolation procedure is shown on the WO: ticking a box does not
+    safely” box. Each code list offers “Other (specify)” with a short free-text field: the details stand in for the
+    code. On a preventive or statutory WO, the cause is not asked for (unless an anomaly was found) and the remedy is
+    optional. An empty list never blocks the closure: a message says where to create the codes. The equipment's isolation procedure is shown on the WO: ticking a box does not
     isolate anything.</li>
   <li><b>Administrative closure</b> locks the WO and puts it in the wiki queue (see
     <a href="#wiki-file">7.4</a>). To resume the work, you create a linked work order.</li>
@@ -850,7 +852,9 @@ With the AI assistant, a comment can be proposed before finalising (see <a href=
     reprint the access record (see <a href="#assistant">2.4</a>);</li>
   <li><b>Updates</b>: “Notify me of new Prévo versions” (see
     <a href="#mise-a-jour">2.9</a>);</li>
-  <li><b>Failure codes</b> (symptoms, causes, remedies): adding and renaming;</li>
+  <li><b>Failure codes</b> (symptoms, causes, remedies): a new database comes with a starter list of common
+    maintenance codes, to adapt; adding, renaming, deleting a code no record cites, and “Add the starter list” while a
+    family is empty;</li>
   <li><b>Backups</b> and restoring (see <a href="#sauvegardes">chapter 9</a>);</li>
   <li><b>Database check</b>: broken references, duplicates, values in the wrong format;</li>
   <li><b>Import data</b>: bring in your lists and your history from Excel, OpenDocument or CSV

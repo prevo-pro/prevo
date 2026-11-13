@@ -302,6 +302,11 @@ Object.defineProperties(Wiki, Object.getOwnPropertyDescriptors((() => {   // gar
   }
 
   /** Libellé d'un code de la famille (« symptôme », « cause », « remède ») ; le code s'il est inconnu ; '' sans code. */
+  /** « Autre : <précision> » d'une cause ou d'un remède sans code (T515), '' sans précision. */
+  function autrePrecise(precision) {
+    return texte(precision) ? I18n.t('commun.code.autre_precise', { texte: texte(precision) }) : '';
+  }
+
   function libelleCode(ctx, famille, code) {
     const propre = texte(code);
     return propre ? (ctx.libelles.get(famille + '|' + propre) || propre) : '';
@@ -440,8 +445,8 @@ Object.defineProperties(Wiki, Object.getOwnPropertyDescriptors((() => {   // gar
         id: ot.id, date: texte(ot.date_fin), type: texte(ot.type), titre: texte(ot.titre),
         codes: {
           symptome: libelleCode(ctx, 'symptôme', ot.symptome_code),
-          cause: libelleCode(ctx, 'cause', ot.cause_code),
-          remede: libelleCode(ctx, 'remède', ot.remede_code),
+          cause: libelleCode(ctx, 'cause', ot.cause_code) || autrePrecise(ot.cause_precision),     // T515
+          remede: libelleCode(ctx, 'remède', ot.remede_code) || autrePrecise(ot.remede_precision),
         },
         extrait: extrait(ot.compte_rendu),
         dureeArret: Donnees.nombre(ot.duree_arret_h),

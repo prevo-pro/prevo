@@ -613,7 +613,10 @@ En cours.</p>
     «&nbsp;Appeler le fournisseur avant d'intervenir&nbsp;?&nbsp;» (le rappel ne bloque rien).</li>
   <li>La <b>clôture technique</b> demande&nbsp;: date de fin, temps passés, code cause, code remède, un compte
     rendu d'au moins 10 caractères («&nbsp;RAS&nbsp;» est refusé sur un correctif) et la case «&nbsp;remis en service en
-    sécurité&nbsp;». La procédure de consignation de l'équipement est affichée sur l'OT&nbsp;: cocher une case ne
+    sécurité&nbsp;». Chaque liste de codes propose «&nbsp;Autre (préciser)&nbsp;», avec un champ libre court&nbsp;: la
+    précision tient lieu de code. Sur un OT préventif ou réglementaire, la cause n'est pas demandée (sauf anomalie
+    constatée) et le remède est facultatif. Une liste vide n'empêche jamais la clôture&nbsp;: un message dit où créer
+    les codes. La procédure de consignation de l'équipement est affichée sur l'OT&nbsp;: cocher une case ne
     consigne rien.</li>
   <li>La <b>clôture administrative</b> verrouille l'OT et le met dans la file du wiki (voir
     <a href="#wiki-file">7.4</a>). Pour reprendre un travail, on crée un OT lié.</li>
@@ -852,7 +855,9 @@ Avec l'assistant IA, un commentaire peut être proposé avant de figer (voir <a 
     réimprimer la fiche d'accès (voir <a href="#assistant">2.4</a>)&nbsp;;</li>
   <li><b>Mises à jour</b>&nbsp;: «&nbsp;Me signaler les nouvelles versions de Prévo&nbsp;» (voir
     <a href="#mise-a-jour">2.9</a>)&nbsp;;</li>
-  <li><b>Codes de défaillance</b> (symptômes, causes, remèdes)&nbsp;: ajout et changement de libellé&nbsp;;</li>
+  <li><b>Codes de défaillance</b> (symptômes, causes, remèdes)&nbsp;: une base neuve est livrée avec une liste de
+    départ courante en maintenance, à adapter&nbsp;; ajout, changement de libellé, suppression d'un code qu'aucune fiche
+    ne cite, et «&nbsp;Ajouter la liste de départ&nbsp;» tant qu'une famille est vide&nbsp;;</li>
   <li><b>Sauvegardes</b> et restauration (voir <a href="#sauvegardes">chapitre 9</a>)&nbsp;;</li>
   <li><b>Contrôle de la base</b>&nbsp;: références cassées, doublons, valeurs hors format&nbsp;;</li>
   <li><b>Importer des données</b>&nbsp;: reprendre vos listes et votre historique depuis Excel, OpenDocument ou CSV

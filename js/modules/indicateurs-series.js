@@ -83,7 +83,9 @@ Object.assign(Indicateurs, (() => {
       });
   }
 
-  /** Causes des pannes de la période : [{ code, libelle, nombre }], décroissant ; « sans code » à la fin. */
+  /** Causes des pannes de la période : [{ code, libelle, nombre }], décroissant ; puis « Autre (précisé) » (cause sans
+   *  code mais précisée, T515 : code vide) et « sans code » à la fin. */
+  const AUTRE = '*autre*';                // clé de regroupement des causes précisées (« Autre », T515)
   function causes(periodeChoisie, filtres) {
     const ctx = contexte();
     const libelles = new Map(Donnees.lignes('codes_defaillance').filter((code) => texte(code.famille) === 'cause')
@@ -92,12 +94,15 @@ Object.assign(Indicateurs, (() => {
     pannes(periodeChoisie, {}, ctx).forEach((panne) => {
       const equipement = ctx.equipements.get(texte(panne.ot.equipement_id));
       if (equipement ? !passeFiltres(equipement, filtres, ctx) : aDesFiltres(filtres)) return;
-      const code = texte(panne.ot.cause_code);
+      const code = texte(panne.ot.cause_code) || (texte(panne.ot.cause_precision) ? AUTRE : '');
       compte.set(code, (compte.get(code) || 0) + 1);
     });
-    const lignes = Array.from(compte, ([code, total]) => ({ code, libelle: code ? (libelles.get(code) || code) : I18n.t('indicateurs.causes.sans_code'), nombre: total }));
-    return lignes.filter((ligne) => ligne.code).sort((a, b) => b.nombre - a.nombre || UI.comparerTextes(a.libelle, b.libelle))
-      .concat(lignes.filter((ligne) => !ligne.code));
+    const libelle = (code) => (code === AUTRE ? I18n.t('indicateurs.causes.autre')
+      : code ? (libelles.get(code) || code) : I18n.t('indicateurs.causes.sans_code'));
+    const lignes = Array.from(compte, ([code, total]) => ({ code, libelle: libelle(code), nombre: total }));
+    const rang = (ligne) => (ligne.code === AUTRE ? 1 : ligne.code ? 0 : 2);
+    return lignes.sort((a, b) => rang(a) - rang(b) || b.nombre - a.nombre || UI.comparerTextes(a.libelle, b.libelle))
+      .map((ligne) => (ligne.code === AUTRE ? Object.assign(ligne, { code: '' }) : ligne));
   }
 
   /** Charge et capacité de chaque technicien actif sur `n` semaines à partir de `lundi`

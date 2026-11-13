@@ -31,6 +31,7 @@ js/schema.js               Schema    : description des 22 tables (champs, types,
 js/formats.js              Formats   : registre des formats (colonnes de chaque format, étapes de migration, manifeste)
 js/catalogue/fr.js         CatalogueFR : catalogue des contrôles réglementaires et des habilitations (France, 2.2 ;
                            généré par outils/generer_catalogue.py depuis docs/catalogue/*.json, gelé, lecture seule)
+js/catalogue/codes-depart.js  CodesDeDepart : codes de défaillance d'une base neuve (T515 ; lu aussi par serveur.py)
 js/donnees.js              Donnees   : CSV, chargement, contrôle, mutation, journal, rafraîchissement
 js/stockage-serveur.js     StockageServeur : adaptateur « serveur » (API HTTP)
 js/stockage-dossier.js     StockageDossier : adaptateur « dossier » (File System Access)
@@ -65,7 +66,8 @@ passe par `zip-flux.js`), la traduction (chantier multilingue, T234) : `js/i18n.
 `js/schema.js`, `js/formats.js` (juste après le schéma, dont il dépend seul :
 chantier « socle de données »), `js/catalogue/fr.js` (2.2, T410 : le catalogue des contrôles réglementaires et des
 habilitations, `window.CatalogueFR`, généré par `outils/generer_catalogue.py` en T400 ; objets gelés, en lecture seule,
-lus par les modules au moment de l'appel ; sans lui, les modules rendent une liste vide),
+lus par les modules au moment de l'appel ; sans lui, les modules rendent une liste vide), `js/catalogue/codes-depart.js`
+(lot 1 ergonomie, T515 : les codes de défaillance de départ d'une base neuve, `window.CodesDeDepart`, §15.11),
 `js/donnees.js`, `js/stockage-serveur.js`, `js/stockage-dossier.js`,
 `js/stockage-demo.js`, `js/interface.js`, les fichiers de `js/modules/` dans l'ordre exact du
 §15.1 (il remplace, depuis le lot 3, celui du §14.2 ; le lot 3 bis y insère `suggestions-regles.js` et
@@ -79,7 +81,8 @@ le lot 5 ajoute les sept fichiers `import-*.js` à la fin, après `parametres-co
 `controles-reserves-ecrans.js` juste après `controles-ecrans.js`, `equipe-habilitations.js` juste après
 `equipe-ecrans.js` et `ordres-habilitations.js` juste après `ordres-impression.js`, §15.1 ; le lot L4 (T450) insère
 les cinq fichiers `garanties-*.js` juste après `controles-reserves-ecrans.js`, puis (T454) `parametres-reglages.js`
-juste avant `parametres.js`, §15.1 ; T486 : `import-types.js` juste après `import-regles.js`, §18.1), `js/app.js` (en dernier).
+juste avant `parametres.js`, §15.1 ; T486 : `import-types.js` juste après `import-regles.js`, §18.1 ; T515 :
+`ordres-codes.js` juste après `ordres-regles.js`, §15.1), `js/app.js` (en dernier).
 Langue active (T234, T295) : `js/i18n-chargeur.js` lit `localStorage` « prevo.langue » (le choix du poste, écrit par
 le sélecteur de langue, §24.10) puis « prevo.langue.installation » (la langue de l'installation, §24.11 ; la langue du
 compte viendra plus tard) ; la première des deux déclarée par `js/i18n/langues.js` (sinon le français) est la langue
@@ -785,7 +788,16 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
 - **RG4** clôture technique bloquée sans : `date_fin`, au moins un temps passé (`ot_temps`),
   `cause_code`, `remede_code`, `compte_rendu` d'au moins 10 caractères (et sur un correctif,
   « RAS » / « rien à signaler » refusé), `remise_service` = 1. Le message liste **tous** les
-  manques. La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
+  manques. Lot 1 ergonomie (T515, A2 ; `ordres-codes.js`, `Ordres.manquesDesCodes`) : la cause et le remède ne sont
+  exigés que sur un OT correctif ou d'amélioration, et seulement si leur famille a au moins un code dans
+  `codes_defaillance` (une famille vide n'exige rien : un message non bloquant dit où créer les codes, avec le lien et
+  « Ajouter la liste de départ » pour le responsable) ; « renseigné » = un code OU une précision non vide
+  (`cause_precision`, `remede_precision` : l'entrée « Autre (préciser) » des listes, qui n'est pas un code de la table,
+  s'enregistre code vide + texte, et rouvre l'OT sur « Autre (préciser) » avec son texte). Sur un OT préventif
+  (systématique, conditionnel) ou réglementaire, ni cause ni remède ne sont exigés ; le champ cause n'est pas affiché
+  à la clôture, sauf anomalie constatée (ou cause déjà renseignée) ; le remède est proposé, facultatif. Mêmes règles
+  pour la clôture technique et pour « Clore » (`cloture_une_etape`). Affichage d'une précision : « Autre : <texte> »
+  (wiki, causes fréquentes) ; au Pareto des causes, toutes regroupées sous « Autre (précisé) », avant « sans code ». La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
   « Cocher une case ne consigne rien : appliquez la procédure. » Clôture administrative
   (responsable) : `date_cloture_admin`, OT en lecture seule.
 - **RG7** coût = Σ (heures × `taux_horaire` du technicien) + Σ (sorties de stock imputées à
@@ -1465,13 +1477,14 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   « Indicateurs » (ordre 50, `indicateurs`), « Équipe » (ordre 85, `equipe`, groupe
   « Administration », avant Paramètres).
 - **Ordre de chargement** (remplace celui du §14.2 ; `ORDRE_MODULES` de `tests/test_depot.py` change
-  avec lui ; T329 : `brouillons.js` juste après `poste.js`, voir « Brouillons gardés sur l'appareil ») :
+  avec lui ; T329 : `brouillons.js` juste après `poste.js`, voir « Brouillons gardés sur l'appareil » ; T515 :
+  `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11) :
   ```
   apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
-  ordres-regles.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js  ordres-impression.js
-  ordres-habilitations.js
+  ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js
+  ordres-impression.js  ordres-habilitations.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
@@ -2013,8 +2026,18 @@ le rapport de <mois> » (avec élision : « d'octobre », « d'août ») ; rien 
 - Carte « Codes de défaillance » : liste par famille ; `Parametres.ajouterCode({ famille, libelle,
   code })` (code proposé = lettre de la famille S / C / R + numéro suivant sur 2 chiffres,
   modifiable ; code unique, libellé non vide et unique dans la famille) ;
-  `Parametres.modifierLibelleCode(id, libelle)`. Ni désactivation ni suppression (la table n'a pas
-  de champ `actif`).
+  `Parametres.modifierLibelleCode(id, libelle)`. Pas de désactivation (la table n'a pas de champ `actif`).
+- Lot 1 ergonomie (T515, A2) : liste de départ des codes de défaillance (`js/catalogue/codes-depart.js`,
+  `window.CodesDeDepart` : une dizaine de symptômes, une quinzaine de causes, une douzaine de remèdes ; codes
+  `S-…`, `C-…`, `R-…` communs à toutes les langues, libellé par langue déclarée). Toute base NEUVE la reçoit dans la
+  langue choisie à sa création : « Créer une base vide » du navigateur (`remplirBaseVide`, mode dossier et serveur
+  sans assistant) et « terminer » de l'assistant avec la base « vide » sur une base absente au départ
+  (`serveur.py` : `codes_de_depart`, qui lit le JSON entre les lignes repères `// <json>` et `// </json>` du même
+  fichier, `installer_codes_de_depart` ; un `codes_defaillance.csv` présent n'est jamais remplacé). La démo garde ses
+  propres codes. Paramètres : bouton « Ajouter la liste de départ » tant qu'une famille est vide
+  (`Ordres.ajouterListeDeDepart` : n'ajoute que les codes absents, ni même code ni même libellé dans la famille ; rien
+  d'existant n'est modifié) ; `Parametres.supprimerCode(id)` supprime un code qu'aucun OT (symptôme, cause, remède),
+  aucune demande (symptôme) ni aucune page du wiki (cause) ne cite (`Parametres.codeCite`), refusé sinon.
 - 2.2, lot L4 (T454, D187) : réglage `alerte_echeances_jours` (section « Garanties et contrats », entier de 1 à 365,
   défaut 60 ; absent de `parametres.csv` → 60), lu par `Garanties.delaiAlerte` ; les réglages sont déclarés dans
   `parametres-reglages.js` (§15.1) et gardés par l'import ZIP quand le ZIP ne les a pas (T319).

@@ -292,7 +292,7 @@ Object.assign(Ordres, (() => {
   // Champs de la clôture technique saisis dans la fenêtre « Clore » (mêmes champs que les onglets
   // Exécution et Compte rendu ; temps passé et pièce sortie sont écrits dans leurs tables).
   const CHAMPS_CLOTURE = ['date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code',
-    'remede_code', 'compte_rendu', 'astuce', 'remise_service'];
+    'remede_code', 'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service'];
   const ASTUCE_MAX = 500;                     // comme l'onglet Compte rendu (Wiki.SEUILS.astuceMax)
 
   /** Vrai si « Clore » est proposé : réglage cloture_une_etape = 1 et profil responsable. */
@@ -325,7 +325,8 @@ Object.assign(Ordres, (() => {
     await Donnees.rechargerTable('ordres_travail');
     const actuel = ligneOt(Donnees.lignes('ordres_travail'), ot.id, true);
     const champs = {};
-    CHAMPS_CLOTURE.forEach((nom) => { if (valeurs[nom] !== undefined) champs[nom] = texte(valeurs[nom]); });
+    const saisies = Object.assign({}, valeurs, Ordres.codesSaisis(valeurs));     // T515 : « Autre » → code vide
+    CHAMPS_CLOTURE.forEach((nom) => { if (saisies[nom] !== undefined) champs[nom] = texte(saisies[nom]); });
     const heures = Donnees.nombre(valeurs.heures) || 0;
     const quantite = Donnees.nombre(valeurs.quantite) || 0;
     if (texte(valeurs.heures) && !(heures > 0 && heures <= 24)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_nombre_heures'));
