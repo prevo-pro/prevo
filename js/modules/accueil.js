@@ -349,7 +349,8 @@ const Accueil = (() => {
       </div>
       <div class="instruments accueil-instruments accueil-instruments-technicien">${indicateursConformite(compteurs, aujourdhui)}</div>
       ${carteOrdresTechnicien(mesOrdres, idsPreventifs, aujourdhui)}
-      ${carteMesHabilitations(aujourdhui)}`;
+      ${carteMesHabilitations(aujourdhui)}
+      ${typeof Ordres !== 'undefined' && Ordres.accueilTechnicien ? Ordres.accueilTechnicien() : ''}`;
   }
 
   function accueilDemandeur() {

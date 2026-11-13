@@ -467,7 +467,7 @@ Object.assign(Accueil, (() => {
         ${compteurs4(compteurs, aujourdhui)}
         ${listeDemandes(compteurs)}${listeRetards(compteurs, aujourdhui)}
         ${tuilesSurveiller(compteurs, aujourdhui)}
-      </div>${carteConnexion}`);
+      </div>${typeof Ordres !== 'undefined' && Ordres.reprisesResponsable ? Ordres.reprisesResponsable() : ''}${carteConnexion}`);
     // Rapport du mois écoulé (lot 3, §15.10) après les compteurs ; Rapport est chargé après ce fichier.
     const tuileRapport = typeof Rapport !== 'undefined' && typeof Rapport.tuileAccueil === 'function' ? Rapport.tuileAccueil() : null;
     const derniersCompteurs = conteneur.querySelectorAll('#bento .bento-compteur');

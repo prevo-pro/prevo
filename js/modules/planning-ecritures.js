@@ -66,6 +66,7 @@ Object.assign(Planning, (() => {
         if (marqueur) Object.assign(journal, { action: action + ' ; ' + marqueur, derogation: marqueur });
       }
       if (ligne.statut === 'Préparé') ligne.statut = 'Planifié';
+      Ordres.interne.noterPrise(ligne, technicienId);          // A3 (T516) : une affectation, tracée dans l'OT
       ligne.technicien_id = technicienId;
       ligne.date_prevue = date;
       return ligne.statut;

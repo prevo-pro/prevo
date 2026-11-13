@@ -66,7 +66,8 @@ Object.assign(Ordres, (() => {
     const placer = (nom, element) => placerChamp(formulaire, nom, element);
     placer('travail_a_faire', champOt('travail_a_faire', ot.travail_a_faire));
     placer('consignes', champOt('consignes', ot.consignes));
-    placer('technicien_id', champOt('technicien_id', ot.technicien_id, { liste: listeTechniciens(ot.technicien_id) }));
+    if (modifiable) placer('technicien_id', champOt('technicien_id', ot.technicien_id, { liste: listeTechniciens(ot.technicien_id) }));
+    else Ordres.interne.placerTechnicienLecture(formulaire, ot);    // A3 : en texte, avec « Je prends » / « Reprendre »
     placer('date_prevue', champOt('date_prevue', ot.date_prevue));
     placer('temps_prevu_h', champOt('temps_prevu_h', ot.temps_prevu_h));
     // RG8 (ordres-habilitations.js) : champ « Habilitation exigée par l'OT » et refus en direct, l'OT tel qu'il serait enregistré.

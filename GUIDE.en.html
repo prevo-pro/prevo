@@ -586,7 +586,14 @@ It is a statistic from the history, not a diagnosis; below about twenty cases, P
 <p>A work order (WO) goes through these stages: <b>Created → Prepared → Scheduled → In progress → Technically
 closed → Administratively closed</b>. It can also be <b>On hold</b> or <b>Cancelled</b>,
 always with a reason; a cancelled WO is never deleted. An emergency WO goes straight from Created to
-In progress.</p>
+In progress, and so does any WO that already has a technician: <span class="bouton">Start</span> is offered from
+Created or Prepared (a missing planned date becomes today).</p>
+<p>A technician puts an unassigned WO in their own name with <span class="bouton">I'll take this WO</span> (on the
+record, or on its row in the list filtered on “Unassigned”; their home page lists them in the “Up for grabs” card).
+They take over a colleague's WO with <span class="bouton">Take over this WO in my name</span>; the status does not
+change. Every take, takeover or change of technician is noted in the “Taken on (history)” block of the record and of
+the work order sheet; the colleague sees the takeover on their home page for 7 days, the manager under
+“Recent takeovers”. A missing required authorisation refuses the take, just like an assignment.</p>
 <p>A WO record has four tabs:</p>
 <ul>
   <li><b>Preparation</b>: work to be done, safety instructions, planned parts, technician, planned date, planned time;</li>

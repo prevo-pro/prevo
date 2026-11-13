@@ -313,9 +313,10 @@ Object.assign(Ordres, (() => {
     const lie = estVerrouille(ot) && estResponsable()
       ? UI.html`<button type="button" class="btn btn-primaire" id="ot-lie">${UI.icone('ajouter')}${I18n.t('ordres.actions.creer_ot_lie')}</button>` : '';
     const clore = boutonClore(ot);                                  // §22.11, D132 : réglage cloture_une_etape
-    if (!boutons.length && !lie && !clore) return '';
+    const prise = Ordres.interne.boutonsPrise(ot);                  // A3 : « Je prends cet OT », reprise (ordres-prise.js)
+    if (!boutons.length && !lie && !clore && !prise) return '';
     return UI.html`<div class="carte ot-actions sans-impression"><div class="entete-carte"><h2>${I18n.t('ordres.actions.actions')}</h2></div>
-      <div class="actions">${clore}${boutons}${lie}</div></div>`;
+      <div class="actions">${prise}${clore}${boutons}${lie}</div></div>`;
   }
 
   /** Affiche un message (refus, manques…) au-dessus des onglets et le fait voir. */
@@ -365,7 +366,7 @@ Object.assign(Ordres, (() => {
       <div class="ot-bandeau-etat"></div>
       <div class="grille">
         <section class="carte c6"><h2>${I18n.t('ordres.fiche.equipement')}</h2>${equipementHtml(equipement)}</section>
-        <section class="carte c6"><h2>${I18n.t('ordres.fiche.reperes')}</h2>${reperesHtml(ot)}</section>
+        <section class="carte c6"><h2>${I18n.t('ordres.fiche.reperes')}</h2>${reperesHtml(ot)}${Ordres.interne.prisesEnChargeHtml(ot)}</section>
       </div>
       ${consignationHtml(equipement)}
       ${anomalieHtml(ot)}
@@ -386,6 +387,7 @@ Object.assign(Ordres, (() => {
       surChangement: (id) => { memoire.ongletParOt[ot.id] = id; } });
 
     brancherActionsFiche(racine, ot);
+    Ordres.interne.brancherPrise(racine, ot);                       // A3 : ordres-prise.js
   }
 
   function brancherActionsFiche(racine, ot) {

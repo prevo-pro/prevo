@@ -52,7 +52,7 @@ ORDRE_MODULES = [
     "parc-regles.js", "parc-arbre.js", "parc-formulaires.js", "parc-etiquettes.js", "parc-fiche.js",
     "demandes-regles.js", "demandes-ecritures.js", "demandes-signaler.js", "demandes-liste.js", "demandes-fiche.js",
     "ordres-regles.js", "ordres-codes.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-onglets.js",
-    "ordres-pieces.js", "ordres-impression.js", "ordres-habilitations.js",
+    "ordres-pieces.js", "ordres-impression.js", "ordres-habilitations.js", "ordres-prise.js",
     "preventif-regles.js", "preventif-ecritures.js", "preventif-ecrans.js", "preventif-calendrier.js",
     "suggestions-regles.js", "suggestions-ecrans.js",
     "magasin-regles.js", "magasin-ecritures.js", "magasin-articles.js", "magasin-mouvements.js", "magasin-achats.js",

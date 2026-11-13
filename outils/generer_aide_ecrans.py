@@ -148,7 +148,7 @@ ECRANS = {
                 "essayez": "filtrez sur « En retard ».",
             },
             "technicien": {
-                "texte": "Vos ordres de travail et ceux de l'équipe. Les vôtres sont en tête.",
+                "texte": "Vos ordres de travail et ceux de l'équipe. Les vôtres sont en tête ; filtre « Non affectés » : les ordres à prendre.",
                 "essayez": "ouvrez un ordre « En cours ».",
             },
         },
@@ -171,7 +171,8 @@ ECRANS = {
                 "texte": (
                     "Votre feuille de travail : la check-list à cocher dans Exécution, vos temps, les pièces "
                     "sorties du magasin, puis le compte rendu et la clôture technique. La procédure de "
-                    "consignation s'affiche ici : la lire ne consigne rien."
+                    "consignation s'affiche ici : la lire ne consigne rien. Un ordre sans technicien : « Je prends cet "
+                    "OT », puis « Démarrer »."
                 ),
                 "essayez": "cochez une opération de la check-list.",
             },
@@ -528,7 +529,7 @@ ECRANS_EN = {
                 "essayez": "filter on “Overdue”.",
             },
             "technicien": {
-                "texte": "Your work orders and the team's. Yours come first.",
+                "texte": "Your work orders and the team's. Yours come first; the “Unassigned” filter shows the ones up for grabs.",
                 "essayez": "open an “In progress” work order.",
             },
         },
@@ -550,7 +551,8 @@ ECRANS_EN = {
                 "texte": (
                     "Your worksheet: the checklist to tick in Execution, your times, the parts issued from the "
                     "stores, then the job report and the technical close. The isolation procedure is shown here: "
-                    "reading it does not isolate anything."
+                    "reading it does not isolate anything. A work order with no technician: “I'll take this WO”, "
+                    "then “Start”."
                 ),
                 "essayez": "tick a task on the checklist.",
             },

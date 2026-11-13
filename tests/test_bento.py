@@ -100,6 +100,10 @@ STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicie
     "accueil-habilitations-aide", "accueil-mes-habilitations", "attention", "equipe-dates", "equipe-detail",
     "equipe-details", "equipe-habilitations", "equipe-intitule", "equipe-principe", "equipe-statut", "equipe-tete",
     "equipe-type", "note", "ok"})
+# Lot 1 ergonomie, A3 (T516) : carte « À prendre » (OT ouverts sans technicien) après ses habilitations ; les
+# reprises de ses OT n'y sont que s'il y en a eu (aucune dans la démo).
+STRUCTURE_AVANT["technicien"]["blocs"].append("article.carte.accueil-a-prendre")
+STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicien"]["classes"]) | {"accueil-a-prendre"})
 
 NOTER_TOASTS_JS = """(() => {
   window.__toasts = [];

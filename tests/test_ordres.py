@@ -693,7 +693,10 @@ class TestListe(CasOrdres):
             self.assertEqual(sorted(cibles), ["Clôturé techniquement", "En attente"])
             self.assertEqual(page.locator("#ot-priorite").count(), 0)
             self.onglet("preparation")
-            self.assertTrue(page.is_disabled("#form-preparation [name=technicien_id]"))
+            # A3 (T516) : le technicien en texte, plus de liste qui se déroule sans bouton pour l'enregistrer
+            self.assertEqual(page.locator("#form-preparation select[name=technicien_id]").count(), 0)
+            self.assertEqual(page.locator("#form-preparation .ot-technicien-lecture").count(), 1)
+            self.assertTrue(page.is_disabled("#form-preparation [name=date_prevue]"))
             self.onglet("execution")
             self.assertFalse(page.is_disabled("#form-execution [name=date_fin]"))
             # La création d'OT est réservée au responsable

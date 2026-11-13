@@ -140,6 +140,7 @@ Object.assign(Ordres, (() => {
       if (changes.length && ligne.statut === 'Clôturé techniquement') {
         throw ErreurValidation(I18n.t('ordres.modifier_ot.ot_cloture_techniquement_sans', { otId }));
       }
+      if (changes.includes('technicien_id')) Ordres.interne.noterPrise(ligne, changements.technicien_id);   // A3 (T516)
       changes.forEach((nom) => { ligne[nom] = changements[nom]; });
       const affectation = changes.some((nom) => CHAMPS_AFFECTATION.includes(nom));
       noterDerogation(journal, action, affectation ? controlerAffectation(ligne, options) : '');
@@ -180,6 +181,7 @@ Object.assign(Ordres, (() => {
       if (cible === 'En attente') ligne.motif_attente = ajout.motif_attente;
       if (cible === 'Annulé') ligne.motif_annulation = ajout.motif_annulation;
       if (cible === 'En cours' && !texte(ligne.date_debut)) ligne.date_debut = maintenant;
+      if (cible === 'En cours' && !texte(ligne.date_prevue)) ligne.date_prevue = outils.aujourdhui();   // A3 : démarré sans planning
       if (cible === 'En cours' && statutAttendu === 'Clôturé techniquement') ligne.date_cloture_tech = '';
       if (cible === 'Clôturé techniquement') ligne.date_cloture_tech = maintenant;
       if (cible === 'Clôturé administrativement') ligne.date_cloture_admin = maintenant;

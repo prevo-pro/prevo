@@ -766,14 +766,18 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
 
   | De | Vers |
   | --- | --- |
-  | Créé | Préparé, En attente, Annulé ; En cours si `origine` = `urgence` ou `type` = `correctif immédiat` |
-  | Préparé | Planifié, En attente, Annulé |
+  | Créé | Préparé, En attente, Annulé ; En cours si `origine` = `urgence` ou `type` = `correctif immédiat`, ou si l'OT a un technicien (A3) |
+  | Préparé | Planifié, En attente, Annulé ; En cours si l'OT a un technicien (A3) |
   | Planifié | En cours, Préparé (déplanifier), En attente, Annulé |
   | En cours | Clôturé techniquement, En attente |
   | En attente | statut de reprise (En cours si `date_debut` est renseignée, sinon Préparé), Annulé |
   | Clôturé techniquement | Clôturé administrativement ; En cours (réouverture, responsable) |
   | Clôturé administrativement, Annulé | aucun (verrouillé ; reprise par un nouvel OT lié `ot_lie_id`) |
 
+  Lot 1 ergonomie (A3, T516) : un OT qui a un technicien se démarre depuis Créé ou Préparé sans passer par
+  Planifié (« Démarrer », offert aussi au technicien) ; sa date prévue manquante devient la date du jour.
+  « Marquer préparé » et « Planifier » restent offerts au responsable. RG3 du brief (`docs/brief-gmao.md`) ne prévoyait
+  ce raccourci que pour l'urgence : écart voulu, pour qu'un technicien démarre l'OT qu'il vient de prendre (§25.1).
   `En attente` exige `motif_attente`, `Annulé` exige `motif_annulation`. `Planifié` exige un
   technicien et une date prévue, et est **refusé si une pièce prévue manque en stock** : message +
   bouton « Mettre en attente (motif : pièce) ».
@@ -1484,7 +1488,7 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
   ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js
-  ordres-impression.js  ordres-habilitations.js
+  ordres-impression.js  ordres-habilitations.js  ordres-prise.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
@@ -5189,6 +5193,24 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
 - **Serveur** : une demande ajoutée par un demandeur ou un appareil enrôlé (`verifier_demande_nouvelle`) doit avoir
   le statut `Nouvelle` et `mot_technicien`, `date_reparation`, `repare_par` vides (`CHAMPS_DU_RETOUR`), comme les
   champs de la décision ; 403 sinon (`serveur.demandes.retour_reserve`). Aucun autre droit ne change.
+- **Prises en charge d'un OT (A3, T516)** : `js/modules/ordres-prise.js` (chargé juste après
+  `ordres-habilitations.js`, §15.1 ; les écrans des fichiers précédents l'appellent par `Ordres.interne` au moment de
+  l'appel). « Je prends cet OT » (fiche d'un OT ouvert sans technicien, et raccourci sur sa ligne de la liste) et
+  « Reprendre cet OT à mon nom » (OT ouvert au nom d'un collègue, confirmation qui le nomme ; le statut ne change pas)
+  pour le technicien du profil (`Ordres.monTechnicien()` : compte technicien lié à sa fiche, profil Technicien d'un
+  poste sans comptes, ou `App.technicienSolo()` en mode Solo) ; ni la Direction ni le demandeur n'ont de bouton.
+  `Ordres.prendre(otId, technicienId, precedentAttendu, options)` : refus si l'OT n'est plus ouvert ou si son
+  technicien a changé entre-temps ; RG8 exactement comme l'affectation (`controlerAffectation` : refus avec le message
+  existant, dérogation au responsable seul) ; journal « reprise de l'OT à TEC-… » / « prise en charge par le
+  technicien ». Toute affectation qui change le technicien ajoute sa ligne (`Ordres.interne.noterPrise`, appelée par
+  `modifierOt` — onglet Préparation — et par `Planning.planifier`) ; la création d'un OT n'en ajoute pas. Règles pures :
+  `lirePrises`, `ajouterPrise`, `priseProposee`, `reprisesRecentes`, `otsAPrendre`. Affichage : bloc « Prises en
+  charge » de la carte Repères et du bon de travail (prénoms lus dans `techniciens`) ; accueil du technicien : carte
+  « À prendre » (nombre d'OT ouverts sans technicien, les 5 premiers par priorité puis date, lien vers la liste filtrée
+  « Non affectés ») et les reprises de ses OT des 7 derniers jours ; accueil du responsable : « Reprises récentes ».
+  Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
+  l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`
+  (`tests/test_ordres_prise.py`).
 - **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
   `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
   4→5.

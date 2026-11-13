@@ -48,6 +48,12 @@
 .ot-di-liees li:last-child { border-bottom: 0; }
 .ot-di-liees a { font-weight: 600; }
 .ot-di-liees span:last-child { color: var(--texte-2); overflow-wrap: anywhere; }
+/* Prises en charge et reprises d'un OT (ordres-prise.js, A3) : historique de la fiche, accueils, boutons « Je prends » */
+.ot-prises, .ot-reprises { list-style: none; margin: 0; padding: 0; }
+.ot-prises li, .ot-reprises li { padding: .35rem 0; border-bottom: 1px solid var(--trait-2); overflow-wrap: anywhere; }
+.ot-prises li:last-child, .ot-reprises li:last-child { border-bottom: 0; }
+.ot-carte-prise { margin-top: 6px; }
+.ot-prise-preparation { margin-top: .8rem; }
 
 /* Messages (refus de passage, manques de clôture) au-dessus des onglets */
 .ot-message:empty { display: none; }

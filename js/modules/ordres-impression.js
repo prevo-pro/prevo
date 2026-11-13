@@ -83,6 +83,7 @@ Object.assign(Ordres, (() => {
         <table class="bt-table"><thead><tr><th>${I18n.t('commun.champ.date')}</th><th>${I18n.t('commun.champ.technicien')}</th><th class="bt-etroit">${I18n.t('ordres.bon_de_travail.heures')}</th></tr></thead>
           <tbody>${UI.brut(new Array(3).fill('<tr><td class="bt-a-remplir"></td><td></td><td></td></tr>').join(''))}</tbody></table>
       </section>
+      ${Ordres.interne.prisesEnChargeBon(ot)}
       <section class="bt-compte-rendu"><h2>${I18n.t('ordres.bon_de_travail.compte_rendu')}</h2>
         <p>${I18n.t('ordres.bon_de_travail.cause_remede_arret_production')}</p>
         <div class="bt-lignes">${lignesVides(4)}</div>

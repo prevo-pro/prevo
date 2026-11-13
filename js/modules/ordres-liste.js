@@ -111,7 +111,7 @@ Object.assign(Ordres, (() => {
         rendu: (ot) => UI.html`<b class="sans-coupure">${repereEquipement(ot.equipement_id)}</b>` },
       { cle: 'titre', libelle: I18n.t('ordres.colonnes_liste.titre'), classe: 'ot-col-titre', rendu: (ot) => UI.html`${ot.titre}${badgeAnomalie(ot)}` },
       { cle: 'type', libelle: I18n.t('ordres.barre_filtres.type'), table: 'ordres_travail' },
-      { cle: 'technicien', libelle: I18n.t('commun.champ.technicien'), valeurTri: (ot) => nomTechnicien(ot.technicien_id), rendu: (ot) => nomTechnicien(ot.technicien_id) },
+      { cle: 'technicien', libelle: I18n.t('commun.champ.technicien'), valeurTri: (ot) => nomTechnicien(ot.technicien_id), rendu: (ot) => Ordres.interne.technicienOuPrendre(ot) },
       { cle: 'date_prevue', libelle: I18n.t('ordres.colonnes_liste.prevu'), classe: 'ot-col-date', rendu: (ot) => UI.html`<span class="sans-coupure">${UI.dateFr(ot.date_prevue)}</span>${badgeRetard(ot)}` },
       { cle: 'origine', libelle: I18n.t('ordres.colonnes_liste.origine'), classe: 'ot-col-origine', rendu: origineCourte },
     ];
@@ -126,7 +126,7 @@ Object.assign(Ordres, (() => {
         <div class="carte-meta"><span>${repereEquipement(ot.equipement_id)}</span>
           ${ot.date_prevue ? UI.html`<span>${I18n.t('ordres.cartes.prevu_date_prevue', { date_prevue: UI.dateFr(ot.date_prevue) })}</span>` : ''}
           <span>${nomTechnicien(ot.technicien_id) || I18n.t('ordres.cartes.non_affecte')}</span><span>${Schema.libelleValeur('ordres_travail', 'type', ot.type)}</span></div>
-      </a></li>`)}</ul>`;
+      </a>${Ordres.interne.boutonPrendreCarte(ot)}</li>`)}</ul>`;
   }
 
   // Ordre par défaut (cartes du téléphone, et à égalité dans le tableau) : priorité, date prévue, n°.
@@ -185,6 +185,7 @@ Object.assign(Ordres, (() => {
     formulaire.addEventListener('change', lireFiltres);
     formulaire.addEventListener('submit', (evenement) => evenement.preventDefault());
     UI.$('#ot-export', conteneur).addEventListener('click', () => exporterCsv(affiches));
+    Ordres.interne.brancherPriseListe(conteneur);                 // A3 : « Je prends » d'un OT non affecté
     rafraichir();
   }
 

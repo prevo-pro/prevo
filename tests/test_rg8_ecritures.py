@@ -218,7 +218,8 @@ class TestRg8Ecritures(CasRg8Ecritures):
         self.assertEqual(self.accepte("Planning", "planifier", ot_id, "Planifié", TEC_VALIDE, "2026-11-23"),
                          {"statut": "Planifié", "avertissements": []})
         self.assertEqual(self.actions(ot_id)[-1],
-                         "modification : date_prevue, technicien_id — replanification : %s le 2026-11-23" % TEC_VALIDE)
+                         "modification : date_prevue, technicien_id, prises_en_charge — replanification : %s le 2026-11-23"
+                         % TEC_VALIDE)                              # A3 (T516) : l'affectation notée dans l'OT
         self.accepte("Planning", "planifier", ot_id, "Planifié", TEC_ECHUE, DATE)
         self.assertNotIn("dérogation", self.actions(ot_id)[-1])
         self.assertEqual(sum("dérogation habilitation" in action for action in self.actions(ot_id)), 1)
