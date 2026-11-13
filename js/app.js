@@ -24,6 +24,8 @@
 //   (Installation, js/modules/installation-ecrans.js) avant toute lecture de table ; jamais imposé sur une autre
 //   route (les tests des lots 1 à 6 démarrent sans configuration) ; depuis le réseau, rien. L'assistant quitté sans
 //   terminer → démarrage normal sur l'accueil ; terminé → le serveur se relance et la page se recharge.
+//   T514 (A1) : dans la coque aussi (base créée, profil choisi), #/installation ouvre l'assistant tant que
+//   l'installation est à faire (liens de Paramètres, de l'accueil…), sans rechargement ; quitté → l'accueil.
 // États lus par les tests : data-etat = 'chargement' | 'demarrage' | 'profil' | 'connexion' | 'installation' | 'pret'.
 //
 // Contrat des écrans (les modules de js/modules/ appellent App.ecran) :
@@ -295,6 +297,23 @@ const App = (() => {
     montrer('ecran-installation', 'installation');
     await Installation.ouvrir();
     return true;
+  }
+
+  // T514 (A1) : #/installation (pas la fiche seule) sur le PC serveur, installation à faire → l'assistant, et non la
+  // fiche d'accès, mêmes conditions qu'au démarrage (installationAFaire, lu dans /api/info avant la base vide).
+  function assistantDemande(hash) {
+    return mode === 'serveur' && installationAFaire && pcServeur() && typeof Installation !== 'undefined'
+      && Installation.estRoute(hash) && !/^#\/installation\/fiche/.test(hash);
+  }
+
+  // L'assistant ouvert depuis la coque (lien de Paramètres, de l'accueil, adresse tapée) : écran plein, sans recharger
+  // la page ; quitté sans terminer → la coque sur l'accueil (terminé : le serveur se relance, la page se recharge).
+  async function ouvrirAssistantDansLaCoque() {
+    montrer('ecran-installation', 'installation');
+    await Installation.ouvrir();
+    remplacerRoute(ROUTE_ACCUEIL);
+    montrer('app', 'pret');
+    await afficherRoute(false);
   }
 
   // Lien discret « Installer Prévo (assistant) » des écrans de démarrage en mode serveur : sur le PC serveur seulement,
@@ -1270,7 +1289,7 @@ const App = (() => {
         || (typeof Connexion !== 'undefined' && Connexion.estRouteEnrolement(location.hash))) remplacerRoute(ROUTE_ACCUEIL);
     construireMenus();
     await afficherRoute(false);
-    document.documentElement.dataset.etat = 'pret';
+    if (coqueVisible()) document.documentElement.dataset.etat = 'pret';   // T514 : sinon l'assistant est ouvert
     if (!pretDejaMarque) {
       pretDejaMarque = true;
       if (window.performance && typeof performance.mark === 'function') performance.mark('prevo:pret');
@@ -1512,6 +1531,10 @@ const App = (() => {
 
   async function afficherRoute(garderDefilement) {
     if (!coqueVisible() || !profil) return;
+    if (assistantDemande(location.hash)) {             // T514 (A1) : pas attendu (la coque reste derrière)
+      ouvrirAssistantDansLaCoque().catch((erreur) => signalerErreur(erreur, 'assistant d\'installation'));
+      return;
+    }
     const { chemin, requete } = analyserHash(location.hash);
     const trouve = trouverEcran(chemin);
     if (!trouve || !ecranAutorise(trouve.ecran)) {

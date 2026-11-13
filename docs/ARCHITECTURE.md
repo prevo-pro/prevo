@@ -4450,6 +4450,9 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   installationAFaire`) ; jamais sur une autre route (les tests des lots 1 à 6 ouvrent `/` sans configuration et voient
   l'écran de profil comme avant) ; depuis le réseau, rien. Les écrans « base vide » et « profil » montrent un lien discret
   « Installer Prévo (assistant) » (`.lien-installation`) sur le PC serveur tant que l'installation n'est pas faite.
+  Dans la coque aussi (base créée, profil choisi : liens de Paramètres, adresse tapée), `#/installation` ouvre
+  l'assistant sans recharger la page tant que l'installation est à faire (T514) ; quitté, la coque revient sur
+  l'accueil ; `#/installation/fiche` y reste la fiche d'accès.
   Première ligne : « Tant que l'installation n'est pas terminée, Prévo n'est joignable que sur ce PC. »
   (`#installation-premiere-ligne` d'`index.html`, seule source du texte). Huit étapes
   (`Installation.ETAPES` : situation, portée, compte, certificat, Tailscale, démarrage, sauvegardes, récapitulatif), une

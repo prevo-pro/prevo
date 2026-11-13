@@ -490,6 +490,81 @@ class TestOuverture(CasInstallation):
             self.assertTrue(page.is_hidden("#ecran-connexion"))
 
 
+class TestDepuisLaCoque(CasInstallation):
+    """T514 (A1, étude d'ergonomie) : « Créer une base vide » (ou « Partir des données de démo »), profil Responsable,
+    puis le lien de Paramètres vers #/installation ouvre l'assistant, sans rechargement de la page ; avant, la même
+    adresse montrait la fiche d'accès tant qu'on n'avait pas rechargé. Quitté : la coque sur l'accueil."""
+
+    def ouvrir_la_coque(self, bouton):
+        page = self.page
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        instance = self.lancer()                                 # dossier de données vide : premier lancement
+        page.goto(instance.url + "/")
+        page.click(bouton)
+        page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
+        page.click("#profil-responsable")
+        page.wait_for_function("document.documentElement.dataset.etat === 'pret'")
+        page.evaluate("window.__sansRechargement = true")        # disparaît si la page se recharge
+        return instance
+
+    def lien_de_parametres(self, selecteur):
+        page = self.page
+        page.evaluate("location.hash = '#/parametres'")
+        page.wait_for_selector(selecteur)
+        page.click(selecteur)
+        page.wait_for_function("document.documentElement.dataset.etat === 'installation'")
+        page.wait_for_selector('#installation-contenu section[data-etape="situation"]')
+        self.assertTrue(page.is_hidden("#app"))
+        self.assertEqual(page.evaluate("location.hash"), "#/installation")
+        self.assertTrue(page.evaluate("window.__sansRechargement === true"), "la page s'est rechargée")
+
+    def test_base_vide_le_lien_de_parametres_ouvre_l_assistant(self):
+        page = self.page
+        instance = self.ouvrir_la_coque("#btn-base-vide")
+        self.lien_de_parametres('#acces-installation a[href="#/installation"]')
+        # Quitter sans terminer : la coque sur l'accueil, aucune configuration écrite.
+        page.click("#installation-quitter")
+        page.wait_for_function("document.documentElement.dataset.etat === 'pret' && location.hash === '#/accueil'")
+        self.assertTrue(page.is_visible("#app"))
+        self.assertTrue(page.is_hidden("#ecran-installation"))
+        self.assertFalse(Path(instance.config.reglages["_fichier"]).exists())
+        # L'autre lien de la carte, puis la fiche seule qui reste dans la coque (#/installation/fiche).
+        self.lien_de_parametres('#acces-sans-configuration a[href="#/installation"]')
+        page.click("#installation-quitter")
+        page.wait_for_function("document.documentElement.dataset.etat === 'pret'")
+        page.evaluate("location.hash = '#/installation/fiche'")
+        page.wait_for_selector("#contenu #fiche-qr-ouvrir svg")
+        self.assertTrue(page.is_hidden("#ecran-installation"))
+        self.assertTrue(page.evaluate("window.__sansRechargement === true"))
+
+    def test_donnees_de_demo_l_assistant_jusqu_a_terminer(self):
+        page = self.page
+        instance = self.ouvrir_la_coque("#btn-base-demo")
+        self.lien_de_parametres('#acces-installation a[href="#/installation"]')
+        self.cocher("situation", "seul")
+        self.continuer()
+        self.attendre_etape("portee")
+        self.continuer()
+        self.attendre_etape("compte")
+        page.fill("#inst-prenom", "Nicolas")
+        page.fill("#inst-nom", "Briand")
+        self.continuer()
+        self.attendre_etape("demarrage")
+        self.cocher("demarrage", "aucun")
+        self.continuer()
+        self.attendre_etape("sauvegardes")
+        page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("recapitulatif")
+        self.assertEqual(page.locator("#inst-base").count(), 0)  # base créée avant l'assistant : pas de choix
+        page.click("#inst-terminer")
+        page.wait_for_selector("#inst-attente", state="visible")
+        self.assertTrue(Path(instance.config.reglages["_fichier"]).exists())
+        self.assertEqual(len(self.enregistreur.relances), 1)
+        instance.config.reglages["_present"] = True              # le serveur « relancé » : installation faite
+        page.wait_for_function("location.hash === '#/accueil' && document.documentElement.dataset.etat === 'pret'")
+        self.assertTrue(page.is_hidden("#ecran-installation"))
+
+
 # Liste « Langue de Prévo » de l'étape 8 : options (valeur, nom, lang), valeur, libellé et aide.
 LISTE_LANGUE_JS = """() => {
   const liste = document.querySelector('#inst-base #inst-langue_defaut');
