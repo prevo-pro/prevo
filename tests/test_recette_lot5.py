@@ -43,6 +43,7 @@ import re
 import unittest
 
 from commun import ServeurPrevo, attendre_pret, preregler_profil
+from serveur import codes_de_depart
 from test_app import ERREUR_CSV_ABSENT
 from test_controles import date_reference
 from test_fixtures_import import lire_xlsx
@@ -303,8 +304,10 @@ class TestReprise(CasRecette):
             page.wait_for_selector("#btn-base-vide", state="visible")
             page.click("#btn-base-vide")
             attendre_pret(page)
-            # Base vide : seuls les paramètres, version_schema et langue_defaut (la langue de Prévo, T296).
-            self.assertEqual({t: n for t, n in page.evaluate(COMPTES_JS).items() if n}, {"parametres": 2})
+            # Base vide : les paramètres, version_schema et langue_defaut (la langue de Prévo, T296), et depuis le
+            # lot 1 ergonomie (A2, T515) la liste de départ des codes de défaillance.
+            self.assertEqual({t: n for t, n in page.evaluate(COMPTES_JS).items() if n},
+                             {"parametres": 2, "codes_defaillance": len(codes_de_depart("fr"))})
 
             # 1. Les dix fichiers, dans l'ordre du LISEZMOI
             apercus, sauvegardes, bilans = {}, [], []

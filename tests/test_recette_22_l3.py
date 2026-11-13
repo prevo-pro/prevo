@@ -640,8 +640,9 @@ class CasRecette(Ecran, CasNavigateur):
         ligne = self.ligne("ordres_travail", ot_id)
         self.assertEqual((ligne["technicien_id"], ligne["date_prevue"]), (b, self.date.isoformat()))
         self.verifier_journal(self.journal_de(ot_id)[-1], ot_id, b, self.date, "BR (pas encore obtenue)", MOTIF_PLANNING,
-                              "modification : statut, date_prevue, technicien_id — planification : %s le %s "
-                              "(Préparé → Planifié)" % (b, self.date.isoformat()))
+                              "modification : statut, date_prevue, technicien_id, prises_en_charge — planification : "
+                              "%s le %s (Préparé → Planifié)" % (b, self.date.isoformat()))
+        # « prises_en_charge » : lot 1 ergonomie, A3 (T516), l'affectation au planning est notée dans l'OT.
 
     # -- CS180 : un OT sans exigence n'est jamais bloqué ---------------------------------------------
 

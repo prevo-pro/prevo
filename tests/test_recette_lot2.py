@@ -272,7 +272,7 @@ class OutilsLot2:
                 const texte = zone ? zone.innerText.trim() : '';
                 return texte.includes(extrait) ? texte : null; }""", arg=extrait).json_value()
 
-    def executer_et_cloturer(self, ot_id, cause, remede):
+    def executer_et_cloturer(self, ot_id, remede):
         """OT préventif ouvert (fiche affichée) mené par l'interface jusqu'à la clôture technique :
         technicien habilité, Préparé, Planifié, Démarrer, temps passé, date de fin « Maintenant »,
         compte rendu complet, « Clôturer techniquement ». Renvoie la date de fin (date)."""
@@ -293,7 +293,8 @@ class OutilsLot2:
         fin = datetime.date.fromisoformat(page.input_value("#form-execution [name=date_fin]")[:10])
         self.avec_toast("^Exécution enregistrée", lambda: page.click("#form-execution button[type=submit]"))
         self.onglet("compte-rendu")
-        page.select_option("#form-compte-rendu [name=cause_code]", cause)
+        # Lot 1 ergonomie, A2 (T515) : pas de champ cause sur un préventif sans anomalie ; le remède reste proposé.
+        self.assertEqual(page.locator("#form-compte-rendu [name=cause_code]").count(), 0)
         page.select_option("#form-compte-rendu [name=remede_code]", remede)
         page.fill("#form-compte-rendu [name=compte_rendu]", "Contrôle mensuel réalisé : tension de bande réglée, rouleaux graissés.")
         page.check("#form-compte-rendu [name=remise_service]")
@@ -404,10 +405,9 @@ class TestRecette2Pompe(OutilsLot2, lot1.TestRecettePompe):
 class TestRecette2Gamme(CasRecette2):
 
     def codes_cloture(self, dossier):
-        """Premiers codes cause et remède du jeu (un préventif n'a pas de cause « usure » particulière)."""
+        """Premier code remède du jeu (un préventif n'a pas de cause : T515)."""
         codes = lire(dossier, "codes_defaillance.csv")
-        return (sorted(c["code"] for c in codes if c["famille"] == "cause")[0],
-                sorted(c["code"] for c in codes if c["famille"] == "remède")[0])
+        return (sorted(c["code"] for c in codes if c["famille"] == "remède")[0],)
 
     def verifier_un_seul_ot(self, ot_id):
         """Liste du Préventif : la gamme a un OT ouvert, et un seul : celui-ci."""

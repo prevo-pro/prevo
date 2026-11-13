@@ -104,6 +104,10 @@ LIGNE_REFERENCE_CASSEE = "EQ-0998;'ZZ-98;Machine à référence cassée;LOC-9999
 LIGNE_SANS_IDENTIFIANT = ";'ZZ-97;Machine sans identifiant;LOC-0002;;;;;;B;en service;;;;;1\r\n"
 
 
+# Statut d'une demande tel que le lit le demandeur (lot 1 ergonomie, A4, T517 : Demandes.libelleAtelier).
+STATUT_ATELIER = {"Nouvelle": "Reçue", "Regroupée": "Acceptée"}
+
+
 class CasParametres(CasNavigateur):
     """Outils communs : serveur de test, profil, attente de l'application."""
 
@@ -249,7 +253,9 @@ class TestAccueil(CasParametres):
             siens = [o for o in ordres if o["technicien_id"] == "TEC-0002" and o["statut"] not in STATUTS_OT_FERMES]
             self.assertGreater(len(siens), 0)
             page = self.ouvrir(serveur, profil="technicien", technicien_id="TEC-0002")
-            cartes = page.locator("#contenu .liste-cartes > li")
+            # Ses OT : la carte « Mes ordres de travail » (lot 1 ergonomie, A3, T516 : la carte « À prendre » a aussi
+            # sa liste, les OT sans technicien).
+            cartes = page.locator("#contenu .accueil-mes-ordres .liste-cartes > li")
             self.assertEqual(cartes.count(), len(siens))
             identifiants = [cartes.nth(i).locator("b").first.inner_text() for i in range(cartes.count())]
             self.assertEqual(sorted(identifiants), sorted(o["id"] for o in siens))
@@ -282,7 +288,8 @@ class TestAccueil(CasParametres):
                 for position, demande in enumerate(siennes[:5]):
                     carte = cartes.nth(position)
                     self.assertEqual(carte.locator("b").first.inner_text(), demande["id"])
-                    self.assertIn(demande["statut"], carte.inner_text())
+                    # Lot 1 ergonomie, A4 (T517) : le demandeur lit le statut en mots d'atelier.
+                    self.assertIn(STATUT_ATELIER.get(demande["statut"], demande["statut"]), carte.inner_text())
                     if demande["statut"] in ("Refusée", "Différée") and demande["motif_decision"]:
                         self.assertIn(demande["motif_decision"], carte.inner_text())
                 return siennes

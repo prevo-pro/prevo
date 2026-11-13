@@ -98,6 +98,7 @@ SYMPTOME_POMPE = "Fuite au niveau de la garniture"
 DESCRIPTION_POMPE = "Goutte à goutte continu sous la garniture côté moteur, flaque d'environ 30 cm."
 COMPTE_RENDU_POMPE = ("Garniture mécanique usée (faces rayées) : kit garniture remplacé, "
                       "remise en eau et essai 15 min sans fuite.")
+MOT_OPERATEUR = "Garniture changée, vous pouvez redémarrer la pompe."     # A4 (T517)
 # Nom enregistré par le serveur : « AAAAMMJJ-HHMMSS-photo-… » (préfixe imposé, audit F4, T159)
 MOTIF_PHOTO = re.compile(r"^\d{8}-\d{6}-photo-\d{8}-\d{6}-[A-Z0-9]{4}\.jpg$")
 
@@ -360,7 +361,11 @@ class TestRecettePompe(CasRecette):
         page.fill("#form-compte-rendu [name=compte_rendu]", COMPTE_RENDU_POMPE)
         page.check("#form-compte-rendu [name=remise_service]")
         page.click("#form-compte-rendu button:has-text('Clôturer techniquement')")
+        # Lot 1 ergonomie, A4 (T517) : l'OT vient d'une demande, une fenêtre propose le mot pour l'opérateur.
+        page.fill("dialog textarea[name=mot_operateur]", MOT_OPERATEUR)
+        page.click("dialog .fenetre-actions .btn-primaire")
         self.attendre_statut("Clôturé techniquement")
+        page.wait_for_selector("dialog[open]", state="detached")
 
         # --- Clôture administrative : OT verrouillé ---
         page.click(".ot-actions button:has-text('Clôturer administrativement')")
@@ -391,8 +396,9 @@ class TestRecettePompe(CasRecette):
                        if m["ot_id"] == ot_id]
             self.assertEqual(sorties, [("sortie", KIT, "1")])
             demande = ligne_par_id(dossier / "demandes.csv", numero)
-            self.assertEqual((demande["statut"], demande["ot_id"], demande["impact"], demande["demandeur"]),
-                             ("Acceptée", ot_id, "dégradé", "Lucie Martin"))
+            # A4 (T517) : la demande suit son OT jusqu'à « Réparée », avec le mot du technicien.
+            self.assertEqual((demande["statut"], demande["ot_id"], demande["impact"], demande["demandeur"],
+                              demande["mot_technicien"]), ("Réparée", ot_id, "dégradé", "Lucie Martin", MOT_OPERATEUR))
             self.assertRegex(demande["photo"], MOTIF_PHOTO)
             self.assertTrue((dossier / "documents" / demande["photo"]).is_file())
             ot = ligne_par_id(dossier / "ordres_travail.csv", ot_id)
@@ -415,7 +421,7 @@ class TestRecettePompe(CasRecette):
         ot = self.page.evaluate("(id) => Donnees.trouver('ordres_travail', id)", ot_id)
         self.assertEqual((ot["statut"], ot["priorite"], ot["di_id"], ot["cause_code"]),
                          ("Clôturé administrativement", "P2", numero, CAUSE_GARNITURE))
-        self.assertEqual(self.page.evaluate("(id) => Donnees.trouver('demandes', id).statut", numero), "Acceptée")
+        self.assertEqual(self.page.evaluate("(id) => Donnees.trouver('demandes', id).statut", numero), "Réparée")  # A4
         # Stock du kit −1 (stock recalculé et colonne stock de la ligne de l'article)
         self.assertEqual(self.page.evaluate("(a) => Donnees.stockArticle(a)", KIT), self.stock_kit[1])
         self.assertEqual(float(self.page.evaluate("(a) => Donnees.trouver('articles', a).stock", KIT)), self.stock_kit[1])

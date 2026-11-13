@@ -101,6 +101,13 @@ class CasAstuce(CasNavigateur):
 
     def cloturer(self):
         self.page.click(FORMULAIRE + " button[data-action='transition'][data-cible='%s']" % CLOS_TECH)
+        # Lot 1 ergonomie, A4 (T517) : un OT venu d'une demande ouvre d'abord la fenêtre du mot pour l'opérateur
+        # (facultatif, laissé vide ici).
+        self.page.wait_for_function(
+            "document.querySelector('dialog[open] .ot-fenetre-mot') || (document.querySelector('.ot-badges .badge.statut')"
+            " && document.querySelector('.ot-badges .badge.statut').textContent === %r)" % CLOS_TECH)
+        if self.page.locator("dialog[open] .ot-fenetre-mot").count():
+            self.page.click("dialog[open] .fenetre-actions .btn-primaire")
         self.page.wait_for_function(
             "document.querySelector('.ot-badges .badge.statut') && document.querySelector('.ot-badges .badge.statut').textContent === %r"
             % CLOS_TECH)

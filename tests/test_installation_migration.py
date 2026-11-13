@@ -272,14 +272,18 @@ class TestBaseDeDepart(CasAssistant):
         fin = self.ok(client.post("terminer", {"base": "vide"}))
         self.assertEqual(fin["base"], "vide")
         donnees = Path(instance.config.dossier_donnees)
-        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")), ["parametres.csv", "techniciens.csv"])
+        # Lot 1 ergonomie, A2 (T515) : une base « vide » reçoit aussi la liste de départ des codes de défaillance.
+        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")),
+                         ["codes_defaillance.csv", "parametres.csv", "techniciens.csv"])
+        self.assertEqual(lire_csv(donnees / "codes_defaillance.csv")[1], serveur.codes_de_depart("fr"))
         parametres = parametres_de(donnees)
         self.assertEqual((parametres["mode_solo"], parametres["solo_technicien_id"], parametres["version_schema"]),
                          ("1", "TEC-0001", str(commun.FORMAT_COURANT)))
         self.assertEqual(parametres["langue_defaut"], "fr")                  # T296 : sans langue_defaut reçue, le français
 
     def test_base_absente_vide_hors_solo_parametres_avec_la_langue(self):
-        # T296 : hors Solo, « vide » crée parametres.csv seul (format courant et langue de Prévo).
+        # T296 : hors Solo, « vide » crée parametres.csv (format courant et langue de Prévo) et, depuis le lot 1
+        # ergonomie (A2, T515), codes_defaillance.csv avec la liste de départ dans cette langue ; rien d'autre.
         client, instance = self.lancer()
         self.ok(client.post("situation", {"situation": "informaticien"}))
         self.ok(client.post("portee", {"portee": "atelier", "noms": ["gmao.entreprise.lan"]}))
@@ -289,7 +293,8 @@ class TestBaseDeDepart(CasAssistant):
         self.ok(client.post("sauvegardes", {"dossier": ""}))
         self.ok(client.post("terminer", {"base": "vide", "langue_defaut": "en"}))
         donnees = Path(instance.config.dossier_donnees)
-        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")), ["parametres.csv"])
+        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")), ["codes_defaillance.csv", "parametres.csv"])
+        self.assertEqual(lire_csv(donnees / "codes_defaillance.csv")[1], serveur.codes_de_depart("en"))
         self.assertEqual(lire_csv(donnees / "parametres.csv"), (["cle", "valeur"], [["version_schema", "%d" % commun.FORMAT_COURANT],
                                                                                      ["langue_defaut", "en"]]))
 

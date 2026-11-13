@@ -23,7 +23,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from commun import RACINE, ServeurPrevo
+from commun import FORMAT_COURANT, RACINE, ServeurPrevo
 from jeux_formats import copier_jeu
 
 BOM = b"\xef\xbb\xbf"
@@ -166,7 +166,7 @@ class TestDateIllisibleALaReprise(CasTemporaire):
         self.assertEqual(lance.returncode, 0, lance.stderr[-2000:])
         resultat = json.loads(lance.stdout.strip().splitlines()[-1])
         self.assertIsNone(resultat["erreur"])
-        self.assertEqual(resultat["format"], "4")
+        self.assertEqual(resultat["format"], str(FORMAT_COURANT))         # 5 depuis le lot 1 ergonomie (T513)
         # Relue par le navigateur, la date garde son apostrophe (un champ date n'est pas relu comme un texte) :
         # réécrite, la cellule reste protégée.
         self.assertEqual({controle: date for controle, date in resultat["dates"] if controle.startswith("CTR-9")},

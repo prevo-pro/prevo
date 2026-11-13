@@ -129,9 +129,11 @@ def _gabarit(forme):
 
 
 RE_MOT = re.compile(r"[^\W\d_]{3,}")
-# Noms anglais des mois et des jours écrits par Intl (dates en-GB), absents de en.js : des mots anglais.
+# Noms anglais des mois et des jours écrits par Intl (dates en-GB), absents de en.js : des mots anglais. « Lira » :
+# nom de monnaie écrit par Intl (« TRY — Turkish Lira », Paramètres), que fr.js emploie aussi depuis le lot 1
+# ergonomie (A4, T517 : « Il le lira en flashant le QR »).
 NOMS_INTL_ANGLAIS = set((MOIS_ANGLAIS + "|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|Monday|Tuesday|Wednesday|"
-                         "Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun").lower().split("|"))
+                         "Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Lira").lower().split("|"))
 
 
 def _mots(texte):
