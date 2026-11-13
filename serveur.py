@@ -2801,6 +2801,16 @@ DEFAUTS_PAR_SITUATION = {
     'informaticien': {'portee': 'atelier', 'comptes': True, 'demandeurs_avec_compte': True, 'certificat_auto': False,
                       'demarrage': 'systeme', 'veille_desactivee': False, 'mode_solo': False},
 }
+# T521 (lot 1 ergonomie, B) : en Solo, « Qui d'autre ouvre Prévo ? » (cases facultatives, clé « autres » de POST
+# situation, gardée dans le brouillon sous « solo_autres ») : son téléphone, les opérateurs qui déclarent par le QR d'une
+# machine (appareils enrôlés), la direction qui lit le bilan. Rien de coché : les défauts « seul » (ce PC, sans compte) ;
+# une case cochée : le réseau de l'atelier, avec comptes et https, comme une équipe, en gardant le mode Solo.
+AUTRES_SOLO = ('telephone', 'operateurs', 'direction')
+DEFAUTS_SOLO_PARTAGE = {'portee': 'atelier', 'comptes': True, 'demandeurs_avec_compte': False, 'certificat_auto': True,
+                        'demarrage': 'systeme', 'veille_desactivee': True, 'mode_solo': True}
+# Tables qu'une base neuve de cette version contient déjà (« Créer une base vide » : version et langue, liste de départ
+# des codes, T515 ; le journal) : leurs lignes ne font pas de la base des « données antérieures » (T521).
+TABLES_D_UNE_BASE_NEUVE = ('parametres', 'codes_defaillance', 'journal')
 
 
 def chemin_brouillon(config):
@@ -2894,10 +2904,15 @@ def completer_brouillon(config, brouillon):
     return brouillon
 
 
-def brouillon_neuf(config, situation):
-    """Brouillon réinitialisé aux défauts de l'étude §6.1 pour cette situation (clé à clé) ; étape « situation » faite."""
+def brouillon_neuf(config, situation, autres=None):
+    """Brouillon réinitialisé aux défauts de l'étude §6.1 pour cette situation (clé à clé) ; étape « situation » faite.
+    En Solo, « autres » ({telephone, operateurs, direction} : booléens, T521) : une case cochée ⇒ DEFAUTS_SOLO_PARTAGE."""
     brouillon = {cle: valeur for cle, valeur in reglages_par_defaut().items() if cle in CLES_DU_BROUILLON}
     brouillon.update(DEFAUTS_PAR_SITUATION[situation])
+    if situation == 'seul':
+        brouillon['solo_autres'] = {cle: bool((autres or {}).get(cle)) for cle in AUTRES_SOLO}
+        if any(brouillon['solo_autres'].values()):
+            brouillon.update(DEFAUTS_SOLO_PARTAGE)
     brouillon['situation'] = situation
     brouillon['etapes'] = {etape: ETAT_A_FAIRE for etape in ETAPES_INSTALLATION}
     brouillon['etapes']['situation'] = ETAT_FAIT
@@ -2993,6 +3008,19 @@ def derniere_modification_csv(dossier, tables):
     return datetime.datetime.fromtimestamp(max(instants)).strftime('%Y-%m-%dT%H:%M:%S')
 
 
+def donnees_anterieures(dossier, tables):
+    """Vrai si l'une des tables présentes, hors TABLES_D_UNE_BASE_NEUVE, a au moins une ligne (T521)."""
+    for table in tables:
+        if table in TABLES_D_UNE_BASE_NEUVE:
+            continue
+        try:
+            if dictionnaires_csv(lire_octets(os.path.join(dossier, table + '.csv')), table):
+                return True
+        except (ValueError, UnicodeDecodeError):
+            return True                                   # illisible : ce ne sont pas les fichiers d'une base neuve
+    return False
+
+
 def etat_installation(config):
     """GET /api/installation/etat : la configuration est-elle présente, le brouillon et ses étapes, des CSV dans le
     dossier des données (migration depuis 1.2 : combien, modifiés quand), le dossier de Prévo, le Python embarqué, un
@@ -3005,6 +3033,9 @@ def etat_installation(config):
     windows = config.systeme.startswith('win')
     tables = tables_presentes(config.dossier_donnees)
     return {'configuration_presente': bool(config.reglages.get('_present')),
+            # T521 : des lignes dans une table qu'une base neuve n'a pas remplie (sinon : base créée vide par cette
+            # version, l'étape 1 ne parle pas de « vos données de Prévo 1.2 »).
+            'donnees_anterieures': donnees_anterieures(config.dossier_donnees, tables),
             # T170 : la configuration en cours (jamais ia_cle), pour que Paramètres montre chaque réglage avant tout
             # brouillon ; None tant que l'installation n'est pas terminée.
             'configuration': ({cle: (list(config.reglages[cle]) if isinstance(config.reglages.get(cle), list)
@@ -8060,12 +8091,20 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         return {'brouillon': brouillon, 'etapes': brouillon['etapes']}
 
     def installation_situation(self, brouillon, demande):
-        """{"situation": seul | equipe | informaticien} : brouillon réinitialisé aux défauts de cette situation."""
+        """{"situation": seul | equipe | informaticien, "autres"?: {"telephone", "operateurs", "direction"} (T521 :
+        Solo seulement, booléens, toutes facultatives)} : brouillon réinitialisé aux défauts de cette situation."""
         situation = demande.get('situation')
         if situation not in SITUATIONS:
             raise ErreurHttp(400, traduisible('installation.situation_inconnue',
                                               'Situation inconnue : « seul », « equipe » ou « informaticien ».'))
-        return self.garder_brouillon(brouillon_neuf(self.config, situation))
+        autres = demande.get('autres')
+        if autres is not None and (situation != 'seul' or not isinstance(autres, dict)
+                                   or any(cle not in AUTRES_SOLO or not isinstance(valeur, bool)
+                                          for cle, valeur in autres.items())):
+            raise ErreurHttp(400, traduisible('installation.autres_forme',
+                                              '« autres » (seul à la maintenance) : {"telephone", "operateurs", '
+                                              '"direction"}, vrai ou faux.'))
+        return self.garder_brouillon(brouillon_neuf(self.config, situation, autres))
 
     # --- Paramètres › Accès et installation (T170 ; D131 dernier point, CS130) : chaque réglage refaisable -----
 

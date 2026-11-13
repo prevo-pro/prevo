@@ -4398,15 +4398,21 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
 - `GET etat` → `{"configuration_presente", "configuration" (T170 : la configuration en cours, clés de
   `CLES_DU_BROUILLON` — jamais `ia_cle` — quand l'installation est terminée, null sinon : Paramètres montre chaque
   réglage avant tout brouillon), "portee", "situation", "etapes", "brouillon" (null sans brouillon),
-  "csv_presents" (des CSV dans le dossier des données : migration 1.2), "nombre_csv", "derniere_modification"
+  "csv_presents" (des CSV dans le dossier des données : migration 1.2), "donnees_anterieures" (T521 : une ligne au
+  moins dans une table hors `TABLES_D_UNE_BASE_NEUVE` — `parametres`, `codes_defaillance`, `journal` — ; faux pour une
+  base que cette version vient de créer vide), "nombre_csv", "derniere_modification"
   (`AAAA-MM-JJTHH:MM:SS` du CSV le plus récent, null sans CSV), "dossier" (celui de Prévo),
   "dossier_conseille" (`C:\Prevo` sous Windows, null ailleurs), "dans_dossier_conseille", "python_embarque"
   (`python/python.exe` présent), "responsable_existe", "tailscale" `{present, connecte, nom, jours_avant_expiration,
   raison}` (`detecter_tailscale` à chaque appel, jamais gardée dans `config.tailscale` : `/api/info` ne change pas),
   "mkcert_present", "systeme" (`windows` | `linux` | `macos`), "version"}`.
-- `POST situation` `{"situation": "seul" | "equipe" | "informaticien"}` → brouillon réinitialisé aux défauts de
+- `POST situation` `{"situation": "seul" | "equipe" | "informaticien", "autres"?}` → brouillon réinitialisé aux défauts de
   l'étude §6.1 (`DEFAUTS_PAR_SITUATION` sur `reglages_par_defaut`) : Solo `portee` ce-pc, `comptes` faux,
-  `certificat_auto` faux (réseau privé), `demarrage` aucun, `veille_desactivee` faux, `mode_solo` vrai ; Atelier
+  `certificat_auto` faux (réseau privé), `demarrage` aucun, `veille_desactivee` faux, `mode_solo` vrai ; T521 (lot 1
+  ergonomie, B) : en Solo seulement, `autres` `{"telephone", "operateurs", "direction"}` (booléens, tous facultatifs ;
+  400 hors Solo, clé inconnue ou valeur non booléenne), gardé dans le brouillon sous `solo_autres` (les trois clés) ;
+  une case vraie ⇒ `DEFAUTS_SOLO_PARTAGE` (`atelier`, comptes, `certificat_auto` vrai, `demarrage` systeme, veille
+  coupée, `demandeurs_avec_compte` faux : les opérateurs par appareil enrôlé) en gardant `mode_solo` vrai ; Atelier
   `atelier`, comptes, `certificat_auto` vrai, `demarrage` systeme, veille coupée ; Intranet `atelier`, comptes,
   `demandeurs_avec_compte` vrai, `certificat_auto` faux, `demarrage` systeme, veille gardée. 400 sinon. Réponse de
   toute étape qui écrit le brouillon : `{"brouillon", "etapes"}` (plus ce qui suit).
@@ -4568,6 +4574,13 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   class="installation-autrement">` « Régler autrement » (ports, noms, fichiers PEM, mandataire, veille… avec l'aide
   d'`AccesTextes.options` ; les réglages sans étape dans l'API — durées de session, IA, quota — sont montrés avec leur aide
   et renvoyés à Paramètres › Accès et installation). Étapes `sans_objet` sautées avec une ligne `.installation-sautee`.
+  Étape 1 (T521, lot 1 ergonomie, B) : « Qui fait la maintenance ? » (radios `situation` : `seul` « Vous êtes seul à la
+  maintenance » / `equipe` « Vous êtes une équipe », une phrase d'aide sous chacun) règle le mode et rien d'autre ; puis,
+  sur le même écran (groupe montré d'après le premier choix, CSS `:has` d'installation.css), « Qui d'autre ouvre
+  Prévo ? » : seul, trois cases facultatives `autre_telephone`, `autre_operateurs`, `autre_direction` (envoyées dans
+  `autres`, reprises du brouillon `solo_autres`) ; en équipe, radios `forme_equipe` « Une petite équipe » (envoie
+  `equipe`) / « Je suis l'informaticien de l'entreprise » (envoie `informaticien`). En Solo, le bloc « Un accès pour la
+  direction ? » de l'étape du compte n'est montré que si la case de la direction est cochée (toujours en équipe).
   Appels : `POST situation`, `portee` (ports et noms), `compte` (12 caractères au moins, indication par la longueur,
   confirmation, champs vidés à chaque réponse ; Solo sur « ce PC » : prénom et nom seuls ; 409 → l'étape se passe),
   `certificat` (automatique recommandé ; réseau privé si « dehors » ; fichiers et mandataire pour l'informaticien, sous
@@ -4594,7 +4607,8 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   `#impression` (seul imprimé, règle de `style.css`) puis `window.print()` ; `@media print` : fond blanc, encre noire,
   aucun bouton, QR de 45 mm. « Ouvrir Prévo sans terminer » quitte l'assistant : démarrage normal sur l'accueil.
 - **Migration et dossier** (T171 ; D131 dernier point, CS130) :
-  - *CSV existants gardés (migration 1.2)* : `etat.csv_presents` vrai (un CSV du schéma dans `donnees/`) ⇒ l'étape 1
+  - *CSV existants gardés (migration 1.2)* : `etat.csv_presents` vrai (un CSV du schéma dans `donnees/`) et, depuis
+    T521, `etat.donnees_anterieures` vrai (de vraies lignes : pas une base que cette version vient de créer vide) ⇒ l'étape 1
     l'annonce (`#inst-migration` : « Vos données de Prévo 1.2 sont là : N fichiers, dernière modification le … ;
     elles sont gardées. ») ; aucune étape ne touche un CSV existant, sauf `techniciens.csv` en Solo (technicien
     « moi » ajouté, ou reconnu par son prénom et son nom : fichier inchangé) et `parametres.csv` à `terminer` en Solo

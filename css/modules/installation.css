@@ -58,6 +58,12 @@
 .installation-choix > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .installation-choix b { color: var(--fort); }
 .installation-choix small { color: var(--texte-2); font-size: .875rem; overflow-wrap: anywhere; }
+/* T521 : étape 1, « Qui d'autre ouvre Prévo ? » suit « Qui fait la maintenance ? » (rien tant que rien n'est choisi). */
+.installation-situation { display: flex; flex-direction: column; gap: 14px; }
+.installation-autres { display: none; border: 0; margin: 0; padding: 0; flex-direction: column; gap: 8px; min-width: 0; }
+.installation-autres legend { font-weight: 600; color: var(--fort); padding: 0; margin-bottom: 6px; }
+.installation-situation:has(input[name="situation"][value="seul"]:checked) .installation-autres-seul,
+.installation-situation:has(input[name="situation"][value="equipe"]:checked) .installation-autres-equipe { display: flex; }
 .installation-case { min-height: 48px; }
 .installation-case input { width: 24px; height: 24px; flex-shrink: 0; }
 

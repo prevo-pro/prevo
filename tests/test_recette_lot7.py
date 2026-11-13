@@ -300,9 +300,9 @@ class CasRecetteAssistant(GestesRecette, CasInstallation):
     élévation et relance injectées, faux mkcert et faux tailscale absents par défaut)."""
 
     def choisir_moi_seul(self):
-        """Étape 1 : « Moi seul », puis l'étape de la portée."""
+        """Étape 1 : « Vous êtes seul à la maintenance » (T521), rien d'autre coché, puis l'étape de la portée."""
         page = self.page
-        self.assertIn("Moi seul", page.inner_text('#installation-contenu label:has(input[name="situation"][value="seul"])'))
+        self.assertIn("Vous êtes seul à la maintenance", page.inner_text('#installation-contenu label:has(input[name="situation"][value="seul"])'))
         self.cocher("situation", "seul")
         self.continuer()
         self.attendre_etape("portee")

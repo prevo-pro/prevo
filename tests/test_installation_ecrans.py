@@ -392,11 +392,60 @@ class TestParcours(CasInstallation):
         self.assertEqual((brouillon["noms"], brouillon["mandataire"], brouillon["etapes"]["tailscale"]), ([NOM_TAILSCALE], True, "fait"))
         self.assertNotIn(MOT_DE_PASSE, (self.dossier / "donnees" / "installation.json").read_text(encoding="utf-8"))
 
+    def test_seul_a_la_maintenance_avec_operateurs_et_direction(self):
+        """T521 : « Qui fait la maintenance ? » puis « Qui d'autre ouvre Prévo ? » ; une case cochée : l'atelier, un
+        compte, l'accès de la direction proposé à l'étape du compte ; le mode Solo gardé."""
+        page = self.page
+        instance = self.lancer()
+        self.ouvrir_assistant(instance)
+        self.assertIn("Qui fait la maintenance ?", page.text_content("#installation-contenu h2"))
+        self.assertTrue(page.is_hidden("#inst-autres-seul"))
+        self.assertTrue(page.is_hidden("#inst-autres-equipe"))
+        self.cocher("situation", "equipe")
+        self.assertTrue(page.is_visible("#inst-autres-equipe"))
+        self.assertTrue(page.is_checked('#installation-contenu input[name="forme_equipe"][value="equipe"]'))
+        self.cocher("situation", "seul")
+        self.assertTrue(page.is_hidden("#inst-autres-equipe"))
+        self.assertTrue(page.is_visible("#inst-autres-seul"))
+        self.assertIn("Rien de coché", page.inner_text("#inst-autres-seul"))
+        self.assertEqual(page.locator("#inst-autres-seul input[type=checkbox]:checked").count(), 0)
+        self.cocher("autre_operateurs", "1")
+        self.cocher("autre_direction", "1")
+        self.continuer()
+        self.attendre_etape("portee")
+        self.assertTrue(page.is_checked('#installation-contenu input[name="portee"][value="atelier"]'))
+        brouillon = json.loads((self.dossier / "donnees" / "installation.json").read_text(encoding="utf-8"))
+        self.assertEqual((brouillon["situation"], brouillon["mode_solo"], brouillon["comptes"], brouillon["solo_autres"]),
+                         ("seul", True, True, {"telephone": False, "operateurs": True, "direction": True}))
+        self.continuer()
+        self.attendre_etape("compte")
+        self.assertEqual(page.locator("#inst-mot-de-passe").count(), 1)
+        self.assertEqual(page.locator("#installation-contenu .installation-direction").count(), 1)
+        # Précédent jusqu'à l'étape 1 : les cases cochées sont reprises du brouillon.
+        page.click("#inst-precedent")
+        self.attendre_etape("portee")
+        page.click("#inst-precedent")
+        self.attendre_etape("situation")
+        self.assertTrue(page.is_checked('#installation-contenu input[name="autre_direction"]'))
+        self.assertFalse(page.is_checked('#installation-contenu input[name="autre_telephone"]'))
+        # Seul, rien de coché : ce PC, le nom seul, pas d'accès de la direction.
+        page.uncheck('#installation-contenu input[name="autre_operateurs"]')
+        page.uncheck('#installation-contenu input[name="autre_direction"]')
+        self.continuer()
+        self.attendre_etape("portee")
+        self.assertTrue(page.is_checked('#installation-contenu input[name="portee"][value="ce-pc"]'))
+        self.continuer()
+        self.attendre_etape("compte")
+        self.assertEqual(page.locator("#inst-mot-de-passe").count(), 0)
+        self.assertEqual(page.locator("#installation-contenu .installation-direction").count(), 0)
+
     def test_informaticien_toutes_les_etapes_sur_une_page(self):
         page = self.page
         instance = self.lancer(source=commun.DOSSIER_DEMO)
         self.ouvrir_assistant(instance)
-        self.cocher("situation", "informaticien")
+        # T521 : « Vous êtes une équipe », puis « Je suis l'informaticien de l'entreprise ».
+        self.cocher("situation", "equipe")
+        self.cocher("forme_equipe", "informaticien")
         self.continuer()
         page.wait_for_selector('#installation-contenu[data-formulaire="une-page"]')
         sections = page.locator("#installation-contenu section.installation-etape")
@@ -522,6 +571,8 @@ class TestDepuisLaCoque(CasInstallation):
         page = self.page
         instance = self.ouvrir_la_coque("#btn-base-vide")
         self.lien_de_parametres('#acces-installation a[href="#/installation"]')
+        # T521 : base que cette version vient de créer vide : pas de « Vos données de Prévo 1.2 sont là ».
+        self.assertEqual(page.locator("#inst-migration").count(), 0)
         # Quitter sans terminer : la coque sur l'accueil, aucune configuration écrite.
         page.click("#installation-quitter")
         page.wait_for_function("document.documentElement.dataset.etat === 'pret' && location.hash === '#/accueil'")

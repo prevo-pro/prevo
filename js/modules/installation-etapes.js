@@ -67,28 +67,68 @@ const InstallationEtapes = (() => {
   //    toast, echec(donnees) → message qui garde l'étape ouverte, apres(section) (mots de passe vidés) }
   // ===========================================================================================
 
+  function caseACocher(nom, coche, titre, detail) {
+    return UI.html`<label class="installation-choix">
+      <input type="checkbox" name="${nom}" value="1" ${UI.brut(coche ? 'checked' : '')}>
+      <span><b>${titre}</b>${detail ? UI.html`<small>${detail}</small>` : ''}</span>
+    </label>`;
+  }
+
+  // T521 (lot 1 ergonomie, B) : deux questions sur la même étape. « Qui fait la maintenance ? » règle le mode (Solo ou
+  // équipe) et rien d'autre ; puis « Qui d'autre ouvre Prévo ? », qui règle le réseau et les comptes : en Solo, trois
+  // cases facultatives (rien de coché : ce PC seulement, sans compte) ; en équipe, les deux choix d'avant. Le groupe
+  // montré suit le premier choix (CSS :has, installation.css) ; l'API reçoit toujours « situation » (seul, equipe,
+  // informaticien), et « autres » en Solo.
   function formulaireSituation(c) {
-    const details = {
-      seul: I18n.t('installation.formulaire_situation.pc_telephone_mode_solo'),
-      equipe: I18n.t('installation.formulaire_situation.plusieurs_personnes_telephones_comptes'),
-      informaticien: I18n.t('installation.formulaire_situation.toutes_options_page_rien'),
-    };
     const choisie = c.situation();
+    // Reprise d'un brouillon Solo : les cases cochées alors (un brouillon d'avant T521 : « mon téléphone » si la portée
+    // dépasse ce PC).
+    const autres = choisie === 'seul' ? Object.assign({ telephone: c.brouillon().portee !== 'ce-pc' }, c.brouillon().solo_autres || {}) : {};
     const nombre = Number(c.etat.nombre_csv) || 0;
     // Migration depuis 1.2 (D131, T171) : des CSV sont là → dit dès la première étape ; ils ne sont jamais touchés.
-    const migration = c.etat.csv_presents ? UI.html`<div class="alerte" id="inst-migration"><div class="alerte-texte">
+    // T521 : seulement s'ils ont des lignes (une base que cette version vient de créer vide n'est pas « Prévo 1.2 »).
+    const anterieures = c.etat.donnees_anterieures === undefined ? c.etat.csv_presents : c.etat.donnees_anterieures;
+    const migration = anterieures ? UI.html`<div class="alerte" id="inst-migration"><div class="alerte-texte">
         ${c.etat.derniere_modification
     ? I18n.html('installation.migration.donnees_la_date', { n: nombre, date: UI.dateHeureFr(c.etat.derniere_modification) })
     : I18n.html('installation.migration.donnees_la', { n: nombre })}</div></div>` : '';
+    const t = (cle) => I18n.t('installation.formulaire_situation.' + cle);
+    const forme = choisie === 'informaticien' ? 'informaticien' : 'equipe';
     return {
-      champs: UI.html`${migration}<div class="installation-choix-liste">${Object.keys(AccesTextes.situations).map((cle) =>
-        choixRadio('situation', cle, cle === choisie, AccesTextes.situations[cle], details[cle]))}</div>`,
+      champs: UI.html`${migration}<div class="installation-situation">
+        <div class="installation-choix-liste" id="inst-qui-maintenance">
+          ${choixRadio('situation', 'seul', choisie === 'seul', t('seul'), t('seul_aide'))}
+          ${choixRadio('situation', 'equipe', choisie === 'equipe' || choisie === 'informaticien', t('equipe'), t('equipe_aide'))}
+        </div>
+        <fieldset class="installation-autres installation-autres-seul" id="inst-autres-seul">
+          <legend>${t('qui_d_autre')}</legend>
+          <p class="aide">${t('rien_coche')}</p>
+          <div class="installation-choix-liste">
+            ${caseACocher('autre_telephone', autres.telephone, t('mon_telephone'), t('mon_telephone_aide'))}
+            ${caseACocher('autre_operateurs', autres.operateurs, t('operateurs'), t('operateurs_aide'))}
+            ${caseACocher('autre_direction', autres.direction, t('direction'), t('direction_aide'))}
+          </div>
+        </fieldset>
+        <fieldset class="installation-autres installation-autres-equipe" id="inst-autres-equipe">
+          <legend>${t('qui_d_autre')}</legend>
+          <div class="installation-choix-liste">
+            ${choixRadio('forme_equipe', 'equipe', forme === 'equipe', AccesTextes.situations.equipe, t('plusieurs_personnes_telephones_comptes'))}
+            ${choixRadio('forme_equipe', 'informaticien', forme === 'informaticien', AccesTextes.situations.informaticien, t('toutes_options_page_rien'))}
+          </div>
+        </fieldset>
+      </div>`,
       autrement: UI.html`<p class="note">${I18n.html('installation.formulaire_situation.tout_assistant_regle_ecrit')}</p>`,
       lire(section) {
         const coche = UI.$('input[name="situation"]:checked', section);
-        return coche ? { situation: coche.value } : null;
+        if (!coche) return null;
+        if (coche.value === 'seul') {
+          const autre = (nom) => UI.$('input[name="autre_' + nom + '"]', section).checked;
+          return { situation: 'seul', autres: { telephone: autre('telephone'), operateurs: autre('operateurs'), direction: autre('direction') } };
+        }
+        const formeCochee = UI.$('input[name="forme_equipe"]:checked', section);
+        return { situation: formeCochee && formeCochee.value === 'informaticien' ? 'informaticien' : coche.value };
       },
-      message: I18n.t('installation.formulaire_situation.choisissez_va_utiliser_prevo'),
+      message: I18n.t('installation.formulaire_situation.choisissez_qui_maintenance'),
     };
   }
 
@@ -155,6 +195,12 @@ const InstallationEtapes = (() => {
     return valeurs;
   }
 
+  // T521 : en Solo, l'accès de la direction n'est proposé que si « La direction lit le tableau de bord et le bilan » a
+  // été coché à l'étape 1 ; en équipe, toujours (facultatif, T520).
+  function directionProposee(c) {
+    return c.situation() !== 'seul' || Boolean((c.brouillon().solo_autres || {}).direction);
+  }
+
   function formulaireCompte(c) {
     const b = c.brouillon();
     const sansMotDePasse = b.portee === 'ce-pc';            // Solo sur ce PC : le technicien « moi », sans compte
@@ -176,7 +222,7 @@ const InstallationEtapes = (() => {
           <div class="champ"><label class="libelle" for="inst-confirmation">${I18n.t('installation.formulaire_compte.confirmation')}</label>
             <input type="password" id="inst-confirmation" name="confirmation" autocomplete="new-password" maxlength="256"></div>`}
         </div>
-        ${sansMotDePasse || existant ? '' : blocDirection()}`,
+        ${sansMotDePasse || existant || !directionProposee(c) ? '' : blocDirection()}`,
       autrement: UI.html`<p class="note">${notePlusTard()}</p>${['session_heures', 'session_longue_jours', 'invitation_heures', 'demandeurs_avec_compte'].map((cle) => reglageLu(c, cle))}`,
       passer: existant,
       lire(section) {

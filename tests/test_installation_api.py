@@ -854,6 +854,81 @@ class TestServeurReel(unittest.TestCase):
             self.assertEqual((reel.dossier / "acces" / "comptes.json").read_bytes(), b"{ pas du json")
 
 
+class TestSeulALaMaintenance(CasAssistant):
+    """T521 (lot 1 ergonomie, B) : « Qui fait la maintenance ? » puis « Qui d'autre ouvre Prévo ? » (cases du Solo) ;
+    message « Vos données de Prévo 1.2 » seulement pour de vraies données antérieures."""
+
+    def test_seul_sans_autre_case_reste_sur_ce_pc(self):
+        client, _ = self.lancer()
+        for corps in ({"situation": "seul"}, {"situation": "seul", "autres": {}},
+                      {"situation": "seul", "autres": {"telephone": False, "operateurs": False, "direction": False}}):
+            brouillon = self.ok(client.post("situation", corps))["brouillon"]
+            self.assertEqual((brouillon["portee"], brouillon["comptes"], brouillon["mode_solo"], brouillon["demarrage"]),
+                             ("ce-pc", False, True, "aucun"))
+            self.assertEqual(brouillon["solo_autres"], {"telephone": False, "operateurs": False, "direction": False})
+
+    def test_seul_avec_operateurs_atelier_comptes_et_mode_solo(self):
+        client, _ = self.lancer()
+        for case in ("telephone", "operateurs", "direction"):
+            with self.subTest(case=case):
+                reponse = self.ok(client.post("situation", {"situation": "seul", "autres": {case: True}}))
+                brouillon = reponse["brouillon"]
+                self.assertEqual((brouillon["situation"], brouillon["portee"], brouillon["comptes"], brouillon["mode_solo"],
+                                  brouillon["certificat_auto"], brouillon["demarrage"]),
+                                 ("seul", "atelier", True, True, True, "systeme"))
+                self.assertFalse(brouillon["demandeurs_avec_compte"])     # opérateurs : appareils enrôlés, sans mot de passe
+                self.assertTrue(brouillon["solo_autres"][case])
+                self.assertEqual(reponse["etapes"]["compte"], "a_faire")
+                self.assertEqual(reponse["etapes"]["certificat"], "a_faire")
+        # Le brouillon relu (reprise) garde les cases.
+        self.assertTrue(self.ok(client.get("etat"))["brouillon"]["solo_autres"]["direction"])
+
+    def test_autres_refuses_hors_solo_ou_mal_formes(self):
+        client, _ = self.lancer()
+        for corps in ({"situation": "equipe", "autres": {"telephone": True}},
+                      {"situation": "informaticien", "autres": {}},
+                      {"situation": "seul", "autres": ["telephone"]},
+                      {"situation": "seul", "autres": {"patron": True}},
+                      {"situation": "seul", "autres": {"telephone": "oui"}}):
+            with self.subTest(corps=corps):
+                reponse = client.post("situation", corps)
+                self.assertEqual(reponse.statut, 400)
+                self.assertIn("autres", reponse.json()["erreur"])
+        self.assertIsNone(self.ok(client.get("etat"))["brouillon"])       # rien de refusé n'est gardé
+        # Équipe : inchangée (pas de « solo_autres »).
+        self.assertNotIn("solo_autres", self.ok(client.post("situation", {"situation": "equipe"}))["brouillon"])
+
+    def test_donnees_anterieures_seulement_avec_de_vraies_lignes(self):
+        client, instance = self.lancer()
+        donnees = Path(instance.config.dossier_donnees)
+        donnees.mkdir(parents=True, exist_ok=True)
+        etat = self.ok(client.get("etat"))
+        self.assertEqual((etat["csv_presents"], etat["donnees_anterieures"]), (False, False))
+        bom = b"\xef\xbb\xbf"
+
+        def ecrire(table, *lignes):
+            texte = "".join(";".join(ligne) + "\r\n" for ligne in lignes)
+            (donnees / (table + ".csv")).write_bytes(bom + texte.encode("utf-8"))
+
+        # Base créée vide par cette version : en-têtes seuls, version et langue, liste de départ des codes.
+        for table in serveur.TABLES:
+            ecrire(table, serveur.COLONNES_PAR_TABLE[table])
+        ecrire("parametres", ["cle", "valeur"], ["version_schema", "5"], ["langue_defaut", "fr"])
+        codes = serveur.COLONNES_PAR_TABLE["codes_defaillance"]
+        ecrire("codes_defaillance", codes, ["CD-0001"] + ["x"] * (len(codes) - 1))
+        etat = self.ok(client.get("etat"))
+        self.assertTrue(etat["csv_presents"])
+        self.assertFalse(etat["donnees_anterieures"])
+        # Une machine : de vraies données (Prévo 1.2 ou une base remplie).
+        colonnes = serveur.COLONNES_PAR_TABLE["equipements"]
+        ecrire("equipements", colonnes, ["EQ-0001", "Presse"] + [""] * (len(colonnes) - 2))
+        self.assertTrue(self.ok(client.get("etat"))["donnees_anterieures"])
+
+    def test_base_de_demo_donnees_anterieures(self):
+        client, _ = self.lancer(source=commun.DOSSIER_DEMO)
+        self.assertTrue(self.ok(client.get("etat"))["donnees_anterieures"])
+
+
 @unittest.skipUnless(os.name == "nt", "chemins Windows")
 class TestDossierConseille(unittest.TestCase):
 

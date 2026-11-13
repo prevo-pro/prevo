@@ -355,8 +355,13 @@ fichier CSV&nbsp;: il règle seulement l'accès. Les profils mémorisés sur les
 que ça change, pourquoi, et ce que Prévo conseille dans votre situation&nbsp;; «&nbsp;Régler autrement&nbsp;» déplie les
 réglages fins (ports, noms acceptés, fichiers de certificat, durées de session…).</p>
 <ol class="etapes">
-  <li><b>Qui va utiliser Prévo&nbsp;?</b> «&nbsp;Moi seul&nbsp;», «&nbsp;Une petite équipe&nbsp;» ou «&nbsp;Je suis l'informaticien
-    de l'entreprise&nbsp;».</li>
+  <li><b>Qui fait la maintenance&nbsp;?</b> «&nbsp;Vous êtes seul à la maintenance&nbsp;» (le mode Solo,
+    <a href="#solo">8.8</a>) ou «&nbsp;Vous êtes une équipe&nbsp;». Sur le même écran vient ensuite
+    <b>Qui d'autre ouvre Prévo&nbsp;?</b>&nbsp;: seul, trois cases facultatives («&nbsp;Mon téléphone&nbsp;», «&nbsp;Des
+    opérateurs déclarent les pannes en flashant le QR de la machine&nbsp;», «&nbsp;La direction lit le tableau de bord
+    et le bilan&nbsp;»)&nbsp;; rien de coché, Prévo reste sur ce PC, sans compte ni mot de passe&nbsp;; une case cochée,
+    Prévo s'ouvre sur le Wi-Fi de l'atelier avec votre compte, et vous restez en mode Solo. En équipe&nbsp;:
+    «&nbsp;Une petite équipe&nbsp;» ou «&nbsp;Je suis l'informaticien de l'entreprise&nbsp;».</li>
   <li><b>D'où faut-il pouvoir ouvrir Prévo&nbsp;?</b> Ce PC seulement, le Wi-Fi de l'atelier, ou aussi hors de
     l'atelier. Au-delà de ce PC, mot de passe et https sont obligatoires&nbsp;: Prévo ne propose pas l'inverse, parce
     que n'importe qui sur le même réseau pourrait sinon lire les comptes rendus ou effacer des ordres de travail.</li>
@@ -367,7 +372,8 @@ réglages fins (ports, noms acceptés, fichiers de certificat, durées de sessio
 <div class="tableau"><table>
   <thead><tr><th>Situation</th><th>D'où</th><th>Comptes</th><th>Certificat https</th><th>Démarrage, veille</th><th>Mode Solo</th></tr></thead>
   <tbody>
-    <tr><td><b>Moi seul</b></td><td>Ce PC&nbsp;; ou dehors, par Tailscale</td><td>Aucun sur ce PC&nbsp;; obligatoires dès qu'un téléphone est prévu</td><td>Par le réseau privé, ou automatique</td><td>Au choix&nbsp;; veille gardée</td><td>Oui</td></tr>
+    <tr><td><b>Seul, rien d'autre coché</b></td><td>Ce PC&nbsp;; ou dehors, par Tailscale</td><td>Aucun sur ce PC&nbsp;; obligatoires dès qu'un téléphone est prévu</td><td>Par le réseau privé, ou automatique</td><td>Au choix&nbsp;; veille gardée</td><td>Oui</td></tr>
+    <tr><td><b>Seul, avec téléphone, opérateurs ou direction</b></td><td>Le Wi-Fi de l'atelier</td><td>Le vôtre&nbsp;; les opérateurs par appareil enrôlé (QR)&nbsp;; la direction en lecture seule</td><td>Automatique, fabriqué par Prévo</td><td>Avec le PC&nbsp;; veille empêchée</td><td>Oui</td></tr>
     <tr><td><b>Une petite équipe</b></td><td>Le Wi-Fi de l'atelier</td><td>Oui&nbsp;; les demandeurs par appareil enrôlé (QR)</td><td>Automatique, fabriqué par Prévo</td><td>Avec le PC&nbsp;; veille empêchée</td><td>Non</td></tr>
     <tr><td><b>Informaticien</b></td><td>Le réseau de l'entreprise, derrière un mandataire</td><td>Oui, demandeurs compris</td><td>Le vôtre, ou votre mandataire</td><td>Avec le PC, ou votre outil de service</td><td>Non</td></tr>
   </tbody>

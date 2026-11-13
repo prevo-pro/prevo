@@ -40,7 +40,7 @@ const Installation = (() => {
   // les quatre textes de l'étape ; un second complète, ex. la veille sous « Démarrer avec le PC »). Libellé court et
   // titre : accesseurs, lus à l'affichage.
   const ETAPES = [
-    { cle: 'situation', get court() { return I18n.t('installation.court.utilise'); }, get titre() { return I18n.t('installation.titre.va_utiliser_prevo'); }, choix: ['installation'] },
+    { cle: 'situation', get court() { return I18n.t('installation.court.qui_maintenance'); }, get titre() { return I18n.t('installation.titre.qui_fait_maintenance'); }, choix: ['installation'] },
     { cle: 'portee', get court() { return I18n.t('installation.court.depuis_ou'); }, get titre() { return I18n.t('installation.titre.ou_faut_pouvoir_ouvrir'); }, choix: ['exterieur', 'mot_de_passe'] },
     { cle: 'compte', get court() { return I18n.t('installation.court.compte'); }, get titre() { return I18n.t('installation.titre.nom_mot_passe'); }, choix: ['mot_de_passe'] },
     { cle: 'certificat', get court() { return I18n.t('installation.court.certificat'); }, get titre() { return I18n.t('installation.titre.telephones_fassent_confiance_https'); }, choix: ['certificat'] },

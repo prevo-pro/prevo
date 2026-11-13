@@ -354,7 +354,12 @@ CSV file: it only sets up access. The profiles remembered on the workstations ar
 changes, why, and what Prévo recommends in your situation; “Set up another way” unfolds the fine
 settings (ports, accepted names, certificate files, session lengths…).</p>
 <ol class="etapes">
-  <li><b>Who will use Prévo?</b> “Just me”, “A small team” or “I am the company's IT person”.</li>
+  <li><b>Who does the maintenance?</b> “You do the maintenance on your own” (Solo mode, <a href="#solo">8.8</a>)
+    or “You are a team”. The same screen then asks <b>Who else opens Prévo?</b>: on your own, three optional boxes
+    (“My phone”, “Operators report breakdowns by scanning the machine's QR code”, “Management reads the dashboard and
+    the monthly report”); nothing ticked, Prévo stays on this PC, with no account or password; one box ticked, Prévo
+    opens on the workshop Wi-Fi with your account, and you stay in Solo mode. As a team: “A small team” or “I am the
+    company's IT person”.</li>
   <li><b>Where must Prévo be reachable from?</b> This PC only, the workshop Wi-Fi, or outside the
     workshop too. Beyond this PC, a password and https are compulsory: Prévo does not offer the opposite, because
     anyone on the same network could otherwise read the job reports or delete work orders.</li>
@@ -365,7 +370,8 @@ settings (ports, accepted names, certificate files, session lengths…).</p>
 <div class="tableau"><table>
   <thead><tr><th>Situation</th><th>Reachable from</th><th>Accounts</th><th>https certificate</th><th>Start-up, sleep</th><th>Solo mode</th></tr></thead>
   <tbody>
-    <tr><td><b>Just me</b></td><td>This PC; or outside, through Tailscale</td><td>None on this PC; compulsory as soon as a phone is planned</td><td>Through the private network, or automatic</td><td>Your choice; sleep kept</td><td>Yes</td></tr>
+    <tr><td><b>On your own, nothing else ticked</b></td><td>This PC; or outside, through Tailscale</td><td>None on this PC; compulsory as soon as a phone is planned</td><td>Through the private network, or automatic</td><td>Your choice; sleep kept</td><td>Yes</td></tr>
+    <tr><td><b>On your own, with phone, operators or management</b></td><td>The workshop Wi-Fi</td><td>Yours; operators through an enrolled device (QR); management read only</td><td>Automatic, made by Prévo</td><td>With the PC; sleep prevented</td><td>Yes</td></tr>
     <tr><td><b>A small team</b></td><td>The workshop Wi-Fi</td><td>Yes; requesters through an enrolled device (QR)</td><td>Automatic, made by Prévo</td><td>With the PC; sleep prevented</td><td>No</td></tr>
     <tr><td><b>IT person</b></td><td>The company network, behind a proxy</td><td>Yes, requesters included</td><td>Your own, or your proxy's</td><td>With the PC, or your service tool</td><td>No</td></tr>
   </tbody>
