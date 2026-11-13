@@ -7,7 +7,60 @@ suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
-Corrections après une relecture critique de la 2.2.0 bêta 1 (12/11/2026).
+### Lot 1 d'ergonomie et mode Solo (proposé pour la 2.3.0-beta.1)
+
+Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 passages, équipes de 1 à 5).
+
+#### Ajouté
+
+- **Mode Solo, pour celui qui est seul à la maintenance.** L'assistant demande d'abord « Qui fait la maintenance ? »
+  (seul ou en équipe), puis « Qui d'autre ouvre Prévo ? » (mon téléphone, les opérateurs par QR, la direction en
+  lecture seule). En Solo, les pannes déclarées par les opérateurs deviennent d'elles-mêmes des ordres de travail à
+  votre nom, « Démarrer » est proposé tout de suite, la fiche n'a que trois états (à faire, en cours, fini),
+  l'habilitation est un rappel et non un refus, le menu n'a ni Équipe ni Planning, et l'accueil montre ce qui vous
+  attend aujourd'hui. Paramètres › « Organisation : seul ou en équipe » : passer en équipe ne supprime rien ; le
+  retour en Solo est possible quand il ne reste qu'un technicien actif.
+- **« Je prends cet OT »** sur tout ordre de travail sans technicien, et **« Reprendre cet OT à mon nom »** sur celui
+  d'un collègue (congé, changement d'équipe), avec une confirmation qui le nomme. Chaque prise est notée dans l'OT
+  (qui, quand, à qui) ; le collègue la voit sur son accueil, le responsable dans « Reprises récentes ». Un OT qui a un
+  technicien se démarre sans passer par le planning.
+- **Retour vers l'opérateur.** La demande suit son ordre de travail : « En cours », puis « Réparée » avec la date et
+  le prénom du technicien. À la clôture, « Un mot pour l'opérateur » (facultatif, dictée possible). En flashant de
+  nouveau le QR de la machine, l'opérateur voit ses dernières demandes et où elles en sont. Mêmes droits d'accès
+  qu'avant : ni coûts, ni autre donnée personnelle que le prénom du technicien.
+- **Rôle « Direction », en lecture seule** : tableau de bord, bilan mensuel, historique des machines et des ordres de
+  travail. Aucune modification, aucun accès à l'administration (refusés aussi par le serveur). Proposé dans
+  l'assistant d'installation et dans Équipe › Accès.
+- **Codes cause et remède prêts à l'emploi** : une base neuve reçoit une liste de départ (15 causes, 12 remèdes,
+  10 symptômes), modifiable ; « Ajouter la liste de départ » pour une base existante. « Autre (préciser) » avec un
+  champ libre.
+- **Bilan du mois en cours**, y compris le premier mois d'utilisation, sans rien figer : « Voir le bilan ». Le bilan
+  nomme ce qui manque (heures par jour des machines, taux horaires, prix des pièces, coût d'une heure d'arrêt) et dit
+  dans quel écran le renseigner ; un coût incomplet est dit « Partiel », jamais donné comme un total.
+- **Étiquettes QR** : la consigne « Connectez-vous au Wi-Fi de l'usine pour déclarer une panne » est imprimée sous le
+  QR quand l'adresse de Prévo est locale ou privée (avec le nom du Wi-Fi si vous le donnez). Les écrans Étiquettes,
+  Paramètres › Accès et la fiche d'accès préviennent que ces QR ne s'ouvriront pas hors du réseau de l'usine.
+
+#### Modifié
+
+- **Format des données 5** : `demandes` gagne les statuts « En cours » et « Réparée » et les colonnes
+  `mot_technicien`, `date_reparation`, `repare_par` ; `ordres_travail` gagne `cause_precision`, `remede_precision` et
+  `prises_en_charge`. Le passage est automatique, précédé de la sauvegarde `avant-format-v5`. Une version 2.2 ouvre
+  une base au format 5 en lecture seule.
+- **Clôture d'un ordre de travail préventif ou réglementaire** : ni code cause ni code remède exigés. Une liste de
+  codes vide ne bloque plus aucune clôture : un message dit où créer les codes.
+- Étiquette de 24 par planche : le QR passe de 30 à 27 mm pour laisser la place à la consigne.
+
+#### Corrigé
+
+- **Première installation** : après « Créer une base vide », le lien « Installer Prévo (assistant) » ouvre bien
+  l'assistant, sans recharger la page ; il affichait la fiche d'accès.
+- **Tableau de bord** : les pannes, la durée d'arrêt et le MTTR ne tombent plus à zéro quand les machines n'ont pas
+  leurs heures de fonctionnement par jour.
+- Le message « Vos données de Prévo 1.2 sont là » n'apparaît plus sur une base que cette version vient de créer vide.
+- Un lien vers un document refusé à votre rôle mène à une page de Prévo qui dit quoi faire, au lieu d'un texte brut.
+
+### Corrections après une relecture critique de la 2.2.0 bêta 1 (12/11/2026)
 
 ### Sécurité (mode serveur avec comptes)
 
