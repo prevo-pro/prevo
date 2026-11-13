@@ -178,7 +178,14 @@ const ParametresAcces = (() => {
       <dt>${I18n.t('parametres.etat_serveur.journal_serveur')}</dt><dd id="acces-journal">${lignes.length
         ? UI.html`<pre class="acces-journal">${lignes.join('\n')}</pre><span class="note">${I18n.t('parametres.etat_serveur.dernieres_lignes', { fichier: journal.fichier })}</span>`
         : I18n.t('parametres.etat_serveur.aucune_erreur_notee')}</dd>
-    </dl>`;
+    </dl>${avertissementQr()}`;
+  }
+
+  // Lot 1 ergonomie (T518) : adresse mise dans les QR des étiquettes locale, privée ou Tailscale → l'avertissement
+  // « en 4G, le QR donne une page d'erreur », ses solutions et le lien vers l'écran Étiquettes (Parc, parc-etiquettes.js).
+  function avertissementQr() {
+    if (typeof Parc === 'undefined' || !Parc.avertissementReseau) return '';
+    return UI.html`<div id="acces-avertissement-qr">${Parc.avertissementReseau(Parc.adresseDesQr(), { lienEtiquettes: true })}</div>`;
   }
 
   // ===========================================================================================

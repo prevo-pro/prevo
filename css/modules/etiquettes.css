@@ -25,6 +25,18 @@
 .etiquettes-avertissement { display: flex; gap: .6rem; align-items: flex-start; }
 .etiquettes-avertissement .icone { flex: none; width: 1.3em; height: 1.3em; color: var(--ambre); margin-top: .1rem; }
 .etiquettes-choix-adresse { margin-top: .8rem; }
+.etiquettes-wifi { margin-top: .8rem; }
+.etiquettes-wifi > label { flex: 2 1 240px; }
+.etiquettes-wifi > .btn { flex: 0 1 auto; }
+
+/* Avertissement « le QR ne s'ouvrira pas en 4G » (T518) : écran Étiquettes, Paramètres › Accès, fiche d'accès */
+.avertissement-reseau { display: flex; gap: .6rem; align-items: flex-start; }
+.avertissement-reseau > .icone { flex: none; width: 1.3em; height: 1.3em; color: var(--ambre); margin-top: .1rem; }
+.avertissement-reseau p { margin: 0 0 .4rem; }
+.avertissement-reseau-liens { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .5rem; }
+.avertissement-reseau-liens a { display: inline-flex; align-items: center; min-height: 48px; }
+.etiquettes-rappel-consigne { display: flex; gap: .6rem; align-items: flex-start; margin: 0 0 12px; }
+.etiquettes-rappel-consigne > .icone { flex: none; width: 1.3em; height: 1.3em; margin-top: .1rem; }
 .etiquettes-choix-adresse > label { flex: 2 1 240px; }
 .etiquettes-choix-adresse > .btn { flex: 0 1 auto; }
 
@@ -78,11 +90,21 @@
 }
 .etiquette-entreprise { color: var(--encre-2); line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
+/* Consigne réseau (T518) : en bas de l'étiquette, sur toute la largeur, deux lignes au plus ; l'étiquette réserve
+   sa place (padding du bas) et le QR rapetisse un peu : ni le QR ni le repère ne sont rognés. */
+.etiquette-consigne {
+  position: absolute; left: 3mm; right: 3mm; bottom: 1mm; color: var(--encre); font-weight: 600; line-height: 1.15;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+
 /* 24 par planche : 70 × 37 mm, QR de 30 mm */
 .format-24 .etiquette-qr svg { width: 30mm; height: 30mm; }
 .format-24 .etiquette-repere { font-size: 15pt; }
 .format-24 .etiquette-designation { font-size: 7.5pt; -webkit-line-clamp: 3; }
 .format-24 .etiquette-entreprise { font-size: 6pt; }
+.format-24 .etiquette.avec-consigne { padding-top: 2mm; padding-bottom: 6mm; }
+.format-24 .avec-consigne .etiquette-qr svg { width: 27mm; height: 27mm; }
+.format-24 .etiquette-consigne { font-size: 6pt; }
 
 /* 8 par planche : 105 × 74 mm, QR de 54 mm */
 .format-8 .etiquette { padding: 5mm; gap: 4mm; }
@@ -90,13 +112,15 @@
 .format-8 .etiquette-repere { font-size: 24pt; }
 .format-8 .etiquette-designation { font-size: 10pt; -webkit-line-clamp: 4; }
 .format-8 .etiquette-entreprise { font-size: 8pt; }
+.format-8 .etiquette.avec-consigne { padding-top: 4mm; padding-bottom: 11mm; }
+.format-8 .etiquette-consigne { left: 5mm; right: 5mm; bottom: 2.5mm; font-size: 9pt; }
 
 /* --- téléphone : aperçu plus réduit, actions pleine largeur ------------------------------- */
 
 @media screen and (max-width: 640px) {
   .etiquettes-apercu .planche-etiquettes { zoom: .36; }
   .etiquettes-liste { max-height: 50vh; padding: .2rem .6rem; }
-  .etiquettes-choix-adresse > .btn { flex: 1 1 100%; }
+  .etiquettes-choix-adresse > .btn, .etiquettes-wifi > .btn { flex: 1 1 100%; }
 }
 
 /* --- impression : seules les planches (#impression), une par page A4, noir sur blanc ------- */

@@ -1443,6 +1443,7 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
 - **Format CSV inchangé** : `Schema.version` reste 2, aucun champ ajouté. Nouvelles clés de
   `parametres.csv` (lues par `Donnees.parametre(cle, defaut)`, absentes → défaut) :
   `seuil_remplacement_pct` (`50`), `adresse_qr` (`''` : première adresse réseau détectée),
+  `wifi_nom` (`''` : nom du Wi-Fi écrit sur les étiquettes QR, T518),
   `rapports_mensuels` (`''` : noms des rapports figés, séparés par des virgules, du plus ancien au
   plus récent).
 - **Documents** : l'extension `html` s'ajoute aux types acceptés (`TYPES_DOCUMENTS` de `serveur.py`,
@@ -1754,6 +1755,14 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   (réservation dans la box) », choix parmi `App.adressesReseau()` quand il y en a plusieurs → écrit
   `adresse_qr` (`Donnees.modifier('parametres')`). Modes dossier et démo : « Le QR contient
   GMAO:<id>, lisible par la caméra de ce poste ». Responsable seul.
+- Lot 1 ergonomie (T518, thème « qr-4g ») : `Parc.porteeAdresse(adresse)` classe l'adresse des QR (`ce-pc` :
+  127.0.0.0/8, localhost, ::1 ; `locale` : 10/8, 172.16/12, 192.168/16, 169.254/16, nom sans point ou en
+  .local/.lan/.home, fe80::/10, fc00::/7 ; `tailscale` : 100.64.0.0/10, *.ts.net ; `exterieur` sinon). Adresse
+  `locale` : chaque étiquette porte en bas « Connectez-vous au Wi-Fi de l'usine pour déclarer une panne » (avec le
+  nom du Wi-Fi quand le paramètre `wifi_nom` est rempli, champ de l'écran Étiquettes) ; `tailscale` : « Ouvrez
+  l'application Tailscale… ». Le QR rapetisse (27 mm en format 24) pour laisser deux lignes. L'encadré
+  `Parc.avertissementReseau` (conséquence en 4G, solutions, liens) s'affiche sur l'écran Étiquettes, dans
+  Paramètres › Accès et installation et sur la fiche d'accès ; un rappel non imprimé en tête de l'aperçu.
 - Écarts retenus (T45) : les planches utilisent une page **nommée** (`@page etiquettes { size: A4;
   margin: 0 }`, `css/modules/etiquettes.css`) : une `@page` sans nom aurait aussi annulé les marges de
   12 mm du bon de travail ; le décalage est borné de −10 à +10 mm (pas de 0,5 mm), une valeur hors

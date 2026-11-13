@@ -9,6 +9,11 @@
 //   Parc.equipementsPourEtiquettes({ localisationId, criticite, ids })   équipements à étiqueter
 //   Parc.planchesEtiquettes(equipements, format, { haut, gauche })        HTML des planches A4
 //   Parc.afficherEtiquettes(conteneur, parametres)                        écran #/parc/etiquettes
+//   Parc.porteeAdresse(adresse)       'ce-pc' | 'locale' | 'tailscale' | 'exterieur' | '' (pas une adresse http)
+//   Parc.estLocaleOuPrivee(adresse)   vrai pour 'ce-pc' et 'locale' (lot 1 ergonomie, T518)
+//   Parc.adresseDesQr()               début de l'adresse mise dans les QR (mode serveur), '' sinon
+//   Parc.consigneEtiquette(adresse, wifi)   ligne imprimée sous le QR ('' si l'adresse est joignable de partout)
+//   Parc.avertissementReseau(adresse, { lienPortee, lienEtiquettes })   encadré « le QR ne s'ouvrira pas en 4G »
 //
 // Impression : chaque planche est une page A4 dessinée en millimètres (positions absolues). La
 // feuille css/modules/etiquettes.css lui donne une page nommée « etiquettes » sans marge
@@ -30,6 +35,7 @@ Object.assign(Parc, (() => {
   const DECALAGE_MAX_MM = 10;                         // décalage d'impression accepté : -10 à +10 mm
   const CLE_MEMOIRE = 'prevo.etiquettes';            // localStorage : { format, haut, gauche }
   const CLE_ADRESSE_QR = 'adresse_qr';                // parametres.csv (§15.1)
+  const CLE_WIFI = 'wifi_nom';                        // parametres.csv : nom du Wi-Fi écrit sur l'étiquette (T518)
   const TAILLE_QR_PX = 160;                           // taille du dessin ; l'impression la fixe en mm (CSS)
 
   // ===========================================================================================
@@ -84,17 +90,115 @@ Object.assign(Parc, (() => {
     }
   }
 
-  // Une étiquette, placée en mm dans sa planche : QR, repère en gros, désignation, entreprise.
-  function etiquetteHtml(equipement, position, gabarit, entreprise) {
+  // ===========================================================================================
+  // 9 bis. Adresse des QR joignable ou non hors de l'atelier (lot 1 ergonomie, T518, thème qr-4g)
+  // ===========================================================================================
+
+  /**
+   * Portée de l'adresse d'un QR, d'après son nom d'hôte : 'ce-pc' (127.0.0.0/8, 0.0.0.0, localhost, ::1 : aucun
+   * téléphone), 'locale' (10/8, 172.16/12, 192.168/16, 169.254/16, nom sans point ou en .local/.lan/.home, IPv6
+   * fe80::/10 et fc00::/7 : le Wi-Fi de l'atelier seulement), 'tailscale' (100.64.0.0/10, *.ts.net : les appareils du
+   * réseau privé seulement), 'exterieur' (joignable de partout, autant qu'on sache), '' (pas une adresse http(s),
+   * « GMAO:<id> » des modes dossier et démo par exemple).
+   */
+  function porteeAdresse(adresse) {
+    let hote = '';
+    try {
+      const url = new URL(String(adresse || '').trim());
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+      hote = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+    } catch (erreur) {
+      return '';
+    }
+    if (!hote) return '';
+    if (hote === 'localhost' || hote.endsWith('.localhost')) return 'ce-pc';
+    const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hote);
+    if (ipv4) {
+      const a = Number(ipv4[1]);
+      const b = Number(ipv4[2]);
+      if (a === 127 || a === 0) return 'ce-pc';
+      if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)) return 'locale';
+      if (a === 100 && b >= 64 && b <= 127) return 'tailscale';
+      return 'exterieur';
+    }
+    if (hote.includes(':')) {                         // IPv6 (le navigateur l'écrit en minuscules, groupes abrégés)
+      if (hote === '::1') return 'ce-pc';
+      if (/^fe[89ab][0-9a-f]:/.test(hote) || /^f[cd][0-9a-f]{2}:/.test(hote)) return 'locale';
+      return 'exterieur';
+    }
+    if (hote === 'ts.net' || hote.endsWith('.ts.net')) return 'tailscale';
+    if (!hote.includes('.') || /\.(local|lan|home)$/.test(hote)) return 'locale';
+    return 'exterieur';
+  }
+
+  /** Vrai si l'adresse n'est joignable que de ce PC ou du réseau de l'atelier. */
+  function estLocaleOuPrivee(adresse) {
+    const portee = porteeAdresse(adresse);
+    return portee === 'ce-pc' || portee === 'locale';
+  }
+
+  /**
+   * Ligne imprimée sous le QR : « Connectez-vous au Wi-Fi de l'usine… » pour une adresse 'locale' (avec le nom du
+   * Wi-Fi s'il est donné), « Ouvrez l'application Tailscale… » pour 'tailscale' ; '' sinon (joignable de partout,
+   * ou 'ce-pc' : aucun téléphone ne l'ouvrira, la consigne serait fausse ; l'écran le dit).
+   */
+  function consigneEtiquette(adresse, wifi) {
+    const portee = porteeAdresse(adresse);
+    const nom = String(wifi || '').trim();
+    if (portee === 'locale') return nom ? I18n.t('parc.etiquette.consigne_wifi_nomme', { wifi: nom }) : I18n.t('parc.etiquette.consigne_wifi');
+    if (portee === 'tailscale') return I18n.t('parc.etiquette.consigne_tailscale');
+    return '';
+  }
+
+  /**
+   * Encadré pour le responsable quand le QR ne s'ouvrira pas partout : la conséquence (page d'erreur du navigateur
+   * en 4G) et les solutions ; '' quand l'adresse est joignable de l'extérieur ou n'est pas une adresse http(s).
+   * `lienPortee` : lien vers Paramètres › Accès et installation (portée) ; `lienEtiquettes` : lien vers l'écran
+   * Étiquettes (réimprimer, nom du Wi-Fi).
+   */
+  function avertissementReseau(adresse, options) {
+    const portee = porteeAdresse(adresse);
+    if (portee !== 'ce-pc' && portee !== 'locale' && portee !== 'tailscale') return '';
+    const { lienPortee = false, lienEtiquettes = false } = options || {};
+    const textes = {
+      'ce-pc': ['parc.avertissement_reseau.ce_pc_titre', 'parc.avertissement_reseau.ce_pc_consequence',
+        'parc.avertissement_reseau.ce_pc_solution_1', 'parc.avertissement_reseau.ce_pc_solution_2'],
+      locale: ['parc.avertissement_reseau.locale_titre', 'parc.avertissement_reseau.locale_consequence',
+        'parc.avertissement_reseau.locale_solution_1', 'parc.avertissement_reseau.locale_solution_2'],
+      tailscale: ['parc.avertissement_reseau.tailscale_titre', 'parc.avertissement_reseau.tailscale_consequence',
+        'parc.avertissement_reseau.tailscale_solution_1', 'parc.avertissement_reseau.tailscale_solution_2'],
+    }[portee];
+    const liens = [
+      lienPortee ? UI.html`<a href="#/parametres">${I18n.t('parc.avertissement_reseau.lien_portee')}</a>` : '',
+      lienEtiquettes ? UI.html`<a href="#/parc/etiquettes">${I18n.t('parc.avertissement_reseau.lien_etiquettes')}</a>` : '',
+    ].filter(Boolean);
+    return UI.html`<div class="encadre attention avertissement-reseau" data-portee="${portee}" role="note">${UI.icone('alerte')}
+      <div>
+        <p><b>${I18n.t(textes[0])}</b></p>
+        <p>${I18n.html(textes[1], { adresse })}</p>
+        <p>${I18n.t('parc.avertissement_reseau.solutions')}</p>
+        <ul>
+          <li>${I18n.t(textes[2])}</li>
+          <li>${I18n.t(textes[3])}</li>
+        </ul>
+        ${liens.length ? UI.html`<p class="avertissement-reseau-liens">${liens}</p>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Une étiquette, placée en mm dans sa planche : QR, repère en gros, désignation, entreprise ; la consigne réseau
+  // (T518) en bas, sur toute la largeur, quand il y en a une.
+  function etiquetteHtml(equipement, position, gabarit, entreprise, consigne) {
     const boite = { left: mm(position.gaucheMm), top: mm(position.hautMm), width: mm(gabarit.largeurMm), height: mm(gabarit.hauteurMm) };
     const style = Object.keys(boite).map((propriete) => propriete + ': ' + boite[propriete] + 'mm').join('; ');
-    return UI.html`<div class="etiquette" data-equipement="${equipement.id}" style="${style}">
+    return UI.html`<div class="etiquette${consigne ? ' avec-consigne' : ''}" data-equipement="${equipement.id}" style="${style}">
       <div class="etiquette-qr">${qrEtiquette(equipement)}</div>
       <div class="etiquette-texte">
         <b class="etiquette-repere">${equipement.repere || equipement.id}</b>
         <span class="etiquette-designation">${equipement.designation}</span>
         ${entreprise ? UI.html`<span class="etiquette-entreprise">${entreprise}</span>` : ''}
       </div>
+      ${consigne ? UI.html`<span class="etiquette-consigne">${consigne}</span>` : ''}
     </div>`;
   }
 
@@ -113,6 +217,7 @@ Object.assign(Parc, (() => {
     const margeHaut = (A4.hauteurMm - gabarit.lignes * gabarit.hauteurMm) / 2;
     const margeGauche = (A4.largeurMm - gabarit.colonnes * gabarit.largeurMm) / 2;
     const entreprise = Donnees.parametre('entreprise_nom', '');
+    const consigne = consigneEtiquette(App.urlFicheEquipement('X'), Donnees.parametre(CLE_WIFI, ''));
     const liste = equipements || [];
     const total = Math.ceil(liste.length / parPlanche);
     const planches = [];
@@ -122,7 +227,7 @@ Object.assign(Parc, (() => {
           gaucheMm: margeGauche + gauche + (rang % gabarit.colonnes) * gabarit.largeurMm,
           hautMm: margeHaut + haut + Math.floor(rang / gabarit.colonnes) * gabarit.hauteurMm,
         };
-        return etiquetteHtml(equipement, position, gabarit, entreprise);
+        return etiquetteHtml(equipement, position, gabarit, entreprise, consigne);
       });
       planches.push(UI.html`<section class="planche-etiquettes format-${cle}" aria-label="${I18n.t('parc.planches_etiquettes.planche_v1_total', { numero: numero + 1, total })}">${etiquettes}</section>`);
     }
@@ -182,6 +287,11 @@ Object.assign(Parc, (() => {
     return exemple.endsWith(fin) ? exemple.slice(0, -fin.length) : exemple;
   }
 
+  /** Début de l'adresse mise dans les QR en mode serveur (« http://192.168.1.10:8080/ »), '' dans les autres modes. */
+  function adresseDesQr() {
+    return App.mode === 'serveur' ? adresseDeBase() : '';
+  }
+
   function memeAdresse(a, b) {
     return String(a || '').replace(/\/+$/, '') === String(b || '').replace(/\/+$/, '');
   }
@@ -202,6 +312,27 @@ Object.assign(Parc, (() => {
       const ligne = lignes.find((l) => l.cle === CLE_ADRESSE_QR);
       if (ligne) ligne.valeur = adresse; else lignes.push({ cle: CLE_ADRESSE_QR, valeur: adresse });
     }, { action: 'adresse des QR des étiquettes : ' + adresse });
+  }
+
+  // Nom du Wi-Fi écrit sur l'étiquette (T518) : vide = « le Wi-Fi de l'usine » sans nom.
+  async function enregistrerWifi(nom) {
+    const valeur = String(nom || '').trim().replace(/\s+/g, ' ');
+    await Donnees.modifier('parametres', (lignes) => {
+      const ligne = lignes.find((l) => l.cle === CLE_WIFI);
+      if (ligne) ligne.valeur = valeur; else lignes.push({ cle: CLE_WIFI, valeur });
+    }, { action: 'nom du Wi-Fi des étiquettes : ' + (valeur || '(aucun)') });
+    return valeur;
+  }
+
+  // Champ « Nom du Wi-Fi » (mode serveur, adresse du réseau de l'atelier) : écrit sur chaque étiquette.
+  function champWifi() {
+    return UI.html`<div class="form-ligne etiquettes-wifi">
+        <label for="etiquettes-wifi">${I18n.t('parc.carte_adresse.nom_wifi')}
+          <input type="text" id="etiquettes-wifi" maxlength="40" autocomplete="off" value="${Donnees.parametre(CLE_WIFI, '')}"
+            placeholder="${I18n.t('parc.carte_adresse.nom_wifi_exemple')}"></label>
+        <button type="button" class="btn btn-secondaire" id="etiquettes-wifi-enregistrer">${UI.icone('valider')}${I18n.t('commun.bouton.enregistrer')}</button>
+      </div>
+      <p class="aide">${I18n.t('parc.carte_adresse.nom_wifi_aide')}</p>`;
   }
 
   // Carte « Adresse des QR » : en mode serveur, l'adresse encodée, l'avertissement et le choix ;
@@ -229,7 +360,9 @@ Object.assign(Parc, (() => {
       ${adresses.length ? '' : UI.html`<p class="note">${I18n.t('parc.carte_adresse.aucune_adresse_reseau_ete')}</p>`}
       ${App.cePcSeulement && App.cePcSeulement() ? UI.html`<div class="encadre info" id="etiquettes-ce-pc">${UI.icone('alerte')}
         ${I18n.t('parc.carte_adresse.prevo_joignable_pc_instant')}</div>` : ''}
+      <div id="etiquettes-avertissement-reseau" tabindex="-1">${avertissementReseau(base, { lienPortee: true })}</div>
       ${choix}
+      ${porteeAdresse(base) === 'locale' ? champWifi() : ''}
     </section>`;
   }
 
@@ -264,6 +397,18 @@ Object.assign(Parc, (() => {
         <small>${e.localisation_id ? cheminLocalisation(e.localisation_id) : I18n.t('parc.liste_equipements.sans_localisation')}</small></span>
       ${badgeCriticite(e.criticite)}
     </label>`)}`;
+  }
+
+  // Rappel en tête de l'aperçu (à l'écran seulement : seul #impression est imprimé) : la consigne mise sur chaque
+  // étiquette, ou « aucun téléphone » pour une adresse de ce PC, et le bouton qui mène à l'avertissement.
+  function rappelConsigne() {
+    const base = adresseDesQr();
+    const portee = porteeAdresse(base);
+    if (portee !== 'locale' && portee !== 'tailscale' && portee !== 'ce-pc') return '';
+    const texte = portee === 'ce-pc' ? I18n.t('parc.etiquettes.rappel_aucun_telephone')
+      : I18n.t('parc.etiquettes.rappel_consigne', { consigne: consigneEtiquette(base, Donnees.parametre(CLE_WIFI, '')) });
+    return UI.html`<p class="encadre info etiquettes-rappel-consigne" id="etiquettes-rappel-consigne">${UI.icone('alerte')}
+      <span>${texte} <button type="button" class="btn btn-fantome" id="etiquettes-voir-avertissement">${I18n.t('parc.etiquettes.voir_avertissement')}</button></span></p>`;
   }
 
   function afficherEtiquettes(conteneur, parametres) {
@@ -319,6 +464,7 @@ Object.assign(Parc, (() => {
             </section>
             <section class="carte etiquettes-apercu-carte" aria-labelledby="etiquettes-titre-apercu">
               <h2 id="etiquettes-titre-apercu">${I18n.t('parc.etiquettes.apercu')}</h2>
+              ${rappelConsigne()}
               <div class="etiquettes-apercu" id="etiquettes-apercu"></div>
             </section>
           </div>
@@ -419,6 +565,30 @@ Object.assign(Parc, (() => {
       });
     }
 
+    const voirAvertissement = UI.$('#etiquettes-voir-avertissement', conteneur);
+    if (voirAvertissement) {
+      voirAvertissement.addEventListener('click', () => {
+        const cible = UI.$('#etiquettes-avertissement-reseau', conteneur);
+        if (!cible) return;
+        cible.scrollIntoView({ block: 'center' });
+        cible.focus({ preventScroll: true });
+      });
+    }
+    const boutonWifi = UI.$('#etiquettes-wifi-enregistrer', conteneur);
+    if (boutonWifi) {
+      boutonWifi.addEventListener('click', async () => {
+        boutonWifi.disabled = true;
+        try {
+          const nom = await enregistrerWifi(UI.$('#etiquettes-wifi', conteneur).value);
+          UI.toast(nom ? I18n.t('parc.brancher_ecran.wifi_enregistre', { wifi: nom }) : I18n.t('parc.brancher_ecran.wifi_efface'), 'succes');
+          await App.reafficher();
+        } catch (erreur) {
+          App.signalerErreur(erreur, 'nom du Wi-Fi des étiquettes');
+          boutonWifi.disabled = false;
+        }
+      });
+    }
+
     boutonImprimer.addEventListener('click', () => imprimer(equipementsCoches(), reglages));
     dessinerListe();
   }
@@ -437,5 +607,10 @@ Object.assign(Parc, (() => {
     equipementsPourEtiquettes,
     planchesEtiquettes,
     afficherEtiquettes,
+    porteeAdresse,
+    estLocaleOuPrivee,
+    adresseDesQr,
+    consigneEtiquette,
+    avertissementReseau,
   };
 })());

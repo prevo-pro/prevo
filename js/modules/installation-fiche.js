@@ -30,6 +30,13 @@ const InstallationFiche = (() => {
     return UI.html`<figure class="fiche-qr" id="${id}">${dessin}<figcaption><b>${libelle}</b><span class="fiche-adresse">${texte}</span></figcaption></figure>`;
   }
 
+  // Lot 1 ergonomie (T518) : adresse principale du réseau de l'atelier ou Tailscale → l'avertissement « en 4G, le QR
+  // donne une page d'erreur » (Parc.avertissementReseau) ; rien pour « ce PC » (la fiche le dit déjà) ni hors de la coque.
+  function avertissementReseau(adresse) {
+    if (typeof Parc === 'undefined' || !Parc.avertissementReseau || Parc.porteeAdresse(adresse) === 'ce-pc') return '';
+    return Parc.avertissementReseau(adresse, { lienPortee: true, lienEtiquettes: true });
+  }
+
   function texteDemarrage(fiche) {
     const lanceur = fiche.lanceur || 'Lancer_GMAO.bat';
     if (fiche.demarrage === 'systeme') {
@@ -75,6 +82,7 @@ const InstallationFiche = (() => {
           ${fiche.autorite_presente && fiche.adresse_confiance ? qr(fiche.adresse_confiance, I18n.t('installation.rendre.faire_confiance_pc_atelier'), 'fiche-qr-confiance') : ''}
         </div>
         ${fiche.autorite_presente ? UI.html`<p class="aide">${I18n.t('installation.rendre.faire_confiance_une_fois_telephone')}</p>` : ''}
+        ${avertissementReseau(principale)}
       </section>
       <section class="fiche-bloc">
         <h3>${I18n.t('installation.rendre.arreter_relancer')}</h3>
