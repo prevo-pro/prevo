@@ -1,10 +1,10 @@
 'use strict';
 // InstallationFiche : la fiche d'accès imprimable de l'assistant d'installation (étape 8 et route #/installation/fiche ;
 // ARCHITECTURE.md §22.10 ; D131 ; CS130), mise en page d'après GET /api/installation/fiche : adresses de la porte,
-// QR « ouvrir Prévo » (UI.qrSvg sur l'adresse de la porte), QR « faire confiance au PC atelier » quand l'autorité
-// locale existe (même adresse : la porte guide le téléphone), adresse Tailscale et du mandataire, comment arrêter et
+// QR « ouvrir Prévo » (UI.qrSvg sur l'adresse de la porte) ; quand l'autorité locale existe, ce même QR sert aussi à
+// « faire confiance au PC atelier » (la porte guide le téléphone : un seul QR, T527), adresse Tailscale et du mandataire, comment arrêter et
 // relancer, où sont les données, mot de passe oublié. « Imprimer » copie la fiche dans #impression (seul imprimé,
-// règle de css/style.css) puis window.print() ; à l'impression : fond blanc, encre noire, aucun bouton, deux QR
+// règle de css/style.css) puis window.print() ; à l'impression : fond blanc, encre noire, aucun bouton, QR
 // lisibles (css/modules/installation.css, @media print). Après l'installation, la fiche reste consultable dans la
 // coque sur #/installation/fiche (responsable, mode serveur ; le serveur ne la sert qu'au PC serveur : message sinon).
 // Dépendances : UI ; App (route dans la coque). Un seul écouteur DOMContentLoaded pour le module « installation ».
@@ -65,6 +65,8 @@ const InstallationFiche = (() => {
   function rendre(fiche) {
     const principale = adressePrincipale(fiche);
     const reseau = (fiche.adresses || []).concat(fiche.adresses_mandataire || []);
+    // T527 : « faire confiance au PC atelier » a la même adresse (la porte) : un seul QR qui dit les deux usages.
+    const confiance = Boolean(fiche.autorite_presente && fiche.adresse_confiance);
     return UI.element(UI.html`<div class="fiche-acces">
       <div class="fiche-entete">
         <div><h2>${I18n.t('installation.rendre.fiche_acces_prevo')}</h2><p class="aide">${I18n.t('installation.rendre.imprimer_garder_pres_pc')}</p></div>
@@ -78,10 +80,9 @@ const InstallationFiche = (() => {
         ${fiche.adresse_tailscale ? UI.html`<p>${I18n.html('installation.rendre.hors_atelier_tailscale_application', { adresse_tailscale: fiche.adresse_tailscale })}</p>` : ''}
         ${fiche.portee === 'ce-pc' ? UI.html`<p>${I18n.t('installation.rendre.prevo_joignable_pc_aucune')}</p>` : ''}
         <div class="fiche-qrs">
-          ${qr(principale, I18n.t('installation.rendre.ouvrir_prevo'), 'fiche-qr-ouvrir')}
-          ${fiche.autorite_presente && fiche.adresse_confiance ? qr(fiche.adresse_confiance, I18n.t('installation.rendre.faire_confiance_pc_atelier'), 'fiche-qr-confiance') : ''}
+          ${qr(principale, confiance ? I18n.t('installation.rendre.ouvrir_prevo_et_confiance') : I18n.t('installation.rendre.ouvrir_prevo'), 'fiche-qr-ouvrir')}
         </div>
-        ${fiche.autorite_presente ? UI.html`<p class="aide">${I18n.t('installation.rendre.faire_confiance_une_fois_telephone')}</p>` : ''}
+        ${confiance ? UI.html`<p class="aide">${I18n.t('installation.rendre.meme_qr_confiance')}</p>` : ''}
         ${avertissementReseau(principale)}
       </section>
       <section class="fiche-bloc">

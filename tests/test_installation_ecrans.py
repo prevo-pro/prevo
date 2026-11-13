@@ -339,12 +339,16 @@ class TestParcours(CasInstallation):
         self.attendre_etape("recapitulatif")
         self.sans_defilement_horizontal("étape 8")
         page.wait_for_selector("#fiche-qr-ouvrir svg")
-        page.wait_for_selector("#fiche-qr-confiance svg")                            # autorité locale présente
+        # T527 : autorité locale présente, « faire confiance » a la même adresse (la porte) : un seul QR qui dit les deux.
+        self.assertEqual(page.locator("#fiche-qr-confiance").count(), 0)
+        self.assertEqual(page.locator("#inst-fiche .fiche-qr").count(), 1)
+        self.assertIn("Ouvrir Prévo et faire confiance au PC atelier", page.inner_text("#fiche-qr-ouvrir figcaption"))
+        self.assertIn("Un seul QR pour les deux", page.inner_text("#inst-fiche"))
         self.assertIn(str(nas), page.inner_text("#inst-fiche"))
         self.assertIn("nicolas.briand", page.inner_text("#inst-fiche"))
         self.assertGreaterEqual(page.evaluate(ZONES_TACTILES_JS), 48)
         self.sans_defilement_horizontal("fiche")
-        # Impression : la fiche copiée dans #impression, en média print : fond blanc ou transparent, aucun bouton, deux QR.
+        # Impression : la fiche copiée dans #impression, en média print : fond blanc ou transparent, aucun bouton, le QR.
         page.evaluate("InstallationFiche.preparerImpression(document.querySelector('#inst-fiche .fiche-acces'))")
         page.emulate_media(media="print")
         fonds = page.evaluate("""() => [...document.querySelectorAll('#impression .fiche-acces, #impression .fiche-acces *')]
@@ -353,7 +357,7 @@ class TestParcours(CasInstallation):
         self.assertEqual(page.evaluate("[...document.querySelectorAll('#impression button, #impression .btn')].map((b) => getComputedStyle(b).display)"),
                          ["none"])
         self.assertEqual(page.evaluate("[...document.querySelectorAll('#impression .fiche-qr svg')].map((s) => s.getBoundingClientRect().width > 100)"),
-                         [True, True])
+                         [True])
         self.assertEqual(page.evaluate("getComputedStyle(document.getElementById('ecran-installation')).display"), "none")
         self.assertEqual(page.evaluate("getComputedStyle(document.querySelector('#impression .fiche-acces h2')).color"), "rgb(0, 0, 0)")
         page.emulate_media(media="screen")

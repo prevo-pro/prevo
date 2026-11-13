@@ -4490,7 +4490,7 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   "comptes", "adresse_locale", "adresses" (la porte : `http://<adresse IP>:<port_http>/` et les noms acceptés hors
   `.ts.net`, seulement quand Prévo écoute sur le réseau ; jamais l'adresse https, §22.6), "adresse_tailscale"
   (`https://<nom .ts.net>/` derrière un mandataire), "adresses_mandataire" (`https://<nom>/` des autres noms),
-  "autorite_presente", "adresse_confiance" (la porte, qui sert `/acces/ca.crt` : QR « faire confiance »),
+  "autorite_presente", "adresse_confiance" (la porte, qui sert `/acces/ca.crt` : la même adresse que le QR « Ouvrir Prévo », T527),
   "lanceur" (`Lancer_GMAO.bat` | `lancer.sh`), "demarrage", "dossier", "dossier_donnees", "copie_sauvegardes",
   "reinitialisation" `{"script": Reinitialiser_mot_de_passe.bat, "commande"}`, "responsables" (identifiants)}`.
 - **Paramètres › Accès et installation** (T170 ; D130 « Paramètres montre l'état », D131 dernier point, CS129,
@@ -4603,7 +4603,8 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   la première étape à faire. Situation « informaticien » : après l'étape 1, toutes les étapes sur une page (une section
   par étape, « Enregistrer cette étape », rien d'automatique sans clic). Fiche d'accès (`InstallationFiche.rendre`,
   `GET fiche`) à l'étape 8, sur `#/installation/fiche` et dans la coque après l'installation (responsable) : adresses
-  de la porte, QR « Ouvrir Prévo » (`UI.qrSvg`), QR « Faire confiance au PC atelier » si `autorite_presente`, adresse
+  de la porte, QR « Ouvrir Prévo » (`UI.qrSvg`), qui dit aussi « faire confiance au PC atelier » si `autorite_presente` (même adresse,
+  la porte guide le téléphone : un seul QR, T527), adresse
   Tailscale, arrêter et relancer, où sont les données, mot de passe oublié ; « Imprimer » copie la fiche dans
   `#impression` (seul imprimé, règle de `style.css`) puis `window.print()` ; `@media print` : fond blanc, encre noire,
   aucun bouton, QR de 45 mm. « Ouvrir Prévo sans terminer » quitte l'assistant : démarrage normal sur l'accueil.

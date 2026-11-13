@@ -3,7 +3,7 @@
    connexion : les textes de chaque étape) et fiche d'accès, à l'écran comme à l'impression. Uniquement des variables
    de la charte (css/style.css) : aucune couleur codée en dur.
    Sommaire : 1 écran et progression · 2 étape (choix, champs de 48 px, textes, « Régler autrement ») · 3 fiche d'accès ·
-   4 téléphone · 5 impression (fond blanc, encre noire, pas de bouton, deux QR lisibles). */
+   4 téléphone · 5 impression (fond blanc, encre noire, pas de bouton, QR lisible). */
 
 /* =========================================================================================
    1. Écran et progression
@@ -151,7 +151,7 @@
 
 /* =========================================================================================
    5. Impression : la fiche copiée dans #impression est seule imprimée (css/style.css) ; fond blanc, encre noire,
-      aucun bouton, deux QR lisibles. Hors de #impression (aperçu du navigateur sans copie), les mêmes règles.
+      aucun bouton, QR lisible. Hors de #impression (aperçu du navigateur sans copie), les mêmes règles.
    ========================================================================================= */
 
 @media print {

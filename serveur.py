@@ -3064,8 +3064,8 @@ def fiche_acces(config):
     """GET /api/installation/fiche : les données de la fiche d'accès imprimable (T168 la met en page), d'après le
     brouillon s'il existe, sinon la configuration : adresses de la porte (adresses réseau du PC et noms acceptés, en
     http sur port_http : jamais l'adresse https, §22.6), adresse Tailscale (nom en .ts.net derrière un mandataire),
-    adresses du mandataire (les autres noms), autorité locale présente (QR « faire confiance » = la porte, qui sert
-    /acces/ca.crt), comment arrêter et relancer, le dossier des données, comment réinitialiser un mot de passe. Sans
+    adresses du mandataire (les autres noms), autorité locale présente (« faire confiance » = la porte, qui sert
+    /acces/ca.crt : la fiche n'en fait qu'un QR avec « ouvrir Prévo », T527), comment arrêter et relancer, le dossier des données, comment réinitialiser un mot de passe. Sans
     brouillon, la fiche lit le fichier de configuration (ce que « terminer » vient d'écrire, avant la relance) ; sans
     fichier lisible, les réglages du serveur."""
     brouillon = lire_brouillon(config)
