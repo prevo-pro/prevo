@@ -227,7 +227,8 @@ Règles propres au portugais du Portugal (`pt-PT`) :
 |---|---|---|---|---|---|
 | technicien | technician | teknisyen | tecnico | técnico | pas « engineer ». |
 | responsable | manager | sorumlu | responsabile | responsável | profil qui voit tout et règle les paramètres. |
-| profil | profile | profil | profilo | perfil | Demandeur / Technicien / Responsable. |
+| Direction | Management | Yönetim | Direzione | Direção | rôle et profil en lecture seule (2.3, T520) : tableau de bord, bilan mensuel, historique, coûts compris ; n'écrit rien. Majuscule (nom du rôle). |
+| profil | profile | profil | profilo | perfil | Demandeur / Technicien / Responsable / Direction. |
 | métier | trade | uzmanlık | specializzazione | especialidade | électricien, mécanicien… |
 | capacité (heures par semaine) | capacity (hours per week) | kapasite (haftalık saat) | capacità (ore settimanali) | capacidade (horas por semana) |  |
 | taux horaire | hourly rate | saat ücreti | tariffa oraria | taxa horária |  |
