@@ -5321,7 +5321,8 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   `lirePrises`, `ajouterPrise`, `priseProposee`, `reprisesRecentes`, `otsAPrendre`. Affichage : bloc « Prises en
   charge » de la carte Repères et du bon de travail (prénoms lus dans `techniciens`) ; accueil du technicien : carte
   « À prendre » (nombre d'OT ouverts sans technicien, les 5 premiers par priorité puis date, lien vers la liste filtrée
-  « Non affectés ») et les reprises de ses OT des 7 derniers jours ; accueil du responsable : « Reprises récentes ».
+  « Non affectés »), après « Mes habilitations », et les reprises de ses OT des 7 derniers jours, en tête, avant ses OT
+  (`Ordres.repriseDeMesOt`, T528) ; accueil du responsable : « Reprises récentes ».
   Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
   l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`
   (`tests/test_ordres_prise.py`).

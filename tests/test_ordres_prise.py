@@ -196,6 +196,9 @@ class TestParcoursPrise(CasPrise):
             texte = self.page.inner_text(".accueil-reprises")
             self.assertIn("Karim a repris votre " + panne, texte)
             self.assertEqual(self.page.get_attribute(".accueil-reprises a", "href"), "#/ot/" + panne)
+            # T528 : la reprise en tête (avant ses OT) ; habilitations juste après ses OT (D199), « À prendre » ensuite
+            blocs = self.page.evaluate("() => [...document.querySelectorAll('#contenu > article.carte')].map(e => e.classList[1]).filter(Boolean)")
+            self.assertEqual(blocs, ["accueil-reprises", "accueil-mes-ordres", "accueil-mes-habilitations", "accueil-a-prendre"])
 
             # Le responsable : bloc « Reprises récentes » de l'accueil et historique de la fiche
             self.changer_profil(serveur, "#/accueil", "responsable")

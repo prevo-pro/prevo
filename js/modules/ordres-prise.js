@@ -307,9 +307,10 @@ Object.assign(Ordres, (() => {
       ${listeReprises(reprises.slice(0, NOMBRE_A_PRENDRE), false)}</article>`;
   }
 
-  /** Tout ce que l'accueil du technicien reçoit de ce fichier. */
+  /** Accueil du technicien, après ses habilitations (D199 : elles suivent ses OT) : la carte « À prendre ». Ses OT repris
+   * par un collègue (repriseDeMesOt) viennent, eux, en tête de l'accueil, avant ses OT (T528). */
   function accueilTechnicien() {
-    return UI.html`${repriseDeMesOt()}${carteAPrendre()}`;
+    return carteAPrendre();
   }
 
   Object.assign(Ordres.interne, {
@@ -323,6 +324,6 @@ Object.assign(Ordres, (() => {
     // écriture
     prendre, monTechnicien,
     // accueils (accueil.js, accueil-bento.js : cherchés au moment de l'affichage)
-    accueilTechnicien, reprisesResponsable,
+    accueilTechnicien, repriseDeMesOt, reprisesResponsable,
   };
 })());

@@ -348,6 +348,7 @@ const Accueil = (() => {
         <a href="#/di/nouvelle" class="btn btn-primaire btn-gros">${UI.icone('ajouter')}<span>${I18n.html('accueil.accueil_technicien.signaler_probleme_creer_demande')}</span></a>
       </div>
       <div class="instruments accueil-instruments accueil-instruments-technicien">${indicateursConformite(compteurs, aujourdhui)}</div>
+      ${typeof Ordres !== 'undefined' && Ordres.repriseDeMesOt ? Ordres.repriseDeMesOt() : ''}
       ${carteOrdresTechnicien(mesOrdres, idsPreventifs, aujourdhui)}
       ${carteMesHabilitations(aujourdhui)}
       ${typeof Ordres !== 'undefined' && Ordres.accueilTechnicien ? Ordres.accueilTechnicien() : ''}`;
