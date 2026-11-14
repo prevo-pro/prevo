@@ -5387,6 +5387,10 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   ligne de `prises_en_charge`, journal de reprise) puis, pour un OT en attente, `changerStatut(…, 'En attente', 'En
   cours')` (journal habituel) ; confirmation qui nomme le collègue ; la fiche s'ouvre sur Exécution. La reprise au nom
   du collègue (« Reprendre le travail ») est alors repliée. Droits du serveur inchangés.
+  Téléphone (≤ 640 px) : `poserBarrePrincipale` ajoute en fin de fiche `.ot-barre-principale`, barre fixe au-dessus de
+  la barre du bas, avec une copie du bouton mis en avant (`data-action="barre-principale"`, sans id) qui clique
+  l'original ; la fiche gagne 76 px en bas (le dernier élément passe au-dessus) ; la barre se cache pendant une saisie
+  (`:has(... :focus)`, clavier ouvert) ; cachée sur PC et à l'impression.
 - **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
   `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
   4→5.

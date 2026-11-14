@@ -5,7 +5,9 @@ un seul bouton mis en avant, celui de la prochaine étape utile pour la personne
 Familles :
     principal : le bouton mis en avant selon l'état de l'OT et le profil (responsable, technicien), le reste en second ;
     suite     : OT en attente à mon nom (« Reprendre le travail », clôture sans reprise) ; OT en attente d'un collègue
-                (« Prendre la suite » : à mon nom et en cours en un geste, trace de prise, RG8 comme l'affectation).
+                (« Prendre la suite » : à mon nom et en cours en un geste, trace de prise, RG8 comme l'affectation) ;
+    telephone : barre fixe du bouton mis en avant (390 px) : visible sans défiler, agit comme l'original, ne cache pas
+                le dernier élément de la fiche, cachée pendant une saisie, pas de débordement en largeur ; absente sur PC.
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_ordres_actions.py" -v
@@ -177,6 +179,49 @@ class TestSuite(CasActions):
             self.page.wait_for_selector("#toast")
             self.assertIn("BR", self.page.inner_text("#toast"))
             self.assertEqual(ot_sur_disque(serveur.dossier, exige), avant)
+
+
+
+class TestTelephone(CasActions):
+
+    BARRE = ".ot-barre-principale button"
+
+    def test_barre_fixe_sur_telephone(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            affecte = self.creer_ot({"equipement_id": "EQ-0005", "titre": "L18 téléphone", "technicien_id": KARIM})
+            # PC (responsable : l'onglet Préparation se saisit) : pas de barre visible
+            self.page.set_viewport_size({"width": 1440, "height": 900})
+            self.aller_fiche(affecte)
+            self.assertTrue(self.page.is_hidden(".ot-barre-principale"))
+            # Téléphone : « Démarrer » visible sans défiler, dans l'écran
+            self.page.set_viewport_size({"width": 390, "height": 844})
+            self.aller_fiche(affecte)
+            self.page.evaluate("() => window.scrollTo(0, 0)")
+            self.assertTrue(self.page.is_visible(self.BARRE))
+            self.assertEqual(self.page.inner_text(self.BARRE).strip(), self.page.inner_text(PRINCIPAL).strip())
+            boite = self.page.locator(self.BARRE).bounding_box()
+            self.assertGreaterEqual(boite["y"], 0)
+            self.assertLessEqual(boite["y"] + boite["height"], 844)
+            self.assertLessEqual(self.page.evaluate("() => document.documentElement.scrollWidth"), 390)   # pas de débordement
+            # le bas de la fiche défilé jusqu'au bout : son dernier élément passe au-dessus de la barre
+            self.page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+            bas_fiche = self.page.evaluate("""() => { const f = document.querySelector('.ot-fiche .ot-onglets');
+                return f.getBoundingClientRect().bottom; }""")
+            haut_barre = self.page.evaluate("() => document.querySelector('.ot-barre-principale').getBoundingClientRect().top")
+            self.assertLessEqual(bas_fiche, haut_barre + 1)
+            # saisie : la barre se cache (clavier ouvert), puis revient
+            self.page.click(".onglet[data-onglet='preparation']")
+            champ = "#form-preparation textarea"
+            self.page.wait_for_selector(champ)
+            self.page.focus(champ)
+            self.assertTrue(self.page.is_hidden(".ot-barre-principale"))
+            self.page.evaluate("() => document.activeElement.blur()")
+            self.assertTrue(self.page.is_visible(self.BARRE))
+            # la barre agit comme l'original : « Démarrer »
+            self.page.click(self.BARRE)
+            ligne = self.attendre_disque(serveur, affecte, lambda o: o["statut"] == "En cours")
+            self.assertEqual(ligne["statut"], "En cours")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@
 // Carte Actions de la fiche (lot 2, L18) : un seul bouton mis en avant, celui de la prochaine étape utile pour la
 // personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ». Sur un OT en
 // attente ou en cours au nom d'un collègue, « Prendre la suite » : à mon nom (prendre, trace de prise) puis en cours.
+// Sur téléphone, le bouton mis en avant est redit dans une barre fixe en bas de la fiche (poserBarrePrincipale).
 // Chargé après ordres-habilitations.js ; les écrans des fichiers précédents l'appellent par Ordres.interne au moment
 // de l'appel. Complète l'objet Ordres.
 
@@ -245,7 +246,22 @@ Object.assign(Ordres, (() => {
       replies.forEach((bouton) => UI.$('.actions', plus).appendChild(bouton));
       zone.after(plus);
     }
+    poserBarrePrincipale(racine, principal);
     return principal;
+  }
+
+  /** Barre fixe en bas de la fiche (téléphone seulement, css/modules/ordres.css) : une copie du bouton mis en avant,
+   *  qui clique l'original (mêmes contrôles, même écriture). Cachée pendant une saisie (clavier ouvert). */
+  function poserBarrePrincipale(racine, principal) {
+    if (!principal) return;
+    const copie = principal.cloneNode(true);
+    copie.removeAttribute('id');
+    copie.classList.remove('ot-bouton-principal');
+    copie.dataset.action = 'barre-principale';              // ni transition ni prise : seul l'original agit
+    const barre = UI.element(UI.html`<div class="ot-barre-principale sans-impression"></div>`);
+    barre.appendChild(copie);
+    copie.addEventListener('click', () => { if (!principal.disabled && document.contains(principal)) principal.click(); });
+    racine.appendChild(barre);
   }
 
   /** Clics sur « Je prends » / « Reprendre » dans la fiche (carte Actions, onglet Préparation) ; carte Actions rangée. */

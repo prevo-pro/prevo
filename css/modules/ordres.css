@@ -106,6 +106,7 @@
 .ot-plus-options { margin-top: 10px; }
 .ot-plus-options summary { cursor: pointer; color: var(--texte-2); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
 .ot-plus-options .actions { margin-top: 6px; }
+.ot-barre-principale { display: none; }
 .ot-remise .case { font-weight: 600; }
 .ot-lignes-cout { max-width: 34rem; }
 .ot-detail-cout { margin-top: .8rem; }
@@ -136,6 +137,16 @@
   .ot-etapes li[data-facultatif]:not(.fait):not(.courant) { border-left-style: dashed; }
   .etape-facultatif { display: inline; }
   .ot-plus-options summary { min-height: 48px; }
+  /* L18 : barre fixe du bouton mis en avant, au-dessus de la barre du bas ; la fiche gagne sa hauteur en bas (le
+     dernier champ reste visible) ; cachée pendant une saisie (le clavier du téléphone est ouvert) */
+  .ot-fiche:has(.ot-barre-principale) { padding-bottom: 76px; }
+  .ot-barre-principale {
+    display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 29;
+    padding: 6px; background: var(--fond-barre-verre); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--trait-2); border-radius: 22px; box-shadow: 0 10px 30px var(--ombre);
+  }
+  .ot-barre-principale .btn { flex: 1 1 auto; min-width: 0; white-space: normal; }
+  .ot-fiche:has(:is(input:not([type=checkbox]):not([type=radio]), textarea, select):focus) .ot-barre-principale { display: none; }
   .ot-filtres select { flex: 1 1 140px; min-width: 0; }
   /* Tableaux de saisie (opérations, pièces) et de l'historique : une carte par ligne, chaque
      cellule précédée du libellé de sa colonne (data-libelle) */
