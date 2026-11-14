@@ -2969,6 +2969,67 @@ def dernieres_lignes_du_journal(config, nombre=LIGNES_DU_JOURNAL):
     return {'fichier': chemin, 'lignes': [ligne for ligne in lignes if not MOTIF_LIGNE_JOURNAL_RETIREE.search(ligne)]}
 
 
+# --- Erreurs des écrans (T547, L34) : POST /api/erreur-ecran, une ligne bornée dans journal-serveur.log ------------
+# Tout poste connecté peut en envoyer (TOUS ; sans comptes, ce PC seul) ; seul le responsable lit le journal. Champs
+# gardés : message, écran (route sans ce qui suit « ? »), version de l'écran ; le rôle vient de la session, jamais du
+# corps. Rien d'autre du corps n'est écrit (aucune donnée de formulaire). Corps de 4 Ko au plus (413, avant lecture),
+# 20 erreurs par poste (adresse du client) et par 10 minutes : au-delà, rien d'écrit, 200 {"note": false} (pas un 429 :
+# le navigateur noterait le refus en console.error, une erreur de plus à remonter).
+TAILLE_MAX_CORPS_ERREUR_ECRAN = 4096
+CHAMPS_ERREUR_ECRAN = (('ecran', 100), ('version', 30), ('message', 300))
+ERREURS_ECRAN_PAR_POSTE = 20
+FENETRE_ERREURS_ECRAN_S = 600
+MOTIF_CARACTERES_DE_CONTROLE = re.compile(r'[\x00-\x1f\x7f\u2028\u2029]')
+
+
+def texte_borne(valeur, taille):
+    """Texte d'un champ venu du navigateur, écrit sur une seule ligne : chaîne seulement (sinon vide), caractères de
+    contrôle et retours à la ligne remplacés par une espace, coupé à « taille » caractères (« … » ajouté)."""
+    if not isinstance(valeur, str):
+        return ''
+    texte = MOTIF_CARACTERES_DE_CONTROLE.sub(' ', valeur).strip()
+    return texte if len(texte) <= taille else texte[:taille] + '…'
+
+
+def ligne_erreur_ecran(demande, adresse, role):
+    """Ligne de journal-serveur.log pour une erreur d'écran : « Erreur d'écran  <adresse>  <rôle>  v<version>
+    <écran> : <message> » ; ErreurHttp 400 sans message."""
+    champs = {nom: texte_borne(demande.get(nom), taille) for nom, taille in CHAMPS_ERREUR_ECRAN}
+    if not champs['message']:
+        raise ErreurHttp(400, traduisible('erreur_ecran.message_absent', 'Message d\'erreur absent.'))
+    return traduisible('console.erreur_ecran.ligne', 'Erreur d\'écran  {adresse}  {role}  v{version}  {ecran} : '
+                       '{message}', adresse=adresse,
+                       role=role or traduisible('console.erreur_ecran.ce_pc', 'ce PC'),
+                       version=champs['version'] or '?', ecran=champs['ecran'] or '?', message=champs['message'])
+
+
+class DebitParPoste:
+    """Au plus « nombre » événements par poste (clé : adresse du client) sur une fenêtre glissante de « fenetre_s »
+    secondes ; accepter(cle, maintenant) rend faux au-delà (rien n'est compté). Mémoire bornée : les postes sans
+    événement récent sont oubliés."""
+
+    def __init__(self, nombre, fenetre_s):
+        self.nombre, self.fenetre_s = nombre, fenetre_s
+        self.instants = {}
+        self.verrou = threading.Lock()
+
+    def accepter(self, cle, maintenant):
+        with self.verrou:
+            limite = maintenant - self.fenetre_s
+            for autre in [c for c, liste in self.instants.items() if not liste or liste[-1] <= limite]:
+                del self.instants[autre]
+            liste = [instant for instant in self.instants.get(cle, []) if instant > limite]
+            if len(liste) >= self.nombre:
+                self.instants[cle] = liste
+                return False
+            liste.append(maintenant)
+            self.instants[cle] = liste
+            return True
+
+
+DEBIT_ERREURS_ECRAN = DebitParPoste(ERREURS_ECRAN_PAR_POSTE, FENETRE_ERREURS_ECRAN_S)
+
+
 def valeur_du_brouillon(cle, valeur):
     """Valeur d'une clé de configuration reçue par l'assistant, contrôlée comme à la lecture du fichier (bornes de
     CLES_CONFIGURATION) ; ErreurHttp 400 au message clair sinon."""
@@ -6622,6 +6683,7 @@ ROUTES_API = {
     ('POST', 'acces/comptes'): 'api_compte_creer',
     ('POST', 'acces/comptes/<identifiant>'): 'api_compte_changer',
     ('GET', 'acces/journal'): 'api_journal_acces',
+    ('POST', 'erreur-ecran'): 'api_erreur_ecran',
     ('POST', 'enroler'): 'api_enroler',
     ('GET', 'acces/invitations'): 'api_invitations',
     ('POST', 'acces/invitations'): 'api_invitation_creer',
@@ -6761,6 +6823,7 @@ ROLES_PAR_ROUTE = {
     ('POST', 'acces/comptes'): RESPONSABLE,
     ('POST', 'acces/comptes/<identifiant>'): RESPONSABLE,
     ('GET', 'acces/journal'): RESPONSABLE,
+    ('POST', 'erreur-ecran'): TOUS,             # T547 (L34) : chacun envoie, le responsable seul lit le journal
     ('POST', 'enroler'): TOUS,
     ('GET', 'acces/invitations'): RESPONSABLE,
     ('POST', 'acces/invitations'): RESPONSABLE,
@@ -7491,7 +7554,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         """Une ligne par écriture : heure, IP, méthode, chemin, statut. Le chemin vient du client : il est écrit en
         repr (audit I2), un retour à la ligne ou un caractère de contrôle ne peut abîmer ni la console ni
         journal-serveur.log."""
-        if self.command in ('PUT', 'POST'):
+        if self.command in ('PUT', 'POST') and not self.path.startswith('/api/erreur-ecran'):
             afficher('%s  %s  %s %s  %s' % (time.strftime('%H:%M:%S'), self.client_address[0],
                                             self.command, repr(self.path[:200]), code))
 
@@ -7736,6 +7799,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         morceaux = analyser_chemin(self.path)          # déjà contrôlé par traiter
         route = (self.command, motif_de_route(morceaux[1:])) if morceaux[0] == 'api' else None
         limite = TAILLE_MAX_CORPS_CSV if route in ROUTES_CORPS_CSV else TAILLE_MAX_CORPS
+        if route == ('POST', 'erreur-ecran') and longueur > TAILLE_MAX_CORPS_ERREUR_ECRAN:
+            raise ErreurHttp(413, traduisible('erreur_ecran.trop_long', 'Erreur d\'écran trop longue.'))
         if longueur > limite:
             raise ErreurHttp(413, traduisible('requete.envoi_trop_gros',
                                               {'one': 'Envoi trop gros ({n} Mo au maximum).',
@@ -7991,6 +8056,19 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             octets = BOM_UTF8 + (';'.join(COLONNES_JOURNAL_ACCES) + '\r\n').encode('utf-8')
         self.envoyer(200, octets, 'text/csv; charset=utf-8',
                      {'Content-Disposition': 'attachment; filename="journal-acces.csv"'})
+
+    def api_erreur_ecran(self, segment, corps):
+        """POST /api/erreur-ecran {message, ecran, version} (T547, L34 ; tout poste connecté, ce PC sans comptes) : une
+        ligne bornée dans journal-serveur.log (ligne_erreur_ecran) ; au-delà de 20 par poste et par 10 minutes, rien
+        d'écrit : {"note": false}."""
+        demande = lire_objet_json(corps)
+        role = role_effectif(self.session) if self.session is not None else ''
+        ligne = ligne_erreur_ecran(demande, self.adresse_client(), role)
+        if not DEBIT_ERREURS_ECRAN.accepter(self.adresse_client(), time.monotonic()):
+            self.envoyer_json(200, {'note': False})
+            return
+        noter_au_journal_serveur(self.config, ligne)
+        self.envoyer_json(200, {'note': True})
 
     def api_invitations(self, segment, corps):
         """GET /api/acces/invitations (responsable, §22.4) : invitations et appareils, sans empreinte, et si

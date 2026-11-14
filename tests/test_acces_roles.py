@@ -97,6 +97,7 @@ ATTENDU = {
     ("POST", "acces/comptes"): RESPONSABLE,
     ("POST", "acces/comptes/<identifiant>"): RESPONSABLE,
     ("GET", "acces/journal"): RESPONSABLE,
+    ("POST", "erreur-ecran"): TOUS,                     # T547 (L34) : chacun envoie, le responsable seul lit
     ("POST", "enroler"): TOUS,
     ("GET", "acces/invitations"): RESPONSABLE,
     ("POST", "acces/invitations"): RESPONSABLE,
@@ -486,6 +487,8 @@ class JoueurDeCases:
             corps = {"sauvegarde": self.sauvegarde, "tables": ["localisations"]}
         elif route == ("POST", "ia"):
             corps = {"chemin": "api/tags", "methode": "GET"}
+        elif route == ("POST", "erreur-ecran"):
+            corps = {"message": "Erreur d'essai de la case", "ecran": "#/accueil", "version": "essai"}
         elif route == ("POST", "acces/comptes"):
             JoueurDeCases.numero += 1
             corps = {"prenom": "Essai", "nom": "Case %d" % JoueurDeCases.numero, "role": "demandeur"}

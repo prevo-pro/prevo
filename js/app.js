@@ -1777,8 +1777,35 @@ const App = (() => {
       if (estErreurDonnees(evenement.reason)) {
         evenement.preventDefault();
         signalerErreur(evenement.reason);
+        return;
       }
+      remonterErreur(evenement.reason);
     });
+    // T547 (L34) : les autres erreurs de l'écran remontent au journal du serveur (responsable seul à le lire).
+    window.addEventListener('error', (evenement) => {
+      const lieu = evenement.filename ? ' (' + String(evenement.filename).split('/').pop() + ':' + evenement.lineno + ')' : '';
+      remonterErreur(evenement.error || evenement.message, lieu);
+    });
+  }
+
+  // T547 (L34) : POST /api/erreur-ecran {message, ecran, version}, en mode serveur seulement (ni dossier, ni démo) ;
+  // le message de l'erreur et l'écran (route sans ce qui suit « ? »), jamais une donnée saisie. 10 envois au plus par
+  // page ouverte, un même message une seule fois ; le serveur borne aussi (taille, 20 par poste et par 10 minutes).
+  const ERREURS_REMONTEES_MAX = 10;
+  const erreursRemontees = new Set();
+  function remonterErreur(erreur, lieu) {
+    if (mode !== 'serveur' || erreursRemontees.size >= ERREURS_REMONTEES_MAX) return;
+    const message = (String((erreur && erreur.message) || erreur || '') + (lieu || '')).slice(0, 300);
+    if (!message || erreursRemontees.has(message)) return;
+    erreursRemontees.add(message);
+    const ecran = String(window.location.hash || '#/').split('?')[0].slice(0, 100);
+    try {
+      fetch('/api/erreur-ecran', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'X-Prevo': '1', 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ message, ecran, version: VERSION }),
+      }).catch(() => {});
+    } catch (e) { /* rien : l'envoi d'une erreur ne doit jamais en créer une autre */ }
   }
 
   // T520 (A7) : un lien de document refusé ouvert dans le navigateur (le bilan envoyé au patron) arrive ici, renvoyé

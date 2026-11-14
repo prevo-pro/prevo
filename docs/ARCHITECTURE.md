@@ -3879,6 +3879,7 @@ Précisions de T153 (appareils enrôlés, D125, CS123) :
 | `POST /api/acces/appareils/revoquer-tous` | responsable | 200 `{"appareils_revoques": [ids]}` |
 | `POST /api/acces/deconnecter-partout` | responsable (ou soi-même) | sans corps ou `{}` : toutes ses propres sessions, la courante comprise (cookie effacé) ; `{"identifiant": X}` pour un autre compte : responsable seulement (403 sinon), 404 compte inconnu ; 200 `{"identifiant", "sessions_fermees"}` |
 | `GET /api/acces/journal` | responsable | `journal-acces.csv` tel quel (`text/csv`, `Content-Disposition: attachment`), l'en-tête seul tant qu'il n'existe pas |
+| `POST /api/erreur-ecran` | tous (session ; sans comptes, ce PC) | T547 (L34) : `{"message", "ecran", "version"}` (300, 100 et 30 caractères au plus, sur une ligne) → 200 `{"note": true}` et une ligne « Erreur d'écran  <adresse>  <rôle de la session>  v<version>  <écran> : <message> » dans `journal-serveur.log`, rien d'autre du corps ; 400 sans message, 413 au-delà de 4 Ko (avant lecture) ; au-delà de 20 par poste (adresse) et par 10 minutes (`DebitParPoste`), rien d'écrit et 200 `{"note": false}` (un 429 serait noté en `console.error` par le navigateur) |
 | `GET /api/ia/reglages` | technicien, responsable | `{"fournisseur", "url", "cle_reglee": bool, "en_ligne": bool, "portee"}`, jamais la clé (§22.12) |
 | `GET /api/installation/<etape>` | responsable, PC serveur seulement | `etat`, `fiche` (§22.10) ; 404 « Adresse inconnue dans l'API. » à tout client qui n'est pas 127.0.0.1 ou qui est mandaté, avant tout contrôle d'accès |
 | `POST /api/installation/<etape>` | responsable, PC serveur seulement | `situation`, `portee`, `compte`, `certificat`, `tailscale`, `demarrage`, `sauvegardes`, `deplacer`, `terminer` (§22.10) ; même 404 vu du réseau |
@@ -4008,6 +4009,7 @@ ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne
 | `POST /api/acces/comptes` | non | non | non | oui | non |
 | `POST /api/acces/comptes/<identifiant>` | non | non | non | oui | non |
 | `GET /api/acces/journal` | non | non | non | oui | non |
+| `POST /api/erreur-ecran` | oui | oui | oui | oui | oui |
 | `POST /api/enroler` | oui | oui | oui | oui | oui |
 | `GET /api/acces/invitations` | non | non | non | oui | non |
 | `POST /api/acces/invitations` | non | non | non | oui | non |
