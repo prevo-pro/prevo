@@ -1923,6 +1923,7 @@ I18n.ajouter('it', {
   'preventif.liste.gammes_maintenance_preventive_echeances': { one: 'Piani di manutenzione preventiva, scadenze e calendario della prossima settimana ({n}).', other: 'Piani di manutenzione preventiva, scadenze e calendario delle prossime {n} settimane.' },
   'preventif.liste.generer_ot_echus': 'Genera gli OdL scaduti',
   'preventif.liste.nouvelle_gamme': 'Nuovo piano di manutenzione',
+  'preventif.liste.nouvelle_visite_periodique': 'Nuova visita periodica (piano di manutenzione)',
   'preventif.liste.preventif': 'Preventiva',
   'preventif.liste.vues_preventif': 'Viste della manutenzione preventiva',
   'preventif.modifier_dans_fenetre.decrivez_operation_realiser': 'Descrivi l\'attività da eseguire.',

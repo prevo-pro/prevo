@@ -142,6 +142,7 @@ Règles propres au portugais du Portugal (`pt-PT`) :
 |---|---|---|---|---|---|
 | préventif | preventive | önleyici | preventiva | preventiva | adjectif et nom (« le préventif » : preventive maintenance). Pas d'abréviation PM/PPM. it, pt-PT : adjectif féminin accordé à « manutenzione » / « manutenção » ; « o preventivo » (pt-PT) s'emploie comme nom. |
 | gamme (de préventif) | task list | bakım planı | piano di manutenzione | gama de manutenção | modèle récurrent de travail. Pluriel : task lists. Choix tranché (voir la dernière section). pt-PT « gama » est l'usage portugais ; pluriel tr : « bakım planları » (sans nombre). |
+| visite périodique (gamme) | periodic visit (task list) | periyodik ziyaret (bakım planı) | visita periodica (piano di manutenzione) | visita periódica (gama) | libellé du seul bouton d'entrée « Nouvelle visite périodique (gamme) » de l'écran Préventif (L26) ; partout ailleurs : « gamme ». |
 | opération (d'une gamme / d'un OT) | task | görev | attività | operação | une ligne de la gamme. |
 | préventif systématique | fixed-interval preventive | takvime bağlı önleyici | preventiva a calendario | preventiva sistemática | déclenché par le calendrier. |
 | préventif conditionnel | condition-based preventive | duruma bağlı önleyici | preventiva su condizione | preventiva condicionada | déclenché par un compteur ou un seuil. |

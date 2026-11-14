@@ -1923,6 +1923,7 @@ I18n.ajouter('pt-PT', {
   'preventif.liste.gammes_maintenance_preventive_echeances': { one: 'Gamas de manutenção preventiva, vencimentos e calendário da próxima semana ({n}).', other: 'Gamas de manutenção preventiva, vencimentos e calendário das próximas {n} semanas.' },
   'preventif.liste.generer_ot_echus': 'Gerar as OT vencidas',
   'preventif.liste.nouvelle_gamme': 'Nova gama',
+  'preventif.liste.nouvelle_visite_periodique': 'Nova visita periódica (gama)',
   'preventif.liste.preventif': 'Preventiva',
   'preventif.liste.vues_preventif': 'Vistas da manutenção preventiva',
   'preventif.modifier_dans_fenetre.decrivez_operation_realiser': 'Descreva a operação a realizar.',

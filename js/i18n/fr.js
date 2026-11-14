@@ -1919,6 +1919,7 @@ I18n.ajouter('fr', {
   'preventif.liste.gammes_maintenance_preventive_echeances': { one: 'Gammes de maintenance préventive, échéances et calendrier des {n} prochaines semaines.', other: 'Gammes de maintenance préventive, échéances et calendrier des {n} prochaines semaines.' },
   'preventif.liste.generer_ot_echus': 'Générer les OT échus',
   'preventif.liste.nouvelle_gamme': 'Nouvelle gamme',
+  'preventif.liste.nouvelle_visite_periodique': 'Nouvelle visite périodique (gamme)',
   'preventif.liste.preventif': 'Préventif',
   'preventif.liste.vues_preventif': 'Vues du préventif',
   'preventif.modifier_dans_fenetre.decrivez_operation_realiser': 'Décrivez l\'opération à réaliser.',

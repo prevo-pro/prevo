@@ -1923,6 +1923,7 @@ I18n.ajouter('tr', {
   'preventif.liste.gammes_maintenance_preventive_echeances': { one: 'Önleyici bakım planları, vade tarihleri ve önümüzdeki {n} haftanın takvimi.', other: 'Önleyici bakım planları, vade tarihleri ve önümüzdeki {n} haftanın takvimi.' },
   'preventif.liste.generer_ot_echus': 'Vadesi gelen iş emirlerini oluştur',
   'preventif.liste.nouvelle_gamme': 'Yeni bakım planı',
+  'preventif.liste.nouvelle_visite_periodique': 'Yeni periyodik ziyaret (bakım planı)',
   'preventif.liste.preventif': 'Önleyici',
   'preventif.liste.vues_preventif': 'Önleyici bakım görünümleri',
   'preventif.modifier_dans_fenetre.decrivez_operation_realiser': 'Yapılacak görevi tanımlayın.',

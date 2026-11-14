@@ -453,9 +453,12 @@ class TestEcrans(CasPreventif):
         with ServeurPrevo() as serveur:
             page = self.ouvrir(serveur, "#/preventif")
             equipement = par_id(serveur.dossier, "gammes.csv")[GAMME_ECHUE]["equipement_id"]
+            # L26 : le bouton d'entrée dit « visite périodique (gamme) » ; le formulaire garde « Nouvelle gamme »
+            self.assertIn("Nouvelle visite périodique (gamme)", page.inner_text("#pv-nouvelle"))
             page.click("#pv-nouvelle")
             page.wait_for_selector("#pv-formulaire-gamme")
             formulaire = "#pv-formulaire-gamme "
+            self.assertEqual(page.inner_text("main h1"), "Nouvelle gamme")
             self.assertTrue(page.is_visible(formulaire + "[data-champ=periodicite_jours]"))
             self.assertFalse(page.is_visible(formulaire + "[data-champ=compteur_id]"))
             page.select_option(formulaire + "[name=declencheur]", "compteur")      # champs selon le déclencheur

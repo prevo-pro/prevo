@@ -1921,6 +1921,7 @@ I18n.ajouter('en', {
   'preventif.liste.gammes_maintenance_preventive_echeances': { one: 'Preventive maintenance task lists, due dates and calendar for the next {n} weeks.', other: 'Preventive maintenance task lists, due dates and calendar for the next {n} weeks.' },
   'preventif.liste.generer_ot_echus': 'Generate overdue WOs',
   'preventif.liste.nouvelle_gamme': 'New task list',
+  'preventif.liste.nouvelle_visite_periodique': 'New periodic visit (task list)',
   'preventif.liste.preventif': 'Preventive',
   'preventif.liste.vues_preventif': 'Preventive views',
   'preventif.modifier_dans_fenetre.decrivez_operation_realiser': 'Describe the task to carry out.',

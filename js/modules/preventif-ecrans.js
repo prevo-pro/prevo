@@ -164,7 +164,7 @@ Object.assign(Preventif, (() => {
           <div><h1>${I18n.t('preventif.liste.preventif')}</h1><p>${I18n.t('preventif.liste.gammes_maintenance_preventive_echeances', { n: semaines })}</p></div>
           ${App.estResponsable() ? UI.html`<div class="actions">
             <button type="button" class="btn btn-secondaire" id="pv-generer">${UI.icone('actualiser')}${I18n.t('preventif.liste.generer_ot_echus')}</button>
-            <a class="btn btn-primaire" id="pv-nouvelle" href="#/preventif/gamme/nouvelle">${UI.icone('ajouter')}${I18n.t('preventif.liste.nouvelle_gamme')}</a>
+            <a class="btn btn-primaire" id="pv-nouvelle" href="#/preventif/gamme/nouvelle">${UI.icone('ajouter')}${I18n.t('preventif.liste.nouvelle_visite_periodique')}</a>
           </div>` : ''}
         </div>
         <div class="pv-onglets"></div>
