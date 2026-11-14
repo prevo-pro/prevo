@@ -246,7 +246,8 @@ Object.assign(Indicateurs, (() => {
   /**
    * Ce qui manque au coût de maintenance (RG7, mêmes OT que Indicateurs.global : clôturés dans la période) →
    * { techniciens: [{ technicienId, technicien, heures }], articles: [{ articleId, article, quantite }], complet }.
-   * Un taux horaire ou un prix vide (ou illisible) compte pour 0 dans le coût : ces heures et ces pièces y manquent.
+   * Un taux horaire ou un prix vide (ou illisible) compte pour 0 dans le coût : ces heures et ces pièces y manquent ; une
+   * heure d'un technicien sans taux propre prend le taux moyen du service quand il est réglé (L30) : elle ne manque pas.
    * Un 0 saisi est une valeur (non listé).
    */
   function manquesCout(periodeChoisie, filtres) {
@@ -257,7 +258,7 @@ Object.assign(Indicateurs, (() => {
       (ctx.tempsParOt.get(ot.id) || []).forEach((ligne) => {
         const heures = nombreOuZero(ligne.heures);
         const technicien = ctx.techniciens.get(texte(ligne.technicien_id));
-        if (heures <= 0 || (technicien && nombre(technicien.taux_horaire) !== null)) return;
+        if (heures <= 0 || Ordres.tauxHoraire(technicien) !== null) return;       // L30 : ou le taux moyen
         const element = techniciens.get(texte(ligne.technicien_id)) || { technicienId: texte(ligne.technicien_id), technicien: technicien || null, heures: 0 };
         element.heures += heures;
         techniciens.set(element.technicienId, element);

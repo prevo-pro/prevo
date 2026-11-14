@@ -268,7 +268,7 @@ const Indicateurs = (() => {
   /** Coût RG7 d'un OT : même calcul et mêmes arrondis qu'Ordres.cout(ot).total, sur les index. */
   function coutDeLOt(ot, ctx) {
     const montantHeures = (ctx.tempsParOt.get(ot.id) || []).reduce((somme, ligne) =>
-      somme + nombreOuZero(ligne.heures) * nombreOuZero((ctx.techniciens.get(ligne.technicien_id) || {}).taux_horaire), 0);
+      somme + nombreOuZero(ligne.heures) * (Ordres.tauxHoraire(ctx.techniciens.get(ligne.technicien_id)) || 0), 0);
     const quantites = new Map();
     (ctx.mouvementsParOt.get(ot.id) || []).forEach((mouvement) => {
       if (mouvement.type !== 'sortie' && mouvement.type !== 'retour') return;
@@ -425,11 +425,14 @@ const Indicateurs = (() => {
     return { pannes: resultat(liste.length, null, { effectif: liste.length, ots }), dureeArret, mtbf, mttr, disponibilite, attentePieces: attente };
   }
 
-  /** Coût (RG7) des OT clôturés dont la date de fin tombe dans la période. */
+  /** Coût (RG7) des OT clôturés dont la date de fin tombe dans la période ; `heures` (L30) : leurs heures passées
+   *  (heures-homme, toujours dites, avec ou sans taux horaire). */
   function coutDesOrdres(ordres, periodeChoisie, ctx) {
     const comptes = ordres.filter((ot) => estCloture(ot) && dansPeriode(ot.date_fin, periodeChoisie));
-    return resultat(arrondi(comptes.reduce((somme, ot) => somme + coutDeLOt(ot, ctx), 0)), null,
-      { effectif: comptes.length, ots: comptes.map((ot) => ot.id), note: I18n.t('indicateurs.cout_des_ordres.prix_actuel_pieces_limite') });
+    const heures = comptes.reduce((somme, ot) => somme + (ctx.tempsParOt.get(ot.id) || []).reduce((total, ligne) => total + nombreOuZero(ligne.heures), 0), 0);
+    return Object.assign(resultat(arrondi(comptes.reduce((somme, ot) => somme + coutDeLOt(ot, ctx), 0)), null,
+      { effectif: comptes.length, ots: comptes.map((ot) => ot.id), note: I18n.t('indicateurs.cout_des_ordres.prix_actuel_pieces_limite') }),
+    { heures: arrondi(heures, 2) });
   }
 
   /** Indicateurs d'un équipement : { tempsRequis, pannes, dureeArret, mtbf, mttr, disponibilite,

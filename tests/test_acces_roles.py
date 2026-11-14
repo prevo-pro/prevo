@@ -763,8 +763,9 @@ class TestDemandeur(unittest.TestCase):
         self.assertNotIn(b"TEC-0001", refus.octets)
         versions = self.requete("GET", "/api/versions").json()["tables"]
         self.assertEqual(set(versions), TABLES_DU_DEMANDEUR)
-        for table, valeur in versions.items():           # T506 : equipements (cout_arret_h caché), version voilée
-            (self.assertNotEqual if table == "equipements" else self.assertEqual)(
+        # T506 : equipements (cout_arret_h caché), version voilée ; T544 (L30) : parametres (taux horaire moyen caché) aussi.
+        for table, valeur in versions.items():
+            (self.assertNotEqual if table in ("equipements", "parametres") else self.assertEqual)(
                 valeur["version"], version_de((self.serveur.dossier / (table + ".csv")).read_bytes()), table)
         technicien = self.client.requete("GET", "/api/versions", cookie=self.cookies["technicien"]).json()["tables"]
         self.assertEqual(set(technicien), TOUTES_LES_TABLES)

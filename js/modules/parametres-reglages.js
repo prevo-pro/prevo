@@ -41,6 +41,12 @@ const ParametresReglages = (() => {
       get aide() { return I18n.t('parametres.aide.preventif_respecte_cloture_plus'); } },
     { cle: 'seuil_remplacement_pct', type: 'entier', get libelle() { return I18n.t('parametres.libelle.seuil_reparer_remplacer'); }, defaut: '50', min: 1, max: 1000,
       get aide() { return I18n.t('parametres.aide.cout_12_derniers_mois'); } },
+    // Lot 2 ergonomie (T544, L30) : taux horaire moyen du service, facultatif (vide : aucun), en devise par heure ; lu par
+    // Ordres.tauxHoraire seul. Le coût d'une heure d'un technicien sans taux propre (RG7 : OT, tableau de bord, bilan).
+    // Caché par le serveur au technicien et au demandeur (D126 : LIGNES_CACHEES_PAR_ROLE de serveur.py).
+    { cle: 'taux_horaire_moyen', type: 'decimal', facultatif: true, defaut: '', min: 0, max: 10000,
+      get libelle() { return I18n.t('parametres.libelle.taux_horaire_moyen', { devise: UI.symboleDevise() }); },
+      get aide() { return I18n.t('parametres.aide.taux_horaire_moyen'); } },
     { cle: 'heures_fonct_defaut', type: 'decimal', get libelle() { return I18n.t('parametres.libelle.heures_fonctionnement_jour_defaut'); }, defaut: '8', min: 1, max: 24,
       get aide() { return I18n.t('parametres.aide.gammes_compteur_seulement_estime'); } },
     // Lot 3 bis (ARCHITECTURE.md §16.1) : seuils des suggestions de préventif.

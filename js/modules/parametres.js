@@ -296,7 +296,7 @@ const Parametres = (() => {
   function erreurReglage(reglage, valeur) {
     if (reglage.devises) return UI.deviseConnue(valeur) ? '' : I18n.t('parametres.erreur_reglage.devise_inconnue');
     if (reglage.valeurs) return reglage.valeurs.includes(valeur) ? '' : I18n.t('parametres.erreur_reglage.choisissez_parmi', { join: reglage.valeurs.join(', ') });
-    if (reglage.min === undefined) return '';
+    if (reglage.min === undefined || (reglage.facultatif && String(valeur || '').trim() === '')) return '';   // L30 : vide permis
     const nombre = Donnees.nombre(valeur);
     const entier = reglage.type === 'entier';
     if (nombre !== null && nombre >= reglage.min && nombre <= reglage.max && (!entier || Number.isInteger(nombre))) return '';
@@ -331,7 +331,8 @@ const Parametres = (() => {
       await Donnees.modifier('parametres', (lignes) => {
         reglagesEnregistres().forEach((reglage) => {
           const nombre = reglage.type === 'entier' || reglage.type === 'decimal';
-          const valeur = nombre ? String(Donnees.nombre(valeurs[reglage.cle])) : valeurs[reglage.cle];
+          const vide = reglage.facultatif && String(valeurs[reglage.cle] || '').trim() === '';
+          const valeur = nombre && !vide ? String(Donnees.nombre(valeurs[reglage.cle])) : (vide ? '' : valeurs[reglage.cle]);
           const ligne = lignes.find((l) => l.cle === reglage.cle);
           if (ligne) ligne.valeur = valeur; else lignes.push({ cle: reglage.cle, valeur: valeur });
         });

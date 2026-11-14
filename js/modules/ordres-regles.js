@@ -607,18 +607,23 @@ const Ordres = (() => {
     return { ok: erreurs.length === 0, erreurs, avertissements, piecesManquantes: manquantes, habilitation };
   }
 
+  /** L30 : taux horaire d'un technicien (RG7) : le sien (0 compris), sinon le taux moyen du service, sinon null. */
+  function tauxHoraire(technicien) {
+    const propre = technicien ? Donnees.nombre(technicien.taux_horaire) : null;
+    const moyen = Donnees.nombre(Donnees.parametre('taux_horaire_moyen', ''));       // seul lecteur de ce réglage
+    return propre !== null ? propre : (moyen !== null && moyen >= 0 ? moyen : null);
+  }
+
   /**
    * Coût d'un OT (RG7), dans la devise réglée : { heures, pieces, soustraitance, total, detail }.
-   *   heures : Σ heures passées × taux horaire du technicien (main-d'œuvre, dans la devise réglée) ;
-   *   pieces : Σ (sorties − retours de stock imputées à l'OT) × prix unitaire de l'article ;
-   *   soustraitance : cout_soustraitance ; total : la somme.
-   *   detail : { nombreHeures, temps: [{ technicien_id, date, heures, taux, montant }],
-   *              pieces: [{ article_id, libelle, sorties, retours, quantite, prix, montant }] }.
+   *   heures : Σ heures passées × tauxHoraire (du technicien, sinon moyen du service), sinon 0 ; total : la somme ;
+   *   pieces : Σ (sorties − retours de stock imputées à l'OT) × prix unitaire de l'article ; soustraitance : cout_soustraitance ;
+   *   detail : { nombreHeures, temps: [{ technicien_id, date, heures, taux, montant }], pieces: [{ article_id, libelle, sorties, retours, quantite, prix, montant }] }.
    */
   function cout(ot) {
     const temps = lignesDeLOt('ot_temps', ot.id).map((ligne) => {
       const technicien = Donnees.trouver('techniciens', ligne.technicien_id);
-      const taux = nombre(technicien && technicien.taux_horaire);
+      const taux = tauxHoraire(technicien) || 0;
       const heures = nombre(ligne.heures);
       return { technicien_id: ligne.technicien_id, date: ligne.date, heures, taux, montant: heures * taux };
     });
@@ -677,8 +682,7 @@ const Ordres = (() => {
     STATUTS, TYPES, PRIORITES, rappelConsignation, RAISONS_HABILITATION, ORIGINES_HABILITATION,
     // règles pures (ARCHITECTURE.md §10)
     transitionsPossibles, verifierPassage, verifierCloture, cout, verifierHabilitation, estOuvert, enRetard,
-    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, filtrer, datePrevueParDefaut,
-    dateFinDansLeFutur,
+    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, filtrer, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire,
     // RG8 (D186, D191) : exigences de l'OT, contrôle, dérogation du responsable (marqueur du journal)
     habilitationsExigees, controleHabilitation, marqueurDerogation, lireDerogation, derogationAccordee,
     // affichage (les écritures, l'export et le bon de travail sont ajoutés par les fichiers suivants)

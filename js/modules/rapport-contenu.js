@@ -412,7 +412,7 @@ const Rapport = (() => {
     // compléter aussi ; les autres tuiles, comme avant la 2.2.
     rapport.tuiles.forEach((tuile) => lignes.push('• ' + tuile.libelle + ' : ' + ((tuile.cle === 'coutArret' || tuile.partiel || tuile.ou) && tuile.precision
       ? I18n.t('rapport.texte_courriel.valeur_precision', { valeur: tuile.texteValeur, precision: tuile.precision }) : tuile.texteValeur)
-      + ' (' + tuile.tendance.precedent.texte + ')'));
+      + (tuile.heuresHomme ? ' — ' + tuile.heuresHomme : '') + ' (' + tuile.tendance.precedent.texte + ')'));
     lignes.push('', I18n.t('rapport.activite.titre'));
     Rapport.interne.phrasesActivite(rapport.activite).forEach((phrase) => lignes.push('• ' + phrase));
     lignes.push('', I18n.t('rapport.texte_courriel.faits_marquants'));
@@ -509,7 +509,7 @@ h1 { font-size: 15pt; margin: 0; } h2 { font-size: 10.5pt; margin: 0 0 4px; }
 .tuiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
 .tuile { border: 1px solid #888; border-radius: 6px; padding: 5px 7px; min-width: 0; line-height: 1.25; }
 .tuile .lib { font-weight: 600; } .tuile .val { font-size: 15pt; font-weight: 700; margin: 2px 0; overflow-wrap: anywhere; }
-.tuile .raison { font-size: 8pt; color: #333; }
+.tuile .raison { font-size: 8pt; color: #333; } .tuile .heures-homme { font-weight: 600; }
 .feu { display: block; font-size: 8pt; } .feu.bon { color: #14532d; } .feu.mauvais { color: #7f1d1d; font-weight: 600; } .feu.neutre { color: #333; }
 .colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
 ul, ol { margin: 0; padding-left: 16px; } li { margin: 0 0 2px; }
@@ -558,6 +558,7 @@ figure { margin: 0; } figcaption { font-weight: 600; margin-bottom: 2px; }
 ${lignesEtat(rapport.etat).map((ligne) => UI.html`<p class="provisoire">${ligne}</p>`)}</header>
 <section class="tuiles">${rapport.tuiles.map((tuile) => UI.html`<div class="tuile" data-cle="${tuile.cle}">
   <div class="lib">${tuile.libelle}</div><div class="val">${tuile.texteValeur}</div>
+  ${tuile.heuresHomme ? UI.html`<div class="heures-homme">${tuile.heuresHomme}</div>` : ''}
   ${tuile.precision ? UI.html`<div class="raison">${tuile.precision}</div>` : ''}
   ${feu(tuile, tuile.tendance.precedent)}${feu(tuile, tuile.tendance.annee)}</div>`)}</section>
 <p class="activite"><b>${I18n.html('rapport.activite.titre')} :</b> ${Rapport.interne.phrasesActivite(rapport.activite).join(' · ')}.</p>

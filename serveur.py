@@ -7063,9 +7063,14 @@ COLONNES_CACHEES_PAR_ROLE = {
                    'contrats_prestataires': ('montant_annuel',), 'equipements': ('cout_arret_h',)},
     'demandeur': {'equipements': ('cout_arret_h',)},
 }
-# Lignes retirées : (colonne, valeurs). D114 : ni page Technicien ni page Intervention pour le demandeur.
+# Lignes retirées : (colonne, valeurs). D114 : ni page Technicien ni page Intervention pour le demandeur. T544 (L30,
+# D126) : le taux horaire moyen du service (ligne « taux_horaire_moyen » de parametres.csv, que tous les rôles lisent)
+# n'est servi ni au technicien ni au demandeur (ni à l'appareil), comme le taux horaire d'un technicien ; parametres
+# s'écrit par le responsable seul (TABLES_DU_RESPONSABLE_EN_ECRITURE) : aucun PUT de ces rôles à recomposer.
+LIGNE_TAUX_HORAIRE_MOYEN = ('cle', ('taux_horaire_moyen',))
 LIGNES_CACHEES_PAR_ROLE = {
-    'demandeur': {'wiki_pages': ('type', ('technicien', 'intervention'))},
+    'demandeur': {'wiki_pages': ('type', ('technicien', 'intervention')), 'parametres': LIGNE_TAUX_HORAIRE_MOYEN},
+    'technicien': {'parametres': LIGNE_TAUX_HORAIRE_MOYEN},
 }
 # Demande créée par le demandeur : statut « Nouvelle », champs de la décision du responsable vides, et (format 5)
 # champs du retour de la réparation vides (le mot pour l'opérateur, la date et le prénom viennent de la clôture).
@@ -7108,8 +7113,12 @@ def voile_des_versions(config, identite, table):
     avec une clé que le serveur seul connaît (donnees/acces/.cle-versions, 256 bits en texte, tirés au premier
     besoin, gardés entre deux démarrages, jamais copiés dans une sauvegarde) ; même valeur dans GET /api/csv, /api/versions, la
     réponse d'un PUT, d'un ajout et d'un 409, et c'est elle que le serveur compare à X-Version-Attendue. Inchangée
-    pour les autres (sans comptes, responsable, table sans colonne cachée). À appeler en tenant VERROU_ECRITURE."""
-    if identite is None or not COLONNES_CACHEES_PAR_ROLE.get(role_effectif(identite), {}).get(table):
+    pour les autres (sans comptes, responsable, table sans colonne cachée). T544 : de même pour parametres quand une
+    ligne lui en est retirée (LIGNE_TAUX_HORAIRE_MOYEN : le taux se retrouverait à l'empreinte ; wiki_pages, dont le
+    demandeur ne reçoit pas certaines pages, garde sa version). À appeler en tenant VERROU_ECRITURE."""
+    role = role_effectif(identite) if identite is not None else ''
+    lignes_secretes = table == 'parametres' and LIGNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
+    if identite is None or not (COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table) or lignes_secretes):
         return lambda version: version
     chemin = os.path.join(dossier_acces(config), '.cle-versions')
     cle = lire_octets(chemin)

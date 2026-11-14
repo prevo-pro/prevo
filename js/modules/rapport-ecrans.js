@@ -452,6 +452,8 @@ Object.assign(Rapport, (() => {
           precision: I18n.t('rapport.manque.disponibilite_heures'), ou: I18n.t('rapport.ou.heures_fonctionnement') });
       }
       if (tuile.cle !== 'cout') return;
+      // L30 : les heures-homme du mois (OT clôturés, ceux du coût) toujours dites, que le coût soit chiffré ou non.
+      tuile.heuresHomme = I18n.t('rapport.manque.heures_homme', { duree: enHeures(global.cout.heures || 0) });
       ['precedent', 'annee'].filter((cle) => references[cle] !== null && (!manques.complet || !references[cle])).forEach((cle) => {
         const libelleReference = cle === 'precedent' ? libellePrecedent : libelleAnnee;
         tuile.tendance[cle] = { sens: null, texte: I18n.t('rapport.comparer.non_comparable_cout_incomplet', { libelleReference }) };

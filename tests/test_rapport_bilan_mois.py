@@ -140,7 +140,7 @@ class TestTableauDeBord(CasBilan):
         self.assertIn("1 panne avec une durée", arret)
         cout = blancs(bandeau.locator('[data-indicateur="cout"]').inner_text())
         self.assertIn("173,50 €", cout)
-        self.assertIn("Partiel : 2,5 h sans taux horaire (Équipe), 1 pièce sans prix (Magasin)", cout)
+        self.assertIn("Partiel : 2,5 h sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
 
 
 class TestRapportBilan(CasBilan):
@@ -161,7 +161,8 @@ class TestRapportBilan(CasBilan):
     def test_ce_qui_manque_et_ou_le_renseigner(self):
         lignes = {l["libelle"]: (blancs(l["raison"]), l.get("ou")) for l in self.donnees()["nonCalculables"]}
         self.assertEqual(lignes["Coût de main-d'œuvre non chiffré"],
-                         ("taux horaire non renseigné pour Karim Benali (2,5 h)", "Équipe › fiche du technicien › Taux horaire"))
+                         ("taux horaire non renseigné pour Karim Benali (2,5 h)",
+                          "Paramètres › Taux horaire moyen du service, ou Équipe › fiche du technicien › Taux horaire"))
         self.assertEqual(lignes["Pièces sorties sans prix"], ("prix non renseigné pour JT-12 (2)", "Magasin › fiche de l'article › Prix unitaire"))
         self.assertEqual(lignes["Équipements hors disponibilité"][1], "Parc › fiche de la machine › Heures de fonctionnement par jour")
         self.assertEqual(lignes["Coût de l'arrêt — non chiffré"], ("PI-01 (1,5 h d'arrêt)", "Parc › fiche de la machine › Coût d'une heure d'arrêt"))
@@ -196,7 +197,7 @@ class TestRapportBilan(CasBilan):
         self.assertNotIn("Rapport figé par Prévo", page)
         self.assertIn('<p class="activite"><b>Activité du mois :</b> 3 correctifs déclarés', page)
         self.assertIn("<h2>Ce qui manque, et où le renseigner</h2>", page)
-        self.assertIn("— à renseigner : Équipe › fiche du technicien › Taux horaire</li>", page)
+        self.assertIn("— à renseigner : Paramètres › Taux horaire moyen du service, ou Équipe › fiche du technicien › Taux horaire</li>", page)
         self.assertIn("MTTR : 1,5 h", page)
         self.assertIn("Mois en cours : chiffres provisoires au 20/11/2026.", blancs(r["courriel"]["corps"]))
         for interdit in ("NaN", "Infinity", "undefined", "null"):
