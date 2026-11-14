@@ -318,7 +318,8 @@ class CasRecetteAssistant(GestesRecette, CasInstallation):
         page.wait_for_selector("#inst-dossier", state="visible")
         page.click("#inst-dossier-garder")
         page.wait_for_selector("#inst-dossier", state="hidden")
-        page.wait_for_selector("#fiche-qr-ouvrir svg")
+        # La fiche d'accès : son QR sur « ce PC » ; hors de « ce PC », ni adresse ni QR avant « Terminer » (L02, lot 2).
+        page.wait_for_selector("#inst-fiche #fiche-qr-ouvrir svg, #inst-fiche #fiche-telephones-apres-terminer")
         page.click("#inst-terminer")
         page.wait_for_selector("#inst-attente", state="visible")
         self.assertIn("Prévo se relance", page.inner_text("#inst-attente"))

@@ -5043,6 +5043,7 @@ I18n.ajouter('tr', {
   'installation.rendre.prevo_fichiers_csv_documents': 'Prévo: <b>{dossier}</b>. CSV dosyaları ve belgeler: <b>{dossierDonnees}</b> (günlük yedek, yedekler alt klasöründe).',
   'installation.rendre.prevo_joignable_pc_aucune': 'Prévo yalnızca bu PC\'den erişilebilir: başka adres yok.',
   'installation.rendre.sur_ce_pc': 'Bu PC\'de: <b class="fiche-adresse">{adresse}</b>',
+  'installation.rendre.telephones_apres_terminer': 'Telefonlar, «Bitir ve Prévo\'yu aç» düğmesine tıkladığınız anda bağlanabilecek. Adresleri ve taranacak QR kodu o zaman Prévo ana sayfasında ve bu sayfada (Ayarlar › Erişim ve kurulum) olacak.',
   'installation.rendre_une_page.situation_informaticien_toutes_etapes': '“Bilişimci” durumu: tüm adımlar bu sayfada. Her adım kendi düğmesiyle kaydedilir; “Bitir” prevo.config.json dosyasını yazar ve sunucuyu yeniden başlatır.',
   'installation.section_etape.commencer': 'Başla',
   'installation.section_etape.enregistrer_etape': 'Bu adımı kaydet',

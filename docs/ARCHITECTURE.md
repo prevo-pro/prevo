@@ -4516,7 +4516,15 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   (`https://<nom .ts.net>/` derrière un mandataire), "adresses_mandataire" (`https://<nom>/` des autres noms),
   "autorite_presente", "adresse_confiance" (la porte, qui sert `/acces/ca.crt` : la même adresse que le QR « Ouvrir Prévo », T527),
   "lanceur" (`Lancer_GMAO.bat` | `lancer.sh`), "demarrage", "dossier", "dossier_donnees", "copie_sauvegardes",
-  "reinitialisation" `{"script": Reinitialiser_mot_de_passe.bat, "commande"}`, "responsables" (identifiants)}`.
+  "reinitialisation" `{"script": Reinitialiser_mot_de_passe.bat, "commande"}`, "responsables" (identifiants),
+  "telephones_apres_terminer"}`. Lot 2 ergonomie (L02) : tant que l'installation n'est pas terminée (brouillon
+  présent ou configuration absente) et que le serveur n'écoute que ce PC (`ce_pc_seulement` : D122, CS120, aucune
+  écoute réseau avant « Terminer »), « adresses », « adresse_tailscale », « adresses_mandataire » et
+  « adresse_confiance » sont vides et `telephones_apres_terminer` vrai : la fiche ne montre ni adresse ni QR pour
+  les téléphones (elles ne répondraient pas) mais « Les téléphones pourront se connecter dès que vous aurez cliqué
+  sur « Terminer et ouvrir Prévo » » ; après la relance, l'accueil montre la carte « Connecter un téléphone ». Voie
+  retenue plutôt qu'une page d'attente ouverte au réseau pendant l'installation : elle contredirait D122/CS120
+  (écoute réseau sans responsable ni certificat). Tests : `tests/test_telephone_installation.py`.
 - **Paramètres › Accès et installation** (T170 ; D130 « Paramètres montre l'état », D131 dernier point, CS129,
   CS130) — mêmes routes `installation/<etape>`, même garde (PC serveur, et la session du responsable avec comptes) ;
   rien de nouveau dans `ROUTES_API` ni `ROLES_PAR_ROUTE` :

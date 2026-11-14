@@ -3230,7 +3230,10 @@ def fiche_acces(config):
     adresses du mandataire (les autres noms), autorité locale présente (« faire confiance » = la porte, qui sert
     /acces/ca.crt : la fiche n'en fait qu'un QR avec « ouvrir Prévo », T527), comment arrêter et relancer, le dossier des données, comment réinitialiser un mot de passe. Sans
     brouillon, la fiche lit le fichier de configuration (ce que « terminer » vient d'écrire, avant la relance) ; sans
-    fichier lisible, les réglages du serveur."""
+    fichier lisible, les réglages du serveur.
+    L02 (lot 2) : tant que l'installation n'est pas terminée, le serveur n'écoute que ce PC (D122, CS120 : jamais
+    d'écoute réseau avant « Terminer », ni sans compte responsable ni certificat) ; aucune adresse pour les autres
+    appareils n'est alors donnée (elle ne répondrait pas) : « telephones_apres_terminer » vrai, la fiche le dit."""
     brouillon = lire_brouillon(config)
     reglages = brouillon
     if reglages is None:
@@ -3246,6 +3249,12 @@ def fiche_acces(config):
     adresses = ['http://%s:%d/' % (ip, port) for ip in adresses_ip_reseau()] if reseau else []
     adresses += ['http://%s:%d/' % (nom, port) for nom in noms if reseau and not nom.endswith('.ts.net')]
     tailscale = next(('https://%s/' % nom for nom in noms if mandataire and nom.endswith('.ts.net')), None)
+    adresses_mandataire = ['https://%s/' % nom for nom in noms if mandataire and not nom.endswith('.ts.net')]
+    installation_en_cours = brouillon is not None or not config.reglages.get('_present')
+    telephones_apres_terminer = bool(installation_en_cours and config.ce_pc_seulement
+                                     and (adresses or tailscale or adresses_mandataire))
+    if telephones_apres_terminer:
+        adresses, tailscale, adresses_mandataire = [], None, []
     windows = config.systeme.startswith('win')
     responsables = [compte['identifiant'] for compte in comptes_du_serveur(config)
                     if compte.get('role') == 'responsable' and compte.get('actif')]
@@ -3255,7 +3264,8 @@ def fiche_acces(config):
             'adresse_locale': 'http://127.0.0.1:%d/' % port,
             'adresses': adresses,
             'adresse_tailscale': tailscale,
-            'adresses_mandataire': ['https://%s/' % nom for nom in noms if mandataire and not nom.endswith('.ts.net')],
+            'adresses_mandataire': adresses_mandataire,
+            'telephones_apres_terminer': telephones_apres_terminer,
             'autorite_presente': certificat_de_l_autorite(config) is not None,
             'adresse_confiance': adresses[0] if adresses else None,
             'lanceur': NOM_LANCEUR_WINDOWS if windows else NOM_LANCEUR_AUTRE,

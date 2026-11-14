@@ -457,10 +457,17 @@ class TestParcours(CasAssistant):
         self.ok(client.post("sauvegardes", {"dossier": ""}))
         self.ok(client.post("terminer"))
         self.comparer_cle_a_cle(self.configuration_ecrite(instance), ATTENDU_INTRANET)
+        # L02 (lot 2) : avant la relance, le serveur n'écoute que ce PC : aucune adresse pour les autres appareils.
+        fiche = self.ok(client.get("fiche"))
+        self.assertEqual((fiche["adresses_mandataire"], fiche["adresses"], fiche["telephones_apres_terminer"]),
+                         ([], [], True))
+        # Serveur derrière le mandataire (comme après la relance, sans les comptes du test) : l'adresse du mandataire.
+        instance.config.reglages["mandataire"] = True
         fiche = self.ok(client.get("fiche"))
         self.assertEqual(fiche["adresses_mandataire"], ["https://" + NOM_INTRANET + "/"])
         self.assertEqual(fiche["adresses"], [])                                          # rien n'écoute sur le réseau
         self.assertIsNone(fiche["adresse_tailscale"])
+        self.assertFalse(fiche["telephones_apres_terminer"])
 
     def test_configuration_existante_modifiee_sans_perdre_les_cles_inconnues(self):
         """Paramètres › Accès et installation (T170) : l'assistant rejoué sur une configuration présente la modifie
@@ -702,9 +709,17 @@ class TestDeplacerEtBrouillon(CasAssistant):
                           etat["etapes"]["tailscale"]), ("fait", "fait", "fait", "a_faire"))
         self.assertTrue(etat["responsable_existe"])
         self.assertTrue(etat["parc_present"])                                   # L07 : la démo a des machines
+        # L02 (lot 2) : installation pas terminée, le serveur n'écoute que ce PC : ni adresse ni QR pour les téléphones.
+        fiche = self.ok(client.get("fiche"))
+        self.assertEqual((fiche["adresses"], fiche["adresse_tailscale"], fiche["adresse_confiance"],
+                          fiche["telephones_apres_terminer"]), ([], None, None, True))
+        # Le même brouillon sur un serveur déjà ouvert au réseau (Paramètres rejoue l'assistant) : les adresses de la porte.
+        second.config.ecoute = "0.0.0.0"
         fiche = self.ok(client.get("fiche"))
         self.assertIn("http://pc-atelier.lan:8090/", fiche["adresses"])
         self.assertTrue(all(a.startswith("http://") and a.endswith(":8090/") for a in fiche["adresses"]))
+        self.assertFalse(fiche["telephones_apres_terminer"])
+        second.config.ecoute = "127.0.0.1"
         # Un brouillon abîmé vaut « aucun » : l'assistant repart de la situation sans erreur 500.
         Path(second.config.dossier_donnees, "installation.json").write_text("{pas du json", encoding="utf-8")
         self.assertIsNone(self.ok(client.get("etat"))["brouillon"])

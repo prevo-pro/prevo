@@ -14,7 +14,8 @@ et la relance sont remplacées, jamais lancées ; faux mkcert et faux tailscale 
     Atelier à 375 px : sans défilement horizontal, zones tactiles de 48 px ; mot de passe trop court refusé avant
                   l'envoi, erreur du serveur affichée telle quelle sous le bouton (dossier de copie introuvable) ;
                   certificat automatique avec le faux mkcert ; démarrage « avec le PC » : l'élévation notée, jamais
-                  lancée ; fiche avec les deux QR ; impression (média print) : fonds blancs ou transparents, aucun
+                  lancée ; fiche sans adresse ni QR pour les téléphones avant « Terminer » (L02), avec le QR une fois
+                  le serveur ouvert au réseau ; impression (média print) : fonds blancs ou transparents, aucun
                   bouton, deux QR lisibles, le reste de la page caché ;
     Solo « dehors » : Tailscale (faux) détecté et appliqué d'un clic, adresse et rappels, « unattended » ;
     informaticien : toutes les étapes sur une page, chacune avec ses textes, « Régler autrement » et son bouton ;
@@ -346,7 +347,16 @@ class TestParcours(CasInstallation):
         self.continuer()
         self.attendre_etape("recapitulatif")
         self.sans_defilement_horizontal("étape 8")
+        # L02 (lot 2) : Prévo n'écoute encore que ce PC : ni adresse ni QR pour les téléphones, la phrase qui dit quand.
+        page.wait_for_selector("#fiche-telephones-apres-terminer")
+        self.assertIn("dès que vous aurez cliqué sur « Terminer et ouvrir Prévo »", page.inner_text("#inst-fiche"))
+        self.assertEqual(page.locator("#inst-fiche .fiche-qr").count(), 0)
+        # La fiche d'un serveur déjà ouvert au réseau (Paramètres rejoue l'assistant) : l'adresse de la porte et son QR.
+        instance.config.ecoute = "0.0.0.0"
+        page.reload()
+        self.attendre_etape("recapitulatif")
         page.wait_for_selector("#fiche-qr-ouvrir svg")
+        self.assertEqual(page.locator("#fiche-telephones-apres-terminer").count(), 0)
         # T527 : autorité locale présente, « faire confiance » a la même adresse (la porte) : un seul QR qui dit les deux.
         self.assertEqual(page.locator("#fiche-qr-confiance").count(), 0)
         self.assertEqual(page.locator("#inst-fiche .fiche-qr").count(), 1)
@@ -372,6 +382,7 @@ class TestParcours(CasInstallation):
         page.evaluate("InstallationFiche.terminerImpression()")
         self.assertEqual(page.evaluate("document.getElementById('impression').childElementCount"), 0)
         self.assertEqual(self.enregistreur.relances, [])
+        instance.config.ecoute = "127.0.0.1"
         # L03 : l'identifiant rappelé au récapitulatif ; « Terminer » le laisse à l'écran de connexion (onglet seul).
         self.assertEqual(page.inner_text("#inst-recap-identifiant"), "nicolas.briand")
         page.click("#inst-terminer")
@@ -600,6 +611,19 @@ class TestFicheAdresses(CasInstallation):
         page.evaluate("document.getElementById('essai-fiche').remove()")
         fiche = self.rendre(adresses=[self.WIFI])                                   # une seule carte : rien de replié
         self.assertEqual(fiche.locator("#fiche-autres-adresses").count(), 0)
+
+    def test_pendant_l_installation_ni_adresse_ni_qr_pour_les_telephones(self):
+        """L02 : le serveur n'écoute que ce PC jusqu'à « Terminer » : la fiche le dit au lieu d'une adresse muette."""
+        page = self.page
+        instance = self.lancer(source=commun.DOSSIER_DEMO)
+        page.goto(instance.url + "/")
+        page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
+        fiche = self.rendre(adresses=[], adresse_confiance=None, telephones_apres_terminer=True)
+        self.assertEqual(fiche.locator(".fiche-qr").count(), 0)
+        self.assertEqual(fiche.locator("#fiche-adresse-principale").count(), 0)
+        self.assertIn("Les téléphones pourront se connecter dès que vous aurez cliqué sur « Terminer et ouvrir Prévo »",
+                      fiche.locator("#fiche-telephones-apres-terminer").inner_text())
+        self.assertIn("http://127.0.0.1:8600/", fiche.inner_text())                      # le PC lui-même, oui
 
 
 class TestDepuisLaCoque(CasInstallation):

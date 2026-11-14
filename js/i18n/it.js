@@ -5042,6 +5042,7 @@ I18n.ajouter('it', {
   'installation.rendre.prevo_fichiers_csv_documents': 'Prévo: <b>{dossier}</b>. I file CSV e i documenti: <b>{dossierDonnees}</b> (backup quotidiano nella sua sottocartella sauvegardes).',
   'installation.rendre.prevo_joignable_pc_aucune': 'Prévo è raggiungibile solo su questo PC: nessun altro indirizzo.',
   'installation.rendre.sur_ce_pc': 'Su questo PC: <b class="fiche-adresse">{adresse}</b>',
+  'installation.rendre.telephones_apres_terminer': 'I telefoni potranno collegarsi non appena avrete cliccato su «Termina e apri Prévo». Il loro indirizzo e il QR da scansionare saranno allora nella pagina iniziale di Prévo e su questa scheda (Impostazioni › Accesso e installazione).',
   'installation.rendre_une_page.situation_informaticien_toutes_etapes': 'Situazione «tecnico informatico»: tutti i passaggi in questa pagina. Ogni passaggio si salva con il suo pulsante; «Termina» scrive prevo.config.json e riavvia il server.',
   'installation.section_etape.commencer': 'Inizia',
   'installation.section_etape.enregistrer_etape': 'Salva questo passaggio',
