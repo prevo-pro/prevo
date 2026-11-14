@@ -178,6 +178,32 @@ class TestJournalEnAttente(unittest.TestCase):
         self.assertFalse((dossier / "lecture-seule.log").exists())
 
 
+class TestDernieresErreurs(unittest.TestCase):
+    """Relevé T549 (D130) : Paramètres montre les dernières erreurs et avertissements du journal, pas les écritures."""
+
+    def test_seules_les_alertes_marquees_sortent(self):
+        dossier = Path(tempfile.mkdtemp(prefix="prevo-l34-alertes-"))
+        self.addCleanup(shutil.rmtree, dossier, True)
+        journal = serveur.JournalServeur(str(dossier / serveur.NOM_JOURNAL_SERVEUR))
+        journal.ecrire("10:00:00  127.0.0.1  POST '/api/tables/ordres_travail'  200")
+        journal.ecrire(serveur.texte_de_la_console(serveur.traduisible("console.copie.impossible", "Copie impossible.")),
+                       alerte=serveur.est_une_alerte(serveur.traduisible("console.copie.impossible", "Copie impossible.")))
+        journal.ecrire("GET '/api/x' : Traceback (most recent call last):\n  File \"serveur.py\"\nValueError: essai",
+                       alerte=True)
+        journal.ecrire("une ligne qui cite PREVO_IA_CLE", alerte=True)
+        journal.ecrire("Prévo 2.3.0 - serveur local de GMAO")
+        config = type("Config", (), {"dossier_donnees": str(dossier)})()
+        lignes = serveur.dernieres_lignes_du_journal(config)["lignes"]
+        self.assertEqual(len(lignes), 4)
+        self.assertTrue(lignes[0].endswith(" ! Copie impossible."))
+        self.assertTrue(lignes[1].endswith(" ! GET '/api/x' : Traceback (most recent call last):"))
+        self.assertEqual(lignes[2:], ['  File "serveur.py"', "ValueError: essai"])
+        self.assertFalse(serveur.est_une_alerte(serveur.traduisible("console.copie.a_jour", "Copie à jour.")))
+        # Rien que des écritures et le démarrage : aucune ligne (« Aucune erreur notée. » à l'écran).
+        (dossier / serveur.NOM_JOURNAL_SERVEUR).write_text("2026-11-14 10:00:00 Prévo 2.3.0\n", encoding="utf-8")
+        self.assertEqual(serveur.dernieres_lignes_du_journal(config)["lignes"], [])
+
+
 class TestDebitParPoste(unittest.TestCase):
 
     def test_par_poste_et_fenetre_glissante(self):

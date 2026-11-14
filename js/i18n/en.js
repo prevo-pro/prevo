@@ -5387,7 +5387,7 @@ I18n.ajouter('en', {
   'parametres.etat_serveur.adresses': 'Addresses',
   'parametres.etat_serveur.aucune_erreur_notee': 'No errors recorded.',
   'parametres.etat_serveur.copie_sauvegardes': 'Backup copy',
-  'parametres.etat_serveur.dernieres_lignes': 'Last lines of {fichier}.',
+  'parametres.etat_serveur.dernieres_lignes': 'Latest errors and warnings recorded in {fichier}; the full log is in the diagnostic file.',
   'parametres.etat_serveur.installation': 'Installation',
   'parametres.etat_serveur.journal_serveur': 'Server log',
   'parametres.etat_serveur.pas_terminee_ouvrir_assistant': 'Not complete: <a href="#/installation">open the wizard</a>.',

@@ -159,7 +159,11 @@ class TestCarte(CasAcces):
         page = self.page
         instance = self.lancer()
         journal = self.dossier / "donnees" / "journal-serveur.log"
-        journal.write_text("\n".join(["ligne %d" % i for i in range(25)] + ["PREVO_IA_CLE=secret-a-ne-pas-montrer", "fin"]) + "\n", encoding="utf-8")
+        # Relevé T549 (D130) : seules les erreurs et avertissements (« ! ») sortent, pas les écritures notées.
+        alerte = "2026-11-14 10:00:00 ! "
+        ecriture = "2026-11-14 10:00:00 10:00:00  127.0.0.1  POST '/api/tables/demandes'  200"
+        journal.write_text("\n".join([alerte + "ligne %d" % i for i in range(25)] + [ecriture, alerte + "PREVO_IA_CLE=secret-a-ne-pas-montrer",
+                                     alerte + "fin", ecriture]) + "\n", encoding="utf-8")
         self.session(instance)
         self.ouvrir_parametres(instance.url)
         self.attendre_carte()
@@ -175,7 +179,8 @@ class TestCarte(CasAcces):
         self.assertIn("Non détecté", page.inner_text("#acces-tailscale"))
         self.assertIn("Aucune copie réglée", page.inner_text("#acces-copie"))
         lignes = page.inner_text("#acces-journal pre").splitlines()
-        self.assertEqual(lignes, ["ligne %d" % i for i in range(7, 25)] + ["fin"])       # les 20 dernières, sans « cle »
+        self.assertEqual(lignes, [alerte + "ligne %d" % i for i in range(6, 25)] + [alerte + "fin"])  # 20 dernières, sans « cle »
+        self.assertNotIn("POST", page.inner_text("#acces-journal"))
         self.assertNotIn("secret-a-ne-pas-montrer", page.content())
         self.assertNotIn("PREVO_IA_CLE=", page.inner_text("#acces-journal"))
         # Les sept sous-sections, repliées, avec le résumé des valeurs en cours ; aucune modification en attente.
@@ -194,7 +199,7 @@ class TestCarte(CasAcces):
                       page.inner_text('#carte-acces details[data-section="reglages"]'))
         # « Actualiser » relit le journal.
         with journal.open("a", encoding="utf-8") as fichier:
-            fichier.write("nouvelle ligne\n")
+            fichier.write(alerte + "nouvelle ligne\n")
         page.click("#acces-actualiser")
         page.wait_for_function("document.querySelector('#acces-journal').textContent.includes('nouvelle ligne')")
         self.assertEqual(self.enregistreur.relances, [])

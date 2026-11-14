@@ -5389,7 +5389,7 @@ I18n.ajouter('it', {
   'parametres.etat_serveur.adresses': 'Indirizzi',
   'parametres.etat_serveur.aucune_erreur_notee': 'Nessun errore registrato.',
   'parametres.etat_serveur.copie_sauvegardes': 'Copia dei backup',
-  'parametres.etat_serveur.dernieres_lignes': 'Ultime righe di {fichier}.',
+  'parametres.etat_serveur.dernieres_lignes': 'Ultimi errori e avvisi registrati in {fichier}; il registro completo è nel file di diagnostica.',
   'parametres.etat_serveur.installation': 'Installazione',
   'parametres.etat_serveur.journal_serveur': 'Registro del server',
   'parametres.etat_serveur.pas_terminee_ouvrir_assistant': 'Non terminata: <a href="#/installation">apri la procedura guidata</a>.',

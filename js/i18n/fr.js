@@ -5385,7 +5385,7 @@ I18n.ajouter('fr', {
   'parametres.etat_serveur.adresses': 'Adresses',
   'parametres.etat_serveur.aucune_erreur_notee': 'Aucune erreur notée.',
   'parametres.etat_serveur.copie_sauvegardes': 'Copie des sauvegardes',
-  'parametres.etat_serveur.dernieres_lignes': 'Dernières lignes de {fichier}.',
+  'parametres.etat_serveur.dernieres_lignes': 'Dernières erreurs et avertissements notés dans {fichier} ; le journal complet est dans le fichier de diagnostic.',
   'parametres.etat_serveur.installation': 'Installation',
   'parametres.etat_serveur.journal_serveur': 'Journal du serveur',
   'parametres.etat_serveur.pas_terminee_ouvrir_assistant': 'Pas terminée : <a href="#/installation">ouvrir l\'assistant</a>.',

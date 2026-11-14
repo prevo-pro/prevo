@@ -5390,7 +5390,7 @@ I18n.ajouter('tr', {
   'parametres.etat_serveur.adresses': 'Adresler',
   'parametres.etat_serveur.aucune_erreur_notee': 'Kayıtlı hata yok.',
   'parametres.etat_serveur.copie_sauvegardes': 'Yedeklerin kopyası',
-  'parametres.etat_serveur.dernieres_lignes': '{fichier} dosyasının son satırları.',
+  'parametres.etat_serveur.dernieres_lignes': '{fichier} dosyasına kaydedilen son hatalar ve uyarılar; günlüğün tamamı tanılama dosyasındadır.',
   'parametres.etat_serveur.installation': 'Kurulum',
   'parametres.etat_serveur.journal_serveur': 'Sunucu günlüğü',
   'parametres.etat_serveur.pas_terminee_ouvrir_assistant': 'Tamamlanmadı: <a href="#/installation">sihirbazı açın</a>.',

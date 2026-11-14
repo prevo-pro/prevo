@@ -642,10 +642,12 @@ def preparer_console():
 def afficher(texte, journal=True):
     """Affiche une ligne tout de suite (flush) : les tests lisent la console en direct. Un Traduisible est écrit dans
     la langue de la console (texte_de_la_console, T297). Aussi dans journal-serveur.log (T547, L34), sauf
-    journal=False : une ligne qui porte un secret (mot de passe provisoire de --reinitialiser) ne va qu'à l'écran."""
+    journal=False : une ligne qui porte un secret (mot de passe provisoire de --reinitialiser) ne va qu'à l'écran.
+    Relevé T549 (D130) : un message de CODES_ALERTE_DU_JOURNAL (erreur ou avertissement) y est marqué « ! »."""
+    alerte = est_une_alerte(texte)
     texte = texte_de_la_console(texte)
     if journal and JOURNAL_SERVEUR is not None:
-        JOURNAL_SERVEUR.ecrire(texte)
+        JOURNAL_SERVEUR.ecrire(texte, alerte=alerte)
     if sys.stdout is None:          # lancé sans console (pythonw)
         return
     try:
@@ -907,6 +909,25 @@ def verifier_regles_portee(reglages, responsable_existe):
     return avertissements
 
 
+# Relevé T549 (D130 : Paramètres montre « les dernières erreurs ») : messages de la console qui sont une erreur ou un
+# avertissement, marqués « ! » au journal (JournalServeur.ecrire) ; les erreurs des écrans en sont, les erreurs
+# internes (trace d'une 500) sont marquées par GestionnaireRequetes.traiter.
+MARQUE_ALERTE_DU_JOURNAL = '! '
+CODES_ALERTE_DU_JOURNAL = frozenset((
+    'console.accueil.avertissement', 'console.copie.ancienne_non_supprimee', 'console.copie.etat_non_enregistre',
+    'console.copie.impossible', 'console.demarrage_refuse', 'console.erreur_ecran.ligne', 'console.format.erreur_interne',
+    'console.format.interrompu', 'console.format.journal_non_ecrit', 'console.format.laisse_tel_quel',
+    'console.format.parametres_sans_perte', 'console.format.plus_recent', 'console.format.sauvegarde_impossible',
+    'console.reinitialiser.impossible', 'console.relance.impossible', 'console.sauvegardes.avant_mise_a_jour_impossible',
+    'console.sauvegardes.jour_impossible', 'console.sauvegardes.non_mis_a_jour', 'console.sauvegardes.version_non_ecrite',
+))
+
+
+def est_une_alerte(texte):
+    """Vrai pour un message de CODES_ALERTE_DU_JOURNAL (erreur ou avertissement)."""
+    return isinstance(texte, Traduisible) and texte.code in CODES_ALERTE_DU_JOURNAL
+
+
 class JournalServeur:
     """Journal du serveur : donnees/journal-serveur.log, 5 fichiers de 1 Mo au plus. Écrit dans tous les cas, avec
     ou sans console (T547, L34) : la console (afficher), les erreurs internes et celles des écrans (POST
@@ -928,27 +949,29 @@ class JournalServeur:
     def ouvrir(self):
         with self.verrou:
             lignes, self.en_attente = self.en_attente or [], None
-        for horodatage, texte in lignes:
-            self.ecrire(texte, horodatage)
+        for horodatage, texte, alerte in lignes:
+            self.ecrire(texte, horodatage, alerte)
 
     def abandonner(self):
         with self.verrou:
             self.en_attente, self.abandonne = None, True
 
-    def ecrire(self, texte, horodatage=None):
+    def ecrire(self, texte, horodatage=None, alerte=False):
+        """alerte (relevé T549, D130) : erreur ou avertissement, écrit « <horodatage> ! <texte> » ; Paramètres n'en
+        montre que celles-là (dernieres_lignes_du_journal), le fichier de diagnostic garde tout."""
         horodatage = horodatage or datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with self.verrou:
             if self.abandonne:
                 return
             if self.en_attente is not None:
                 if len(self.en_attente) < self.LIGNES_EN_ATTENTE_MAX:
-                    self.en_attente.append((horodatage, texte))
+                    self.en_attente.append((horodatage, texte, alerte))
                 return
             try:
                 if os.path.exists(self.chemin) and os.path.getsize(self.chemin) >= TAILLE_JOURNAL_SERVEUR:
                     self.tourner()
                 with open(self.chemin, 'a', encoding='utf-8', newline='\n') as fichier:
-                    fichier.write('%s %s\n' % (horodatage, texte))
+                    fichier.write('%s %s%s\n' % (horodatage, MARQUE_ALERTE_DU_JOURNAL if alerte else '', texte))
             except OSError:
                 pass
 
@@ -2801,6 +2824,8 @@ LIGNES_DU_JOURNAL = 20                  # « journal » : les 20 dernières lign
 # Par prudence, aucune ligne contenant « cle » (ia_cle, PREVO_IA_CLE…) ne sort du journal, même si le serveur n'y écrit
 # jamais une clé ni un mot de passe.
 MOTIF_LIGNE_JOURNAL_RETIREE = re.compile(r'cle', re.IGNORECASE)
+# Début d'une ligne du journal : « AAAA-MM-JJ HH:MM:SS », puis « ! » pour une erreur ou un avertissement (T549).
+MOTIF_ENTETE_DU_JOURNAL = re.compile(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} (! )?')
 ETAT_FAIT, ETAT_A_FAIRE, ETAT_SANS_OBJET = 'fait', 'a_faire', 'sans_objet'
 MODES_CERTIFICAT = ('automatique', 'reseau_prive', 'fichiers', 'mandataire')
 ACTIONS_TAILSCALE = ('detecter', 'appliquer', 'unattended', 'plus_tard')
@@ -3029,14 +3054,24 @@ def brouillon_depuis_configuration(config):
 
 def dernieres_lignes_du_journal(config, nombre=LIGNES_DU_JOURNAL):
     """GET /api/installation/journal (T170, D130 : « Paramètres montre l'état… dernières erreurs ») : les « nombre »
-    dernières lignes de donnees/journal-serveur.log, sans celles qui contiennent « cle » (prudence) ; {"fichier": None,
-    "lignes": []} quand le journal n'existe pas (serveur avec console et sans --journal)."""
+    dernières lignes d'erreur ou d'avertissement de donnees/journal-serveur.log (relevé T549 : depuis que le journal
+    est toujours écrit, il porte aussi le démarrage et les écritures ; seules les lignes marquées « ! » par
+    JournalServeur, avec la suite d'un message sur plusieurs lignes comme une trace d'erreur, sont gardées), sans
+    celles qui contiennent « cle » (prudence) ; aucune : « Aucune erreur notée. » à l'écran ; {"fichier": None,
+    "lignes": []} sans journal. Le journal complet reste dans le fichier de diagnostic."""
     chemin = os.path.join(config.dossier_donnees, NOM_JOURNAL_SERVEUR)
     octets = lire_octets(chemin)
     if octets is None:
         return {'fichier': None, 'lignes': []}
-    lignes = octets.decode('utf-8', 'replace').splitlines()[-nombre:]
-    return {'fichier': chemin, 'lignes': [ligne for ligne in lignes if not MOTIF_LIGNE_JOURNAL_RETIREE.search(ligne)]}
+    alertes = []
+    dans_une_alerte = False
+    for ligne in octets.decode('utf-8', 'replace').splitlines():
+        entete = MOTIF_ENTETE_DU_JOURNAL.match(ligne)
+        if entete:
+            dans_une_alerte = bool(entete.group(1))
+        if dans_une_alerte and not MOTIF_LIGNE_JOURNAL_RETIREE.search(ligne):
+            alertes.append(ligne)
+    return {'fichier': chemin, 'lignes': alertes[-nombre:]}
 
 
 # --- Erreurs des écrans (T547, L34) : POST /api/erreur-ecran, une ligne bornée dans journal-serveur.log ------------
@@ -5731,7 +5766,8 @@ def noter_au_journal_serveur(config, texte):
     pouvoir se relire après coup (D133)."""
     afficher(texte)
     if JOURNAL_SERVEUR is None:
-        JournalServeur(os.path.join(config.dossier_donnees, 'journal-serveur.log')).ecrire(texte_de_la_console(texte))
+        JournalServeur(os.path.join(config.dossier_donnees, 'journal-serveur.log')).ecrire(texte_de_la_console(texte),
+                                                                                           alerte=est_une_alerte(texte))
 
 
 def est_une_date(nom):
@@ -8085,7 +8121,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             traceback.print_exc()
             if JOURNAL_SERVEUR is not None:     # T547 (L34) : l'erreur se relit après coup (fichier de diagnostic)
                 JOURNAL_SERVEUR.ecrire('%s %s : %s' % (self.command, repr(self.path[:200]),
-                                                       traceback.format_exc().rstrip()))
+                                                       traceback.format_exc().rstrip()), alerte=True)
             self.envoyer_erreur(ErreurHttp(500, traduisible('requete.erreur_interne', 'Erreur interne du serveur.')))
 
     def traiter_api(self, methode, morceaux, corps):

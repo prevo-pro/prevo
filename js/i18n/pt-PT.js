@@ -5389,7 +5389,7 @@ I18n.ajouter('pt-PT', {
   'parametres.etat_serveur.adresses': 'Endereços',
   'parametres.etat_serveur.aucune_erreur_notee': 'Nenhum erro registado.',
   'parametres.etat_serveur.copie_sauvegardes': 'Cópia das cópias de segurança',
-  'parametres.etat_serveur.dernieres_lignes': 'Últimas linhas de {fichier}.',
+  'parametres.etat_serveur.dernieres_lignes': 'Últimos erros e avisos registados em {fichier}; o registo completo está no ficheiro de diagnóstico.',
   'parametres.etat_serveur.installation': 'Instalação',
   'parametres.etat_serveur.journal_serveur': 'Registo do servidor',
   'parametres.etat_serveur.pas_terminee_ouvrir_assistant': 'Não concluída: <a href="#/installation">abrir o assistente</a>.',
