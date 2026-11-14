@@ -3887,6 +3887,12 @@ Précisions de T153 (appareils enrôlés, D125, CS123) :
   immédiat. Un appareil n'a que les droits du demandeur (colonne « appareil » de §22.5, `role_effectif`) ; le mot de
   passe d'un appareil n'existe pas (`POST /api/mot-de-passe` répond 403 « mot de passe actuel incorrect ») et
   `POST /api/deconnexion` ne le révoque pas (seul le responsable révoque un appareil).
+- **Poste de déclaration** (T536, L11 : atelier sans Wi-Fi) : `POST /api/acces/invitations {"poste": true}` marque
+  l'invitation, puis l'appareil qui l'ouvre (`"poste": true` dans `appareils.json`, la liste du responsable et
+  `GET /api/session`). Aucun droit de plus : c'est un appareil enrôlé (`role_effectif` demandeur). Seul l'écran change
+  (`App.estPosteDeclaration`) : « Signaler un problème » seul, nom de l'opérateur demandé à chaque déclaration (inscrit
+  dans `demandeur`, nom libre comme pour tout demandeur), ni brouillon ni liste de demandes, retour à zéro après
+  l'envoi (bouton ou 30 s).
 - **Oubli** : à chaque écriture, les invitations finies depuis plus de 30 jours et les appareils révoqués ou expirés
   dont la dernière activité date de plus de 30 jours sont retirés du fichier.
 - **Journal des connexions** : `invitation` (qui = le responsable), `appareil` (qui = `appareil:<id>`, à

@@ -1601,6 +1601,8 @@ def session_publique(identite):
         return None
     publique = {champ: identite.get(champ, '') for champ in CHAMPS_SESSION}
     publique['langue'] = langue_publique(publique['langue'])
+    if identite.get('poste'):                       # T536 (L11) : appareil enrôlé comme poste de déclaration
+        publique['poste'] = True
     return publique
 
 
@@ -1732,10 +1734,11 @@ def identifiant_neuf(elements, prefixe):
 
 
 def invitation_publique(invitation, maintenant):
-    """Ce que le responsable voit d'une invitation : jamais l'empreinte."""
+    """Ce que le responsable voit d'une invitation : jamais l'empreinte. « poste » : invitation d'un poste de
+    déclaration (T536, L11)."""
     return {'id': str(invitation.get('id', '')), 'cree_le': str(invitation.get('cree_le', '')),
             'expire_le': str(invitation.get('expire_le', '')), 'revoquee': bool(invitation.get('revoquee')),
-            'valide': invitation_valide(invitation, maintenant)}
+            'valide': invitation_valide(invitation, maintenant), 'poste': bool(invitation.get('poste'))}
 
 
 def appareil_public(appareil, maintenant):
@@ -1743,7 +1746,7 @@ def appareil_public(appareil, maintenant):
     return {'id': str(appareil.get('id', '')), 'libelle': str(appareil.get('libelle', '')),
             'nom_demandeur': str(appareil.get('nom_demandeur', '')), 'cree_le': str(appareil.get('cree_le', '')),
             'vu_le': str(appareil.get('vu_le', '')), 'revoque': bool(appareil.get('revoque')),
-            'valide': appareil_valide(appareil, maintenant)}
+            'valide': appareil_valide(appareil, maintenant), 'poste': bool(appareil.get('poste'))}
 
 
 def libelle_appareil(agent):
@@ -1757,9 +1760,12 @@ def libelle_appareil(agent):
     return ' '.join(agent.split())[:LONGUEUR_MAX_LIBELLE_APPAREIL] or 'Appareil'
 
 
-def creer_invitation(config, heures=None):
+def creer_invitation(config, heures=None, poste=False):
     """Invitation du responsable (D125) : jeton rendu une seule fois (seule son empreinte est écrite), valable
-    « heures » (1 à 168 ; invitation_heures de la configuration par défaut) ; rend (jeton, invitation publique)."""
+    « heures » (1 à 168 ; invitation_heures de la configuration par défaut) ; rend (jeton, invitation publique).
+    T536 (L11) : « poste » vrai, l'appareil qui l'ouvre devient un poste de déclaration (PC ou tablette de l'atelier,
+    partagé) : mêmes droits qu'un appareil enrôlé (role_effectif : demandeur), rien de plus ; son écran se réduit à
+    « Signaler un problème », qui demande le nom de l'opérateur à chaque déclaration et se vide après l'envoi."""
     if heures is None:
         heures = (getattr(config, 'reglages', None) or {}).get('invitation_heures', 24)
     if (isinstance(heures, bool) or not isinstance(heures, int)
@@ -1774,6 +1780,8 @@ def creer_invitation(config, heures=None):
         invitation = {'id': identifiant_neuf(contenu['invitations'], PREFIXE_INVITATION),
                       'empreinte': empreinte_jeton(jeton), 'cree_le': instant_iso(maintenant),
                       'expire_le': instant_iso(maintenant + heures * 3600), 'revoquee': False}
+        if poste:
+            invitation['poste'] = True
         contenu['invitations'].append(invitation)
         ecrire_appareils(config, contenu)
     return jeton, invitation_publique(invitation, maintenant)
@@ -1804,6 +1812,8 @@ def enroler_appareil(config, jeton_invitation, nom, agent):
         appareil = {'id': identifiant_neuf(contenu['appareils'], PREFIXE_APPAREIL), 'empreinte': empreinte_jeton(jeton),
                     'libelle': libelle_appareil(agent), 'nom_demandeur': nom, 'cree_le': instant_iso(maintenant),
                     'vu_le': instant_iso(maintenant), 'revoque': False, 'invitation': str(invitation.get('id', ''))}
+        if invitation.get('poste'):                 # T536 (L11) : poste de déclaration
+            appareil['poste'] = True
         contenu['appareils'].append(appareil)
         ecrire_appareils(config, contenu)
     return jeton, appareil
@@ -1811,10 +1821,10 @@ def enroler_appareil(config, jeton_invitation, nom, agent):
 
 def identite_de_l_appareil(appareil, cle):
     """Identité d'un appareil enrôlé : rôle demandeur, « appareil » vrai, le nom saisi comme nom (prénom vide),
-    jamais le jeton."""
+    jamais le jeton ; « poste » vrai pour un poste de déclaration (T536 : les mêmes droits, seul l'écran change)."""
     return {'identifiant': 'appareil:' + str(appareil.get('id', '')), 'role': 'demandeur', 'prenom': '',
             'nom': str(appareil.get('nom_demandeur', '')), 'technicien_id': '', 'a_changer': False, 'appareil': True,
-            'cle': cle, 'longue': True, 'langue': ''}
+            'cle': cle, 'longue': True, 'langue': '', 'poste': bool(appareil.get('poste'))}
 
 
 def verifier_appareil(config, entete_cookie):
@@ -8562,17 +8572,20 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                 'enrolement_actif': not self.config.reglages.get('demandeurs_avec_compte')})
 
     def api_invitation_creer(self, segment, corps):
-        """POST /api/acces/invitations {heures} (responsable ; sans corps : invitation_heures) : invitation neuve ;
-        le jeton et le chemin du lien sont rendus une seule fois (le QR et le lien se font côté navigateur, avec
-        l'adresse http de la porte), jamais écrits."""
+        """POST /api/acces/invitations {heures, poste} (responsable ; sans corps : invitation_heures) : invitation
+        neuve ; « poste » (booléen, T536) : poste de déclaration ; le jeton et le chemin du lien sont rendus une seule
+        fois (le QR et le lien se font côté navigateur, avec l'adresse http de la porte), jamais écrits."""
         self.exiger_comptes()
         demande = lire_objet_json(corps) if corps.strip() else {}
-        inconnus = sorted(set(demande) - {'heures'})
+        inconnus = sorted(set(demande) - {'heures', 'poste'})
         if inconnus:
             raise ErreurHttp(400, traduisible('appareils.champ_inconnu',
-                                              'Champ inconnu : « {champ} » (« heures » seulement).',
+                                              'Champ inconnu : « {champ} » (« heures » et « poste » seulement).',
                                               champ=str(inconnus[0])[:60]))
-        jeton, invitation = creer_invitation(self.config, demande.get('heures'))
+        poste = demande.get('poste', False)
+        if not isinstance(poste, bool):
+            raise ErreurHttp(400, traduisible('appareils.poste_booleen', '« poste » : vrai ou faux est attendu.'))
+        jeton, invitation = creer_invitation(self.config, demande.get('heures'), poste)
         adresse, agent, tailscale = self.origine()
         ecrire_journal_acces(self.config, self.session['identifiant'], adresse, agent, 'invitation', tailscale)
         self.envoyer_json(200, {'invitation': invitation, 'jeton': jeton, 'chemin': CHEMIN_ENROLEMENT + jeton})

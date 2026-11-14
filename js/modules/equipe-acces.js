@@ -125,7 +125,7 @@ const EquipeAcces = (() => {
     changerCompte: (identifiant, action, champs) => appeler('/api/acces/comptes/' + encodeURIComponent(identifiant),
       { methode: 'POST', corps: Object.assign({ action: action }, champs || {}) }),
     invitations: () => appeler('/api/acces/invitations'),
-    creerInvitation: (heures) => appeler('/api/acces/invitations', { methode: 'POST', corps: { heures: heures } }),
+    creerInvitation: (heures, poste) => appeler('/api/acces/invitations', { methode: 'POST', corps: { heures: heures, poste: Boolean(poste) } }),
     revoquerInvitation: (id) => appeler('/api/acces/invitations/' + encodeURIComponent(id) + '/revoquer', { methode: 'POST' }),
     revoquerAppareil: (id) => appeler('/api/acces/appareils/' + encodeURIComponent(id) + '/revoquer', { methode: 'POST' }),
     revoquerTous: () => appeler('/api/acces/appareils/revoquer-tous', { methode: 'POST' }),
@@ -407,8 +407,10 @@ const EquipeAcces = (() => {
   function montrerInvitation(resultat) {
     const invitation = resultat.invitation || {};
     const lien = lienInvitation(resultat.chemin);
+    // T536 (L11) : invitation d'un poste de déclaration : le lien s'ouvre sur le poste, qui reçoit un nom (« Poste atelier »).
     const contenu = UI.element(UI.html`<div class="form-colonne acces-invitation">
-      <p>${I18n.html('equipe.montrer_invitation.telephone_scanne_qr_ouvre', { dateHeure: dateHeure(invitation.expire_le) })}</p>
+      <p>${invitation.poste ? I18n.t('equipe.poste_declaration.invitation_texte', { dateHeure: dateHeure(invitation.expire_le) })
+    : I18n.html('equipe.montrer_invitation.telephone_scanne_qr_ouvre', { dateHeure: dateHeure(invitation.expire_le) })}</p>
       <div class="acces-qr"><div class="acces-qr-image" id="acces-invitation-qr"></div>
         <div class="acces-lien champ"><label for="acces-invitation-lien">${I18n.t('equipe.montrer_invitation.lien_invitation')}</label>
           <input type="text" id="acces-invitation-lien" readonly value="${lien}" spellcheck="false"></div></div>
@@ -419,10 +421,10 @@ const EquipeAcces = (() => {
       boutons: [{ libelle: I18n.t('commun.bouton.fermer'), valeur: null, classe: 'btn-primaire', defaut: true }] });
   }
 
-  async function creerInvitation(selecteur, bouton, rafraichir) {
+  async function creerInvitation(selecteur, bouton, rafraichir, poste) {
     const heures = Number(selecteur.value) || DUREE_PAR_DEFAUT_H;
     await pendant(bouton, 'création d\'une invitation', async () => {
-      const resultat = await api.creerInvitation(heures);
+      const resultat = await api.creerInvitation(heures, poste);
       await montrerInvitation(resultat);
       await rafraichir();
     });
@@ -492,9 +494,13 @@ const EquipeAcces = (() => {
           <select id="acces-duree-invitation">${dureesInvitation().map((d) => UI.html`<option value="${String(d.heures)}" ${d.heures === DUREE_PAR_DEFAUT_H ? 'selected' : ''}>${d.libelle}</option>`)}</select></label>
         <button type="button" class="btn btn-primaire" id="acces-creer-invitation" ${actif ? '' : 'disabled'}>${UI.icone('qr')}${I18n.t('equipe.appareils.creer_invitation')}</button>
       </div>
+      <label class="case acces-poste-declaration"><input type="checkbox" id="acces-invitation-poste" ${actif ? '' : 'disabled'}>
+        <span><b>${I18n.t('equipe.poste_declaration.case')}</b><br><span class="note">${I18n.t('equipe.poste_declaration.case_aide')}</span></span></label>
     </section>`);
+    // T536 (L11) : « Poste de déclaration » : PC ou tablette de l'atelier partagé (mêmes droits qu'un téléphone invité).
     UI.$('#acces-creer-invitation', inviter).addEventListener('click', (evenement) => {
-      creerInvitation(UI.$('#acces-duree-invitation', inviter), evenement.currentTarget, rafraichir);
+      creerInvitation(UI.$('#acces-duree-invitation', inviter), evenement.currentTarget, rafraichir,
+        UI.$('#acces-invitation-poste', inviter).checked);
     });
     zone.appendChild(inviter);
 
@@ -503,7 +509,7 @@ const EquipeAcces = (() => {
     carteInvitations.appendChild(UI.tableau({
       libelle: I18n.t('equipe.appareils.invitations'),
       colonnes: [
-        { cle: 'id', libelle: I18n.t('equipe.appareils.invitation'), rendu: (i) => UI.html`<b>${texte(i.id)}</b>` },
+        { cle: 'id', libelle: I18n.t('equipe.appareils.invitation'), rendu: (i) => UI.html`<b>${texte(i.id)}</b>${i.poste ? UI.html` <span class="badge cyan">${I18n.t('equipe.poste_declaration.badge')}</span>` : ''}` },
         { cle: 'cree_le', libelle: I18n.t('equipe.appareils.creee'), rendu: (i) => dateHeure(i.cree_le) },
         { cle: 'expire_le', libelle: I18n.t('equipe.appareils.expire'), rendu: (i) => dateHeure(i.expire_le) },
         { cle: 'valide', libelle: I18n.t('equipe.comptes.etat'), triable: false, rendu: (i) => etatInvitation(i) },
@@ -523,7 +529,7 @@ const EquipeAcces = (() => {
       libelle: I18n.t('equipe.appareils.appareils_enroles'),
       colonnes: [
         { cle: 'nom_demandeur', libelle: I18n.t('equipe.comptes.personne'), rendu: (a) => UI.html`<b>${texte(a.nom_demandeur)}</b>` },
-        { cle: 'libelle', libelle: I18n.t('equipe.appareils.appareil'), rendu: (a) => UI.html`${texte(a.libelle)} <span class="note">${texte(a.id)}</span>` },
+        { cle: 'libelle', libelle: I18n.t('equipe.appareils.appareil'), rendu: (a) => UI.html`${texte(a.libelle)} <span class="note">${texte(a.id)}</span>${a.poste ? UI.html` <span class="badge cyan">${I18n.t('equipe.poste_declaration.badge')}</span>` : ''}` },
         { cle: 'cree_le', libelle: I18n.t('equipe.appareils.enrole'), rendu: (a) => dateHeure(a.cree_le) },
         { cle: 'vu_le', libelle: I18n.t('equipe.appareils.derniere_activite'), rendu: (a) => dateHeure(a.vu_le) },
         { cle: 'valide', libelle: I18n.t('equipe.comptes.etat'), triable: false, rendu: (a) => etatAppareil(a) },

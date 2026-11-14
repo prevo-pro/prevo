@@ -433,6 +433,9 @@ legend { padding: 0 .4rem; font-weight: 700; color: var(--texte); }
 .barre-bas .libelle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barre-bas .actif, .barre-bas [aria-current="page"] { background: var(--teinte-bleu); color: var(--texte-bleu); font-weight: 700; }
 .barre-bas .pastille { position: absolute; top: 2px; right: calc(50% - 26px); min-width: 20px; height: 20px; font-size: .75rem; padding: 0 5px; }
+/* T536 (L11) : poste de déclaration (<html data-poste-declaration>) : « Signaler » seul, pas de barre du bas ni de
+   « Plus » (rien d'autre à ouvrir). */
+:root[data-poste-declaration] .barre-bas { display: none; }
 /* Liste « Plus » (dans une fenêtre .dialogue.feuille) */
 .liste-plus { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .liste-plus a {

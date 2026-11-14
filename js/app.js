@@ -74,6 +74,7 @@ const App = (() => {
   const CLE_RECHARGEMENT_LANGUE = 'prevo.langue.rechargement';
   const PARAMETRE_LANGUE = 'langue_defaut';
   const ROUTE_ACCUEIL = '#/accueil';
+  const ROUTE_SIGNALER = '#/di/nouvelle';     // T536 (L11) : seul écran d'un poste de déclaration
   // « direction » (T520, A7) : lecture seule — accueil, Indicateurs et rapports, Parc et OT ; aucun bouton d'écriture.
   // En mode comptes le serveur fait foi (ROLES_PAR_ROUTE) ; sans comptes, c'est l'écran, comme pour les autres profils.
   const TYPES_PROFIL = ['demandeur', 'technicien', 'responsable', 'direction'];
@@ -1086,6 +1087,7 @@ const App = (() => {
   // ce poste voit ses brouillons, comme le reste de ce que fait ce profil.
   function porteeDesBrouillons() {
     if ((mode !== 'serveur' && mode !== 'dossier') || !adaptateur || Donnees.lectureSeule()) return '';
+    if (estPosteDeclaration()) return '';             // T536 : poste partagé, rien d'un opérateur pour le suivant
     const base = mode === 'dossier' ? 'dossier:' + String(adaptateur.nomDossier || '') : 'serveur';
     if (comptesExiges) return session && session.identifiant ? base + '|compte:' + session.identifiant : '';
     if (!profil) return '';
@@ -1303,6 +1305,15 @@ const App = (() => {
   function estDemandeur() { return Boolean(profil) && profil.type === 'demandeur'; }
   /** Direction (T520) : lit, n'écrit rien ; elle voit les coûts comme le responsable. */
   function estDirection() { return Boolean(profil) && profil.type === 'direction'; }
+  /**
+   * Poste de déclaration (T536, L11) : appareil enrôlé par une invitation « poste de déclaration » (PC ou tablette de
+   * l'atelier, relié par câble, partagé par les opérateurs). Mêmes droits qu'un appareil enrôlé (le serveur le traite en
+   * demandeur, rien de plus) ; l'écran se réduit à « Signaler un problème », qui demande le nom de l'opérateur à chaque
+   * fois et se vide après l'envoi (demandes-signaler.js).
+   */
+  function estPosteDeclaration() {
+    return comptesExiges && Boolean(session) && Boolean(session.appareil) && Boolean(session.poste);
+  }
 
   /** Mode Solo (D132) : mode_solo = 1 dans parametres.csv ET profil responsable (pas un quatrième profil). */
   function modeSolo() {
@@ -1327,6 +1338,7 @@ const App = (() => {
     afficherImportInterrompu(true);
     afficherLectureSeule();
     appliquerRepli(lireMemoire(CLE_MENU_REPLIE) === '1');
+    document.documentElement.toggleAttribute('data-poste-declaration', estPosteDeclaration());   // T536 : css/style.css
     mettreAJourEntreprise();
     placerSelecteurLangue();
     if (cibleApresEnrolement) {
@@ -1411,6 +1423,7 @@ const App = (() => {
   }
 
   function ecranAutorise(ecran) {
+    if (estPosteDeclaration()) return ecran.id === 'nouvelle-di';            // T536 : « Signaler » seul
     return Boolean(profil) && (!ecran.profils || ecran.profils.includes(profil.type));
   }
 
@@ -1562,6 +1575,13 @@ const App = (() => {
     }
     const { chemin, requete } = analyserHash(location.hash);
     const trouve = trouverEcran(chemin);
+    if (estPosteDeclaration() && !(trouve && ecranAutorise(trouve.ecran))) {
+      // T536 : tout autre écran mène à « Signaler » ; le QR d'une machine (flashé par la tablette) la choisit d'office.
+      const machine = /^#\/equipement\/([^/?]+)$/.exec(chemin);
+      remplacerRoute(ROUTE_SIGNALER + (machine ? '?equipement=' + machine[1] : ''));
+      await afficherRoute(false);
+      return;
+    }
     if (trouve && !ecranAutorise(trouve.ecran) && estDirection()) {
       afficherEcranFerme(trouve.ecran);       // T520 : adresse tapée à la main → page lisible, pas un renvoi muet
       return;
@@ -1925,6 +1945,7 @@ const App = (() => {
     estTechnicien,
     estDemandeur,
     estDirection,
+    estPosteDeclaration,
     modeSolo,
     technicienSolo,
     libelleProfil: () => libelleAffiche(profil),

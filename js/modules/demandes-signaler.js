@@ -5,6 +5,9 @@
 // brief §9 E2). Lot 2 : le symptôme choisi parmi les suggestions donne son code symptôme ; avec
 // ?ot=OT-…, la demande est liée à l'OT préventif pendant lequel l'anomalie a été constatée.
 // Lot 4 (§17.5) : « Proposer avec l'IA » reformule le symptôme et propose l'impact (objet Ia).
+// T536 (L11) : sur un poste de déclaration (App.estPosteDeclaration : PC ou tablette de l'atelier partagé), le nom de
+// l'opérateur est demandé à chaque déclaration (inscrit sur la demande) ; ni brouillon, ni « Vos dernières demandes »,
+// ni lien vers la demande ou la liste : après l'envoi, le numéro, puis l'écran revient à zéro pour le suivant.
 // Complète l'objet Demandes.
 
 Object.assign(Demandes, (() => {
@@ -69,6 +72,8 @@ Object.assign(Demandes, (() => {
     const idDescription = UI.identifiantUnique('di-description');
     const idListe = UI.identifiantUnique('di-suggestions');
     const idPhoto = UI.identifiantUnique('di-photo');
+    const poste = typeof App.estPosteDeclaration === 'function' && App.estPosteDeclaration();
+    const idNom = UI.identifiantUnique('di-nom');
 
     UI.remplir(conteneur, UI.html`
       <div class="di-nouvelle">
@@ -81,6 +86,15 @@ Object.assign(Demandes, (() => {
         <div class="di-origine"></div>
         <div class="di-alerte-equipement"></div>
         <form class="form-colonne di-formulaire" novalidate>
+          ${poste ? UI.html`<section class="carte di-etape di-poste-nom">
+            <div class="champ" data-champ="demandeur">
+              <label class="libelle" for="${idNom}">${I18n.t('demandes.poste.votre_nom')} <span class="requis" aria-hidden="true">*</span></label>
+              <input type="text" id="${idNom}" name="demandeur" maxlength="60" required aria-required="true"
+                autocomplete="off" spellcheck="false" enterkeyhint="next">
+              <p class="aide">${I18n.t('demandes.poste.votre_nom_aide')}</p>
+              <p class="erreur-champ" hidden></p>
+            </div>
+          </section>` : ''}
           <section class="carte di-etape">
             <div class="champ" data-champ="equipement_id">
               <span class="libelle">${I18n.t('demandes.nouvelle.1_quel_equipement')} <span class="requis" aria-hidden="true">*</span></span>
@@ -143,7 +157,7 @@ Object.assign(Demandes, (() => {
             </div>
           </section>
 
-          <p class="di-demandeur">${I18n.html('demandes.nouvelle.demande_envoyee_nom', { nomDuProfil: nomDuProfil() })}</p>
+          ${poste ? '' : UI.html`<p class="di-demandeur">${I18n.html('demandes.nouvelle.demande_envoyee_nom', { nomDuProfil: nomDuProfil() })}</p>`}
           <button type="submit" class="btn btn-primaire btn-gros di-envoyer">
             ${UI.icone('valider')}<span>${I18n.t('demandes.nouvelle.envoyer_demande')}</span>
           </button>
@@ -181,6 +195,7 @@ Object.assign(Demandes, (() => {
     function poserDernieres() {
       const zone = UI.$('.di-dernieres-zone', conteneur);
       zone.textContent = '';
+      if (poste) return;                                     // T536 : rien des demandes d'un autre opérateur
       const bloc = Demandes.blocDernieresDemandes(selecteur.valeur());
       if (bloc) zone.appendChild(bloc);
     }
@@ -323,8 +338,20 @@ Object.assign(Demandes, (() => {
       zone.textContent = '';
     }
 
+    // T536 : nom tapé par l'opérateur sur un poste de déclaration (espaces réduits), '' ailleurs.
+    function nomOperateur() {
+      const champ = poste ? UI.$('input[name=demandeur]', formulaire) : null;
+      return champ ? champ.value.trim().replace(/\s+/g, ' ') : '';
+    }
+    if (poste) {
+      UI.$('input[name=demandeur]', formulaire).addEventListener('input', (evenement) => {
+        if (evenement.target.value.trim()) effacerErreur('demandeur');
+      });
+    }
+
     function verifier() {
       const manques = [];
+      if (poste && !nomOperateur()) manques.push(['demandeur', I18n.t('demandes.poste.indiquez_nom')]);
       if (!selecteur.valeur()) manques.push(['equipement_id', I18n.t('demandes.nouvelle.choisissez_equipement_concerne')]);
       if (!champSymptome.value.trim()) manques.push(['symptome', I18n.t('demandes.nouvelle.decrivez_quelques_mots_constatez')]);
       if (!impactChoisi()) manques.push(['impact', I18n.t('demandes.nouvelle.choisissez_impact')]);
@@ -396,6 +423,7 @@ Object.assign(Demandes, (() => {
           description: UI.$('textarea[name=description]', formulaire).value,
           photo: nomDeLaPhoto,
           ot_origine_id: origineValable ? otDemande : '',
+          demandeur: nomOperateur(),                          // T536 : vide hors poste → le nom du profil
         });
         await tracerIa(id, { impact });
         suivi.terminer();                                     // T329 : la demande est enregistrée, plus de brouillon
@@ -404,6 +432,7 @@ Object.assign(Demandes, (() => {
         // T521 : en Solo, sa propre déclaration devient aussitôt un OT à son nom (solo-flux.js).
         const otSolo = typeof Solo !== 'undefined' ? await Solo.apresSignalement(id) : '';
         if (otSolo) { UI.toast(I18n.t('demandes.solo.ot_cree', { otId: otSolo }), 'succes'); App.naviguer('#/ot/' + encodeURIComponent(otSolo)); return; }
+        if (poste) { afficherConfirmationPoste(conteneur, id); return; }
         afficherConfirmation(conteneur, id);
       } catch (erreur) {
         App.signalerErreur(erreur, 'envoi de la demande');
@@ -557,6 +586,52 @@ Object.assign(Demandes, (() => {
         UI.html`${I18n.html('demandes.confirmation.danger_mettez_zone_securite')}`));
     }
     UI.$('.di-autre', conteneur).addEventListener('click', () => App.naviguer('#/di/nouvelle'));
+    window.scrollTo(0, 0);
+  }
+
+  // T536 (L11) : confirmation d'un poste de déclaration : le numéro et la machine, sans lien vers la demande ni la
+  // liste ; « Nouvelle déclaration » ou, au bout de RETOUR_POSTE_S secondes, l'écran revient à zéro (formulaire vide).
+  const RETOUR_POSTE_S = 30;
+  function afficherConfirmationPoste(conteneur, id) {
+    const demande = Donnees.trouver('demandes', id) || { id, impact: '', equipement_id: '' };
+    App.definirTitre(I18n.t('demandes.confirmation.demande_envoyee'));
+    UI.remplir(conteneur, UI.html`
+      <div class="di-confirmation di-poste-confirmation" role="status">
+        <div class="carte di-confirmation-carte">
+          <div class="di-confirmation-icone">${UI.icone('valider')}</div>
+          <p class="di-confirmation-titre">${I18n.t('demandes.confirmation.demande_envoyee')}</p>
+          <p class="di-numero" data-numero="${id}">${id}</p>
+          <p class="di-confirmation-texte">${I18n.t('demandes.poste.recue', { libelleEquipement: libelleEquipement(demande.equipement_id) })} ${UI.badgePriorite(prioriteDeLaDemande(demande))}</p>
+        </div>
+        <div class="di-zone-securite"></div>
+        <div class="pile-gros">
+          <button type="button" class="btn btn-primaire btn-gros di-poste-suivante">${UI.icone('ajouter')}<span>${I18n.t('demandes.poste.nouvelle_declaration')}</span></button>
+        </div>
+        <p class="aide di-poste-retour"></p>
+      </div>`);
+    if (demande.impact === 'sécurité') {
+      UI.$('.di-zone-securite', conteneur).appendChild(UI.bandeau('securite',
+        UI.html`${I18n.html('demandes.confirmation.danger_mettez_zone_securite')}`));
+    }
+    const bouton = UI.$('.di-poste-suivante', conteneur);
+    const retour = UI.$('.di-poste-retour', conteneur);
+    let reste = RETOUR_POSTE_S;
+    let minuterie = null;
+    const recommencer = () => {
+      clearInterval(minuterie);
+      if (!conteneur.contains(bouton)) return;
+      // Sans la machine de l'adresse (QR flashé par la tablette) ; même adresse : l'écran se redessine, vide.
+      if (location.hash !== '#/di/nouvelle') App.naviguer('#/di/nouvelle'); else App.reafficher();
+    };
+    const ecrire = () => { retour.textContent = I18n.t('demandes.poste.ecran_se_vide', { secondes: reste }); };
+    ecrire();
+    minuterie = setInterval(() => {
+      if (!conteneur.contains(bouton)) { clearInterval(minuterie); return; }   // écran quitté entre-temps
+      reste -= 1;
+      if (reste <= 0) recommencer(); else ecrire();
+    }, 1000);
+    bouton.addEventListener('click', recommencer);
+    bouton.focus();
     window.scrollTo(0, 0);
   }
 

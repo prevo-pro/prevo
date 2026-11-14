@@ -97,6 +97,7 @@ const Connexion = (() => {
       prenom: String(identite.prenom || ''), nom: String(identite.nom || ''),
       technicienId: String(identite.technicien_id || ''), aChanger: Boolean(identite.a_changer),
       appareil: Boolean(identite.appareil), langue: String(identite.langue || ''),
+      poste: Boolean(identite.poste),             // T536 (L11) : poste de déclaration
     };
   }
 

@@ -464,7 +464,8 @@ const StockageServeur = (() => {
     }
 
     // Lot 7 (§22.4) : GET /api/session → { comptes: bool, session: null | { identifiant, role, prenom, nom,
-    // technicienId, aChanger, appareil, langue (T298 : celle du compte, '' pour la langue de l'installation) } } ;
+    // technicienId, aChanger, appareil, langue (T298 : celle du compte, '' pour la langue de l'installation), poste
+    // (T536 : poste de déclaration) } } ;
     // route publique (jamais 401), même sans comptes ({ comptes: false }).
     async function session() {
       const reponse = await appelerOuErreur(base + '/api/session', { method: 'GET' });
@@ -477,6 +478,7 @@ const StockageServeur = (() => {
           prenom: String(identite.prenom || ''), nom: String(identite.nom || ''),
           technicienId: String(identite.technicien_id || ''), aChanger: Boolean(identite.a_changer),
           appareil: Boolean(identite.appareil), langue: String(identite.langue || ''),
+          poste: Boolean(identite.poste),         // T536 (L11) : appareil enrôlé comme poste de déclaration
         },
       }, donnees.installation_inachevee ? { installationInachevee: true } : {});   // §22.10 : aucun responsable
     }

@@ -386,6 +386,47 @@ class TestEnrolement(CasAppareils):
         self.assertTrue(all("empreinte" not in a for a in liste))
         self.verifier_aucun_secret()
 
+    def test_poste_de_declaration_memes_droits_qu_un_appareil(self):
+        """T536 (L11) : invitation « poste » (booléen, 400 sinon) ; l'appareil qui l'ouvre est marqué poste (session,
+        fichier, liste du responsable) et a exactement les droits d'un appareil enrôlé : il ajoute des demandes au
+        nom de chaque opérateur, rien de plus. Un appareil ordinaire n'a pas « poste » dans sa session."""
+        for corps in ({"poste": "oui"}, {"poste": 1}, {"poste": None}):
+            with self.subTest(corps=corps):
+                reponse = self.client.requete("POST", "/api/acces/invitations", corps, cookie=self.responsable)
+                self.assertEqual(reponse.statut, 400, reponse.octets)
+                self.assertIn("poste", reponse.json()["erreur"])
+        invitation = self.inviter({"heures": 2, "poste": True})
+        self.assertTrue(invitation["invitation"]["poste"])
+        self.assertFalse(self.inviter({"poste": False})["invitation"]["poste"])
+        cookie, session = self.appareil(invitation["jeton"], nom="Poste atelier", agent=AGENT_PC)
+        self.assertEqual((session["role"], session["appareil"], session["nom"], session["poste"]),
+                         ("demandeur", True, "Poste atelier", True))
+        self.assertEqual(self.client.session(cookie)["poste"], True)
+        self.assertTrue(self.fichier_appareils()["appareils"][0]["poste"])
+        liste = self.client.requete("GET", "/api/acces/invitations", cookie=self.responsable).json()
+        self.assertEqual([a["poste"] for a in liste["appareils"]], [True])
+        # Deux opérateurs à la suite : deux demandes, chacune à son nom (le nom est libre, comme pour tout demandeur).
+        for numero, nom in ((1, "Karim Benali"), (2, "Sophie Durand")):
+            ajout = self.client.requete("POST", "/api/csv/demandes/ajout", self.ligne_de_demande(numero, nom),
+                                        cookie=cookie)
+            self.assertEqual(ajout.statut, 200, ajout.octets)
+        demandes = (self.donnees / "demandes.csv").read_bytes().decode("utf-8-sig")
+        self.assertIn("DI-2026-9001;2026-06-15 10:05;Karim Benali", demandes)
+        self.assertIn("DI-2026-9002;2026-06-15 10:05;Sophie Durand", demandes)
+        # Aucun droit de plus qu'un appareil (même colonne de ROLES_PAR_ROUTE, role_effectif demandeur).
+        self.assertEqual(serveur.role_effectif(serveur.identite_de_l_appareil({"id": "AP-1", "poste": True}, "x")),
+                         "demandeur")
+        for methode, chemin in (("GET", "/api/csv/techniciens"), ("GET", "/api/csv/ordres_travail"),
+                                ("PUT", "/api/csv/equipements"), ("GET", "/api/acces/comptes"),
+                                ("POST", "/api/acces/invitations"), ("POST", "/api/sauvegarde")):
+            with self.subTest(chemin=chemin):
+                reponse = self.client.requete(methode, chemin, b"{}" if methode != "GET" else None, cookie=cookie)
+                self.assertEqual(reponse.statut, 403, reponse.octets)
+        # Un téléphone invité normalement : pas de « poste ».
+        _, ordinaire = self.appareil(nom="Léa Martin")
+        self.assertNotIn("poste", ordinaire)
+        self.verifier_aucun_secret()
+
     def test_retour_vers_l_operateur_lu_jamais_ecrit_par_l_appareil(self):
         """T517 (A4) : l'appareil enrôlé lit le retour de la réparation dans demandes.csv seulement ; il ne peut ni
         passer une demande existante à « Réparée », ni y écrire un mot, ni en ajouter une déjà « Réparée » (403)."""

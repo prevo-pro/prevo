@@ -513,6 +513,65 @@ class TestConnexion(CasConnexion):
         self.assertFalse(page.evaluate("App.session.appareil"))
         self.assertTrue(page.is_visible("#etat-poste .changer"))
 
+    def test_poste_de_declaration_deux_operateurs_ecran_remis_a_zero(self):
+        """T536 (L11) : invitation « poste de déclaration » ouverte sur un PC de l'atelier : seul « Signaler » ;
+        deux opérateurs déclarent à la suite, chacun à son nom ; entre les deux, l'écran revient à zéro (nom vide,
+        rien de l'opérateur précédent, aucun lien vers ses demandes) ; les demandes arrivent chez le responsable."""
+        page = self.page
+        self.autoriser_erreur(motif_refus_du_demandeur())
+        statut, invitation = self.api("POST", "/api/acces/invitations", {"poste": True})
+        self.assertEqual(statut, 200, invitation)
+        page.goto(self.serveur.url + invitation["chemin"])
+        self.attendre_etat("connexion")
+        page.fill("#connexion-nom", "Poste atelier")
+        page.click("#connexion-enroler")
+        attendre_pret(page)
+        page.wait_for_selector(".di-poste-nom")
+        self.assertEqual(page.evaluate("location.hash"), "#/di/nouvelle")
+        self.assertTrue(page.evaluate("App.estPosteDeclaration()"))
+        self.assertEqual(page.locator("#menu a").count(), 1)                        # « Signaler » seul
+        self.assertTrue(page.is_hidden(".di-dernieres-zone .di-dernieres"))
+        self.assertTrue(page.is_hidden(".di-demandeur"))
+        for route in ("#/accueil", "#/di", "#/parc", "#/poste"):                     # tout autre écran : « Signaler »
+            with self.subTest(route=route):
+                page.evaluate("(r) => { location.hash = r; }", route)
+                page.wait_for_function("location.hash === '#/di/nouvelle'")
+        page.evaluate("location.hash = '#/equipement/EQ-0005'")                    # QR d'une machine : choisie d'office
+        page.wait_for_function("location.hash === '#/di/nouvelle?equipement=EQ-0005'")
+        page.wait_for_selector(".selecteur-choisi:not([hidden])")
+        self.assertIn("PO-02", page.inner_text(".selecteur-choisi"))
+        numeros = []
+        for nom, symptome in (("Karim Benali", "Fuite d'huile sous le carter"), ("Sophie Durand", "Bruit de roulement")):
+            with self.subTest(operateur=nom):
+                self.assertEqual(page.input_value("input[name=demandeur]"), "")        # rien du précédent
+                self.assertEqual(page.input_value("input[name=symptome]"), "")
+                page.click(".di-envoyer")                                             # nom manquant : refusé
+                page.wait_for_selector(".champ[data-champ=demandeur].en-erreur")
+                page.fill("input[name=demandeur]", nom)
+                if not page.is_visible(".selecteur-choisi"):
+                    page.fill(".selecteur-recherche input[type=search]", "PO-02")
+                    page.click(".selecteur-option[data-id='EQ-0005']")
+                page.fill("input[name=symptome]", symptome)
+                page.check("input[name=impact][value='dégradé']", force=True)
+                page.click(".di-envoyer")
+                page.wait_for_selector(".di-poste-confirmation")
+                numeros.append(page.get_attribute(".di-numero", "data-numero"))
+                texte = page.inner_text("#contenu")
+                self.assertNotIn(nom, texte)
+                self.assertEqual(page.locator("#contenu a[href^='#/di']").count(), 0)  # ni sa demande ni la liste
+                self.assertIn("30", page.inner_text(".di-poste-retour"))
+                page.click(".di-poste-suivante")
+                page.wait_for_selector(".di-poste-nom")
+                self.assertEqual(page.evaluate("location.hash"), "#/di/nouvelle")
+        self.assertEqual(page.evaluate("Object.keys(localStorage).filter((c) => c.startsWith('prevo.brouillon'))"), [])
+        # Arrivées chez le responsable, chacune au nom de son opérateur.
+        statut, _, octets = requete(self.serveur.url, "GET", "/api/csv/demandes", None, self.serveur.session("responsable"))
+        self.assertEqual(statut, 200)
+        lignes = [ligne for ligne in octets.decode("utf-8-sig").splitlines() if ligne.split(";")[0] in numeros]
+        self.assertEqual(len(lignes), 2, numeros)
+        self.assertIn("Karim Benali", next(l for l in lignes if l.startswith(numeros[0] + ";")))
+        self.assertIn("Sophie Durand", next(l for l in lignes if l.startswith(numeros[1] + ";")))
+
     def test_deconnexion_puis_session_fermee_ailleurs_route_gardee(self):
         page = self.page
         self.autoriser_erreur(ERREUR_401_TABLES)
