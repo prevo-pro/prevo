@@ -368,7 +368,7 @@ const Rapport = (() => {
       entreprise: texte(Donnees.parametre('entreprise_nom', '')),
       // T519 : mois en cours (chiffres provisoires, jamais figé) ; premier mois d'utilisation (commencé avant le 1er OT).
       etat: { provisoire: mois >= jour.slice(0, 7), auJour: jour, depuis: debut > periode.debut && debut <= periode.fin ? debut : '' },
-      activite: Rapport.interne.activiteDuMois(periode, global),
+      activite: Rapport.interne.activiteDuMois(periode, global, jour),
       tuiles, faits: faitsMarquants(periode, global, jour), decisions: decisions(mois, jour, remplacement),
       pareto: Indicateurs.paretoArrets(periode, 5).map((ligne) => ({ repere: repere(ligne.equipementId), heures: ligne.valeur })),
       paretoCout: Indicateurs.paretoCoutArret(periode, 5).map((ligne) => ({ repere: repere(ligne.equipementId), centimes: ligne.centimes, valeur: ligne.valeur })),

@@ -189,7 +189,9 @@ class TestRapportBilan(CasBilan):
             "4 OT clôturés, dont 1 en préventif",
             "5,5 h passées (4,5 h en correctif, 1 h en préventif)",
             "1,5 h d'arrêt saisie sur 1 panne",
-            "correctifs par machine : PI-01 (2), CP-01 (1)"])
+            "correctifs par machine : PI-01 (2), CP-01 (1)",
+            "0 OT en retard au 20/11/2026",                                      # L30 (T544) : deux lignes en plus
+            "délai de prise en charge : rien à mesurer ce mois-ci (aucun OT démarré avec une priorité)"])
         page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
         self.assertIn("Mois en cours : chiffres provisoires au 20/11/2026.", page)
         self.assertIn("Premier mois d'utilisation : chiffres depuis le 03/11/2026", page)
@@ -212,7 +214,8 @@ class TestMoisTermine(CasBilan):
     def test_un_mois_termine_et_couvert_n_a_ni_mention_provisoire_ni_premier_mois(self):
         r = self.donnees("2026-12")
         self.assertEqual(r["etat"], {"provisoire": False, "auJour": "2027-01-04", "depuis": ""})
-        self.assertEqual(r["phrases"], ["Aucune intervention saisie ce mois-ci"])
+        self.assertEqual(r["phrases"], ["Aucune intervention saisie ce mois-ci", "0 OT en retard au 04/01/2027",
+                                         "délai de prise en charge : rien à mesurer ce mois-ci (aucun OT démarré avec une priorité)"])
 
 
 class TestMoisDuBilan(CasBilan):

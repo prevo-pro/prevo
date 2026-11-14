@@ -146,5 +146,29 @@ class TestNonChiffreDirection(TestNonChiffreAuTableauDeBord):
     PROFIL = ("direction", "")
 
 
+class TestDeuxLignesDuBilan(CasL30):
+    """Défaut 1 : le patron cherche les retards et le délai de prise en charge ; mêmes calculs qu'au tableau de bord."""
+
+    def test_ot_en_retard_et_delai_de_prise_en_charge(self):
+        # OT-1 P1 (créé 08:00, démarré 08:15 : 0,25 h), OT-3 P1 (07:30 → 08:00 : 0,5 h), OT-2 P2 (04/11 09:00 → 05/11
+        # 08:00 : 23 h) ; un OT ouvert prévu le 15/11 : en retard au 20/11.
+        self.page.evaluate("""async () => { await Donnees.modifier('ordres_travail', (lignes) => {
+            const p = { 'OT-2026-0001': 'P1', 'OT-2026-0002': 'P2', 'OT-2026-0003': 'P1', 'OT-2026-0004': 'P3' };
+            lignes.forEach((ot) => { ot.priorite = p[ot.id]; ot.date_prevue = ''; });
+            lignes.push({ id: 'OT-2026-0005', equipement_id: 'EQ-0002', type: 'correctif différé', statut: 'Planifié',
+              titre: 'Graissage', date_creation: '2026-11-12 10:00', date_prevue: '2026-11-15', priorite: 'P3', arret_production: '0' }); }); }""")
+        r = self.donnees()
+        phrases = [blancs(p) for p in r["phrases"]]
+        self.assertIn("1 OT en retard au 20/11/2026", phrases)
+        self.assertIn("délai de prise en charge (médiane) : P1 0,4 h (2 OT), P2 23 h (1 OT), P3 0 h (1 OT)", phrases)
+        g = self.page.evaluate("""() => { const g = Indicateurs.global(Indicateurs.periodeDuMois('2026-11'), {}, '2026-11-20');
+            return [g.otEnRetard.valeur, g.delais.P1.mediane, g.delais.P2.mediane]; }""")
+        self.assertEqual(g, [1, 0.375, 23])                               # le tableau de bord, même calcul
+        page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
+        self.assertIn("1 OT en retard au 20/11/2026", page)
+        self.assertIn("délai de prise en charge (médiane) : P1 0,4 h (2 OT)", page)
+        self.assertIn("1 OT en retard au 20/11/2026", blancs(r["courriel"]["corps"]))
+
+
 if __name__ == "__main__":
     unittest.main()

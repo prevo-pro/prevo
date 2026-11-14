@@ -467,17 +467,29 @@ Object.assign(Rapport, (() => {
     });
   }
 
-  /** Activité du mois (Indicateurs.activite) et arrêts saisis (toutes les pannes du mois, sans réglage). */
-  function activiteDuMois(periode, global) {
+  /** Activité du mois (Indicateurs.activite) et arrêts saisis (toutes les pannes du mois, sans réglage) ; L30 : OT en
+   *  retard au jour du bilan et délai de prise en charge par priorité, calculés comme au tableau de bord (global). */
+  function activiteDuMois(periode, global, jour) {
     const activite = Indicateurs.activite(periode);
     return Object.assign(activite, {
+      retard: { n: global.otEnRetard.valeur || 0, jour },
+      delais: Object.keys(global.delais).filter((priorite) => global.delais[priorite].effectif && global.delais[priorite].mediane !== null)
+        .map((priorite) => ({ priorite, mediane: global.delais[priorite].mediane, n: global.delais[priorite].effectif })),
       arret: { heures: global.dureeArret.valeur, pannes: global.dureeArret.effectif, sansDuree: global.dureeArret.exclus.length },
       parMachine: activite.parMachine.map((element) => Object.assign({ repere: repere(element.equipementId) }, element)),
     });
   }
 
-  /** Phrases de l'activité du mois (page et courriel). */
+  /** Phrases de l'activité du mois (page et courriel), puis (L30) les OT en retard et le délai de prise en charge. */
   function phrasesActivite(activite) {
+    return phrasesInterventions(activite).concat(activite.retard ? [
+      I18n.t('rapport.activite.ot_retard', { n: activite.retard.n, jour: UI.dateFr(activite.retard.jour) }),
+      activite.delais.length ? I18n.t('rapport.activite.delai_prise_en_charge', { liste: activite.delais.map((element) =>
+        I18n.t('rapport.activite.delai_priorite', { priorite: element.priorite, duree: enHeures(element.mediane), n: element.n })).join(', ') })
+        : I18n.t('rapport.activite.delai_aucun')] : []);
+  }
+
+  function phrasesInterventions(activite) {
     if (!activite.correctifs && !activite.clotures && !activite.heures.total && !activite.ouverts) return [I18n.t('rapport.activite.aucune')];
     const phrases = [
       I18n.t('rapport.activite.correctifs', { n: activite.correctifs, avecArret: activite.correctifsAvecArret }),
