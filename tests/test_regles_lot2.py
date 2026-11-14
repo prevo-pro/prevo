@@ -5,6 +5,7 @@ avec des dates fixes passées en argument (aujourd'hui = mardi 20/10/2026) :
     - Preventif.etatGamme : déclencheurs date, compteur (heures et cycles), seuil ; statuts
       inactive, ot_ouvert, echue, bientot, a_jour, incomplete ; Preventif.dernierReleve ;
     - Preventif.calendrier : semaines du lundi au dimanche, placement des échéances et des OT ;
+      Preventif.visitesDeLaSemaine (L27) : visites dues d'ici dimanche, OT créé ou non, sans double compte ;
     - Magasin.suggestionPointCommande (D23), Magasin.aCommander, Magasin.sortiesDeLOt ;
     - CausesFrequentes.calculer (portées équipement et modèle, cas ignorés, tri, limite à 3)
       et CausesFrequentes.encart (textes exacts, échappement d'un libellé piégé, 5 liens au plus
@@ -416,6 +417,19 @@ class TestCalendrier(CasRegles):
         # 4 semaines : l'échéance du 29/11 n'est plus placée
         quatre = self.calendrier(AUJOURDHUI, 4)
         self.assertNotIn("GAM-0003", [e["gammeId"] for s in quatre for e in s["elements"]])
+
+    def test_visites_de_la_semaine_ot_cree_ou_non_sans_double_compte(self):
+        # L27 : la semaine en cours du calendrier, retards compris, que l'OT soit déjà créé ou non
+        visites = self.js("(jour) => Preventif.visitesDeLaSemaine(jour)", AUJOURDHUI)
+        self.assertEqual([(v["gammeId"], v["otId"], v["date"]) for v in visites],
+                         [("GAM-0010", "", "2026-10-01"), ("GAM-0001", "", "2026-10-20")])
+        # semaine suivante : GAM-0007 n'est comptée qu'une fois, par son OT ouvert
+        suivante = self.js("(jour) => Preventif.visitesDeLaSemaine(jour)", "2026-10-28")
+        gammes = [v["gammeId"] for v in suivante]
+        self.assertEqual(gammes.count("GAM-0007"), 1)
+        self.assertIn(("GAM-0007", "OT-2026-0010"), [(v["gammeId"], v["otId"]) for v in suivante])
+        self.assertIn("GAM-0002", gammes)
+        self.assertEqual(len(suivante), len(set((v["gammeId"], v["otId"]) for v in suivante)))
 
 
 # ---------------------------------------------------------------------------

@@ -154,7 +154,7 @@ Object.assign(Accueil, (() => {
   function tuileSynthese(compteurs, moment) {
     const nombre = compteurs.diATraiter.length;
     const securite = compteurs.diATraiter.filter((di) => di.impact === 'sécurité').length;
-    const ligne = ligneSecondaire(compteurs.otEnRetard.length, compteurs.p1Ouverts.length, compteurs.preventifsSemaine.length);
+    const ligne = ligneSecondaire(compteurs.otEnRetard.length, compteurs.p1Ouverts.length, compteurs.visitesPreventivesSemaine.length);
     return UI.html`<section class="bento-tuile bento-synthese" id="bento-synthese" aria-labelledby="bento-phrase">
       <span class="bento-lueur" aria-hidden="true"><span class="bento-halo bento-halo-blanc"></span><span class="bento-halo bento-halo-cyan"></span></span>
       <p class="bento-moment">${momentAtelier(moment)}</p>
@@ -215,7 +215,9 @@ Object.assign(Accueil, (() => {
     const plusVieux = compteurs.otEnRetard.reduce((pire, ot) => Math.max(pire, joursEntre(ot.date_prevue, aujourdhui)), 0);
     const enCours = compteurs.p1Ouverts.filter((ot) => ot.statut === 'En cours').length;
     const p1 = compteurs.p1Ouverts.length;
-    const preventifsEnRetard = compteurs.preventifsSemaine.filter((ot) => Accueil.otEnRetard(ot, aujourdhui)).length;
+    // L27 : les visites dues d'ici dimanche d'après le calendrier, que l'OT soit déjà créé ou non.
+    const visites = compteurs.visitesPreventivesSemaine;
+    const preventifsEnRetard = visites.filter((visite) => visite.date < aujourdhui).length;
     return UI.html`
       ${compteur('#/di?statut=Nouvelle', 'demandes', 'bleu', compteurs.diATraiter.length, I18n.t('accueil.compteurs4.di_traiter'),
         securite ? complement(I18n.t('accueil.compteurs4.dont_securite', { securite }), 'rouge') : complement(I18n.t('accueil.compteurs4.demandes_nouvelles')))}
@@ -223,7 +225,7 @@ Object.assign(Accueil, (() => {
         plusVieux ? complement(I18n.t('accueil.compteurs4.jusqu_a_retard', { n: plusVieux }), 'ambre') : complement(I18n.t('accueil.compteurs4.tout_temps')))}
       ${compteur('#/ot?filtre=p1', 'alerte', 'rouge', p1, I18n.t('accueil.compteurs4.p1_ouverts', { n: p1 }),
         enCours ? complement(I18n.t('accueil.compteurs4.dont_cours', { enCours }), 'rouge') : complement(I18n.t('accueil.compteurs4.priorite_plus_haute')))}
-      ${compteur('#/preventif?onglet=calendrier', 'preventif', 'vert', compteurs.preventifsSemaine.length, I18n.t('accueil.compteurs4.preventifs_semaine'),
+      ${compteur('#/preventif?onglet=calendrier', 'preventif', 'vert', visites.length, I18n.t('accueil.compteurs4.preventifs_semaine'),
         preventifsEnRetard ? complement(I18n.t('accueil.compteurs4.dont_retard', { preventifsEnRetard }), 'ambre') : complement(I18n.t('accueil.compteurs4.ici_dimanche')))}`;
   }
 

@@ -4383,6 +4383,7 @@ I18n.ajouter('en', {
   'accueil.solo.rien_a_faire': 'Nothing else to do for now.',
   'accueil.solo.rien_en_cours': 'Nothing in progress.',
   'accueil.solo.tous_les_ot': 'All work orders',
+  'accueil.solo.visite_sans_ot': 'Work order not created yet',
   'accueil.solo.voir_les_autres': 'View the other {n}',
   'accueil.tuile_conformite.aucun_retard': 'none overdue',
   'accueil.tuile_conformite.aucune_echue': 'none overdue',

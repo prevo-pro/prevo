@@ -86,8 +86,19 @@ const Accueil = (() => {
   }
 
   /**
+   * Visites préventives de la semaine (L27) : celles du calendrier (Preventif.visitesDeLaSemaine, chargé après ce
+   * fichier) ; sans le module (pages de test), les OT préventifs de la semaine. [{ gammeId, equipementId, date, otId }]
+   */
+  function visitesPreventivesSemaine(aujourdhui, ordres, dimanche) {
+    if (typeof Preventif !== 'undefined' && typeof Preventif.visitesDeLaSemaine === 'function') return Preventif.visitesDeLaSemaine(aujourdhui);
+    return ordres.filter((ot) => preventifDeLaSemaine(ot, dimanche))
+      .map((ot) => ({ gammeId: ot.gamme_id || '', equipementId: ot.equipement_id, date: String(ot.date_prevue).slice(0, 10), otId: ot.id }));
+  }
+
+  /**
    * Les listes qui donnent les compteurs de l'accueil :
-   * { diATraiter, otEnRetard, p1Ouverts, preventifsSemaine } (lignes de demandes et d'OT),
+   * { diATraiter, otEnRetard, p1Ouverts, preventifsSemaine } (lignes de demandes et d'OT), visitesPreventivesSemaine
+   * (visites dues d'ici dimanche d'après le calendrier du préventif, L27),
    * articlesACommander (éléments de Magasin.aCommander() : { article, stock, pointCommande, … }),
    * controlesSous30j, habilitationsARenouveler et reservesEnRetard (éléments de
    * Controles.reservesEnRetard() : { reserve, controle, etat }, l'échéance la plus ancienne d'abord),
@@ -102,6 +113,8 @@ const Accueil = (() => {
       otEnRetard: ordres.filter((ot) => otEnRetard(ot, aujourdhui)),
       p1Ouverts: ordres.filter(p1Ouvert),
       preventifsSemaine: ordres.filter((ot) => preventifDeLaSemaine(ot, dimanche)),
+      // L27 : visites préventives dues d'ici dimanche d'après le calendrier du préventif (OT créé ou non).
+      visitesPreventivesSemaine: visitesPreventivesSemaine(aujourdhui, ordres, dimanche),
       articlesACommander: Magasin.aCommander(),
       // Lot 3 (§15.9) : les règles des contrôles et de l'équipe, appelées au moment du calcul
       // (leurs fichiers sont chargés après celui-ci).

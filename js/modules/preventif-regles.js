@@ -7,7 +7,7 @@
 //                               1. Constantes et petits outils (textes, nombres, dates ISO)
 //                               2. Relevés de compteur, OT ouverts d'une gamme
 //                               3. État d'une gamme (etatGamme) : date, compteur, seuil
-//                               4. Calendrier des prochaines semaines
+//                               4. Calendrier des prochaines semaines, visites de la semaine
 //   preventif-ecritures.js    genererOTEchus, apresCloture, gammes et check-lists
 //   preventif-ecrans.js       écrans #/preventif et #/preventif/gamme/…
 //   preventif-calendrier.js   onglet « Calendrier 12 semaines »
@@ -422,10 +422,19 @@ const Preventif = (() => {
     return liste;
   }
 
+  /**
+   * Visites préventives dues d'ici dimanche (retards compris), d'après le calendrier (L27) : l'échéance
+   * de chaque gamme sans OT ouvert et chaque OT préventif ouvert, sans double compte d'une visite et
+   * de son OT. → éléments de la semaine en cours de calendrier() : [{ gammeId, equipementId, date, estimee, otId }].
+   */
+  function visitesDeLaSemaine(aujourdhui) {
+    return calendrier(aujourdhui, 1)[0].elements;
+  }
+
   return {
     DECLENCHEURS, STATUTS_GAMME,
     // règles pures (ARCHITECTURE.md §14.3)
-    dernierReleve, etatGamme, calendrier,
+    dernierReleve, etatGamme, calendrier, visitesDeLaSemaine,
     // Usage interne au module : outils prêtés aux fichiers preventif-*.js, qui y ajoutent les
     // leurs par Object.assign(Preventif.interne, …). Pas une API : son contenu peut changer.
     interne: {

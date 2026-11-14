@@ -4385,6 +4385,7 @@ I18n.ajouter('it', {
   'accueil.solo.rien_a_faire': 'Nient\'altro da fare per ora.',
   'accueil.solo.rien_en_cours': 'Niente in corso.',
   'accueil.solo.tous_les_ot': 'Tutti gli OdL',
+  'accueil.solo.visite_sans_ot': 'OdL non ancora creato',
   'accueil.solo.voir_les_autres': 'Vedi gli altri {n}',
   'accueil.tuile_conformite.aucun_retard': 'nessuno in ritardo',
   'accueil.tuile_conformite.aucune_echue': 'nessuna scaduta',

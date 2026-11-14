@@ -9,7 +9,8 @@
 //     1. « Pannes déclarées » (#solo-pannes) : « Nouvelle panne déclarée par <nom> : <machine> », lien vers l'OT, tant
 //        que l'OT n'est pas démarré ;
 //     2. « En cours ou en attente » (#solo-en-cours), avec le motif de l'attente ;
-//     3. « Visites préventives de la semaine » (#solo-preventif) : préventifs à faire au plus tard dimanche ;
+//     3. « Visites préventives de la semaine » (#solo-preventif) : préventifs à faire au plus tard dimanche, et (L27) les
+//        visites du calendrier dues d'ici là dont l'OT n'est pas encore créé (lien vers la gamme) ;
 //     4. « À faire » (#solo-a-faire) : les autres OT pas encore démarrés ;
 //     puis « Fini ces 7 derniers jours : N », le bilan du mois (tuile de Rapport, lien vers Indicateurs › Bilan) et la
 //     carte « Connecter un téléphone ».
@@ -37,9 +38,10 @@ const SoloAccueil = (() => {
   }
 
   /**
-   * Ce qui attend le technicien seul (règle pure sur les lignes) → { pannes: [{ di, ot }], enCours, preventifs, aFaire,
-   * finis } ; pannes : demandes acceptées dont l'OT n'est pas démarré (Créé, Préparé, Planifié), les plus récentes
-   * d'abord ; un OT n'apparaît que dans une liste.
+   * Ce qui attend le technicien seul (règle pure sur les lignes) → { pannes: [{ di, ot }], enCours, preventifs, visites,
+   * aFaire, finis } ; pannes : demandes acceptées dont l'OT n'est pas démarré (Créé, Préparé, Planifié), les plus récentes
+   * d'abord ; un OT n'apparaît que dans une liste. visites (L27) : visites du calendrier dues d'ici dimanche sans OT
+   * (éléments de Preventif.visitesDeLaSemaine ; [] sans le module).
    */
   function repartir(demandes, ordres, aujourdhui) {
     const parId = new Map(ordres.map((ot) => [ot.id, ot]));
@@ -59,7 +61,9 @@ const SoloAccueil = (() => {
     const depuis = joursAvant(aujourdhui, JOURS_FINIS);
     const finis = ordres.filter((ot) => Solo.etatSimple(ot) === 'fini'
       && texte(ot.date_cloture_tech || ot.date_cloture_admin).slice(0, 10) >= depuis).length;
-    return { pannes, enCours, preventifs, aFaire, finis };
+    const visites = typeof Preventif !== 'undefined' && typeof Preventif.visitesDeLaSemaine === 'function'
+      ? Preventif.visitesDeLaSemaine(aujourdhui).filter((visite) => !visite.otId && visite.gammeId) : [];
+    return { pannes, enCours, preventifs, visites, aFaire, finis };
   }
 
   // ===========================================================================================
@@ -72,6 +76,26 @@ const SoloAccueil = (() => {
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${Solo.libelleMachine(ot.equipement_id)}</span>${ot.date_prevue ? UI.html`<span>${I18n.t('accueil.solo.prevu', { date: UI.dateFr(ot.date_prevue) })}</span>` : ''}</div>
     </a></li>`;
+  }
+
+  /** Visite du calendrier sans OT (L27) : lien vers la gamme ; l'OT sera créé le jour venu. */
+  function ligneVisite(visite) {
+    const gamme = Donnees.trouver('gammes', visite.gammeId);
+    return UI.html`<li class="solo-visite"><a href="#/preventif/gamme/${encodeURIComponent(visite.gammeId)}">
+      <div class="carte-tete"><b>${visite.gammeId}</b><span class="badge neutre">${I18n.t('accueil.solo.visite_sans_ot')}</span></div>
+      <div class="carte-titre">${texte(gamme && gamme.libelle) || visite.gammeId}</div>
+      <div class="carte-meta"><span>${Solo.libelleMachine(visite.equipementId)}</span><span>${I18n.t('accueil.solo.prevu', { date: UI.dateFr(visite.date) })}</span></div>
+    </a></li>`;
+  }
+
+  /** Carte des visites préventives (L27) : OT de la semaine et visites sans OT, par date ; au-delà de 8, lien vers le calendrier. */
+  function listePreventifs(ordres, visites) {
+    const lignes = ordres.map((ot) => ({ date: texte(ot.date_prevue).slice(0, 10), rang: 0, html: () => ligneOt(ot) }))
+      .concat(visites.map((visite) => ({ date: visite.date, rang: 1, html: () => ligneVisite(visite) })))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.rang - b.rang);
+    const montrees = lignes.slice(0, NOMBRE_LIGNES);
+    return UI.html`<ul class="liste-cartes">${montrees.map((ligne) => ligne.html())}</ul>
+      ${lignes.length > montrees.length ? UI.html`<p class="accueil-voir-tout"><a href="#/preventif?onglet=calendrier">${I18n.t('accueil.solo.voir_les_autres', { n: lignes.length - montrees.length })}</a></p>` : ''}`;
   }
 
   function badgeEtat(ot) {
@@ -138,7 +162,7 @@ const SoloAccueil = (() => {
       <div id="maj-zone"></div>${alerteControle()}<div id="copie-externe-zone"></div><div id="tailscale-zone"></div>${carteBaseVide()}
       ${cartePannes(r.pannes)}
       ${carte('solo-en-cours', I18n.t('accueil.solo.en_cours'), r.enCours.length, listeOt(r.enCours, badgeEtat), I18n.t('accueil.solo.rien_en_cours'))}
-      ${carte('solo-preventif', I18n.t('accueil.solo.preventif_semaine'), r.preventifs.length, listeOt(r.preventifs),
+      ${carte('solo-preventif', I18n.t('accueil.solo.preventif_semaine'), r.preventifs.length + r.visites.length, listePreventifs(r.preventifs, r.visites),
     I18n.t('accueil.solo.aucun_preventif', { date: UI.dateFr(Accueil.dimancheDe(aujourdhui)) }))}
       ${carte('solo-a-faire', I18n.t('accueil.solo.a_faire'), r.aFaire.length, listeOt(r.aFaire), I18n.t('accueil.solo.rien_a_faire'))}
       <p class="accueil-voir-tout solo-finis" id="solo-finis"><a href="#/ot?etat=clotures">${I18n.t('accueil.solo.finis', { n: r.finis })}</a>

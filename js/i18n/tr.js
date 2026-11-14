@@ -4386,6 +4386,7 @@ I18n.ajouter('tr', {
   'accueil.solo.rien_a_faire': 'Şimdilik yapılacak başka bir şey yok.',
   'accueil.solo.rien_en_cours': 'Devam eden iş yok.',
   'accueil.solo.tous_les_ot': 'Tüm iş emirleri',
+  'accueil.solo.visite_sans_ot': 'İş emri henüz oluşturulmadı',
   'accueil.solo.voir_les_autres': 'Diğer {n} tanesini gör',
   'accueil.tuile_conformite.aucun_retard': 'gecikmiş yok',
   'accueil.tuile_conformite.aucune_echue': 'vadesi geçmiş yok',

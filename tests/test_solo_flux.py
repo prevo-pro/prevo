@@ -211,6 +211,34 @@ class TestFicheEtCreation(CasSolo):
 
 class TestEquipeInchangee(CasSolo):
 
+    def test_visite_preventive_due_demain_sans_ot_a_l_accueil(self):
+        # L27 : la gamme due demain n'a pas encore d'OT ; l'accueil du Solo la montre, avec un lien vers la gamme
+        page = self.page
+        preregler_profil(self.contexte, "responsable", nom="Thomas")
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/accueil")
+            # Les OT préventifs ouverts de la démo repoussés : la carte ne montre que 8 lignes
+            page.evaluate("""() => Donnees.modifier('ordres_travail', (l) => l.forEach((o) => {
+                if (o.origine === 'préventif' && Ordres.estOuvert(o)) o.date_prevue = '2099-01-01'; }))""")
+            gamme = page.evaluate("""async () => { const [a, m, j] = Donnees.aujourdhui().split('-').map(Number);
+                const demain = new Date(Date.UTC(a, m - 1, j + 1)).toISOString().slice(0, 10);
+                return Preventif.creerGamme({ equipement_id: 'EQ-0005', libelle: 'Visite L27', declencheur: 'date',
+                  periodicite_jours: '7', prochaine_echeance: demain, avance_jours: '0' }); }""")
+            self.poser_mode(page, True)
+            page.wait_for_selector("#solo-accueil")
+            lien = page.locator('#solo-preventif a[href="#/preventif/gamme/%s"]' % gamme)
+            dimanche = page.evaluate("Accueil.dimancheDe(Donnees.aujourdhui())")
+            demain = page.evaluate("(() => { const [a, m, j] = Donnees.aujourdhui().split('-').map(Number); "
+                                   "return new Date(Date.UTC(a, m - 1, j + 1)).toISOString().slice(0, 10); })()")
+            if demain <= dimanche:
+                self.assertEqual(lien.count(), 1)
+                self.assertIn("Visite L27", lien.inner_text())
+                self.assertIn("OT pas encore créé", lien.inner_text())
+                r = page.evaluate("SoloAccueil.repartir(Donnees.lignes('demandes'), Donnees.lignes('ordres_travail'), Donnees.aujourdhui())")
+                self.assertEqual(int(page.inner_text("#solo-preventif .entete-carte .badge")), len(r["preventifs"]) + len(r["visites"]))
+            else:                                    # dimanche : demain est dans la semaine suivante
+                self.assertEqual(lien.count(), 0)
+
     def test_mode_equipe_demandes_laissees_et_bento(self):
         page = self.page
         preregler_profil(self.contexte, "responsable", nom="Thomas")

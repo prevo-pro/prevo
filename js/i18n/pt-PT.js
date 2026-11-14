@@ -4385,6 +4385,7 @@ I18n.ajouter('pt-PT', {
   'accueil.solo.rien_a_faire': 'Nada mais a fazer por agora.',
   'accueil.solo.rien_en_cours': 'Nada em curso.',
   'accueil.solo.tous_les_ot': 'Todas as OT',
+  'accueil.solo.visite_sans_ot': 'OT ainda não criada',
   'accueil.solo.voir_les_autres': 'Ver as outras {n}',
   'accueil.tuile_conformite.aucun_retard': 'nenhum em atraso',
   'accueil.tuile_conformite.aucune_echue': 'nenhuma vencida',

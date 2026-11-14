@@ -4381,6 +4381,7 @@ I18n.ajouter('fr', {
   'accueil.solo.rien_a_faire': 'Rien d\'autre à faire pour l\'instant.',
   'accueil.solo.rien_en_cours': 'Rien en cours.',
   'accueil.solo.tous_les_ot': 'Tous les OT',
+  'accueil.solo.visite_sans_ot': 'OT pas encore créé',
   'accueil.solo.voir_les_autres': 'Voir les {n} autres',
   'accueil.tuile_conformite.aucun_retard': 'aucun en retard',
   'accueil.tuile_conformite.aucune_echue': 'aucune échue',

@@ -136,7 +136,8 @@ DONNEES_JS = """() => {
     di: c.diATraiter.map((d) => ({ id: d.id, impact: d.impact, date: d.date_heure })),
     p1: c.p1Ouverts.map((o) => ({ id: o.id, date: o.date_creation, statut: o.statut })),
     retard: c.otEnRetard.map((o) => ({ id: o.id, prevue: o.date_prevue, priorite: o.priorite })),
-    preventifs: c.preventifsSemaine.map((o) => o.id),
+    // L27 : visites de la semaine d'après le calendrier (OT créé ou non)
+    preventifs: c.visitesPreventivesSemaine.map((v) => v.otId || v.gammeId),
     ouverts: Donnees.lignes('ordres_travail').filter((o) => !fermes.includes(o.statut))
       .map((o) => ({ id: o.id, origine: o.origine, prevue: o.date_prevue })),
     articles: c.articlesACommander.length, controles: c.controlesSous30j.length,
@@ -589,6 +590,20 @@ class TestChiffres(CasBento):
                 page.wait_for_selector("#bento")
         page.click("#bento-synthese a[href='%s']" % LIEN_PLANNING)
         page.wait_for_function("location.hash === '#/planning'")
+
+    def test_chiffres_preventifs_visite_due_demain_sans_ot_comptee(self):
+        # L27 : une gamme hebdomadaire due demain n'a pas encore d'OT ; la tuile la compte (calendrier)
+        page = self.ouvrir()
+        avant = self.chiffre(page, LIEN_PREVENTIFS)
+        ots_avant = page.evaluate("Accueil.calculerCompteurs().preventifsSemaine.length")
+        gamme = page.evaluate("""async () => {
+          const id = await Preventif.creerGamme({ equipement_id: Donnees.lignes('equipements')[0].id, libelle: 'Visite L27',
+            declencheur: 'date', periodicite_jours: '7', prochaine_echeance: '2026-10-20', avance_jours: '0' });
+          await App.reafficher(); return id; }""")
+        page.wait_for_selector("#bento")
+        self.assertEqual(self.chiffre(page, LIEN_PREVENTIFS), avant + 1)
+        self.assertEqual(self.donnees(page)["preventifs"].count(gamme), 1)
+        self.assertEqual(page.evaluate("Accueil.calculerCompteurs().preventifsSemaine.length"), ots_avant)
 
     def test_chiffres_telephone_listes_et_ordre(self):
         page = self.ouvrir(390, 844, telephone=True)
