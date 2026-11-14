@@ -27,7 +27,8 @@ CLES = ("ordres.consignation.aucune_procedure_solo", "parc.carte_consignation.au
         "installation.direction.noter_solo", "installation.mot_de_passe.responsables_solo",
         "ordres.bon_de_travail.aucune_procedure_solo", "ordres.codes.aucun_code_cause_solo", "ordres.codes.aucun_code_remede_solo",
         "ordres.anomalie.anomalie_traiter_solo", "demandes.confirmation.danger_solo", "demandes.nouvelle.danger_solo",
-        "demandes.nouvelle.cinq_questions_solo", "rapport.ou.taux_horaire_solo")
+        "demandes.nouvelle.cinq_questions_solo", "rapport.ou.taux_horaire_solo",
+        "parametres.aide.taux_horaire_moyen_solo")
 
 
 class TestTextesSolo(unittest.TestCase):

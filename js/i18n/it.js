@@ -5306,6 +5306,7 @@ I18n.ajouter('it', {
   'parametres.aide.dictee_autorisee': 'Il microfono resta visibile accanto ai campi di testo. Non consentita: premendolo si legge che la dettatura non è stata attivata dal responsabile. Consentita: la voce è trascritta dal browser (in Chrome ed Edge, da Google o Microsoft) e ogni postazione può disattivarla in «Questa postazione».',
   'parametres.aide.techniciens_creent_articles': 'Il tecnico ha il pulsante «Nuovo articolo» in Magazzino: solo creazione, senza scorte. Non cambia né il prezzo di un articolo esistente né l\'inventario.',
   'parametres.aide.taux_horaire_moyen': 'Costo di un\'ora di manodopera per un tecnico che non ha una tariffa propria (Squadra). Facoltativo: senza tariffa, il bilancio e il cruscotto danno le ore senza valorizzarle. Visibile solo al responsabile e alla direzione.',
+  'parametres.aide.taux_horaire_moyen_solo': 'Costo di un\'ora di manodopera, quando il tempo impiegato non ha una tariffa propria. Facoltativo: senza tariffa, il bilancio e il cruscotto danno le ore senza valorizzarle.',
   'parametres.aide.texte_libre_p_4': 'Testo libero: una P4 non ha una data prevista automatica.',
   'parametres.aide.textes_envoyes_descriptions_comptes': 'I testi inviati (descrizioni, rapporti di intervento, designazioni) lasciano quindi l\'officina. L\'IA locale (Ollama) resta sempre possibile.',
   'parametres.aide.visites_suite_sans_anomalie': 'Visite consecutive senza anomalie né guasti (solo criticità B o C).',

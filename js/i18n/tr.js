@@ -5307,6 +5307,7 @@ I18n.ajouter('tr', {
   'parametres.aide.dictee_autorisee': 'Mikrofon metin alanlarının yanında görünür kalır. İzin verilmezse: basıldığında diktenin sorumlu tarafından etkinleştirilmediği söylenir. İzin verilirse: ses tarayıcı tarafından yazıya dökülür (Chrome ve Edge\'de Google veya Microsoft\'ta) ve her iş istasyonu “Bu iş istasyonu” bölümünden kapatabilir.',
   'parametres.aide.techniciens_creent_articles': 'Teknisyen Depo ekranında “Yeni malzeme” düğmesini görür: yalnızca oluşturma, stoksuz. Mevcut bir malzemenin fiyatını ve sayımı değiştiremez.',
   'parametres.aide.taux_horaire_moyen': 'Kendi saat ücreti olmayan bir teknisyenin bir saatlik işçilik maliyeti (Ekip). İsteğe bağlı: ücret yoksa özet ve gösterge paneli saatleri maliyetlendirmeden verir. Yalnızca sorumlu ve yönetim görür.',
+  'parametres.aide.taux_horaire_moyen_solo': 'Harcanan sürenin kendi saat ücreti olmadığında bir saatlik işçilik maliyeti. İsteğe bağlı: ücret yoksa özet ve gösterge paneli saatleri maliyetlendirmeden verir.',
   'parametres.aide.texte_libre_p_4': 'Serbest metin: bir P4\'ün otomatik planlanan tarihi yoktur.',
   'parametres.aide.textes_envoyes_descriptions_comptes': 'Gönderilen metinler (açıklamalar, müdahale raporları, tanımlar) bu durumda atölyeden çıkar. Yerel YZ (Ollama) her zaman kullanılabilir.',
   'parametres.aide.visites_suite_sans_anomalie': 'Anormallik veya arıza olmayan takip ziyaretleri (yalnızca B veya C kritikliği).',

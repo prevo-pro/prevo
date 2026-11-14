@@ -5302,6 +5302,7 @@ I18n.ajouter('fr', {
   'parametres.aide.dictee_autorisee': 'Le micro reste affiché près des champs de texte. Non autorisée : un appui dit que la dictée n\'a pas été activée par le responsable. Autorisée : la voix est transcrite par le navigateur (dans Chrome et Edge, chez Google ou Microsoft) et chaque poste peut la couper dans « Ce poste ».',
   'parametres.aide.techniciens_creent_articles': 'Le technicien a le bouton « Nouvel article » dans Magasin : création seulement, sans stock. Il ne change ni le prix d\'un article existant, ni l\'inventaire.',
   'parametres.aide.taux_horaire_moyen': 'Coût d\'une heure de main-d\'œuvre pour un technicien qui n\'a pas son propre taux (Équipe). Facultatif : sans taux, le bilan et le tableau de bord donnent les heures sans les chiffrer. Visible du responsable et de la direction seulement.',
+  'parametres.aide.taux_horaire_moyen_solo': 'Coût d\'une heure de main-d\'œuvre, quand le temps passé n\'a pas de taux propre. Facultatif : sans taux, le bilan et le tableau de bord donnent les heures sans les chiffrer.',
   'parametres.aide.texte_libre_p_4': 'Texte libre : une P4 n\'a pas de date prévue automatique.',
   'parametres.aide.textes_envoyes_descriptions_comptes': 'Les textes envoyés (descriptions, comptes rendus, désignations) quittent alors l\'atelier. L\'IA locale (Ollama) reste toujours possible.',
   'parametres.aide.visites_suite_sans_anomalie': 'Visites de suite sans anomalie ni panne (criticité B ou C seulement).',

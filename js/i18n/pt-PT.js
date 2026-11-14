@@ -5306,6 +5306,7 @@ I18n.ajouter('pt-PT', {
   'parametres.aide.dictee_autorisee': 'O microfone continua visível junto dos campos de texto. Não autorizado: ao premi-lo, diz que o ditado não foi ativado pelo responsável. Autorizado: a voz é transcrita pelo navegador (no Chrome e no Edge, pela Google ou pela Microsoft) e cada estação de trabalho pode desligá-lo em «Esta estação de trabalho».',
   'parametres.aide.techniciens_creent_articles': 'O técnico tem o botão «Novo artigo» no Armazém: só criação, sem stock. Não altera o preço de um artigo existente nem o inventário.',
   'parametres.aide.taux_horaire_moyen': 'Custo de uma hora de mão de obra para um técnico que não tem taxa própria (Equipa). Facultativo: sem taxa, o balanço e o painel indicam as horas sem as valorizar. Visível apenas para o responsável e a direção.',
+  'parametres.aide.taux_horaire_moyen_solo': 'Custo de uma hora de mão de obra, quando o tempo gasto não tem taxa própria. Facultativo: sem taxa, o balanço e o painel indicam as horas sem as valorizar.',
   'parametres.aide.texte_libre_p_4': 'Texto livre: um P4 não tem data prevista automática.',
   'parametres.aide.textes_envoyes_descriptions_comptes': 'Os textos enviados (descrições, relatórios, designações) saem então da oficina. A IA local (Ollama) continua sempre possível.',
   'parametres.aide.visites_suite_sans_anomalie': 'Visitas seguintes sem anomalia nem avaria (apenas criticidade B ou C).',

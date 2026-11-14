@@ -5304,6 +5304,7 @@ I18n.ajouter('en', {
   'parametres.aide.dictee_autorisee': 'The microphone stays visible next to text fields. Not allowed: pressing it says dictation has not been turned on by the manager. Allowed: the browser transcribes the voice (in Chrome and Edge, at Google or Microsoft) and each workstation can turn it off in “This workstation”.',
   'parametres.aide.techniciens_creent_articles': 'Technicians get the “New item” button in Stores: creation only, with no stock. They cannot change the price of an existing item or the stocktake.',
   'parametres.aide.taux_horaire_moyen': 'Cost of one hour of labour for a technician who has no rate of their own (Team). Optional: without a rate, the summary and the dashboard give the hours without costing them. Visible to the manager and to management only.',
+  'parametres.aide.taux_horaire_moyen_solo': 'Cost of one hour of labour, when the time spent has no rate of its own. Optional: without a rate, the summary and the dashboard give the hours without costing them.',
   'parametres.aide.texte_libre_p_4': 'Free text: a P4 has no automatic planned date.',
   'parametres.aide.textes_envoyes_descriptions_comptes': 'The texts sent (descriptions, job reports, designations) then leave the workshop. The local AI (Ollama) is always still possible.',
   'parametres.aide.visites_suite_sans_anomalie': 'Follow-up visits with no fault or breakdown (criticality B or C only).',
