@@ -266,7 +266,8 @@ class TestConnexion(CasConnexion):
         self.assertIn("HttpOnly", cookies[-1])
         self.assertEqual(page.evaluate("App.mode"), "serveur")
         self.assertTrue(page.evaluate("App.comptesExiges()"))
-        self.assertEqual(page.evaluate("App.profil"), {"type": "responsable", "nom": "Nicolas Briand", "technicienId": ""})
+        self.assertEqual(page.evaluate("App.profil"), {"type": "responsable", "nom": "Nicolas Briand",
+                                                  "technicienId": "TEC-0005"})   # L06 : sa fiche, reçue à sa connexion
         self.assertEqual(page.evaluate("App.session.identifiant"), "nicolas.briand")
         self.assertFalse(page.evaluate("App.session.appareil"))
         self.assertEqual(page.inner_text("#libelle-profil").strip(), "Nicolas Briand · Responsable")

@@ -259,15 +259,16 @@ class TestServeur(CasInterrompu):
         return texte
 
     def test_serveur_comptes_lies_a_une_fiche_que_l_import_change_dits_a_la_confirmation(self):
-        demo = fichiers_demo()["techniciens.csv"]
-        ligne = "TEC-0001;Moreau;Julien;".encode("utf-8")           # fiche liée au compte julien.moreau
-        self.assertEqual(demo.count(ligne), 1)
-        autre = demo.replace(ligne, "TEC-0001;Curie;Marie;".encode("utf-8"))
-        debut = demo.index(ligne)
-        sans = demo[:debut] + demo[demo.index(b"\r\n", debut) + 2:]
         with ServeurPrevo(comptes=True) as serveur:
             page = self.ouvrir(serveur, self.contexte, "responsable")
             page.wait_for_selector("#btn-import-zip")
+            # L06 (lot 2) : la base du serveur, celle de la démo plus la fiche que le responsable reçoit à sa connexion.
+            demo = (serveur.dossier / "techniciens.csv").read_bytes()
+            ligne = "TEC-0001;Moreau;Julien;".encode("utf-8")           # fiche liée au compte julien.moreau
+            self.assertEqual(demo.count(ligne), 1)
+            autre = demo.replace(ligne, "TEC-0001;Curie;Marie;".encode("utf-8"))
+            debut = demo.index(ligne)
+            sans = demo[:debut] + demo[demo.index(b"\r\n", debut) + 2:]
             avant = instantane(serveur.dossier)
             # Même base : la fiche liée reste la même personne, rien n'est dit.
             self.assertIsNone(self.confirmation_des_comptes(page, "meme.zip", demo))

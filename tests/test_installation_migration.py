@@ -259,12 +259,18 @@ class TestBaseDeDepart(CasAssistant):
         # parametres.csv : les lignes de la démo, puis la langue choisie (T296).
         entete, lignes = attendus["parametres"]
         attendus["parametres"] = (entete, lignes + [["langue_defaut", "en"]])
+        # L06 (lot 2) : la fiche du responsable, créée à l'étape « compte », est recréée après les quatre de la démo.
+        entete, lignes = attendus["techniciens"]
+        self.assertEqual(lignes_csv((donnees / "techniciens.csv").read_bytes())[1][:4], lignes)
+        del attendus["techniciens"]
         for table, (entete, lignes) in attendus.items():
             with self.subTest(table=table):
                 self.assertEqual(lignes_csv((donnees / (table + ".csv")).read_bytes()), (entete, lignes))
+        entete, lignes = lire_csv(donnees / "techniciens.csv")
+        self.assertEqual(lignes[4][:3] + lignes[4][-1:], ["TEC-0005", "Briand", "Nicolas", "1"])
         self.assertNotIn("mode_solo", parametres_de(donnees))
         comptes = json.loads((donnees / "acces" / "comptes.json").read_text(encoding="utf-8"))
-        self.assertEqual(comptes["comptes"][0]["technicien_id"], "")
+        self.assertEqual(comptes["comptes"][0]["technicien_id"], "TEC-0005")
 
     def test_base_absente_vide_rien_de_plus_que_ce_que_solo_pose(self):
         client, instance = self.lancer()
@@ -293,7 +299,11 @@ class TestBaseDeDepart(CasAssistant):
         self.ok(client.post("sauvegardes", {"dossier": ""}))
         self.ok(client.post("terminer", {"base": "vide", "langue_defaut": "en"}))
         donnees = Path(instance.config.dossier_donnees)
-        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")), ["codes_defaillance.csv", "parametres.csv"])
+        # L06 (lot 2) : techniciens.csv aussi, la fiche du responsable créée à l'étape « compte ».
+        self.assertEqual(sorted(p.name for p in donnees.glob("*.csv")),
+                         ["codes_defaillance.csv", "parametres.csv", "techniciens.csv"])
+        self.assertEqual([ligne[:3] for ligne in lire_csv(donnees / "techniciens.csv")[1]],
+                         [["TEC-0001", "Briand", "Nicolas"]])
         self.assertEqual(lire_csv(donnees / "codes_defaillance.csv")[1], serveur.codes_de_depart("en"))
         self.assertEqual(lire_csv(donnees / "parametres.csv"), (["cle", "valeur"], [["version_schema", "%d" % commun.FORMAT_COURANT],
                                                                                      ["langue_defaut", "en"]]))

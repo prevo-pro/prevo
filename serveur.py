@@ -3292,10 +3292,11 @@ def ecrire_table(config, table, entete, lignes):
     ecrire_fichier_de_donnees(config, table, ecrire_tableau_csv(entete, lignes), sauvegarde_du_jour=True)
 
 
-def technicien_moi(config, prenom, nom):
+def technicien_moi(config, prenom, nom, exclus=()):
     """Technicien de la personne seule (D132, §22.11) : celui de techniciens.csv qui porte déjà ce prénom et ce nom
     (actif ; casse et accents ignorés), sinon une ligne nouvelle (TEC-nnnn suivant, métier vide, actif), les colonnes
-    du fichier gardées telles quelles. Rend son identifiant. En tenant VERROU_ECRITURE."""
+    du fichier gardées telles quelles. Rend son identifiant. En tenant VERROU_ECRITURE. L06 (lot 2) : exclus, les
+    fiches déjà liées à un autre compte (jamais deux comptes sur une même fiche)."""
     octets = lire_octets(chemin_table(config, 'techniciens'))
     entete, lignes = lire_tableau('techniciens', octets)
     if not entete:
@@ -3317,7 +3318,7 @@ def technicien_moi(config, prenom, nom):
         trouve = re.fullmatch(r'TEC-([0-9]+)', identifiant)
         if trouve:
             numero = max(numero, int(trouve.group(1)))
-        if (ligne[colonnes['actif']].strip().lstrip('\'') != '0'
+        if (ligne[colonnes['actif']].strip().lstrip('\'') != '0' and identifiant not in exclus
                 and (forme_de_nom(ligne[colonnes['nom']]), forme_de_nom(ligne[colonnes['prenom']])) == voulu):
             return identifiant
     identifiant = 'TEC-%04d' % (numero + 1)
@@ -3326,6 +3327,48 @@ def technicien_moi(config, prenom, nom):
     nouvelle[colonnes['actif']] = '1'
     ecrire_table(config, 'techniciens', entete, lignes + [nouvelle])
     return identifiant
+
+
+def relier_fiche_du_responsable(config, identifiant, origine=('', '', '')):
+    """L06 (lot 2, défaut 28) : le responsable est aussi technicien. Un compte responsable actif sans fiche reçoit
+    d'office sa fiche de technicien (technicien_moi : celle qui porte déjà son prénom et son nom si aucun autre compte
+    n'y est lié, sinon une ligne nouvelle), liée à son compte ; rien pour un autre rôle, un compte désactivé ou déjà
+    lié ; une fiche existante n'est jamais modifiée. Idempotent. Les deux verrous l'un après l'autre, jamais l'un dans
+    l'autre (installer_jeu_de_demo tient VERROU_ECRITURE puis prend VERROU_ACCES). Rend le compte public, ou None."""
+    comptes = comptes_du_serveur(config)
+    compte = trouver_compte(comptes, identifiant)
+    if compte is None:
+        return None
+    if compte.get('role') != 'responsable' or not compte.get('actif') or compte.get('technicien_id'):
+        return compte_public(compte)
+    exclus = {c.get('technicien_id') for c in comptes if c.get('technicien_id')}
+    with VERROU_ECRITURE:
+        technicien_id = technicien_moi(config, compte.get('prenom', ''), compte.get('nom', ''), exclus=exclus)
+    relu = trouver_compte(comptes_du_serveur(config), compte['identifiant'])
+    if relu is None or relu.get('technicien_id'):           # lié entre-temps par une autre requête : rien de plus
+        return compte_public(relu) if relu is not None else None
+    return modifier_compte(config, compte['identifiant'], origine, technicien_id=technicien_id)
+
+
+def fiche_a_l_ouverture(config, identite, origine=('', '', '')):
+    """L06, bases d'avant : à la connexion du responsable et à chaque ouverture de l'application (GET /api/session,
+    ce qui couvre une session « rester connecté » ouverte avant la mise à jour), un compte responsable actif sans fiche
+    reçoit la sienne (relier_fiche_du_responsable), une seule fois puisqu'il est ensuite lié. Rien au démarrage du
+    serveur (le passage de format reste le seul à écrire avant toute connexion), rien pour un appareil ou un autre
+    rôle, rien en lecture seule (D169) ; une erreur (techniciens.csv abîmé…) laisse la session telle quelle. Rend le
+    technicien lié ('' sans fiche)."""
+    if not identite:
+        return ''
+    if identite.get('appareil') or identite.get('role') != 'responsable' or identite.get('technicien_id'):
+        return identite.get('technicien_id') or ''
+    etat = getattr(config, 'format_donnees', None)
+    if etat and etat.get('plus_recent'):
+        return ''
+    try:
+        compte = relier_fiche_du_responsable(config, identite.get('identifiant', ''), origine)
+    except (ErreurHttp, ErreurCompte, OSError, ValueError):
+        return ''
+    return (compte or {}).get('technicien_id') or ''
 
 
 def langues_declarees():
@@ -7986,6 +8029,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                 if empreinte_jeton(jeton) == self.session.get('cle'):
                     entetes = {'Set-Cookie': entete_cookie_session(jeton, self.en_https(), DUREE_APPAREIL_JOURS * 86400,
                                                                    NOM_COOKIE_APPAREIL)}
+        if self.session is not None and self.config.reglages.get('comptes'):
+            self.session['technicien_id'] = fiche_a_l_ouverture(self.config, self.session, self.origine())    # L06
         reponse = {'comptes': bool(self.config.reglages.get('comptes')), 'session': session_publique(self.session)}
         if reponse['comptes'] and self.session is None and aucun_responsable_sur(self.config):
             # §22.10 : aucun compte responsable : l'écran ouvre l'assistant sur le PC serveur au lieu de la connexion.
@@ -8005,6 +8050,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                               'attendus, « rester » vaut vrai ou faux.'))
         compte = verifier_tentative(self.config, identifiant, mot_de_passe, self.origine(),
                                     ErreurHttp(401, MESSAGE_CONNEXION_REFUSEE))
+        compte = dict(compte, technicien_id=fiche_a_l_ouverture(self.config, compte, self.origine()))     # L06
         if self.session is not None:
             fermer_session(self.config, self.session['cle'])
         self.repondre_avec_session(compte, rester)
@@ -8138,9 +8184,18 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                   technicien_id=champs.get('technicien_id', ''), a_changer=True,
                                   origine=self.origine(), autre_personne=autre_personne,
                                   langue=champs.get('langue', ''))
+            compte = self.relier_fiche_si_responsable(compte)
         except ErreurCompte as erreur:
             raise ErreurHttp(400, traduisible_de(erreur))
         self.envoyer_json(200, {'compte': compte, 'mot_de_passe_provisoire': provisoire})
+
+    def relier_fiche_si_responsable(self, compte):
+        """L06 : après une création ou un changement par Équipe › Accès, un responsable actif sans fiche reçoit la
+        sienne (relier_fiche_du_responsable) ; tout autre compte est rendu tel quel. Lecture seule (D169) : 409."""
+        if compte.get('role') != 'responsable' or not compte.get('actif') or compte.get('technicien_id'):
+            return compte
+        verifier_ecriture_permise(self.config)
+        return relier_fiche_du_responsable(self.config, compte['identifiant'], self.origine()) or compte
 
     def api_compte_changer(self, identifiant, corps):
         """POST /api/acces/comptes/<identifiant> (responsable) {"action": "modifier" (prenom, nom, role, technicien_id,
@@ -8156,7 +8211,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             raise ErreurHttp(400, traduisible('comptes.action_sans_champ',
                                               'L\'action « {action} » ne prend aucun autre champ.', action=action))
         champs = champs_de_compte(self.config, demande) if action == 'modifier' else {}
-        cible = trouver_compte(comptes_du_serveur(self.config), identifiant)
+        if champs.get('role') == 'direction' and 'technicien_id' not in champs:
+            champs['technicien_id'] = ''        # L06 : un responsable (lié d'office) devenu Direction quitte sa fiche
+        cible =trouver_compte(comptes_du_serveur(self.config), identifiant)
         if cible is None:
             raise ErreurHttp(404, traduisible('comptes.introuvable',
                                               'Compte introuvable : {identifiant}.',
@@ -8172,6 +8229,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             else:
                 compte = modifier_compte(self.config, cible['identifiant'], origine=self.origine(),
                                          actif=(action == 'activer'))
+            compte = self.relier_fiche_si_responsable(compte)
         except ErreurCompte as erreur:
             raise ErreurHttp(400, traduisible_de(erreur))
         reponse['compte'] = compte
@@ -8550,8 +8608,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if not prenom:
             raise ErreurHttp(400, traduisible('comptes.prenom_obligatoire', 'Le prénom est obligatoire.'))
         solo = bool(brouillon.get('mode_solo'))
-        if solo:
-            verifier_ecriture_permise(self.config)          # T185 : techniciens.csv serait écrit (lecture seule)
+        verifier_ecriture_permise(self.config)              # T185 : techniciens.csv serait écrit (lecture seule ; L06)
         if brouillon.get('portee') == 'ce-pc':
             if not solo:
                 raise ErreurHttp(400, traduisible('installation.compte_inutile',
@@ -8583,6 +8640,15 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                   technicien_id=technicien_id, origine=self.origine())
         except ErreurCompte as erreur:
             raise ErreurHttp(400, traduisible_de(erreur))
+        if not solo:
+            # L06 (lot 2) : en équipe aussi, le responsable reçoit d'office sa fiche de technicien, après le compte
+            # (un refus du compte ne laisse aucune fiche). Gardée dans le brouillon comme celle du Solo : le jeu de
+            # démo de « terminer » la recrée et relie le compte à son nouvel identifiant (installer_jeu_de_demo).
+            try:
+                compte = relier_fiche_du_responsable(self.config, compte['identifiant'], self.origine()) or compte
+            except ErreurCompte as erreur:
+                raise ErreurHttp(400, traduisible_de(erreur))
+            technicien_id = compte.get('technicien_id', '')
         brouillon['solo_technicien_id'] = technicien_id
         reponse = self.garder_brouillon(brouillon, 'compte')
         reponse = dict(reponse, compte=compte, technicien_id=technicien_id)

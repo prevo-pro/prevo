@@ -41,8 +41,9 @@ FORMAT_ORIGINE = 3                  # format du jeu de la bêta 1 ; la 2.2 le pa
 VERSION_SUIVANTE = ".".join(VERSION_APPLI.split("-")[0].split(".")[:2] + [str(int(VERSION_APPLI.split("-")[0].split(".")[2]) + 1)])
 DESIGNATION = "Pompe de refroidissement (recette bêta 2)"
 CHANGEES = {"equipements.csv": {("EQ-0005", "designation")}, **VERSION_SCHEMA_ECRITE}
-# Fichiers de données qu'une session du responsable peut réécrire (OT préventifs générés à l'ouverture, journal).
-ECRITS_PAR_UNE_SESSION = {"equipements.csv", "journal.csv", "ordres_travail.csv", "ot_operations.csv"}
+# Fichiers de données qu'une session du responsable peut réécrire (OT préventifs générés à l'ouverture, journal ;
+# L06, lot 2 : sa fiche de technicien, reçue à sa première connexion sur une base d'avant).
+ECRITS_PAR_UNE_SESSION = {"equipements.csv", "journal.csv", "ordres_travail.csv", "ot_operations.csv", "techniciens.csv"}
 
 
 def setUpModule():
@@ -60,6 +61,17 @@ def version_notee(fichiers):
 
 
 class CasBeta2(CasRecetteSocle):
+
+    def verifier_comptes_gardes(self, apres, origine):
+        """acces/comptes.json gardé, sauf (L06, lot 2) : le responsable actif sans fiche a reçu la sienne à sa
+        connexion (technicien_id TEC-nnnn, modifie_le) ; le reste à l'identique."""
+        lus, attendus = (json.loads(fichiers["acces/comptes.json"].decode("utf-8")) for fichiers in (apres, origine))
+        for compte, avant in zip(lus["comptes"], attendus["comptes"]):
+            if avant.get("role") == "responsable" and avant.get("actif") and not avant.get("technicien_id"):
+                # vide aussi : ServeurPrevo(comptes=True) réécrit comptes.json (COMPTES_DE_TEST) à chaque lancement
+                self.assertRegex(compte.get("technicien_id", ""), r"^(TEC-\d{4})?$")
+                compte["technicien_id"], compte["modifie_le"] = "", avant["modifie_le"]
+        self.assertEqual(lus, attendus)
 
     def verifier_passage(self, origine, copies, vers, de):
         """Une seule « avant-mise-a-jour » puis une seule « avant-format-v4 » (la base de la bêta 1 est au format 3),
@@ -154,7 +166,7 @@ class TestBeta2Serveur(CasBeta2):
                 if chemin not in session:
                     self.assertEqual(apres[chemin], octets, chemin)
             self.verifier_rien_sans_sauvegarde(origine, apres)
-            self.assertEqual(apres["acces/comptes.json"], origine["acces/comptes.json"])
+            self.verifier_comptes_gardes(apres, origine)
             self.assertEqual(version_notee(apres), VERSION_APPLI)
             self.assertEqual(sorted(sauvegardes(apres)), sorted(copies))     # toujours une seule « avant-mise-a-jour »
             copie_du_dossier(serveur.dossier, suite)
@@ -179,14 +191,14 @@ class TestBeta2Serveur(CasBeta2):
             contenu = sans_manifeste(copies[nouvelle])
             for chemin, octets in csv_de_la_racine(avant_second).items():       # l'état d'avant, à l'octet
                 self.assertEqual(contenu[chemin], octets, chemin)
-            self.assertEqual(contenu["acces/comptes.json"], origine["acces/comptes.json"])
+            self.verifier_comptes_gardes(contenu, origine)
             self.verifier_manifeste(copies[nouvelle], "avant-mise-a-jour", FORMAT_COURANT, "serveur",
                                     {"de": VERSION_APPLI, "vers": VERSION_SUIVANTE})
             self.assertIn("sauvegarde %s faite avant la mise à jour" % nouvelle, console)
             self.assertEqual(version_notee(apres_finale), VERSION_SUIVANTE)
             for chemin, octets in csv_de_la_racine(avant_second).items():
                 self.assertEqual(apres_finale[chemin], octets, chemin)
-            self.assertEqual(apres_finale["acces/comptes.json"], origine["acces/comptes.json"])
+            self.verifier_comptes_gardes(apres_finale, origine)
 
     def test_export_zip_puis_import_dans_une_base_neuve_memes_csv_journal_plus_une_ligne(self):
         source, origine = self.preparer()

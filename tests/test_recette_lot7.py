@@ -521,7 +521,8 @@ class TestParcoursAtelier(CasRecetteLot7):
             self.attendre_etat("connexion")
             self.se_connecter(pc, "nicolas.briand", MOTS_DE_PASSE["nicolas.briand"])
             attendre_pret(pc)
-            self.assertEqual(pc.evaluate("App.profil"), {"type": "responsable", "nom": "Nicolas Briand", "technicienId": ""})
+            self.assertEqual(pc.evaluate("App.profil"), {"type": "responsable", "nom": "Nicolas Briand",
+                                                  "technicienId": "TEC-0005"})   # L06 : sa fiche, reçue à sa connexion
             # L'étiquette de PO-02 porte l'adresse de la porte (http), jamais l'adresse https.
             selecteur_qr = "#etiquettes-apercu .etiquette[data-equipement='%s'] .etiquette-qr svg" % EQUIPEMENT
             self.aller(pc, "#/parc/etiquettes?ids=" + EQUIPEMENT, selecteur_qr)

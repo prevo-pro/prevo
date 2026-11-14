@@ -3755,6 +3755,14 @@ navigateur, qui ne les lit pas : les empreintes ne quittent jamais le serveur) :
   "responsable"|"technicien"|"demandeur", "technicien_id", "actif": true, "algo": "scrypt-n15-r8-p3"|
   "pbkdf2-sha256-600000", "sel": base64, "empreinte": base64, "a_changer": bool, "cree_le", "modifie_le",
   "mot_de_passe_le", "langue"? } ] }`.
+  **Le responsable est aussi technicien (L06, lot 2)** : tout compte responsable actif a une fiche de technicien liée
+  (`technicien_id`) ; sans fiche, le serveur la lui donne d'office (`relier_fiche_du_responsable` : la fiche active au
+  même prénom et nom si aucun autre compte n'y est lié, sinon `TEC-nnnn` suivant ; une fiche existante n'est jamais
+  modifiée) à la création par l'assistant ou par Équipe › Accès, à un changement de rôle ou à une réactivation, et,
+  pour une base d'avant, à sa connexion ou à l'ouverture de l'application (`fiche_a_l_ouverture`, par
+  `POST /api/connexion` et `GET /api/session` ; jamais au démarrage du serveur, rien en lecture seule). La Direction
+  et le demandeur restent sans fiche ; aucun droit de plus pour le rôle technicien. À l'écran, le responsable garde son
+  accueil et se voit proposer « Je prends cet OT » (sa fiche, après celle du Solo).
   **Langue du compte (T298, D148)** : champ facultatif `langue`, absent ou vide = la langue de l'installation.
   Valeur fermée : une langue déclarée par `js/i18n/langues.js` (`langues_declarees`, la valeur exacte : ni espace ni
   autre casse), ou vide (le champ est alors retiré) ; tout le reste → 400 `comptes.langue_inconnue` (ou
@@ -4444,7 +4452,9 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   409 au message s'il existe déjà un responsable actif (l'assistant propose de passer l'étape ; jamais de
   remplacement) ; en Solo, technicien « moi » dans `techniciens.csv` (`technicien_moi` : repris s'il existe, actif,
   même prénom et nom ; sinon `TEC-nnnn` suivant, métier vide, colonnes du fichier gardées, sauvegarde du jour d'abord)
-  et lié au compte (`technicien_id`), identifiant gardé dans le brouillon (`solo_technicien_id`). Sur « ce PC » en
+  et lié au compte (`technicien_id`), identifiant gardé dans le brouillon (`solo_technicien_id`). En équipe aussi (L06,
+  lot 2) : le compte créé, sa fiche lui est donnée de même (`relier_fiche_du_responsable`), gardée dans le brouillon
+  sous le même nom pour que le jeu de démo de « terminer » la recrée et relie le compte. Sur « ce PC » en
   Solo : le technicien seul, sans compte ni mot de passe (`compte` null) ; 400 ailleurs. Rend `{"compte"
   (compte_public, jamais le mot de passe), "technicien_id", …}`.
 - `POST identifiant` `{"prenom", "nom"}` (L03, lot 2 ; sans brouillon, rien n'est écrit) → `{"identifiant"}` que

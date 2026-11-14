@@ -311,11 +311,22 @@ def lignes_par_champ(octets):
     return list(csv.DictReader(io.StringIO(octets.decode("utf-8-sig"), newline=""), delimiter=";"))
 
 
+def comptes_gardes(cas, apres, avant):
+    """comptes.json à l'identique, sauf (L06, lot 2) : le responsable actif sans fiche a reçu la sienne à sa connexion
+    (technicien_id TEC-nnnn, modifie_le)."""
+    lus, attendus = json.loads(apres.decode("utf-8")), json.loads(avant.decode("utf-8"))
+    for compte, origine in zip(lus["comptes"], attendus["comptes"]):
+        if origine.get("role") == "responsable" and origine.get("actif") and not origine.get("technicien_id"):
+            cas.assertRegex(compte.get("technicien_id", ""), r"^(TEC-\d{4})?$")
+            compte["technicien_id"], compte["modifie_le"] = "", origine["modifie_le"]
+    cas.assertEqual(lus, attendus)
+
+
 def verifier_migration_sans_perte(cas, avant, apres):
     """Ouvrir une base d'un format plus ancien la fait passer au format courant (D183) : comptes.json reste à
     l'octet près, et chaque ligne d'origine se retrouve avec les mêmes valeurs dans ses colonnes d'origine
     (seules des colonnes, des lignes de journal et des fichiers de réserves s'ajoutent ; version_schema monte)."""
-    cas.assertEqual(apres["acces/comptes.json"], avant["acces/comptes.json"])
+    comptes_gardes(cas, apres["acces/comptes.json"], avant["acces/comptes.json"])
     # T526 : au passage au format 5, une demande acceptée ou regroupée suit son OT (statut attendu : retour_attendu)
     base = {nom[:-len(".csv")]: {"lignes": lignes_par_champ(avant[nom])}
             for nom in ("ordres_travail.csv", "techniciens.csv") if nom in avant}
@@ -399,7 +410,11 @@ class TestCompatibiliteBeta2(unittest.TestCase):
             self.assertEqual(list(comptes), list(comptes_origine))
             self.assertEqual(comptes["julien.moreau"]["langue"], "en")
             self.assertEqual(sans_langue(comptes["julien.moreau"]), comptes_origine["julien.moreau"])
-            self.assertEqual(comptes["claire.essai"], comptes_origine["claire.essai"])
+            # L06 (lot 2) : la responsable, sans fiche, a reçu la sienne à sa connexion ; rien d'autre ne change.
+            self.assertRegex(comptes["claire.essai"]["technicien_id"], r"^TEC-\d{4}$")
+            self.assertEqual({k: v for k, v in comptes["claire.essai"].items() if k not in ("technicien_id", "modifie_le")},
+                             {k: v for k, v in comptes_origine["claire.essai"].items()
+                              if k not in ("technicien_id", "modifie_le")})
             self.assertEqual(comptes["lea.martin"]["langue"], "fr")
             self.assertEqual({k: v for k, v in sans_langue(comptes["lea.martin"]).items() if k != "modifie_le"},
                              {k: v for k, v in comptes_origine["lea.martin"].items() if k != "modifie_le"})

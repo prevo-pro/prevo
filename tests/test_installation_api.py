@@ -412,8 +412,10 @@ class TestParcours(CasAssistant):
         self.assertEqual(reponse["etapes"]["tailscale"], "sans_objet")
         self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand", "mot_de_passe": MOT_DE_PASSE}))
         comptes = json.loads(Path(instance.config.dossier_donnees, "acces", "comptes.json").read_text(encoding="utf-8"))
-        self.assertEqual(comptes["comptes"][0]["technicien_id"], "")                   # pas de technicien « moi »
-        self.assertEqual(len(lire_csv(Path(instance.config.dossier_donnees) / "techniciens.csv")[1]), 4)
+        # L06 (lot 2) : en équipe aussi, le responsable reçoit d'office sa fiche de technicien, liée à son compte.
+        self.assertEqual(comptes["comptes"][0]["technicien_id"], "TEC-0005")
+        techniciens = lire_csv(Path(instance.config.dossier_donnees) / "techniciens.csv")[1]
+        self.assertEqual(len(techniciens), 5)
         reponse = self.ok(client.post("certificat", {"mode": "automatique"}))
         self.assertTrue(reponse["autorite_presente"])
         self.assertIn("127.0.0.1", reponse["noms_certificat"])

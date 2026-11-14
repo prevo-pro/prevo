@@ -651,7 +651,8 @@ class TestServeurReel(CasServeurReel):
         cookie = entree.cookie
         jeton = cookie.split("=", 1)[1]
         attendu = {"identifiant": "nicolas.briand", "role": "responsable", "prenom": "Nicolas", "nom": "Briand",
-                   "technicien_id": "", "a_changer": False, "appareil": False, "langue": ""}     # langue : T298
+                   "technicien_id": "TEC-0005", "a_changer": False, "appareil": False, "langue": ""}     # langue : T298
+        # technicien_id : L06 (lot 2), le responsable sans fiche reçoit la sienne à sa connexion.
         self.assertEqual(entree.json(), {"comptes": True, "session": attendu})
         self.assertNotIn(jeton.encode("ascii"), entree.octets)
         self.assertEqual(self.client.requete("GET", "/api/session", cookie=cookie).json(),
