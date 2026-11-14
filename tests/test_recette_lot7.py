@@ -623,7 +623,8 @@ class TestParcoursAtelier(CasRecetteLot7):
             tel.fill("#connexion-nom", NOM_TELEPHONE)
             tel.click("#connexion-enroler")
             attendre_pret(tel)
-            self.assertEqual(tel.evaluate("location.hash"), "#/accueil")
+            # R4 (lot 2) : l'étiquette flashée avant l'invitation est retrouvée, l'arrivée est la machine, pas l'accueil.
+            self.assertEqual(tel.evaluate("location.hash"), "#/equipement/" + EQUIPEMENT)
             self.assertEqual(tel.evaluate("App.profil"), {"type": "demandeur", "nom": NOM_TELEPHONE, "technicienId": ""})
             self.assertTrue(tel.evaluate("App.session.appareil"))
             jeton_appareil = next(c["value"] for c in contexte_tel.cookies() if c["name"] == "appareil")
