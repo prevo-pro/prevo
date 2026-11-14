@@ -48,6 +48,7 @@ import unittest
 from commun import ServeurPrevo
 from test_recette_socle import (EQUIPEMENT, ERREUR_TABLE_DU_FORMAT_4_ABSENTE, NOM_DOSSIER, CasRecetteSocle,
                                 csv_de_la_racine, fichiers_de, fichiers_du_jeu, lire_table)
+from test_migration_serveur import sans_le_journal_du_serveur
 
 JEU = "f3-v1.2.0"
 FICHIER = "equipements.csv"
@@ -224,13 +225,15 @@ class TestVerrouServeur(CasFichierVerrouille):
         with ServeurPrevo(source=self.jeu(JEU)) as serveur:
             self.ouvrir_serveur(serveur.url, "responsable")
             saisie = self.ouvrir_le_formulaire()
-            avant = fichiers_de(serveur.dossier)
+            # Rien d'écrit dans les DONNÉES : journal-serveur.log mis à part (T547, L34 : toujours écrit, il note le
+            # refus ; ce n'est pas une donnée).
+            avant = sans_le_journal_du_serveur(fichiers_de(serveur.dossier))
             with open(serveur.dossier / FICHIER, "r+b"):        # Excel tient le fichier : os.replace est refusé
                 self.enregistrer_refuse(MESSAGE_SERVEUR, saisie)
                 self.page.wait_for_load_state("networkidle")
-                pendant = fichiers_de(serveur.dossier)
+                pendant = sans_le_journal_du_serveur(fichiers_de(serveur.dossier))
             self.verifier_rien_ecrit(avant, pendant)
-            self.verifier_rien_ecrit(avant, fichiers_de(serveur.dossier))
+            self.verifier_rien_ecrit(avant, sans_le_journal_du_serveur(fichiers_de(serveur.dossier)))
             self.assertEqual([nom for nom in pendant if nom.endswith(".tmp")], [], "fichier temporaire laissé")
 
             self.enregistrer_avec_succes()
