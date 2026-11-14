@@ -6,7 +6,8 @@ Ce qui est vérifié, sur PO-02 (EQ-0005) de la démo (file://, rien n'est écri
     - filtre « Pannes / Préventif / Tout » : « Tout » choisi d'abord, chaque bouton garde les seuls OT de son genre ;
     - téléphone 375 px : bouton « Historique » en haut de la fiche (48 px), qui fait venir l'historique à l'écran ;
       les cartes disent le technicien et le temps passé ; aucun défilement horizontal ;
-    - demandeur : ni technicien ni temps passé (D126 : il ne lit ni l'un ni l'autre en mode serveur).
+    - demandeur : pas d'historique des OT ni de filtre (D126 : le serveur ne lui envoie pas les OT ; relevé T549, L28),
+      il garde l'historique des demandes de la machine.
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_parc_historique.py" -v
@@ -64,7 +65,7 @@ class TestHistoriqueMachine(CasNavigateur):
             page.click("#profil-responsable")
         attendre_pret(page)
         page.evaluate("(r) => { location.hash = r; }", "#/equipement/" + EQUIPEMENT)
-        page.wait_for_selector("#parc-historique .parc-filtre-historique")
+        page.wait_for_selector("#parc-historique .parc-filtre-historique" if profil != "demandeur" else "#parc-historique h2")
 
     def liens_ot(self):
         return sorted(set(self.page.eval_on_selector_all("#parc-historique a[href^='#/ot/OT-']",
@@ -132,9 +133,16 @@ class TestHistoriqueMachine(CasNavigateur):
         largeurs = page.evaluate("[document.documentElement.scrollWidth, document.documentElement.clientWidth]")
         self.assertLessEqual(largeurs[0], largeurs[1])
 
-    def test_demandeur_ni_technicien_ni_temps(self):
+    def test_demandeur_ni_historique_ot_ni_filtre(self):
         self.ouvrir("demandeur")
-        texte = simple(self.page.inner_text("#parc-historique"))
+        page = self.page
+        texte = simple(page.inner_text("#parc-historique"))
+        # En démo rien ne lui cache les OT ; en mode serveur il n'en reçoit aucun : pas de carte, pas de « Tout (0) ».
+        self.assertEqual(page.locator(".parc-filtre-historique").count(), 0)
+        self.assertEqual(self.liens_ot(), [])
+        self.assertNotIn("Historique des ordres de travail", texte)
+        self.assertNotIn("Cause :", texte)
+        self.assertIn("Historique des demandes", texte)
         self.assertNotIn("Temps passé", texte)
         self.assertNotIn("Technicien", texte)
         for nom in self.techniciens.values():

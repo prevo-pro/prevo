@@ -363,9 +363,6 @@ Object.assign(Parc, (() => {
     const heures = heuresParOt();
     const temps = (o) => (heures.has(o.id) ? UI.heures(heures.get(o.id)) : '–');
     const technicien = (o) => Ordres.nomTechnicien(o.technicien_id) || '–';
-    // Le demandeur ne lit ni les techniciens ni les temps passés (D126, TABLES_DU_DEMANDEUR de serveur.py) : ni l'un ni
-    // l'autre ne lui sont montrés, même en mode « ce PC » où rien ne les lui cache.
-    const intervenants = !App.estDemandeur();
     const filtres = ['pannes', 'preventif', 'tout'].map((cle) => ({
       cle, garder: FILTRES_HISTORIQUE[cle], choisi: cle === 'tout', libelle: LIBELLES_FILTRES[cle],
     }));
@@ -381,15 +378,14 @@ Object.assign(Parc, (() => {
         { cle: 'priorite', libelle: I18n.t('commun.champ.priorite'), rendu: (o) => UI.badgePriorite(o.priorite) },
         { cle: 'statut', libelle: I18n.t('commun.champ.statut'), rendu: (o) => UI.badgeValeur('ordres_travail', 'statut', o.statut) },
         { cle: 'titre', libelle: I18n.t('parc.carte_historique_ot.titre'), rendu: (o) => UI.html`${o.titre}${causeRemede(o)}` },
-      ].concat(intervenants ? [
         { cle: 'technicien_id', libelle: I18n.t('commun.champ.technicien'), rendu: technicien },
         { cle: 'temps', libelle: I18n.t('parc.historique.temps_passe'), rendu: temps, classe: 'sans-coupure' },
-      ] : []),
+      ],
       carte: (o) => UI.html`<a href="#/ot/${encodeURIComponent(o.id)}">
         <div class="carte-tete"><b>${o.id}</b>${UI.badgePriorite(o.priorite)}${UI.badgeValeur('ordres_travail', 'statut', o.statut)}</div>
         <div class="carte-titre">${o.titre}</div>
         <div class="carte-meta"><span>${UI.dateFr(o.date_creation)}</span><span>${Schema.libelleValeur('ordres_travail', 'type', o.type)}</span>
-          ${intervenants ? UI.html`<span>${technicien(o)}</span><span>${I18n.t('parc.historique.temps_court', { temps: temps(o) })}</span>` : ''}</div>
+          <span>${technicien(o)}</span><span>${I18n.t('parc.historique.temps_court', { temps: temps(o) })}</span></div>
         ${causeRemede(o)}</a>`,
     }), filtres);
   }
@@ -541,7 +537,10 @@ Object.assign(Parc, (() => {
     zone.appendChild(carteArticles(equipement));
     // L28 : les deux historiques dans une zone que le bouton « Historique » du téléphone fait venir à l'écran.
     const historique = UI.element(UI.html`<section class="parc-historique" id="parc-historique" tabindex="-1" aria-label="${I18n.t('parc.historique.bouton')}"></section>`);
-    historique.appendChild(carteHistoriqueOt(equipement));
+    // Le demandeur n'a pas l'historique des OT (D126 : le serveur ne lui envoie ni les OT, ni les techniciens, ni les
+    // temps passés) : ni carte ni filtre, dans aucun mode, pour qu'il ne lise pas « Tout (0) » ici et « Tout (30) » en
+    // démo. Il garde ce qu'il avait avant le lot : ses dernières demandes (A4) et l'historique des demandes (relevé L28).
+    if (!App.estDemandeur()) historique.appendChild(carteHistoriqueOt(equipement));
     historique.appendChild(carteHistoriqueDi(equipement));
     zone.appendChild(historique);
     const allerHistorique = UI.$('#parc-aller-historique', conteneur);
