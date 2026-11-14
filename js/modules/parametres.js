@@ -273,11 +273,13 @@ const Parametres = (() => {
       const actuelle = valeurAffichee(reglage);
       const devises = reglage.devises ? reglage.valeurs.map((code) => ({ valeur: code, libelle: code + ' — ' + UI.nomDevise(code) }))
         .concat([{ valeur: 'autre', libelle: I18n.t('parametres.devise.autre') }]) : null;
-      const bloc = UI.champ({ nom: reglage.cle, type: langues || devises ? 'ref' : reglage.type, libelle: reglage.libelle, valeurs: reglage.valeurs },
+      // L17 : un choix aux valeurs stockées en français, affichées par leur libellé (libellesValeurs).
+      const libelles = reglage.libellesValeurs ? reglage.valeurs.map((valeur) => ({ valeur, libelle: reglage.libellesValeurs[valeur] || valeur })) : null;
+      const bloc = UI.champ({ nom: reglage.cle, type: langues || devises || libelles ? 'ref' : reglage.type, libelle: reglage.libelle, valeurs: reglage.valeurs },
         devises && !reglage.valeurs.includes(actuelle) ? 'autre' : actuelle, { aide: surServeur ? noteDecideSurLeServeur() + ' ' + reglage.aide : reglage.aide,
-          lectureSeule: surServeur, liste: devises || (langues && langues.map((langue) => ({ valeur: langue.code, libelle: langue.nom }))) });
+          lectureSeule: surServeur, liste: devises || libelles || (langues && langues.map((langue) => ({ valeur: langue.code, libelle: langue.nom }))) });
       if (langues) UI.$$('option', bloc).forEach((option) => { if (reglage.valeurs.includes(option.value)) option.lang = option.value; });
-      if (devises) { const vide = UI.$('option[value=""]', bloc); if (vide) vide.remove(); }
+      if (devises || libelles) { const vide = UI.$('option[value=""]', bloc); if (vide) vide.remove(); }
       if (reglage.large) bloc.classList.add('large');
       formulaire.appendChild(bloc);
       if (devises) formulaire.appendChild(UI.champ({ nom: 'devise_autre', type: 'texte', libelle: I18n.t('parametres.libelle.devise_autre') },

@@ -10,7 +10,10 @@
 // Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, les cartes
 // « À prendre » (nombre dans le titre) et « En attente dans l'équipe » (lot 2, L14 : les OT des collègues mis en
 // attente, avec le motif ; hors mode Solo) et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises
-// récentes ».
+// récentes » et (L17) « Demandes prises par les techniciens ».
+// Qui accepte une demande (lot 2, L17) : quand le réglage le permet (Demandes.techniciensAcceptent), les demandes
+// « Nouvelle » sont aussi dans « À prendre », avec « Je prends » (Demandes.prendre : acceptée, OT créé à son nom, en
+// un geste) ; même bouton sur la fiche de la demande (demandes-fiche.js, prendreDemandeParEcran).
 // Carte Actions de la fiche (lot 2, L18) : un seul bouton mis en avant, celui de la prochaine étape utile pour la
 // personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ». Sur un OT en
 // attente ou en cours au nom d'un collègue, « Prendre la suite » : à mon nom (prendre, trace de prise) puis en cours.
@@ -95,6 +98,24 @@ Object.assign(Ordres, (() => {
   /** OT ouverts sans technicien, priorité puis date prévue (puis n°). */
   function otsAPrendre(ordres) {
     return ordres.filter((ot) => estOuvert(ot) && !texte(ot.technicien_id)).sort(parPriorite);
+  }
+
+  /**
+   * L17 : demandes acceptées par un technicien (« Je prends ») depuis `depuis` (ISO), les plus récentes d'abord : leur
+   * OT porte une première prise sans précédent datée de sa création (Demandes.prendre l'écrit ainsi ; une acceptation
+   * du responsable crée l'OT sans technicien). → [{ demande, ot, technicienId, date }].
+   */
+  function demandesPrisesParTechniciens(demandes, ordres, depuis) {
+    const parId = new Map(ordres.map((ot) => [ot.id, ot]));
+    const resultat = [];
+    demandes.forEach((demande) => {
+      const ot = texte(demande.ot_id) ? parId.get(texte(demande.ot_id)) : null;
+      const premiere = ot ? lirePrises(ot.prises_en_charge)[0] : null;
+      if (!premiere || premiere.precedentId || premiere.date !== texte(ot.date_creation).slice(0, 16)) return;
+      if (texte(ot.di_id) !== texte(demande.id) || premiere.date.slice(0, 10) < depuis) return;
+      resultat.push({ demande, ot, technicienId: premiere.technicienId, date: premiere.date });
+    });
+    return resultat.sort((a, b) => b.date.localeCompare(a.date) || b.ot.id.localeCompare(a.ot.id));
   }
 
   /** L14 : OT « En attente » au nom d'un collègue (un technicien autre que `moi`), priorité puis date prévue. */
@@ -365,15 +386,55 @@ Object.assign(Ordres, (() => {
     </a></li>`;
   }
 
-  /** Accueil du technicien : carte « À prendre » (nombre d'OT ouverts sans technicien dans le titre, les 5 premiers,
-   *  lien filtré). repere : marque data-aide-apres (téléphone, L14). */
-  function carteAPrendre(ots, repere) {
+  /** L17 : une demande « Nouvelle » dans « À prendre » : la carte mène à la demande, « Je prends » en dessous. */
+  function ligneDemandeAccueil(demande) {
+    return UI.html`<li class="accueil-demande-a-prendre"><a href="#/di/${encodeURIComponent(demande.id)}" class="${demande.impact === 'sécurité' ? 'accent-p1' : ''}">
+      <div class="carte-tete"><b>${demande.id}</b><span class="badge info">${I18n.t('ordres.prise.demande')}</span>${Accueil.interne.badgeImpact(demande.impact)}</div>
+      <div class="carte-titre">${demande.symptome}</div>
+      <div class="carte-meta"><span>${libelleEquipementCourt(demande.equipement_id)}</span><span>${demande.demandeur}</span><span>${UI.dateHeureFr(demande.date_heure)}</span></div>
+    </a><div class="actions ot-carte-prise"><button type="button" class="btn btn-primaire" data-action="prendre-demande" data-di="${demande.id}">${UI.icone('valider')}${I18n.t('ordres.prise.je_prends_demande')}</button></div></li>`;
+  }
+
+  /** Accueil du technicien : carte « À prendre » (L17 : d'abord les demandes « Nouvelle » qu'il peut prendre, puis les
+   *  OT ouverts sans technicien ; leur nombre dans le titre ; 5 de chaque au plus ; lien filtré). repere : marque
+   *  data-aide-apres (téléphone, L14). */
+  function carteAPrendre(ots, demandes, repere) {
+    const nombre = ots.length + demandes.length;
     return UI.html`<article class="carte accueil-a-prendre" ${repere ? UI.brut('data-aide-apres') : ''}>
-      <div class="entete-carte"><h2>${I18n.t('ordres.prise.a_prendre_n', { n: ots.length })}</h2></div>
-      ${ots.length ? UI.html`<ul class="liste-cartes">${ots.slice(0, NOMBRE_A_PRENDRE).map((ot) => ligneOtAccueil(ot))}</ul>`
+      <div class="entete-carte"><h2>${I18n.t('ordres.prise.a_prendre_n', { n: nombre })}</h2></div>
+      ${nombre ? UI.html`<ul class="liste-cartes">${demandes.slice(0, NOMBRE_A_PRENDRE).map((demande) => ligneDemandeAccueil(demande))}${ots.slice(0, NOMBRE_A_PRENDRE).map((ot) => ligneOtAccueil(ot))}</ul>`
         : UI.html`<p class="muted">${I18n.t('ordres.prise.rien_a_prendre')}</p>`}
       ${ots.length ? UI.html`<p class="accueil-voir-tout"><a href="#/ot?technicien=__aucun">${I18n.t('ordres.prise.voir_non_affectes')}</a></p>` : ''}
     </article>`;
+  }
+
+  /**
+   * L17 : « Je prends » sur une demande (accueil, fiche de la demande) : acceptée et OT créé au nom du technicien
+   * (Demandes.prendre), puis la fiche de l'OT ouverte. Refus (prise ailleurs, réglage changé, RG8) : dit, écran relu.
+   */
+  async function prendreDemandeParEcran(diId, bouton) {
+    if (bouton) bouton.disabled = true;
+    try {
+      const otId = await Demandes.prendre(diId, monTechnicien());
+      UI.toast(I18n.t('ordres.prise.demande_prise', { diId, otId }), 'succes');
+      App.naviguer('#/ot/' + encodeURIComponent(otId));
+    } catch (erreur) {
+      App.signalerErreur(erreur, 'prise de la demande ' + diId);
+      if (bouton && document.contains(bouton)) bouton.disabled = false;
+      await App.reafficher();
+    }
+  }
+
+  /** Branche « Je prends » des demandes de la carte « À prendre » (accueil du technicien, après son affichage). */
+  function brancherAccueilTechnicien(conteneur) {
+    const carte = conteneur && conteneur.querySelector('.accueil-a-prendre');
+    if (!carte) return;
+    carte.addEventListener('click', (evenement) => {
+      const bouton = evenement.target.closest('button[data-action="prendre-demande"]');
+      if (!bouton || bouton.disabled) return;
+      evenement.preventDefault();
+      prendreDemandeParEcran(bouton.dataset.di, bouton);
+    });
   }
 
   /** L14 : carte « En attente dans l'équipe » : les OT des collègues mis en attente, le collègue et le motif d'attente
@@ -415,6 +476,20 @@ Object.assign(Ordres, (() => {
       <div class="entete-carte"><h2>${I18n.t('ordres.prise.vos_ot_repris')}</h2></div>${listeReprises(reprises, true)}</article>`;
   }
 
+  /** L17 : accueil du responsable, ligne discrète « Demandes prises par les techniciens » (7 jours, les 5 dernières) :
+   *  ce qui a été accepté sans lui ; '' s'il n'y en a pas. */
+  function prisesSansResponsable() {
+    const prises = demandesPrisesParTechniciens(Donnees.lignes('demandes'), Donnees.lignes('ordres_travail'),
+      joursAvant(Donnees.aujourdhui(), JOURS_REPRISES));
+    if (!prises.length) return '';
+    return UI.html`<article class="carte accueil-prises-techniciens">
+      <div class="entete-carte"><h2>${I18n.t('ordres.prise.prises_par_techniciens')}</h2></div>
+      <ul class="ot-reprises">${prises.slice(0, NOMBRE_A_PRENDRE).map((prise) => UI.html`<li>
+        <a href="#/ot/${encodeURIComponent(prise.ot.id)}">${I18n.t('ordres.prise.prise_sans_vous', { diId: prise.demande.id,
+          otId: prise.ot.id, nomTechnicien: prenom(prise.technicienId), titre: texte(prise.demande.symptome),
+          date: UI.dateFr(prise.date), heure: prise.date.slice(11, 16) })}</a></li>`)}</ul></article>`;
+  }
+
   /** Accueil du responsable : bloc court « Reprises récentes » (7 jours, les 5 dernières) ; '' s'il n'y en a pas. */
   function reprisesResponsable() {
     const reprises = reprisesRecentes(Donnees.lignes('ordres_travail'), joursAvant(Donnees.aujourdhui(), JOURS_REPRISES));
@@ -430,9 +505,12 @@ Object.assign(Ordres, (() => {
   function blocsAccueilTechnicien(telephone) {
     const ordres = Donnees.lignes('ordres_travail');
     const aPrendre = otsAPrendre(ordres);
+    // L17 : les demandes « Nouvelle », pour un technicien lié à sa fiche, quand le réglage le permet.
+    const demandes = estTechnicien() && monTechnicien() && typeof Demandes !== 'undefined' && Demandes.demandesAPrendre
+      ? Demandes.demandesAPrendre(Donnees.lignes('demandes')) : [];
     const solo = typeof App !== 'undefined' && App.modeSolo && App.modeSolo();
-    const html = UI.html`${carteAPrendre(aPrendre, telephone)}${solo ? '' : carteEnAttenteEquipe(otsEnAttenteEquipe(ordres, monTechnicien()), telephone)}`;
-    return { html, nombreAPrendre: aPrendre.length };
+    const html = UI.html`${carteAPrendre(aPrendre, demandes, telephone)}${solo ? '' : carteEnAttenteEquipe(otsEnAttenteEquipe(ordres, monTechnicien()), telephone)}`;
+    return { html, nombreAPrendre: aPrendre.length + demandes.length };
   }
 
   Object.assign(Ordres.interne, {
@@ -442,10 +520,12 @@ Object.assign(Ordres, (() => {
 
   return {
     // règles pures (prises en charge, format 5)
-    lirePrises, ajouterPrise, priseProposee, reprisesRecentes, otsAPrendre, otsEnAttenteEquipe, joursAvant,
+    lirePrises, ajouterPrise, priseProposee, reprisesRecentes, otsAPrendre, otsEnAttenteEquipe, demandesPrisesParTechniciens,
+    joursAvant,
     // écriture
     prendre, monTechnicien,
     // accueils (accueil.js, accueil-bento.js : cherchés au moment de l'affichage)
-    blocsAccueilTechnicien, repriseDeMesOt, reprisesResponsable,
+    blocsAccueilTechnicien, brancherAccueilTechnicien, prendreDemandeParEcran, repriseDeMesOt, reprisesResponsable,
+    prisesSansResponsable,
   };
 })());

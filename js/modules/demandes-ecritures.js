@@ -2,7 +2,8 @@
 // Demandes (2/5) — écritures du module « Demandes d'intervention » (ARCHITECTURE.md §10 RG1 et
 // §14.2, §14.6) : créer une DI (avec son code symptôme et, si elle est signalée pendant un OT
 // préventif, l'OT d'origine marqué « anomalie constatée »), l'accepter (OT créé avec le code
-// symptôme, puis annulé s'il devient orphelin), la regrouper, la différer, la refuser ; et le nom
+// symptôme, puis annulé s'il devient orphelin ; par un technicien, L17 : « Je prends », OT à son nom), la
+// regrouper, la différer, la refuser ; et le nom
 // de fichier d'une photo. Toujours par Donnees.modifier, le contrôle étant refait DANS la fonction
 // de mutation. Complète l'objet Demandes.
 
@@ -127,12 +128,15 @@ Object.assign(Demandes, (() => {
   /**
    * Accepte une DI (RG1) : crée l'OT (ou réutilise celui qui porte déjà ce di_id) puis passe la DI
    * « Acceptée ». options : { priorite (défaut : calculée), motifPriorite (obligatoire si la
-   * priorité change), type (défaut : P1 → correctif immédiat, sinon correctif différé) }.
+   * priorité change), type (défaut : P1 → correctif immédiat, sinon correctif différé),
+   * technicienId (L17 : « Je prends » d'un technicien, voir prendre) }.
    * Renvoie l'identifiant de l'OT.
    */
   async function accepter(diId, options) {
     const reglages = options || {};
+    const preneur = texte(reglages.technicienId);
     await verifierEncoreATraiter(diId);
+    if (preneur) verifierPrenable(Donnees.trouver('demandes', diId), diId);
     const demande = Donnees.trouver('demandes', diId);
     const calculee = prioriteDeLaDemande(demande) || 'P3';
     const priorite = texte(reglages.priorite) || calculee;
@@ -156,6 +160,7 @@ Object.assign(Demandes, (() => {
       const existant = lignes.find((ot) => ot.di_id === diId);
       if (existant) {
         if (symptomeCode && !texte(existant.symptome_code)) existant.symptome_code = symptomeCode;
+        if (preneur && !texte(existant.technicien_id)) mettreAuNomDuPreneur(existant, preneur, outils.maintenant());
         return existant.id;
       }
       const maintenant = outils.maintenant();
@@ -167,9 +172,10 @@ Object.assign(Demandes, (() => {
         date_prevue: datePrevue(priorite, outils.aujourdhui()), symptome_code: symptomeCode,
       };
       if (typeof Solo !== 'undefined') Solo.completerOt(ligne);      // T521 : en Solo, au nom du technicien seul
+      if (preneur) mettreAuNomDuPreneur(ligne, preneur, maintenant);
       lignes.push(ligne);
       return id;
-    }, { action: 'acceptation de ' + diId + (changementPriorite ? ' ; ' + changementPriorite : '') });
+    }, { action: 'acceptation de ' + diId + (preneur ? ' par le technicien ' + preneur : '') + (changementPriorite ? ' ; ' + changementPriorite : '') });
 
     // (2) La DI : encore à traiter ? (sinon un autre poste a décidé entre-temps)
     let vue = null;          // la DI telle que lue (fraîche) par la fonction de mutation
@@ -178,6 +184,7 @@ Object.assign(Demandes, (() => {
         const ligne = lignes.find((l) => l.id === diId);
         vue = ligne ? { statut: ligne.statut, ot_id: ligne.ot_id } : null;
         verifierATraiter(ligne, diId);
+        if (preneur) verifierPrenable(ligne, diId);
         ligne.statut = 'Acceptée';
         ligne.ot_id = otId;
         ligne.date_decision = outils.maintenant();
@@ -192,6 +199,33 @@ Object.assign(Demandes, (() => {
       throw erreur;
     }
     return otId;
+  }
+
+  /** L17 : un technicien ne prend qu'une demande « Nouvelle », et seulement si le réglage le permet. */
+  function verifierPrenable(demande, diId) {
+    if (!Demandes.techniciensAcceptent()) throw new Donnees.ErreurValidation(I18n.t('demandes.prendre.reserve_responsable'));
+    if (demande && demande.statut !== 'Nouvelle') {
+      throw new Donnees.ErreurValidation(I18n.t('demandes.verifier_atraiter.statut_actuel', { messageDejaTraitee: messageDejaTraitee(), demandeStatut: Schema.libelleValeur('demandes', 'statut', demande.statut) }));
+    }
+    if (!demande) throw new Donnees.ErreurValidation(I18n.t('demandes.verifier_atraiter.demande_introuvable', { diId }));
+  }
+
+  /** L17 : l'OT (nouveau ou repris d'un essai interrompu) au nom du technicien qui prend la demande, avec sa ligne de
+   *  prise datée de la création (Ordres.ajouterPrise : « pris à la création », que l'accueil du responsable relit) et
+   *  la règle de l'affectation (RG8, Ordres.controlerAffectation : refus sans dérogation, réservée au responsable). */
+  function mettreAuNomDuPreneur(ot, technicienId, maintenant) {
+    const prochaine = Object.assign({}, ot, { technicien_id: technicienId });
+    Ordres.controlerAffectation(prochaine);
+    ot.prises_en_charge = Ordres.ajouterPrise(ot.prises_en_charge, texte(maintenant).slice(0, 16), technicienId, '');
+    ot.technicien_id = technicienId;
+  }
+
+  /** L17 : « Je prends » d'un technicien sur une demande « Nouvelle » : acceptée avec la priorité calculée et le type
+   *  proposé, l'OT créé à son nom, en un geste (mêmes écritures et journal que l'acceptation du responsable). */
+  async function prendre(diId, technicienId) {
+    const moi = texte(technicienId);
+    if (!moi) throw new Donnees.ErreurValidation(I18n.t('ordres.prise.sans_technicien'));
+    return accepter(diId, { technicienId: moi });
   }
 
   /** Annule l'OT créé pour une DI finalement traitée sur un autre poste (s'il est encore « Créé »). */
@@ -278,6 +312,6 @@ Object.assign(Demandes, (() => {
   Object.assign(Demandes.interne, { nomPhoto });
 
   return {
-    creer, accepter, regrouper, differer, refuser,
+    creer, accepter, prendre, regrouper, differer, refuser,
   };
 })());

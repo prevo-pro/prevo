@@ -4071,7 +4071,8 @@ serveur ne filtre pas les lignes de `demandes` (il ne sait pas qui a écrit une 
 « ses demandes » est une règle d'écran, la même qu'avant (nom du profil : `Mes demandes`, accueil du demandeur, bloc
 « Vos dernières demandes sur cette machine »). En écriture, rien ne change : le demandeur et l'appareil n'ajoutent
 qu'une demande `Nouvelle` au retour vide (`verifier_demande_nouvelle`, T513) et ne modifient aucune ligne existante
-(`garder_les_demandes_actuelles` : 403) ; la Direction n'écrit rien ; le technicien écrit `demandes` comme avant.
+(`garder_les_demandes_actuelles` : 403) ; la Direction n'écrit rien ; le technicien écrit `demandes`, sans en décider
+(lot 2 ergonomie, L17 : `garder_les_decisions_au_responsable`, ci-dessous).
 
 Rôle « direction » (T520, correction A7 de l'étude d'ergonomie : le patron n'avait le choix qu'entre trop de droits et
 rien) : **lecture seule**. Elle lit `TABLES_DE_LA_DIRECTION` (toutes sauf `habilitations`, `wiki_pages`, `wiki_journal`)
@@ -4157,6 +4158,15 @@ Précisions de T152 :
   refusée (403) comme absente : `Donnees.chargerTout` aboutit et ses écrans montrent ce que ses tables permettent ; sans
   `ordres_travail` ni `articles` (coûts, techniciens), l'historique des OT de la fiche d'équipement, le statut de l'OT d'une
   demande, les causes fréquentes, les pièces de rechange et les couches du wiki tirées des OT restent vides.
+- **Technicien, décision sur une demande (lot 2 ergonomie, L17)** : `PUT /api/csv/demandes` contrôlé par
+  `garder_les_decisions_au_responsable`. Une demande ajoutée a le statut `Nouvelle` et aucune décision ; une demande
+  déjà là ne change de décision (statut, `motif_decision`, `date_decision`, `ot_id`) que pour suivre son OT (Acceptée,
+  Regroupée, En cours, Réparée entre eux, champs de décision inchangés) ou, si le réglage `acceptation_demandes` de
+  `parametres.csv` n'est pas `responsable` (absent : les techniciens aussi), de `Nouvelle` à `Acceptée` avec un OT créé
+  pour elle (`di_id`) au nom du technicien de la session, déjà écrit dans `ordres_travail.csv`. Refuser, différer,
+  regrouper, accepter une demande différée, supprimer une demande : 403. Ajout (`POST …/ajout`) : lignes nouvelles,
+  `Nouvelle`, sans décision. Sans comptes, la règle est celle de l'application (`Demandes.techniciensAcceptent`).
+  Tests : `tests/test_acceptation_demandes.py`.
 - **Demandeur, écriture** : `PUT /api/csv/demandes` en ajout seulement (l'écran Signaler écrit par `Donnees.modifier`) :
   chaque ligne actuelle doit s'y retrouver inchangée (même `id`, mêmes valeurs à la forme près : casse, accents, espaces
   de bord, apostrophe de protection, écriture d'une date ou d'une date-heure, virgule décimale, soit ce que la lecture
@@ -5399,6 +5409,16 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
   l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`
   (`tests/test_ordres_prise.py`).
+- **Qui accepte une demande (lot 2 ergonomie, L17)** : réglage du responsable `acceptation_demandes` (Paramètres,
+  section « Demandes d'intervention » : `techniciens`, par défaut, ou `responsable`), lu par
+  `Demandes.techniciensAcceptent` seul. Quand les techniciens le peuvent, les demandes `Nouvelle`
+  (`Demandes.demandesAPrendre`) viennent en tête de la carte « À prendre » de leur accueil (comptées dans le titre) et
+  sur leur fiche (carte « Prendre cette demande »), avec « Je prends » (`Ordres.prendreDemandeParEcran` →
+  `Demandes.prendre`) : `Demandes.accepter` avec `technicienId`, même création d'OT (priorité calculée, type proposé),
+  OT à son nom avec une ligne de prise datée de sa création, RG8 de l'affectation (`Ordres.controlerAffectation`, sans
+  dérogation), journal « acceptation de DI-… par le technicien TEC-… », puis la fiche de l'OT. Une demande différée
+  reste au responsable. Accueil du responsable : ligne discrète « Demandes prises par les techniciens » (7 jours :
+  `Ordres.demandesPrisesParTechniciens`, OT dont la première prise, sans précédent, date de sa création).
 - **Carte Actions de la fiche d'un OT (lot 2 ergonomie, L18)** : `Ordres.interne.rangerActions` (ordres-prise.js,
   appelée par `brancherPrise`) met en avant UN bouton (`.ot-bouton-principal`, seul `btn-primaire`, en tête), celui de
   la prochaine étape utile pour la personne connectée, dans cet ordre : « Je prends cet OT », « Démarrer » (ou la

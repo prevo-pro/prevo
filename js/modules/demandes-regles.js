@@ -49,6 +49,24 @@ const Demandes = (() => {
   const PRIORITES = ['P1', 'P2', 'P3', 'P4'];
   const TYPE_IMMEDIAT = 'correctif immédiat';
   const TYPE_DIFFERE = 'correctif différé';
+  // Lot 2 ergonomie (L17) : réglage acceptation_demandes de parametres.csv (Paramètres, section Demandes) ; tout sauf
+  // « responsable » (ligne absente comprise : base neuve ou existante sans réglage) laisse les techniciens accepter.
+  const CLE_ACCEPTATION = 'acceptation_demandes';
+  const ACCEPTATION_RESPONSABLE_SEUL = 'responsable';
+
+  /** Vrai si les techniciens peuvent accepter une demande « Nouvelle » (« Je prends ») ; seul accesseur du réglage. */
+  function techniciensAcceptent() {
+    return texte(Donnees.parametre(CLE_ACCEPTATION, 'techniciens')).toLowerCase() !== ACCEPTATION_RESPONSABLE_SEUL;
+  }
+
+  /** Demandes qu'un technicien peut prendre (L17) : « Nouvelle », quand le réglage le permet ; les plus anciennes
+   *  d'abord ([] sinon). La décision d'une demande différée reste au responsable. */
+  function demandesAPrendre(demandes) {
+    if (!techniciensAcceptent()) return [];
+    return (demandes || []).filter((demande) => texte(demande.statut) === 'Nouvelle')
+      .sort((a, b) => texte(a.date_heure).localeCompare(texte(b.date_heure)) || texte(a.id).localeCompare(texte(b.id)));
+  }
+
   // Lu à l'affichage (jamais figé au chargement).
   function messageDejaTraitee() {
     return I18n.t('demandes.message_deja_traitee.demande_deja_ete_traitee');
@@ -211,6 +229,7 @@ const Demandes = (() => {
     STATUTS, impacts, MATRICE_PRIORITE,
     get IMPACTS() { return impacts(); },
     prioriteCalculee, normaliserImpact, typePropose, datePrevue, libelleEquipement, codeSymptome,
+    techniciensAcceptent, demandesAPrendre,
     // (les écritures creer, accepter, regrouper, differer, refuser : demandes-ecritures.js)
     // Usage interne au module : outils prêtés aux fichiers demandes-*.js, qui y ajoutent les leurs
     // par Object.assign(Demandes.interne, …). Pas une API : son contenu peut changer à tout moment.

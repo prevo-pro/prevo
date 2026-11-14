@@ -6,7 +6,7 @@
 // outils/generer_fiche_csv.py relit ce tableau (libellé, valeurs, défaut) : garder « { cle: '…' » en tête de ligne.
 //
 // Un réglage : clé dans parametres.csv, type de champ, libellé, valeur par défaut, bornes min/max pour un nombre,
-// valeurs d'un choix, section (intertitre du formulaire), aide ; horsFormulaire : posé par une carte (mode Solo) ;
+// valeurs d'un choix (libellesValeurs : leur libellé affiché, L17), section (intertitre du formulaire), aide ; horsFormulaire : posé par une carte (mode Solo) ;
 // decideeParLeServeur : montré tel que le PC serveur l'a décidé (mode serveur). Textes lus à l'affichage
 // (accesseurs), jamais figés au chargement du module.
 
@@ -84,6 +84,14 @@ const ParametresReglages = (() => {
     { cle: 'solo_technicien_id', type: 'texte', defaut: '', horsFormulaire: true,
       get libelle() { return I18n.t('parametres.libelle.technicien_moi_mode_solo'); },
       get aide() { return I18n.t('parametres.aide.identifiant_technicien_cree_passage'); } },
+    // Lot 2 ergonomie (T537, L17) : qui accepte une demande. Valeurs stockées (en français) : « techniciens » (le
+    // responsable et les techniciens, par défaut, aussi quand la ligne manque) ou « responsable » (lui seul). Lu par
+    // Demandes.techniciensAcceptent seul ; tenu aussi par le serveur (garder_les_decisions_au_responsable de serveur.py).
+    { cle: 'acceptation_demandes', type: 'choix', valeurs: ['techniciens', 'responsable'], defaut: 'techniciens', large: true,
+      get libellesValeurs() { return { techniciens: I18n.t('parametres.valeur.acceptation_techniciens'), responsable: I18n.t('parametres.valeur.acceptation_responsable') }; },
+      get section() { return I18n.t('parametres.section.demandes'); },
+      get libelle() { return I18n.t('parametres.libelle.acceptation_demandes'); },
+      get aide() { return I18n.t('parametres.aide.acceptation_demandes'); } },
     // Clôture en une étape (§22.11, D132) : posée à 1 par « Passer en mode Solo », réglable par le responsable hors Solo.
     { cle: 'cloture_une_etape', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.ordres_travail'); },
       get libelle() { return I18n.t('parametres.libelle.cloture_etape_bouton_clore'); },

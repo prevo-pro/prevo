@@ -118,6 +118,9 @@ STRUCTURE_AVANT["technicien"]["classes"] = sorted((set(STRUCTURE_AVANT["technici
                                                    - {"accueil-sous-titre", "accueil-preventifs-vide"})
                                                   | {"accueil-en-attente-equipe", "accueil-collegue", "accueil-motif-attente",
                                                      "accent-p2", "prio-p2"})
+# Lot 2, L17 (T537) : les demandes « Nouvelle » de la démo dans « À prendre », avec « Je prends » (réglage par défaut).
+STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicien"]["classes"])
+                                                  | {"accueil-demande-a-prendre", "actions", "ko", "ot-carte-prise"})
 
 NOTER_TOASTS_JS = """(() => {
   window.__toasts = [];

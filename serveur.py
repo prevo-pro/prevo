@@ -7509,6 +7509,106 @@ def garder_les_demandes_actuelles(octets_recus, octets_actuels):
     return ecrire_tableau_csv(entete, gardees + nouvelles)
 
 
+# Qui accepte une demande (lot 2 ergonomie, L17 ; décision de Nicolas du 14/11). Réglage du responsable dans
+# parametres.csv : « acceptation_demandes » = « responsable » (le responsable seulement) ou « techniciens » (le
+# responsable et les techniciens, valeur par défaut, aussi quand la ligne manque : base existante sans réglage). Mode
+# serveur avec comptes, PUT de demandes.csv par un technicien (garder_les_decisions_au_responsable) :
+#   - une demande ajoutée a le statut « Nouvelle » et aucune décision (Signaler) ;
+#   - une demande déjà là ne change de décision (statut, motif, date, ordre de travail) que pour suivre son OT
+#     (Acceptée, Regroupée, En cours, Réparée entre eux, mêmes champs de décision : Demandes.suivreOt) ou, si le
+#     réglage le permet, de « Nouvelle » à « Acceptée » avec un OT créé pour elle (di_id) à SON nom (technicien_id
+#     de la session), déjà écrit dans ordres_travail.csv (Demandes.accepter écrit l'OT d'abord) ;
+#   - refuser, différer, regrouper, accepter une demande différée, la supprimer : 403, quel que soit le réglage.
+# Ajout (POST /api/csv/demandes/ajout) : lignes nouvelles, « Nouvelle », sans décision. Sans comptes (ce PC, dossier),
+# la règle est tenue par l'application seule (Demandes.techniciensAcceptent).
+PARAMETRE_ACCEPTATION_DEMANDES = 'acceptation_demandes'
+ACCEPTATION_RESPONSABLE_SEUL = 'responsable'
+STATUT_DEMANDE_ACCEPTEE = 'Acceptée'
+STATUTS_DEMANDE_SUIVIS = STATUTS_DEMANDE_RATTRAPES + (STATUT_DEMANDE_EN_COURS, STATUT_DEMANDE_REPAREE)
+
+
+def techniciens_acceptent(config):
+    """Vrai si le réglage acceptation_demandes laisse les techniciens accepter une demande (tout sauf « responsable »,
+    ligne absente comprise) ; faux sans config (rien à relire)."""
+    if config is None:
+        return False
+    return forme_comparable(valeur_parametre_csv(config, PARAMETRE_ACCEPTATION_DEMANDES)) != ACCEPTATION_RESPONSABLE_SEUL
+
+
+def refus_decision_technicien(raison):
+    """403 d'une décision sur une demande écrite par un technicien ; raison : un message (traduisible) en minuscule."""
+    return ErreurHttp(403, traduisible('acces.decision_technicien',
+                                       'Accès refusé : la décision sur une demande revient au responsable ; {raison}',
+                                       raison=raison))
+
+
+def verifier_demande_ajoutee_par_le_technicien(ligne):
+    """Demande ajoutée par un technicien (Signaler) : statut « Nouvelle », champs de décision vides ; 403 sinon."""
+    if forme_comparable(ligne.get('statut', '')) != forme_comparable(STATUT_DEMANDE_NOUVELLE):
+        raise refus_decision_technicien(traduisible('demandes.statut_nouvelle',
+                                                    'une nouvelle demande a le statut « {statut} ».',
+                                                    statut=STATUT_DEMANDE_NOUVELLE))
+    if any(ligne.get(cle_entete(champ), '').strip() for champ in CHAMPS_DE_DECISION):
+        raise refus_decision_technicien(traduisible('demandes.decision_reservee',
+                                                    'la décision (motif, date, ordre de travail) revient au responsable.'))
+
+
+def garder_les_decisions_au_responsable(octets_recus, octets_actuels, identite, config):
+    """PUT de demandes.csv par un technicien (L17, voir plus haut) : octets reçus rendus tels quels si chaque décision
+    est permise ; 403 sinon. Les OT ne sont relus que pour une acceptation."""
+    entete, lignes = lire_tableau('demandes', octets_recus)
+    cles = [cle_entete(nom) for nom in entete]
+    actuelles = {}
+    for ligne in dictionnaires_csv(octets_actuels, 'demandes'):
+        actuelles.setdefault(ligne.get('id', '').strip(), ligne)
+    decision = tuple(cle_entete(champ) for champ in ('statut',) + CHAMPS_DE_DECISION)      # clés des dictionnaires
+    statut, champs_de_decision = decision[0], decision[1:]
+    suivis = {forme_comparable(statut) for statut in STATUTS_DEMANDE_SUIVIS}
+    moi = str(identite.get('technicien_id') or '').strip()
+    ordres = None
+    recues = set()
+    for brute in lignes:
+        recue = ligne_en_dictionnaire(cles, brute)
+        identifiant = recue.get('id', '').strip()
+        recues.add(identifiant)
+        ancienne = actuelles.get(identifiant)
+        if ancienne is None:
+            verifier_demande_ajoutee_par_le_technicien(recue)
+            continue
+        avant = {champ: forme_comparable(ancienne.get(champ, '')) for champ in decision}
+        apres = {champ: forme_comparable(recue.get(champ, '')) for champ in decision}
+        if avant == apres:
+            continue
+        if (avant[statut] in suivis and apres[statut] in suivis
+                and all(avant[champ] == apres[champ] for champ in champs_de_decision)):
+            continue                                     # la demande suit son OT (Demandes.suivreOt)
+        acceptation = (avant[statut] == forme_comparable(STATUT_DEMANDE_NOUVELLE)
+                       and apres[statut] == forme_comparable(STATUT_DEMANDE_ACCEPTEE))
+        if not acceptation:
+            raise refus_decision_technicien(traduisible('demandes.decision_reservee',
+                                                        'la décision (motif, date, ordre de travail) revient au '
+                                                        'responsable.'))
+        if not techniciens_acceptent(config):
+            raise refus_decision_technicien(traduisible('demandes.acceptation_reservee',
+                                                        'le responsable a réservé l\'acceptation des demandes.'))
+        if ordres is None:
+            ordres = {ligne.get('id', '').strip(): ligne for ligne in
+                      dictionnaires_csv(lire_octets(chemin_table(config, 'ordres_travail')), 'ordres_travail')}
+        ot = ordres.get(recue.get(cle_entete('ot_id'), '').strip())
+        if (not moi or ot is None or ot.get(cle_entete('di_id'), '').strip() != identifiant
+                or ot.get(cle_entete('technicien_id'), '').strip() != moi):
+            raise refus_decision_technicien(traduisible('demandes.acceptation_a_son_nom',
+                                                        'un technicien accepte une demande nouvelle avec un ordre de '
+                                                        'travail créé pour elle, à son nom.'))
+    manquantes = [identifiant or traduisible('demandes.sans_numero', 'sans numéro')
+                  for identifiant in actuelles if identifiant not in recues]
+    if manquantes:
+        raise refus_decision_technicien(traduisible('demandes.non_supprimable',
+                                                    'une demande ne se supprime pas ({demandes}).',
+                                                    demandes=sorted(manquantes, key=str)[:5]))
+    return octets_recus
+
+
 # Journal écrit par un rôle autre que le responsable (T505 ; relecture R4, M3 ; D186 : le journal est la trace d'une
 # dérogation d'habilitation, qui, quand, quel OT). Mode serveur avec comptes seulement :
 #   - il ne s'écrit que par ajout. POST /api/csv/journal/ajout : lignes_de_journal_du_role. PUT /api/csv/journal du
@@ -7720,6 +7820,8 @@ def controle_d_ecriture(identite, table, config=None):
             return remettre_colonnes_cachees(table, recus, actuels, colonnes)
         if role == 'demandeur' and table == 'demandes':
             return garder_les_demandes_actuelles(recus, actuels)
+        if role == 'technicien' and table == 'demandes':        # L17 : qui accepte une demande
+            return garder_les_decisions_au_responsable(recus, actuels, identite, config)
         return recus
     return controler
 
@@ -7750,11 +7852,23 @@ def controle_d_ajout(identite, table, config=None):
                 if any(cellule.strip() for cellule in rangee):
                     verifier_article_nouveau_du_technicien(ligne_en_dictionnaire(cles_ajout, rangee),
                                                            creation_permise, pris)
-        if not colonnes and not (role == 'demandeur' and table == 'demandes'):
+        if not colonnes and table != 'demandes':
             return lignes
         cles = [cle_entete(nom) for nom in noms]
         rangees = [rangee for rangee in csv.reader(io.StringIO(lignes.decode('utf-8'), newline=''), delimiter=';')
                    if any(cellule.strip() for cellule in rangee)]
+        if role == 'technicien' and table == 'demandes':        # L17 : lignes nouvelles, « Nouvelle », sans décision
+            prises = {ligne.get('id', '').strip() for ligne in dictionnaires_csv(actuels, table)}
+            for rangee in rangees:
+                ligne = ligne_en_dictionnaire(cles, rangee)
+                if ligne.get('id', '').strip() in prises:
+                    raise refus_decision_technicien(traduisible('demandes.non_modifiable',
+                                                                'la demande {numero} existe déjà : elle ne se modifie '
+                                                                'pas ici.', numero=ligne.get('id', '').strip()))
+                verifier_demande_ajoutee_par_le_technicien(ligne)
+            return lignes
+        if role != 'demandeur' and not colonnes:
+            return lignes
         if colonnes:
             for colonne in colonnes:
                 if cle_entete(colonne) in cles:

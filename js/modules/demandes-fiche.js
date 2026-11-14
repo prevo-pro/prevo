@@ -104,6 +104,24 @@ Object.assign(Demandes, (() => {
     // L29 : panne à répétition sur cette machine — bandeau pour le responsable qui traite la demande.
     if (decisionPossible) PannesRecurrentes.poserSurDemande(UI.$('.di-zone-securite', conteneur), demande);
     if (decisionPossible) afficherPanneauDecision(UI.$('.di-decision', conteneur), demande, priorite);
+    else if (prenableParMoi(demande)) afficherPrise(UI.$('.di-decision', conteneur), demande);
+  }
+
+  /** L17 : le technicien (lié à sa fiche) peut prendre cette demande « Nouvelle » si le réglage le permet. */
+  function prenableParMoi(demande) {
+    return App.estTechnicien() && Boolean(App.profil && App.profil.technicienId) && demande.statut === 'Nouvelle'
+      && Demandes.techniciensAcceptent() && typeof Ordres !== 'undefined' && Boolean(Ordres.prendreDemandeParEcran);
+  }
+
+  /** L17 : carte « Je prends » de la fiche (même geste que sur l'accueil : Ordres.prendreDemandeParEcran). */
+  function afficherPrise(zone, demande) {
+    UI.remplir(zone, UI.html`<article class="carte di-prise">
+      <h2>${I18n.t('demandes.prendre.titre')}</h2>
+      <p class="aide">${I18n.t('demandes.prendre.explication')}</p>
+      <div class="pile-gros"><button type="button" class="btn btn-primaire btn-gros" data-action="prendre-demande">${UI.icone('valider')}<span>${I18n.t('ordres.prise.je_prends_demande')}</span></button></div>
+    </article>`);
+    const bouton = UI.$('[data-action="prendre-demande"]', zone);
+    bouton.addEventListener('click', () => { if (!bouton.disabled) Ordres.prendreDemandeParEcran(demande.id, bouton); });
   }
 
   /** « Fuite (S01) » : libellé du code symptôme, sinon le code seul. */

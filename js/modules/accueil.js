@@ -436,6 +436,8 @@ const Accueil = (() => {
     if (App.estResponsable()) { Accueil.afficherResponsable(conteneur, connexion); return; }
     const contenu = App.estTechnicien() ? accueilTechnicien() : accueilDemandeur();
     UI.remplir(conteneur, UI.html`${contenu}${connexion}`);
+    // L17 : « Je prends » des demandes de la carte « À prendre » (ordres-prise.js).
+    if (App.estTechnicien() && typeof Ordres !== 'undefined' && Ordres.brancherAccueilTechnicien) Ordres.brancherAccueilTechnicien(conteneur);
   }
 
   // App est chargé après les modules : l'écran est enregistré une fois la page lue.
