@@ -7617,6 +7617,86 @@ def garder_le_journal_actuel(octets_recus, octets_actuels, profil):
     return ecrire_tableau_csv(entete, gardees + nouvelles)
 
 
+# Lot 2 ergonomie (T541, L25) : réglage du responsable « Les techniciens peuvent créer des articles du magasin » (ligne
+# de parametres.csv, désactivé par défaut ; lu côté écran par Magasin.techniciensCreentArticles). Le technicien réécrit
+# articles.csv pour la seule copie du stock (sortie, retour : colonne stock) ; il n'y ajoute une ligne (un article
+# nouveau, sans stock) que si le réglage est actif. Jamais de modification d'une autre colonne ni de suppression.
+PARAMETRE_TECHNICIENS_CREENT_ARTICLES = 'techniciens_creent_articles'
+COLONNES_ARTICLES_DU_TECHNICIEN = ('stock',)
+
+
+def techniciens_creent_articles(config):
+    """Vrai si parametres.csv porte techniciens_creent_articles = 1 (apostrophe de protection retirée) ; faux sans la
+    ligne, sans le fichier ou sans config. Appelé par controle_d_ecriture et controle_d_ajout, SOUS VERROU_ECRITURE
+    (api_csv_ecrire, api_ajout) : lecture directe, sans reprendre le verrou."""
+    if config is None:
+        return False
+    octets = lire_octets(chemin_table(config, 'parametres'))
+    for ligne in dictionnaires_csv(octets, 'parametres'):
+        if ligne.get('cle', '').strip() == PARAMETRE_TECHNICIENS_CREENT_ARTICLES:
+            valeur = ligne.get('valeur', '').strip()
+            return (valeur[1:] if valeur.startswith("'") else valeur).strip() == '1'
+    return False
+
+
+def refus_articles_du_technicien(raison):
+    """403 d'une écriture de articles.csv par le technicien ; raison : un message (traduisible) en minuscule."""
+    return ErreurHttp(403, traduisible('acces.articles_du_technicien',
+                                       'Accès refusé : le technicien ne modifie pas les articles du magasin ; {raison}',
+                                       raison=raison))
+
+
+def verifier_article_nouveau_du_technicien(ligne, creation_permise, deja_pris):
+    """Ligne nouvelle de articles.csv écrite par le technicien : permise par le réglage, numéro présent et neuf, sans
+    stock (vide ou 0 : le stock vient des mouvements, l'inventaire est au responsable) ; 403 sinon. deja_pris : numéros
+    du fichier et des lignes nouvelles déjà vues (complété ici)."""
+    if not creation_permise:
+        raise refus_articles_du_technicien(traduisible('articles.creation_non_permise',
+                                                       "la création d'un article ne lui est pas permise."))
+    identifiant = ligne.get('id', '').strip()
+    if not identifiant or identifiant in deja_pris:
+        raise refus_articles_du_technicien(traduisible('articles.numero_pris',
+                                                       'le numéro « {numero} » est vide ou déjà pris.',
+                                                       numero=identifiant))
+    deja_pris.add(identifiant)
+    if forme_comparable(ligne.get('stock', '')) not in ('', '0'):
+        raise refus_articles_du_technicien(traduisible('articles.stock_nouveau',
+                                                       'un article nouveau est créé sans stock.'))
+
+
+def garder_les_articles_actuels(octets_recus, octets_actuels, creation_permise, cachees):
+    """PUT de articles.csv par le technicien (T541, L25). Chaque ligne actuelle doit s'y retrouver (même « id »), seule
+    sa colonne stock pouvant changer (copie du stock recalculé) ; les colonnes cachées (cachees, remises ensuite par
+    remettre_colonnes_cachees) et celles absentes de la ligne reçue ne sont pas comparées. Les lignes nouvelles
+    passent par verifier_article_nouveau_du_technicien. 403 pour une ligne retirée ou modifiée ; rend les octets reçus."""
+    entete, lignes = lire_tableau('articles', octets_recus)
+    cles = [cle_entete(nom) for nom in entete]
+    actuelles = {}
+    for ligne in dictionnaires_csv(octets_actuels, 'articles'):
+        actuelles.setdefault(ligne.get('id', '').strip(), ligne)
+    libres = {cle_entete(colonne) for colonne in COLONNES_ARTICLES_DU_TECHNICIEN + tuple(cachees or ())}
+    vues, pris = set(), set(actuelles)
+    for brute in lignes:
+        recue = ligne_en_dictionnaire(cles, brute)
+        identifiant = recue.get('id', '').strip()
+        ancienne = actuelles.get(identifiant) if identifiant not in vues else None
+        if ancienne is None:
+            verifier_article_nouveau_du_technicien(recue, creation_permise, pris)
+            continue
+        vues.add(identifiant)
+        for cle, valeur in ancienne.items():
+            if cle in libres or cle not in recue:
+                continue
+            if valeur != recue[cle] and forme_comparable(valeur) != forme_comparable(recue[cle]):
+                raise refus_articles_du_technicien(traduisible('articles.ligne_modifiee',
+                                                               "l'article {numero} a été modifié.", numero=identifiant))
+    retirees = sorted(identifiant for identifiant in actuelles if identifiant and identifiant not in vues)
+    if retirees:
+        raise refus_articles_du_technicien(traduisible('articles.ligne_retiree',
+                                                       "l'article {numero} a été retiré.", numero=retirees[0]))
+    return octets_recus
+
+
 def controle_d_ecriture(identite, table, config=None):
     """Contrôle d'un PUT /api/csv/<table> propre au rôle (§22.5), appelé par enregistrer_csv après le contrôle de version
     (un 409 reste un 409) : (octets reçus, octets actuels) → octets à écrire ; None sans contrôle. config : pour la
@@ -7627,11 +7707,15 @@ def controle_d_ecriture(identite, table, config=None):
     if role == 'responsable':
         return None
     colonnes = COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
+    # T541 (L25) : réglage lu une fois par requête (déjà sous VERROU_ECRITURE).
+    creation_permise = role == 'technicien' and table == 'articles' and techniciens_creent_articles(config)
 
     def controler(recus, actuels):          # T500 : d'abord le refus d'une colonne du schéma en double (400)
         refuser_colonne_du_schema_en_double(table, lire_tableau(table, recus)[0])
         if table == 'journal':              # T505 : en ajout seulement, au profil de la session
             return garder_le_journal_actuel(recus, actuels, profil_au_journal(identite, config))
+        if role == 'technicien' and table == 'articles':    # T541 (L25) : stock seul ; article nouveau si permis
+            recus = garder_les_articles_actuels(recus, actuels, creation_permise, colonnes)
         if colonnes:
             return remettre_colonnes_cachees(table, recus, actuels, colonnes)
         if role == 'demandeur' and table == 'demandes':
@@ -7652,12 +7736,20 @@ def controle_d_ajout(identite, table, config=None):
     if role == 'responsable':
         return None
     colonnes = COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
+    creation_permise = role == 'technicien' and table == 'articles' and techniciens_creent_articles(config)
 
     def controler(entete, lignes, actuels):
         noms = next(csv.reader(io.StringIO(entete.decode('utf-8')), delimiter=';'), [])
         refuser_colonne_du_schema_en_double(table, noms)
         if table == 'journal':
             return lignes_de_journal_du_role(noms, lignes, actuels, profil_au_journal(identite, config))
+        if role == 'technicien' and table == 'articles':    # T541 (L25) : ajout permis par le réglage seulement
+            cles_ajout = [cle_entete(nom) for nom in noms]
+            pris = {ligne.get('id', '').strip() for ligne in dictionnaires_csv(actuels, table)}
+            for rangee in csv.reader(io.StringIO(lignes.decode('utf-8'), newline=''), delimiter=';'):
+                if any(cellule.strip() for cellule in rangee):
+                    verifier_article_nouveau_du_technicien(ligne_en_dictionnaire(cles_ajout, rangee),
+                                                           creation_permise, pris)
         if not colonnes and not (role == 'demandeur' and table == 'demandes'):
             return lignes
         cles = [cle_entete(nom) for nom in noms]

@@ -350,8 +350,12 @@ Object.assign(Magasin, (() => {
     if (erreurs.length) throw ErreurValidation(erreurs.map((erreur) => erreur.message).join(' '));
   }
 
-  /** Crée un article (stock 0 : le stock vient des mouvements). Renvoie son identifiant. */
+  /** Crée un article (stock 0 : le stock vient des mouvements). Renvoie son identifiant. L25 (T541) : un technicien
+   *  seulement si le réglage du responsable le permet (Magasin.peutCreerArticle ; le serveur tient la même règle). */
   async function creerArticle(valeurs) {
+    if (typeof App !== 'undefined' && App.profil && !Magasin.peutCreerArticle()) {
+      throw ErreurValidation(I18n.t('magasin.nouvel_article.creation_reservee'));
+    }
     const propres = valeursArticle(valeurs || {});
     return Donnees.modifier('articles', (lignes, outils) => {
       refuserSiErreurs(verifierArticle(propres, lignes, ''));

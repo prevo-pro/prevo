@@ -88,6 +88,11 @@ const ParametresReglages = (() => {
     { cle: 'cloture_une_etape', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.ordres_travail'); },
       get libelle() { return I18n.t('parametres.libelle.cloture_etape_bouton_clore'); },
       get aide() { return I18n.t('parametres.aide.seule_fenetre_fait_cloture'); } },
+    // Lot 2 ergonomie (T541, L25) : le technicien peut créer un article du magasin (création seulement) ; lu par
+    // Magasin.techniciensCreentArticles seul (magasin-regles.js) ; tenu aussi par le serveur (articles en ajout).
+    { cle: 'techniciens_creent_articles', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },
+      get libelle() { return I18n.t('parametres.libelle.techniciens_creent_articles'); },
+      get aide() { return I18n.t('parametres.aide.techniciens_creent_articles'); } },
     { cle: 'rafraichissement_s', type: 'entier', get libelle() { return I18n.t('parametres.libelle.rafraichissement_secondes'); }, defaut: '20', min: 2, max: 3600,
       get section() { return I18n.t('parametres.section.echanges_entre_postes'); }, get aide() { return I18n.t('parametres.aide.frequence_lecture_changements_faits'); } },
   ];

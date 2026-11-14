@@ -206,10 +206,11 @@ Object.assign(Magasin, (() => {
       <div class="magasin">
         <div class="entete-page">
           <div><h1>${I18n.t('magasin.magasin.magasin')}</h1><p>${I18n.t('magasin.magasin.pieces_detachees_stock_mouvements')}</p></div>
-          <div class="actions">${App.estResponsable() ? UI.html`
+          <div class="actions">${Magasin.peutCreerArticle() ? UI.html`
             <a class="btn btn-primaire" id="magasin-nouvel-article" href="#/magasin/article/nouveau">${UI.icone('ajouter')}${I18n.t('magasin.magasin.nouvel_article')}</a>` : ''}</div>
         </div>
-        ${App.estResponsable() ? '' : UI.html`<p class="note magasin-consultation">${I18n.t('magasin.magasin.consultation_sorties_retours_pieces')}</p>`}
+        ${App.estResponsable() ? '' : UI.html`<p class="note magasin-consultation">${Magasin.peutCreerArticle()
+    ? I18n.t('magasin.magasin.creation_permise_sorties_ot') : I18n.t('magasin.magasin.consultation_sorties_retours_pieces')}</p>`}
         <div class="magasin-onglets"></div>
       </div>`);
     UI.onglets(UI.$('.magasin-onglets', conteneur), onglets.map((onglet) => Object.assign({}, onglet, {
@@ -394,7 +395,8 @@ Object.assign(Magasin, (() => {
     </dl>${encadreSuggestion(article, false)}</article>`;
   }
 
-  /** Formulaire d'un article (création si `article` est null) ; le responsable seul l'affiche. */
+  /** Formulaire d'un article (création si `article` est null) ; le responsable l'affiche, le technicien pour une
+   *  création seulement quand le réglage le permet (L25 : sans stock initial, qui serait un inventaire). */
   function formulaireArticle(article) {
     const formulaire = UI.element(UI.html`<form class="form-grille" id="form-article" novalidate></form>`);
     const valeur = (nom) => (article ? article[nom] : undefined);
@@ -406,14 +408,14 @@ Object.assign(Magasin, (() => {
     champ('ref_fabricant');
     champ('emplacement', { aide: I18n.t('magasin.formulaire_article.rayon_casier_ex_1') });
     champ('unite', { placeholder: I18n.t('magasin.formulaire_article.u') });
-    champ('prix_unitaire', { aide: I18n.t('magasin.formulaire_article.prix_actuel_ht_reception', { devise: UI.symboleDevise() }) });
+    if (App.estResponsable()) champ('prix_unitaire', { aide: I18n.t('magasin.formulaire_article.prix_actuel_ht_reception', { devise: UI.symboleDevise() }) });
     champ('fournisseur_id', { liste: listeFournisseurs() });
     champ('stock_securite');
     champ('delai_jours');
     champ('point_commande', { aide: I18n.t('magasin.formulaire_article.sous_niveau_niveau_article') });
     champ('qte_commande', { aide: I18n.t('magasin.formulaire_article.vide_point_commande_stock') });
     if (article) ajouter(UI.element(encadreSuggestion(article, true)), true);
-    else ajouter(UI.champ({ nom: 'stock_initial', type: 'decimal', libelle: I18n.t('magasin.formulaire_article.stock_initial') }, '', { aide: I18n.t('magasin.formulaire_article.facultatif_enregistre_comme_inventaire') }));
+    else if (App.estResponsable()) ajouter(UI.champ({ nom: 'stock_initial', type: 'decimal', libelle: I18n.t('magasin.formulaire_article.stock_initial') }, '', { aide: I18n.t('magasin.formulaire_article.facultatif_enregistre_comme_inventaire') }));
     champ('critique');
     if (article) champ('actif', { aide: I18n.t('magasin.formulaire_article.decoche_article_plus_propose') });
     formulaire.appendChild(UI.element(UI.html`<p class="mention-requis large"><span class="requis" aria-hidden="true">*</span>${I18n.t('commun.message.champ_obligatoire')}</p>`)).classList.add('large');
@@ -590,11 +592,19 @@ Object.assign(Magasin, (() => {
     UI.$('.magasin-colonne-mouvements', conteneur).appendChild(carteMouvementsArticle(article));
   }
 
+  // L25 (T541) : écran ouvert au technicien (route), mais sans le réglage il ne montre que le refus.
   function afficherNouvelArticle(conteneur) {
     App.definirTitre(I18n.t('magasin.magasin.nouvel_article'));
+    if (!Magasin.peutCreerArticle()) {
+      UI.remplir(conteneur, UI.html`<div class="magasin"><div class="entete-page"><div><div class="fil">${I18n.html('magasin.nouvel_article.magasin_nouvel_article')}</div>
+        <h1>${I18n.t('magasin.magasin.nouvel_article')}</h1></div></div>
+        ${UI.vide(I18n.t('magasin.nouvel_article.creation_reservee'), I18n.t('magasin.nouvel_article.creation_reservee_aide'), 'magasin')}</div>`);
+      return;
+    }
+    const aide = App.estResponsable() ? 'magasin.nouvel_article.stock_vient_mouvements_stock' : 'magasin.nouvel_article.stock_par_responsable';
     UI.remplir(conteneur, UI.html`<div class="magasin">
       <div class="entete-page"><div><div class="fil">${I18n.html('magasin.nouvel_article.magasin_nouvel_article')}</div>
-        <h1>${I18n.t('magasin.magasin.nouvel_article')}</h1><p>${I18n.t('magasin.nouvel_article.stock_vient_mouvements_stock')}</p></div></div>
+        <h1>${I18n.t('magasin.magasin.nouvel_article')}</h1><p>${I18n.t(aide)}</p></div></div>
       <article class="carte magasin-zone-article"></article></div>`);
     UI.$('.magasin-zone-article', conteneur).appendChild(formulaireArticle(null));
   }

@@ -285,6 +285,19 @@ def preparer_source(racine, pages_reservees=False):
     return source, configuration
 
 
+def permettre_creation_d_articles(cas, actif=True):
+    """T541 (L25) : pose techniciens_creent_articles à 1 (ou 0) dans parametres.csv du serveur de cas ; parametres.csv
+    et articles.csv sont remis tels quels à la fin du test."""
+    for table in ("parametres", "articles"):
+        chemin = cas.serveur.dossier / (table + ".csv")
+        cas.addCleanup(chemin.write_bytes, chemin.read_bytes())
+    chemin = cas.serveur.dossier / "parametres.csv"
+    entete, lignes = lire_tableau(chemin.read_bytes())
+    lignes = [ligne for ligne in lignes if ligne[0] != serveur.PARAMETRE_TECHNICIENS_CREENT_ARTICLES]
+    lignes.append([serveur.PARAMETRE_TECHNICIENS_CREENT_ARTICLES, "'1" if actif else "'0"])
+    chemin.write_bytes(ecrire_tableau(entete, lignes))
+
+
 class Reponse:
     def __init__(self, statut, entetes, octets):
         self.statut, self.entetes, self.octets = statut, entetes, octets
@@ -662,6 +675,7 @@ class TestTechnicien(unittest.TestCase):
                                                               for ligne in lignes]))
 
     def test_prix_remis_a_l_ecriture_ligne_nouvelle_sans_prix_et_stock_ecrit(self):
+        permettre_creation_d_articles(self)                                     # T541 (L25) : ligne nouvelle permise
         chemin = self.serveur.dossier / "articles.csv"
         entete, lignes = lire_tableau(chemin.read_bytes())
         p_prix, p_stock = entete.index("prix_unitaire"), entete.index("stock")
@@ -707,6 +721,7 @@ class TestTechnicien(unittest.TestCase):
         self.assertEqual(lire_tableau(chemin_achats.read_bytes())[1], lignes_a)
 
     def test_ajout_du_technicien_sans_prix_et_tables_du_responsable_refusees(self):
+        permettre_creation_d_articles(self)                                     # T541 (L25) : ajout permis
         chemin = self.serveur.dossier / "articles.csv"
         entete, _ = lire_tableau(chemin.read_bytes())
         ligne = [""] * len(entete)
@@ -732,6 +747,115 @@ class TestTechnicien(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Demandeur : liste fermée, pages réservées, demandes en ajout seulement, documents
 # ---------------------------------------------------------------------------
+
+class TestArticlesDuTechnicien(unittest.TestCase):
+    """T541 (L25) : le technicien réécrit articles.csv pour la seule colonne stock ; il n'y ajoute un article (sans
+    stock) que si le réglage techniciens_creent_articles est actif ; jamais de modification ni de suppression."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        lancer_serveur_comptes(cls)
+
+    def setUp(self):
+        self.chemin = self.serveur.dossier / "articles.csv"
+        self.addCleanup(self.chemin.write_bytes, self.chemin.read_bytes())
+
+    def envoyees(self, role="technicien"):
+        """Lignes reçues par le rôle, prix vide remis à sa place (comme Donnees.modifier), et version reçue."""
+        entete, _ = lire_tableau(self.chemin.read_bytes())
+        recu = self.client.requete("GET", "/api/csv/articles", cookie=self.cookies[role])
+        self.assertEqual(recu.statut, 200, recu.octets[:200])
+        entete_recu, lignes = lire_tableau(recu.octets)
+        if entete_recu != entete:
+            p_prix = entete.index("prix_unitaire")
+            lignes = [ligne[:p_prix] + [""] + ligne[p_prix:] for ligne in lignes]
+        return entete, lignes, recu.entetes["x-version"]
+
+    def nouvel_article(self, entete, stock="0"):
+        ligne = [""] * len(entete)
+        for nom, valeur in (("id", "ART-9990"), ("reference", "HM-001"), ("designation", "Roulement 6204-2RS"),
+                            ("stock", stock), ("critique", "0"), ("actif", "1")):
+            ligne[entete.index(nom)] = valeur
+        return ligne
+
+    def mettre(self, entete, lignes, version, role="technicien"):
+        return self.client.requete("PUT", "/api/csv/articles", ecrire_tableau(entete, lignes),
+                                   cookie=self.cookies[role], entetes={"X-Version-Attendue": version})
+
+    def assertRefus(self, reponse, avant):
+        self.assertEqual(reponse.statut, 403, reponse.octets[:300])
+        self.assertEqual(reponse.json()["erreur_code"], "acces.articles_du_technicien")
+        self.assertEqual(self.chemin.read_bytes(), avant)
+
+    def test_reglage_desactive_par_defaut_article_nouveau_refuse(self):
+        avant = self.chemin.read_bytes()
+        entete, lignes, version = self.envoyees()
+        self.assertRefus(self.mettre(entete, lignes + [self.nouvel_article(entete)], version), avant)
+        ajout = self.client.requete("POST", "/api/csv/articles/ajout",
+                                    ecrire_tableau(entete, [self.nouvel_article(entete)], bom=False),
+                                    cookie=self.cookies["technicien"])
+        self.assertRefus(ajout, avant)
+
+    def test_reglage_a_zero_article_nouveau_refuse(self):
+        permettre_creation_d_articles(self, actif=False)
+        avant = self.chemin.read_bytes()
+        entete, lignes, version = self.envoyees()
+        self.assertRefus(self.mettre(entete, lignes + [self.nouvel_article(entete)], version), avant)
+
+    def test_stock_seul_toujours_permis(self):
+        entete, lignes, version = self.envoyees()
+        p_stock = entete.index("stock")
+        lignes[0][p_stock] = str(float(lignes[0][p_stock].lstrip("'") or 0) + 2)
+        reponse = self.mettre(entete, lignes, version)
+        self.assertEqual(reponse.statut, 200, reponse.octets[:300])
+        par_id = {ligne[0]: ligne for ligne in lire_tableau(self.chemin.read_bytes())[1]}
+        self.assertEqual(par_id[lignes[0][0]][p_stock], lignes[0][p_stock])
+
+    def test_reglage_actif_creation_permise_sans_stock(self):
+        permettre_creation_d_articles(self)
+        entete, lignes, version = self.envoyees()
+        reponse = self.mettre(entete, lignes + [self.nouvel_article(entete)], version)
+        self.assertEqual(reponse.statut, 200, reponse.octets[:300])
+        self.assertIn("ART-9990", {ligne[0] for ligne in lire_tableau(self.chemin.read_bytes())[1]})
+        avant = self.chemin.read_bytes()
+        entete, lignes, version = self.envoyees()
+        autre = self.nouvel_article(entete, stock="5")
+        autre[0] = "ART-9991"
+        self.assertRefus(self.mettre(entete, lignes + [autre], version), avant)      # pas de stock : pas d'inventaire
+
+    def test_reglage_actif_ajout_permis(self):
+        permettre_creation_d_articles(self)
+        entete, _, _ = self.envoyees()
+        ajout = self.client.requete("POST", "/api/csv/articles/ajout",
+                                    ecrire_tableau(entete, [self.nouvel_article(entete)], bom=False),
+                                    cookie=self.cookies["technicien"])
+        self.assertEqual(ajout.statut, 200, ajout.octets[:300])
+        self.assertEqual(lire_tableau(self.chemin.read_bytes())[1][-1][0], "ART-9990")
+
+    def test_reglage_actif_ni_modification_ni_suppression(self):
+        permettre_creation_d_articles(self)
+        avant = self.chemin.read_bytes()
+        entete, lignes, version = self.envoyees()
+        for nom, valeur in (("designation", "Changée par le technicien"), ("actif", "0"), ("reference", "AUTRE")):
+            with self.subTest(colonne=nom):
+                modifiees = [list(ligne) for ligne in lignes]
+                modifiees[1][entete.index(nom)] = valeur
+                self.assertRefus(self.mettre(entete, modifiees, version), avant)
+        with self.subTest("ligne retirée"):
+            self.assertRefus(self.mettre(entete, lignes[1:], version), avant)
+        with self.subTest("numéro déjà pris"):
+            double = self.nouvel_article(entete)
+            double[0] = lignes[0][0]
+            self.assertRefus(self.mettre(entete, lignes + [double], version), avant)
+
+    def test_responsable_inchange(self):
+        entete, lignes, version = self.envoyees("responsable")
+        lignes[0][entete.index("designation")] = "Changée par le responsable"
+        reponse = self.mettre(entete, lignes[1:] + [lignes[0], self.nouvel_article(entete, stock="4")], version,
+                              "responsable")
+        self.assertEqual(reponse.statut, 200, reponse.octets[:300])
+
 
 class TestDemandeur(unittest.TestCase):
 

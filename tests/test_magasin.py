@@ -517,9 +517,34 @@ class TestProfils(CasMagasin):
             self.assertEqual(lien.get_attribute("href"), "#/wiki/" + KIT_GARNITURE)
             self.assertEqual(lien.inner_text().strip(), "Wiki de cet article")
             self.assertEqual(lien.locator("svg.icone").count(), 1)
-            # Création d'article : réservée au responsable (retour à l'accueil)
+            # Création d'article : réservée au responsable sans le réglage L25 (T541 : l'écran le dit, sans formulaire)
             self.aller("#/magasin/article/nouveau")
-            page.wait_for_function("location.hash === '#/accueil'")
+            page.wait_for_selector(".magasin .vide")
+            self.assertIn("Seul le responsable crée les articles du magasin.", page.inner_text("#contenu"))
+            self.assertEqual(page.locator("#form-article").count(), 0)
+
+    def test_technicien_cree_un_article_quand_le_reglage_le_permet(self):
+        """T541 (L25) : réglage techniciens_creent_articles actif → « Nouvel article » pour le technicien ; formulaire
+        sans prix ni stock initial ; l'article est créé (stock 0) et sa fiche reste en lecture."""
+        page = self.page
+        with ServeurPrevo() as serveur:
+            chemin = serveur.dossier / "parametres.csv"
+            chemin.write_bytes(chemin.read_bytes().rstrip(b"\r\n") + b"\r\ntechniciens_creent_articles;'1\r\n")
+            self.ouvrir(serveur, "#/magasin", profil="technicien", technicien_id=TECHNICIEN)
+            page.wait_for_selector("#magasin-nouvel-article")
+            self.assertIn("Vous pouvez créer un article.", page.inner_text(".magasin-consultation"))
+            page.click("#magasin-nouvel-article")
+            page.wait_for_selector("#form-article")
+            for nom in ("prix_unitaire", "stock_initial", "actif"):
+                self.assertEqual(page.locator("#form-article [name=%s]" % nom).count(), 0, nom)
+            page.fill("#form-article [name=reference]", "HM-T541")
+            page.fill("#form-article [name=designation]", "Roulement 6204-2RS")
+            page.click("#form-article button[type=submit]")
+            self.attendre_toast("Article créé")
+            page.wait_for_selector(".magasin-fiche")
+            ligne = next(a for a in lire_csv(serveur.dossier, "articles.csv") if a["reference"].lstrip("'") == "HM-T541")
+            self.assertEqual((ligne["designation"], nombre(ligne["stock"]), ligne["actif"]), ("Roulement 6204-2RS", 0, "1"))
+            self.assertEqual(page.locator("#form-article, #magasin-entree").count(), 0)
 
     def test_profils_demandeur_sans_menu_magasin(self):
         page = self.page

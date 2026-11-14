@@ -313,7 +313,7 @@ Object.assign(Magasin, (() => {
     // l'exclut en plus (ARCHITECTURE.md §14.2).
     App.ecran({
       id: 'magasin-article-nouveau', route: /^#\/magasin\/article\/nouveau$/, get titre() { return I18n.t('magasin.titre.nouvel_article'); }, parent: 'magasin',
-      profils: ['responsable'], tables: [],
+      profils: ['technicien', 'responsable'], tables: ['parametres'],      // L25 : technicien si le réglage le permet
       afficher: afficherNouvelArticle,
     });
     App.ecran({

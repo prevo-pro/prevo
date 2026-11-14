@@ -245,10 +245,25 @@ const Magasin = (() => {
     }));
   }
 
+  // Lot 2 ergonomie (T541, L25) : réglage du responsable « Les techniciens peuvent créer des articles du magasin »
+  // (parametres.csv, clé PARAMETRE_TECHNICIENS_CREENT_ARTICLES, désactivé par défaut), lu ici seulement. Actif : le
+  // technicien a « Nouvel article » (création seulement). Le serveur tient la même règle (serveur.py,
+  // controle_des_articles_du_technicien) : sans le réglage, il refuse au technicien tout article nouveau.
+  const PARAMETRE_TECHNICIENS_CREENT_ARTICLES = 'techniciens_creent_articles';
+
+  function techniciensCreentArticles() {
+    return texte(Donnees.parametre(PARAMETRE_TECHNICIENS_CREENT_ARTICLES, '0')) === '1';
+  }
+
+  /** Vrai si le profil ouvert peut créer un article : le responsable, ou un technicien quand le réglage est actif. */
+  function peutCreerArticle() {
+    return App.estResponsable() || (App.estTechnicien() && techniciensCreentArticles());
+  }
+
   return {
-    TYPES_MOUVEMENT, STATUTS_ACHAT,
+    TYPES_MOUVEMENT, STATUTS_ACHAT, PARAMETRE_TECHNICIENS_CREENT_ARTICLES,
     // règles pures (ARCHITECTURE.md §14.4) ; le stock d'un article est Donnees.stockArticle(id)
-    suggestionPointCommande, aCommander, sortiesDeLOt,
+    suggestionPointCommande, aCommander, sortiesDeLOt, techniciensCreentArticles, peutCreerArticle,
     // Usage interne au module : outils prêtés aux fichiers magasin-*.js, qui y ajoutent les leurs
     // par Object.assign(Magasin.interne, …). Pas une API : son contenu peut changer à tout moment.
     interne: {
