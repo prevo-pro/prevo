@@ -40,7 +40,7 @@ import struct
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, url_fichier
+from commun import CasNavigateur, ServeurPrevo, attendre_pret, lire_duree_fr, url_fichier
 from commun import preregler_profil as _preregler_profil
 
 # L30 (T544) : le tableau de bord replie ses familles d'office (état gardé sur le poste) ; ces tests lisent tous les
@@ -182,7 +182,10 @@ LIRE_OPTIONS_JS = """() => {
 
 
 def nombre_fr(texte):
-    """Nombre lu dans un texte affiché à la française (« 1 234,5 h », « 95,3 % », « 12,00 € »), ou None."""
+    """Nombre lu dans un texte affiché à la française (« 1 234 h 30 », « 45 min », « 95,3 % », « 12,00 € »), ou None."""
+    duree = lire_duree_fr(texte)                         # L21 : durées « 1 h 30 », « 45 min »
+    if duree is not None:
+        return duree
     propre = re.sub(r"[\s\u00A0\u202F]", "", texte or "")
     propre = re.sub(r"(h|%|€)$", "", propre).replace(",", ".")
     try:
@@ -260,9 +263,13 @@ class CasIndicateurs(CasNavigateur):
                 else:
                     self.assertTrue(math.isclose(float(lus[cle]["valeur"]), valeur, abs_tol=1e-9),
                                     "%s : %r ≠ %r" % (cle, lus[cle]["valeur"], valeur))
-                    self.assertTrue(math.isclose(nombre_fr(lus[cle]["chiffre"]), valeur, abs_tol=1e-9),
+                    # L21 : une durée est affichée à la minute (« 3 h 15 ») ; la valeur attendue est à 0,1 h.
+                    tolerance = 0.05 + 1 / 120 if unite == "h" else 1e-9
+                    self.assertTrue(math.isclose(nombre_fr(lus[cle]["chiffre"]), valeur, abs_tol=tolerance),
                                     "%s affiché %r" % (cle, lus[cle]["chiffre"]))
-                    if unite:
+                    if unite == "h":
+                        self.assertIsNotNone(lire_duree_fr(lus[cle]["chiffre"]), lus[cle]["chiffre"])
+                    elif unite:
                         self.assertTrue(lus[cle]["chiffre"].strip().endswith(unite), lus[cle]["chiffre"])
         # « dont attente de pièces » sous le MTTR, seulement quand elle est calculable (D36)
         attente = attendus["attente"]
@@ -274,8 +281,8 @@ class CasIndicateurs(CasNavigateur):
             texte = lus["mttr"]["attente"]
             self.assertIsNotNone(texte, "« dont attente de pièces » absent sous le MTTR")
             self.assertIn("dont attente de pièces", texte)
-            nombres = re.findall(r"\d[\d\u00A0\u202F ]*(?:,\d+)?", texte)
-            self.assertTrue(math.isclose(nombre_fr(nombres[0]), attente["valeur"], abs_tol=1e-9), texte)
+            duree = re.search(r"(\d[\d\u00A0\u202F ]*h(?:[\u00A0 ]\d{2})?|\d+[\u00A0 ]min)", texte).group(1)  # L21 : « 12 h 30 »
+            self.assertTrue(math.isclose(nombre_fr(duree), attente["valeur"], abs_tol=0.05 + 1 / 120), texte)
             self.assertIn("sur %d panne" % attente["effectif"], texte)
             self.assertIn("historique complet", texte)
         return attendus
@@ -706,7 +713,7 @@ class TestSourcesDesIndicateurs(CasNavigateur):
             liens = self.page.evaluate("Array.from(document.querySelectorAll(\"[data-indicateur='mttr'] details.indicateurs-sources a[href^='#/ot/']\")).length")
             self.assertEqual(liens, min(attendu["mttr"], 40) + min(attendu["exclus"], 40))
             self.assertIn(attendu["note"], self.page.inner_text("[data-indicateur='part-preventif']"))
-            self.assertIn(" h de préventif sur ", attendu["note"])
+            self.assertIn(" de préventif sur ", attendu["note"])
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ import time
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import CasNavigateur, ServeurPrevo, attendre_pret, duree_fr, preregler_profil, scenarios_demo, url_fichier
 from test_controles import date_reference
 
 FERMES = ("Clôturé techniquement", "Clôturé administrativement", "Annulé")
@@ -236,7 +236,7 @@ class TestPlanning(CasPlanning):
             capacite = nombre(technicien["capacite_h_semaine"])
             texte = page.inner_text('.pl-grille tr[data-technicien="%s"] th' % technicien["id"])
             with self.subTest(technicien=technicien["id"]):
-                self.assertIn("%s h / %s h" % (nombre_fr(charge), nombre_fr(capacite)), texte)
+                self.assertIn("%s / %s" % (duree_fr(charge), duree_fr(capacite)), texte.replace("\u00a0", " "))   # L21
                 self.assertEqual("surcharge" in texte, charge > capacite)
         self.assertIn("surcharge", page.inner_text('.pl-grille tr[data-technicien="%s"] th' % self.scenarios["technicien_surcharge"]))
 

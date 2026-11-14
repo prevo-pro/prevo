@@ -422,7 +422,7 @@ Object.assign(Rapport, (() => {
     return element.article ? texte(element.article.reference) || texte(element.article.designation) || element.articleId : element.articleId;
   }
 
-  const enHeures = (valeur) => UI.heures(Math.round(valeur * 10) / 10);
+  const enHeures = (valeur) => UI.heures(valeur);                    // L21 : « 1 h 15 », à la minute
 
   /** « 2,5 h sans taux horaire, 1 pièce sans prix » ('' si le coût est complet). */
   function manqueCout(manques) {

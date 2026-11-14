@@ -363,7 +363,7 @@ Object.assign(Ordres, (() => {
         <div class="champ"><label class="libelle" for="ot-temps-technicien">${I18n.t('commun.champ.technicien')}</label>
           <select id="ot-temps-technicien" name="technicien_id">${optionsHtml(listeTechniciens(technicienParDefaut), technicienParDefaut)}</select></div>
         <div class="champ"><label class="libelle" for="ot-temps-date">${I18n.t('commun.champ.date')}</label><input type="date" id="ot-temps-date" name="date" value="${aujourdhui()}"></div>
-        <div class="champ ot-champ-quantite"><label class="libelle" for="ot-temps-heures">${I18n.t('ordres.temps.heures')}</label><input type="text" inputmode="decimal" id="ot-temps-heures" name="heures" placeholder="1,5"></div>
+        <div class="champ ot-champ-quantite"><label class="libelle" for="ot-temps-heures">${I18n.t('ordres.temps.heures')}</label><input type="text" id="ot-temps-heures" name="heures" data-type="duree" autocomplete="off" placeholder="${I18n.t('socle.duree.exemple')}"></div>
         <button type="submit" class="btn btn-secondaire">${UI.icone('ajouter')}${I18n.t('ordres.temps.ajouter_temps')}</button>
       </form>` : ''}`);
     if (!modifiable) return;
@@ -378,8 +378,9 @@ Object.assign(Ordres, (() => {
 
   async function ajouterTemps(ot, formulaire, depuisLeBouton) {
     const valeurs = UI.lireFormulaire(formulaire);
-    const heures = UI.enNombre(valeurs.heures);
+    const heures = UI.enNombre(valeurs.heures);           // L21 : « 1h15 », « 75 min »… déjà lus en heures décimales
     if (!valeurs.heures && !depuisLeBouton) return true;   // rien à ajouter
+    if (valeurs.heures && heures === null) { UI.toast(I18n.t('socle.duree.non_comprise'), 'attention'); return false; }
     if (heures === null || heures <= 0 || heures > 24 || !valeurs.date || !valeurs.technicien_id) {
       UI.toast(I18n.t('ordres.ajouter_temps.temps_passe_choisissez_technicien'), 'attention');
       return false;

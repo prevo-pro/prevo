@@ -46,9 +46,9 @@ Object.assign(Indicateurs, (() => {
   // Une série dont l'id commence ainsi est une marque de référence (capacité) : couleur du texte.
   const PREFIXE_REFERENCE = 'reference';
 
-  /** Formats d'affichage (arrondis du §15.3 : heures et % à 1 décimale, euros à 2). */
+  /** Formats d'affichage (arrondis du §15.3 : % à 1 décimale, euros à 2 ; L21 : durées « 1 h 15 », à la minute). */
   const formats = {
-    heures: (valeur) => UI.nombreFr(arrondi(valeur, 1), 1) + ESPACE_INSECABLE + 'h',
+    heures: (valeur) => UI.heures(valeur),
     pourcentage: (fraction) => UI.nombreFr(arrondi(fraction * 100, 1), 1) + ESPACE_INSECABLE + '%',
     euros: (valeur) => UI.euro(arrondi(valeur, 2), 2),
     nombre: (valeur, decimales) => UI.nombreFr(arrondi(valeur, decimales || 0), decimales || 0),

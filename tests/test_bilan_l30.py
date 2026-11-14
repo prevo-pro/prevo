@@ -82,14 +82,14 @@ class TestTauxMoyen(CasL30):
 
     def test_heures_homme_au_bilan_et_au_tableau_de_bord(self):
         r = self.donnees()
-        self.assertEqual(blancs(self.tuile(r, "cout")["heuresHomme"]), "5,5 h de main-d'œuvre")
+        self.assertEqual(blancs(self.tuile(r, "cout")["heuresHomme"]), "5 h 30 de main-d'œuvre")
         page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
-        self.assertIn('<div class="heures-homme">5,5 h de main-d\'œuvre</div>', page)
-        self.assertIn("5,5 h de main-d'œuvre", blancs(r["courriel"]["corps"]))
+        self.assertIn('<div class="heures-homme">5 h 30 de main-d\'œuvre</div>', page)
+        self.assertIn("5 h 30 de main-d'œuvre", blancs(r["courriel"]["corps"]))
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
         cout = self.page.locator('#contenu [data-indicateur="cout"]')
         cout.wait_for()
-        self.assertIn("5,5 h de main-d'œuvre", blancs(cout.inner_text()))
+        self.assertIn("5 h 30 de main-d'œuvre", blancs(cout.inner_text()))
 
     def test_reglage_dans_parametres(self):
         self.page.evaluate("() => { location.hash = '#/parametres'; }")
@@ -116,8 +116,8 @@ class TestNonChiffreAuTableauDeBord(CasL30):
         cout = self.instrument_cout()
         self.assertNotIn("0,00 €", cout)
         self.assertIn("non chiffré", cout)
-        self.assertIn("5,5 h sans taux horaire (Paramètres ou Équipe), 2 pièces sans prix (Magasin)", cout)
-        self.assertIn("5,5 h de main-d'œuvre", cout)
+        self.assertIn("5 h 30 sans taux horaire (Paramètres ou Équipe), 2 pièces sans prix (Magasin)", cout)
+        self.assertIn("5 h 30 de main-d'œuvre", cout)
         self.assertEqual(self.page.get_attribute('#contenu [data-indicateur="cout"]', "data-valeur"), "")
         self.assertEqual(self.tuile(self.donnees(), "cout")["texteValeur"], "non chiffré")      # le bilan dit pareil
         # Tableau par équipement : PI-01 et CP-01 (heures sans taux) ne disent plus 0,00 €.
@@ -132,7 +132,7 @@ class TestNonChiffreAuTableauDeBord(CasL30):
     def test_cout_partiel_garde_son_montant(self):
         cout = self.instrument_cout()
         self.assertIn("173,50 €", cout)
-        self.assertIn("Partiel : 2,5 h sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
+        self.assertIn("Partiel : 2 h 30 sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
 
     def test_complet_avec_le_taux_moyen(self):
         self.regler_taux("40")
@@ -163,13 +163,13 @@ class TestDeuxLignesDuBilan(CasL30):
         r = self.donnees()
         phrases = [blancs(p) for p in r["phrases"]]
         self.assertIn("1 OT en retard au 20/11/2026", phrases)
-        self.assertIn("délai de prise en charge (médiane) : P1 0,4 h (2 OT), P2 23 h (1 OT), P3 0 h (1 OT)", phrases)
+        self.assertIn("délai de prise en charge (médiane) : P1 23 min (2 OT), P2 23 h (1 OT), P3 0 h (1 OT)", phrases)
         g = self.page.evaluate("""() => { const g = Indicateurs.global(Indicateurs.periodeDuMois('2026-11'), {}, '2026-11-20');
             return [g.otEnRetard.valeur, g.delais.P1.mediane, g.delais.P2.mediane]; }""")
         self.assertEqual(g, [1, 0.375, 23])                               # le tableau de bord, même calcul
         page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
         self.assertIn("1 OT en retard au 20/11/2026", page)
-        self.assertIn("délai de prise en charge (médiane) : P1 0,4 h (2 OT)", page)
+        self.assertIn("délai de prise en charge (médiane) : P1 23 min (2 OT)", page)
         self.assertIn("1 OT en retard au 20/11/2026", blancs(r["courriel"]["corps"]))
 
 
@@ -227,9 +227,9 @@ class TestTeteDuTableauDeBord(CasL30):
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
         tete = self.tete()
         self.assertIn("à compléter", tete["disponibilite"])                       # D35 : rien de supposé
-        self.assertIn("5,5 h", tete["heures-cout"])
-        self.assertIn("coût : 173,50 € · Partiel : 2,5 h sans taux horaire", tete["heures-cout"])
-        self.assertIn("1,5 h d'arrêt", tete["pannes"])
+        self.assertIn("5 h 30", tete["heures-cout"])
+        self.assertIn("coût : 173,50 € · Partiel : 2 h 30 sans taux horaire", tete["heures-cout"])
+        self.assertIn("1 h 30 d'arrêt", tete["pannes"])
         self.assertTrue(tete["pannes"].split("\n")[1].strip() == "1" or "\n1\n" in tete["pannes"], tete["pannes"])
         self.assertIn("18,2 %", tete["preventif"])
         familles = self.page.eval_on_selector_all("#contenu details.indicateurs-famille", "ds => ds.map((d) => [d.dataset.famille, d.open])")
@@ -240,7 +240,7 @@ class TestTeteDuTableauDeBord(CasL30):
     def test_non_chiffre_en_tete(self):
         self.sans_taux_ni_prix()
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
-        self.assertIn("coût non chiffré (5,5 h sans taux horaire", self.tete()["heures-cout"])
+        self.assertIn("coût non chiffré (5 h 30 sans taux horaire", self.tete()["heures-cout"])
 
     def test_famille_ouverte_gardee_sur_ce_poste(self):
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
@@ -269,7 +269,7 @@ class TestDirectionArriveSurLesQuatreChiffres(CasL30):
         tete.wait_for()
         texte = blancs(tete.inner_text())
         self.assertIn("Ce mois-ci : ", texte)
-        for attendu in ("Disponibilité", "à compléter", "Heures et coût", "5,5 h", "Pannes", "1,5 h d'arrêt", "Part du préventif", "18,2 %"):
+        for attendu in ("Disponibilité", "à compléter", "Heures et coût", "5 h 30", "Pannes", "1 h 30 d'arrêt", "Part du préventif", "18,2 %"):
             self.assertIn(attendu, texte)
         self.assertTrue(self.page.is_visible('#contenu a[href="#/indicateurs"]'))      # le tableau de bord reste à un clic
 

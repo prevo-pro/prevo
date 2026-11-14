@@ -96,7 +96,7 @@ class TestEchappementEtFormats(CasGuide):
         self.assertEqual(self.evaluer("() => UI.nombreFr('abc')"), "–")
         self.assertEqual(espaces_simples(self.evaluer("() => UI.euro('1234.5')")), "1 234,50 €")
         self.assertEqual(espaces_simples(self.evaluer("() => UI.euro('96', 0)")), "96 €")
-        self.assertEqual(espaces_simples(self.evaluer("() => UI.heures('1.5')")), "1,5 h")
+        self.assertEqual(espaces_simples(self.evaluer("() => UI.heures('1.5')")), "1 h 30")          # L21
 
     def test_badge_priorite_texte_et_classe(self):
         for numero in range(1, 5):

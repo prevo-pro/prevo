@@ -333,7 +333,7 @@ Object.assign(Indicateurs, (() => {
         complements: [I18n.t('indicateurs.instruments.date_prevue_depassee', { jour: UI.dateFr(jour) })] }),
       instrument({ cle: 'cout', libelle: I18n.t('indicateurs.instruments.cout_maintenance'), resultat: global.cout, format: formats.euros,
         valeurAffichee: enEuros, nonChiffre: estNonChiffre(global),
-        complements: [estNonChiffre(global) ? manqueDuCout(global.manquesCout) : '', I18n.t('indicateurs.instruments.heures_homme', { duree: formats.heures(arrondi(global.cout.heures || 0, 1)) }),
+        complements: [estNonChiffre(global) ? manqueDuCout(global.manquesCout) : '', I18n.t('indicateurs.instruments.heures_homme', { duree: formats.heures(global.cout.heures || 0) }),
           I18n.t('indicateurs.instruments.ot_clotures_pieces_prix', { n: global.cout.effectif }), estNonChiffre(global) ? '' : coutPartiel(global.manquesCout)] }),
       instrument({ cle: 'valeur-stock', libelle: I18n.t('indicateurs.instruments.valeur_stock'), resultat: global.valeurStock, format: formats.euros,
         valeurAffichee: enEuros,
@@ -345,7 +345,7 @@ Object.assign(Indicateurs, (() => {
   function manqueDuCout(manques) {
     if (!manques || manques.complet) return '';
     const heures = manques.techniciens.reduce((somme, element) => somme + element.heures, 0);
-    return [heures ? I18n.t('indicateurs.instruments.heures_sans_taux', { duree: formats.heures(arrondi(heures, 1)) }) : '',
+    return [heures ? I18n.t('indicateurs.instruments.heures_sans_taux', { duree: formats.heures(heures) }) : '',
       manques.articles.length ? I18n.t('indicateurs.instruments.pieces_sans_prix', { n: manques.articles.length }) : ''].filter(Boolean).join(', ');
   }
 

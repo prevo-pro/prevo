@@ -72,8 +72,8 @@ Object.assign(Planning, (() => {
 
   /** « 38 h / 35 h » et le badge « surcharge » (texte, pas seulement une couleur). */
   function chargeHtml(ligne) {
-    const capacite = ligne.capacite === null ? I18n.t('planning.charge.capacite_non_renseignee') : I18n.t('planning.charge.capacite_h', { capacite: UI.nombreFr(ligne.capacite) });
-    return UI.html`<span class="pl-charge">${I18n.t('planning.charge.charge_h_capacite', { charge: UI.nombreFr(ligne.charge), capacite })}</span>${ligne.surcharge
+    const capacite = ligne.capacite === null ? I18n.t('planning.charge.capacite_non_renseignee') : I18n.t('planning.charge.capacite_h', { capacite: UI.heures(ligne.capacite) });
+    return UI.html`<span class="pl-charge">${I18n.t('planning.charge.charge_h_capacite', { charge: UI.heures(ligne.charge), capacite })}</span>${ligne.surcharge
       ? UI.html` <span class="badge ko pl-surcharge">${I18n.t('planning.charge.surcharge')}</span>` : ''}`;
   }
 

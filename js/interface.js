@@ -298,11 +298,58 @@ const UI = (function () {
     return formateurNombre(nb, nb, 'euro').format(nombre);
   }
 
-  /** Durée en heures : '1.5' → '1,5 h'. Absent → '–'. */
+  /**
+   * L21 : durée en heures, à la minute : '1.25' → '1 h 15', '2' → '2 h', '0.75' → '45 min', '0' → '0 h' (espaces
+   * insécables ; unités dans la langue de l'écran). Le seul formateur des durées en heures montrées à l'écran et
+   * dans le bilan ; les CSV et leurs exports gardent les heures décimales. Absent → '–'.
+   */
   function heures(valeur) {
     const nombre = enNombre(valeur);
     if (nombre === null) return TIRET_VALEUR_ABSENTE;
-    return formateurNombre(0, 2).format(nombre) + '\u00a0h';
+    const total = Math.round(Math.abs(nombre) * 60);
+    const signe = nombre < 0 && total ? '-' : '';
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (!h && m) return signe + m + ESPACE_INSECABLE + I18n.t('socle.duree.unite_minute');
+    const enHeures = signe + formateurNombre(0, 0).format(h) + ESPACE_INSECABLE + I18n.t('socle.duree.unite_heure');
+    return m ? enHeures + ESPACE_INSECABLE + String(m).padStart(2, '0') : enHeures;
+  }
+
+  // L21 : unités comprises à la saisie d'une durée, dans les cinq langues de l'écran (fr, en, tr, it, pt-PT).
+  const UNITES_HEURE = '(?:h|hr|hrs|heure|heures|hour|hours|sa|saat|ora|ore|hora|horas)';
+  const UNITES_MINUTE = '(?:m|min|mn|minute|minutes|minuto|minutos|minuti|dk|dakika)';
+  const NOMBRE_DUREE = '(\\d+(?:[.,]\\d+)?|[.,]\\d+)';
+  const FORMES_DUREE = {
+    deuxPoints: /^(\d+) ?: ?([0-5]?\d)$/,
+    heures: new RegExp('^' + NOMBRE_DUREE + ' ?' + UNITES_HEURE + '(?: ?([0-5]?\\d)(?: ?' + UNITES_MINUTE + ')?)?$'),
+    minutes: new RegExp('^' + NOMBRE_DUREE + ' ?' + UNITES_MINUTE + '$'),
+    nombre: new RegExp('^' + NOMBRE_DUREE + '$'),
+  };
+
+  /**
+   * L21 : durée saisie à l'atelier → heures décimales (nombre), ou null si la saisie n'est pas comprise.
+   * « 1h15 », « 1 h 15 », « 1 h 15 min », « 1:15 », « 75 min », « 1,25 », « 1.25 », « 2 h » → 1,25 … 2.
+   */
+  function lireDuree(valeur) {
+    if (typeof valeur === 'number') return Number.isFinite(valeur) && valeur >= 0 ? valeur : null;
+    const texte = String(valeur === null || valeur === undefined ? '' : valeur).toLowerCase()
+      .replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
+    let morceaux = FORMES_DUREE.deuxPoints.exec(texte);
+    if (morceaux) return Number(morceaux[1]) + Number(morceaux[2]) / 60;
+    morceaux = FORMES_DUREE.heures.exec(texte);
+    if (morceaux) {
+      if (morceaux[2] && /[.,]/.test(morceaux[1])) return null;          // « 1,5 h 15 » : ambigu
+      return enNombre(morceaux[1]) + (morceaux[2] ? Number(morceaux[2]) / 60 : 0);
+    }
+    morceaux = FORMES_DUREE.minutes.exec(texte);
+    if (morceaux) return enNombre(morceaux[1]) / 60;
+    morceaux = FORMES_DUREE.nombre.exec(texte);
+    return morceaux ? enNombre(morceaux[1]) : null;
+  }
+
+  /** L21 : heures décimales telles que les CSV les gardent (deux décimales : la minute est retrouvée), '1.25'. */
+  function dureeEnTexte(heuresDecimales) {
+    return String(Math.round(heuresDecimales * 100) / 100);
   }
 
   // ===========================================================================================
@@ -913,14 +960,15 @@ const UI = (function () {
    *     nom: 'autre_nom', id: 'id-html', placeholder: '…', attributs: { min: '0' }
    *   });
    * Types : texte, texte_long (textarea data-dictee), entier, decimal (virgule acceptée), date,
-   * date_heure, booleen (case à cocher), choix (liste des `valeurs`), ref (liste `options.liste`),
+   * date_heure, duree (L21 : heures, « 1h15 », « 1:15 », « 75 min » ou « 1,25 » ; aussi un champ décimal du schéma
+   * marqué `duree: true`), booleen (case à cocher), choix (liste des `valeurs`), ref (liste `options.liste`),
    * id et document (texte). Valeur undefined → `defaut` du schéma.
    * Renvoie un <div class="champ" data-champ="nom">. Lire les valeurs avec UI.lireFormulaire(form).
    */
   function champ(definitionChamp, valeur, options) {
     const definition = definitionChamp || {};
     const reglages = options || {};
-    const type = definition.type || 'texte';
+    const type = definition.duree ? 'duree' : definition.type || 'texte';
     const nom = reglages.nom || definition.nom || '';
     const id = reglages.id || identifiantUnique('champ-' + nom);
     const libelle = reglages.libelle || definition.libelle || nom;
@@ -1002,6 +1050,16 @@ const UI = (function () {
         controle.inputMode = 'decimal';
         controle.autocomplete = 'off';
         break;
+      case 'duree': {
+        // L21 : la valeur gardée est montrée « 1 h 15 » ; relue telle quelle, elle n'est pas réécrite (lireFormulaire).
+        const affichee = valeurTexte === '' || enNombre(valeurTexte) === null ? valeurTexte : heures(valeurTexte);
+        controle = champSaisie('text', affichee);
+        controle.dataset.initiale = valeurTexte;
+        controle.dataset.affichee = affichee;
+        controle.placeholder = I18n.t('socle.duree.exemple');
+        controle.autocomplete = 'off';
+        break;
+      }
       case 'date':
         controle = champSaisie('date', valeurTexte.slice(0, 10));
         break;
@@ -1073,10 +1131,19 @@ const UI = (function () {
       let valeur = String(controle.value || '').replace(/\r\n/g, '\n').trim();
       const type = controle.dataset.type || '';
       if (type === 'decimal' || type === 'entier') valeur = valeur.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+      if (type === 'duree') valeur = valeurDuree(controle, valeur);
       if (type === 'date_heure' || controle.type === 'datetime-local') valeur = valeur.replace('T', ' ').slice(0, 16);
       valeurs[nom] = valeur;
     });
     return valeurs;
+  }
+
+  // L21 : durée lue en heures décimales ; la valeur montrée et non retouchée garde sa valeur d'origine ; une saisie
+  // non comprise est rendue telle quelle (refusée par verifierFormulaire et par les contrôles d'écriture).
+  function valeurDuree(controle, valeur) {
+    if (controle.dataset.affichee !== undefined && valeur === controle.dataset.affichee.trim()) return controle.dataset.initiale;
+    const lue = lireDuree(valeur);
+    return lue === null ? valeur : dureeEnTexte(lue);
   }
 
   // Affiche (ou efface, message vide) l'erreur d'un bloc .champ.
@@ -1116,6 +1183,8 @@ const UI = (function () {
         message = I18n.t('socle.verifier_formulaire.saisissez_nombre_entier_ex');
       } else if (valeur !== '' && type === 'decimal' && enNombre(valeur) === null) {
         message = I18n.t('socle.verifier_formulaire.saisissez_nombre_ex_12');
+      } else if (valeur !== '' && type === 'duree' && lireDuree(valeur) === null) {
+        message = I18n.t('socle.duree.non_comprise');
       }
       marquerErreur(bloc, message);
       if (message) erreurs.push({ nom: controle.name, message });
@@ -1654,7 +1723,7 @@ const UI = (function () {
     // sélecteurs et HTML sûr
     $, $$, echapper, html, brut, estSur, remplir, element, identifiantUnique, normaliserRecherche, comparerTextes,
     // formats français
-    adresseGuide, dateFr, dateHeureFr, nombreFr, euro, montant: euro, devise, deviseConnue, nomDevise, symboleDevise, heures, enNombre,
+    adresseGuide, dateFr, dateHeureFr, nombreFr, euro, montant: euro, devise, deviseConnue, nomDevise, symboleDevise, heures, lireDuree, dureeEnTexte, enNombre,
     // badges, icônes, logo
     badgePriorite, badgeStatut, badgeValeur, icone, nomsIcones, logo,
     // notifications

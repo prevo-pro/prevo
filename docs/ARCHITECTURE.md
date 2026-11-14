@@ -725,7 +725,10 @@ SheetJS n'est jamais chargé au démarrage.
 
 `UI.$`, `UI.$$`, `UI.echapper(s)`, `` UI.html`…${v}…` `` (échappe chaque valeur ; un tableau
 est joint ; `UI.brut(s)` pour un fragment déjà sûr), `UI.dateFr`, `UI.dateHeureFr`,
-`UI.nombreFr(v, decimales)`, `UI.euro`, `UI.heures`, `UI.badgePriorite(p)` (couleur **et**
+`UI.nombreFr(v, decimales)`, `UI.euro`, `UI.heures` (L21 : « 1 h 15 », « 45 min », à la minute ; seul formateur des
+durées en heures à l'écran et dans le bilan, les CSV restent en heures décimales), `UI.lireDuree(texte)` (« 1h15 »,
+« 1 h 15 », « 1:15 », « 75 min », « 1,25 » → 1,25 ; sinon `null` ; champ `UI.champ` de type `duree`, ou champ décimal
+du schéma marqué `duree: true`), `UI.badgePriorite(p)` (couleur **et**
 libellé), `UI.badgeStatut(s)`, `UI.toast(message, type)`, `await UI.fenetre({ titre, contenu,
 boutons })`, `await UI.confirmer(message)`, `await UI.demanderMotif(titre, libelle)` (texte non
 vide ou `null`), `UI.tableau({ colonnes, lignes, surClic, triInitial, vide })` (tri par clic

@@ -148,11 +148,11 @@ class TestTableauDeBord(CasBilan):
         bandeau = self.page.locator("#contenu .indicateurs-resultats")         # L30 : instruments rangés par famille
         bandeau.locator('[data-indicateur="cout"]').wait_for()
         arret = blancs(bandeau.locator('[data-indicateur="duree-arret"]').inner_text())
-        self.assertIn("1,5 h", arret)                                    # avant T519 : « 0,0 h », « 0 panne avec une durée »
+        self.assertIn("1 h 30", arret)                                    # avant T519 : « 0,0 h », « 0 panne avec une durée »
         self.assertIn("1 panne avec une durée", arret)
         cout = blancs(bandeau.locator('[data-indicateur="cout"]').inner_text())
         self.assertIn("173,50 €", cout)
-        self.assertIn("Partiel : 2,5 h sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
+        self.assertIn("Partiel : 2 h 30 sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
 
 
 class TestRapportBilan(CasBilan):
@@ -164,7 +164,7 @@ class TestRapportBilan(CasBilan):
         self.assertIn("heures de fonctionnement par jour", dispo["precision"])
         self.assertIn("Parc", dispo["precision"])
         self.assertEqual(blancs(cout["texteValeur"]), "174 €")
-        self.assertEqual(blancs(cout["precision"]), "Partiel : 2,5 h sans taux horaire, 1 pièce sans prix")
+        self.assertEqual(blancs(cout["precision"]), "Partiel : 2 h 30 sans taux horaire, 1 pièce sans prix")
         self.assertTrue(cout["partiel"])
         self.assertNotIn("cout_du_mois", r["jetons"])                       # l'IA ne cite jamais un coût partiel
         self.assertIn("part_preventif", r["jetons"])
@@ -173,11 +173,11 @@ class TestRapportBilan(CasBilan):
     def test_ce_qui_manque_et_ou_le_renseigner(self):
         lignes = {l["libelle"]: (blancs(l["raison"]), l.get("ou")) for l in self.donnees()["nonCalculables"]}
         self.assertEqual(lignes["Coût de main-d'œuvre non chiffré"],
-                         ("taux horaire non renseigné pour Karim Benali (2,5 h)",
+                         ("taux horaire non renseigné pour Karim Benali (2 h 30)",
                           "Paramètres › Taux horaire moyen du service, ou Équipe › fiche du technicien › Taux horaire"))
         self.assertEqual(lignes["Pièces sorties sans prix"], ("prix non renseigné pour JT-12 (2)", "Magasin › fiche de l'article › Prix unitaire"))
         self.assertEqual(lignes["Équipements hors disponibilité"][1], "Parc › fiche de la machine › Heures de fonctionnement par jour")
-        self.assertEqual(lignes["Coût de l'arrêt — non chiffré"], ("PI-01 (1,5 h d'arrêt)", "Parc › fiche de la machine › Coût d'une heure d'arrêt"))
+        self.assertEqual(lignes["Coût de l'arrêt — non chiffré"], ("PI-01 (1 h 30 d'arrêt)", "Parc › fiche de la machine › Coût d'une heure d'arrêt"))
         self.assertNotIn("Disponibilité", lignes)                            # dite une fois, par les machines sans heures
 
     def test_sans_aucun_taux_ni_prix_jamais_zero_euro(self):
@@ -187,7 +187,7 @@ class TestRapportBilan(CasBilan):
         cout = self.tuile(self.donnees(), "cout")
         self.assertIsNone(cout["valeur"])
         self.assertEqual(cout["texteValeur"], "non chiffré")
-        self.assertEqual(blancs(cout["precision"]), "5,5 h sans taux horaire, 2 pièces sans prix")
+        self.assertEqual(blancs(cout["precision"]), "5 h 30 sans taux horaire, 2 pièces sans prix")
         page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
         bloc = page.split('data-cle="cout">')[1].split('data-cle="partPreventif"')[0]
         self.assertNotIn("0 €", bloc)
@@ -199,8 +199,8 @@ class TestRapportBilan(CasBilan):
         self.assertEqual([blancs(p) for p in r["phrases"]], [
             "3 correctifs déclarés (1 avec arrêt de production)",
             "4 OT clôturés, dont 1 en préventif",
-            "5,5 h passées (4,5 h en correctif, 1 h en préventif)",
-            "1,5 h d'arrêt saisie sur 1 panne",
+            "5 h 30 passées (4 h 30 en correctif, 1 h en préventif)",
+            "1 h 30 d'arrêt saisie sur 1 panne",
             "correctifs par machine : PI-01 (2), CP-01 (1)",
             "0 OT en retard au 20/11/2026",                                      # L30 (T544) : deux lignes en plus
             "délai de prise en charge : rien à mesurer ce mois-ci (aucun OT démarré avec une priorité)"])
@@ -212,7 +212,7 @@ class TestRapportBilan(CasBilan):
         self.assertIn('<p class="activite"><b>Activité du mois :</b> 3 correctifs déclarés', page)
         self.assertIn("<h2>Ce qui manque, et où le renseigner</h2>", page)
         self.assertIn("— à renseigner : Paramètres › Taux horaire moyen du service, ou Équipe › fiche du technicien › Taux horaire</li>", page)
-        self.assertIn("MTTR : 1,5 h", page)
+        self.assertIn("MTTR : 1 h 30", page)
         self.assertIn("Mois en cours : chiffres provisoires au 20/11/2026.", blancs(r["courriel"]["corps"]))
         for interdit in ("NaN", "Infinity", "undefined", "null"):
             self.assertNotIn(interdit, page)

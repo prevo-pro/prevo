@@ -545,8 +545,8 @@ figure { margin: 0; } figcaption { font-weight: 600; margin-bottom: 2px; }
     const commentaire = reglages.commentaire && texte(reglages.commentaire.texte) ? reglages.commentaire : null;
     const dessins = graphiques(lib, rapport);
     const titre = I18n.t('rapport.texte_courriel.rapport_mensuel_maintenance_2', { libelleMois: rapport.libelleMois });
-    const mttr = rapport.mttr.valeur === null ? '' : UI.html`<p class="pied">${I18n.html('rapport.html.mttr_v1', { duree: UI.heures(Math.round(rapport.mttr.valeur * 10) / 10) })}${rapport.attentePieces.valeur === null ? ''
-      : UI.html`${I18n.html('rapport.html.dont_attente_pieces_panne', { n: rapport.attentePieces.effectif, duree: UI.heures(Math.round(rapport.attentePieces.valeur * 10) / 10) })}`}.</p>`;
+    const mttr = rapport.mttr.valeur === null ? '' : UI.html`<p class="pied">${I18n.html('rapport.html.mttr_v1', { duree: UI.heures(rapport.mttr.valeur) })}${rapport.attentePieces.valeur === null ? ''
+      : UI.html`${I18n.html('rapport.html.dont_attente_pieces_panne', { n: rapport.attentePieces.effectif, duree: UI.heures(rapport.attentePieces.valeur) })}`}.</p>`;
     const page = UI.html`<!doctype html>
 <html lang="${I18n.langue}"><head><meta charset="utf-8"><title>${rapport.entreprise ? titre + ' — ' + rapport.entreprise : titre}</title>
 <style>${UI.brut(STYLE)}</style></head>

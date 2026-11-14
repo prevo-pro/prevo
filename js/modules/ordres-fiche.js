@@ -601,7 +601,7 @@ Object.assign(Ordres, (() => {
       fin,
       champOt('arret_production', ot.arret_production, { libelle: I18n.t('ordres.champs_clore.arret_production_pendant_intervention') }),
       champOt('duree_arret_h', ot.duree_arret_h),
-      UI.champ({ nom: 'heures', type: 'decimal', libelle: I18n.t('ordres.champs_clore.temps_passe_ajouter_heures') }, '',
+      UI.champ({ nom: 'heures', type: 'duree', libelle: I18n.t('ordres.champs_clore.temps_passe_ajouter_heures') }, '',
         { aide: total > 0 ? I18n.t('ordres.champs_clore.deja_saisi', { total: UI.heures(total) }) : I18n.t('ordres.champs_clore.moins_temps_passe_exige') }),
       champOt('technicien_id', technicien, { liste: listeTechniciens(technicien), libelle: I18n.t('ordres.champs_clore.technicien_temps_passe') }),
       UI.champ({ nom: 'article_id', type: 'ref', libelle: I18n.t('ordres.champs_clore.piece_sortie_magasin_facultatif') }, '', { liste: articles }),

@@ -298,7 +298,7 @@ Object.assign(Preventif, (() => {
     }
     ['periodicite_unites', 'seuil', 'releve_derniere_realisation', 'temps_prevu_h'].forEach((nom) => {
       if (gamme[nom] && nombre(gamme[nom]) === null && !erreurs.some((e) => e.nom === nom)) {
-        erreurs.push({ nom, message: I18n.t('preventif.verifier_gamme.saisissez_nombre_ex_12') });
+        erreurs.push({ nom, message: nom === 'temps_prevu_h' ? I18n.t('socle.duree.non_comprise') : I18n.t('preventif.verifier_gamme.saisissez_nombre_ex_12') });
       }
     });
     if (gamme.temps_prevu_h && nombre(gamme.temps_prevu_h) < 0) erreurs.push({ nom: 'temps_prevu_h', message: I18n.t('preventif.verifier_gamme.temps_prevu_peut_pas') });

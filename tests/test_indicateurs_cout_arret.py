@@ -28,7 +28,7 @@ from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from commun import CasNavigateur, attendre_pret, scenarios_demo, url_fichier
+from commun import CasNavigateur, attendre_pret, duree_fr, scenarios_demo, url_fichier
 from commun import preregler_profil as _preregler_profil
 from test_cout_arret_regles import DEMANDES, EQUIPEMENTS, LOCALISATIONS, ORDRES, centimes_decimal
 
@@ -255,7 +255,7 @@ class TestDemo(CasCoutArret):
         self.assertEqual([l["id"] for l in carte["equipements"]], [e for e, _ in calcul["nonChiffres"]])
         for ligne, (equipement_id, attendu) in zip(carte["equipements"], calcul["nonChiffres"]):
             self.assertEqual(ligne["cellules"][0], self.repere(equipement_id))
-            self.assertEqual(decimal_fr(blancs(ligne["cellules"][1])), attendu.quantize(Decimal("0.01"), ROUND_HALF_UP), ligne)
+            self.assertEqual(blancs(ligne["cellules"][1]), duree_fr(attendu), ligne)          # L21 : « 1 h 21 »
             self.assertEqual(ligne["saisir"], "Saisir le coût horaire")
             self.assertIn("#/equipement/%s/modifier" % equipement_id, ligne["liens"])
         # Les OT sans durée, avec leur lien et leur raison

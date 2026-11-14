@@ -130,6 +130,32 @@ def port_libre():
         return prise.getsockname()[1]
 
 
+def duree_fr(heures):
+    """L21 : heures décimales → « 1 h 15 », « 2 h », « 45 min », « 1 500 h 30 » comme UI.heures (à la minute, espaces
+    simples ; ramener les espaces insécables de l'écran à l'espace simple avant de comparer)."""
+    valeur = float(heures)
+    total = int(abs(valeur) * 60 + 0.5)
+    signe = "-" if valeur < 0 and total else ""
+    h, m = divmod(total, 60)
+    if not h and m:
+        return "%s%d min" % (signe, m)
+    texte = signe + "{:,}".format(h).replace(",", " ") + " h"
+    return texte + (" %02d" % m if m else "")
+
+
+def lire_duree_fr(texte):
+    """Inverse de duree_fr : « 1 h 15 » → 1.25, « 45 min » → 0.75 (espaces insécables admis), sinon None."""
+    propre = re.sub(r"[\s\u00a0\u202f]+", " ", texte or "").strip()
+    trouve = re.fullmatch(r"(-?)(\d{1,3}(?: \d{3})*) h(?: (\d{2}))?", propre)
+    if trouve:
+        valeur = int(trouve.group(2).replace(" ", "")) + int(trouve.group(3) or 0) / 60
+        return -valeur if trouve.group(1) else valeur
+    trouve = re.fullmatch(r"(-?)(\d+) min", propre)
+    if trouve:
+        return (-1 if trouve.group(1) else 1) * int(trouve.group(2)) / 60
+    return None
+
+
 def url_fichier(chemin):
     """URL file:// d'un fichier. Un chemin relatif est lu depuis la racine du projet."""
     chemin = Path(chemin)

@@ -65,7 +65,7 @@ import urllib.parse
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from commun import (ADRESSE_VERSION_JSON, COMPTES_DE_TEST, DOSSIER_DEMO, CasNavigateur, ServeurPrevo, attendre_pret,
+from commun import (duree_fr, ADRESSE_VERSION_JSON, COMPTES_DE_TEST, DOSSIER_DEMO, CasNavigateur, ServeurPrevo, attendre_pret,
                     scenarios_demo, url_fichier)
 from test_rapport_bilan_mois import DEPLIER_FAMILLES_JS, preregler_profil       # L30 (T544) : familles du tableau de bord dépliées
 from test_droits_format4 import BOM, REFUS_DOCUMENT, requete
@@ -275,8 +275,8 @@ def euro_fr(centimes):
 
 
 def heures_fr(heures):
-    texte = format(Decimal(heures).quantize(CENTIME, ROUND_HALF_UP), "f").rstrip("0").rstrip(".")
-    return texte.replace(".", ",") + " h"
+    """« 1 h 21 » (UI.heures, L21 : à la minute)."""
+    return duree_fr(heures)
 
 
 def manque_fr(reference):
@@ -499,8 +499,8 @@ class CasRecette(CasNavigateur):
                                  "Partiel : %s (liste : carte « Non chiffré »)." % manque_fr(reference)])
         carte = self.js(LIRE_CARTE_JS)
         self.assertEqual((carte["titre"], carte["complet"]), ("Non chiffré", "0"))
-        self.assertEqual([(l["id"], l["cellules"][0], decimal_fr(blancs(l["cellules"][1]))) for l in carte["equipements"]],
-                         [(e, self.reperes[e], h.quantize(CENTIME, ROUND_HALF_UP)) for e, h in reference["non_chiffres"]])
+        self.assertEqual([(l["id"], l["cellules"][0], blancs(l["cellules"][1])) for l in carte["equipements"]],
+                         [(e, self.reperes[e], duree_fr(h)) for e, h in reference["non_chiffres"]])    # L21 : « 1 h 21 »
         for ligne in carte["equipements"]:
             self.assertEqual(ligne["saisir"], "Saisir le coût horaire")
             self.assertIn("#/equipement/%s/modifier" % ligne["id"], ligne["liens"])

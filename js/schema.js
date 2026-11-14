@@ -208,11 +208,11 @@ const Schema = (function () {
         champ('date_creation', 'date_heure'),
         champ('date_prevue', 'date'),
         reference('technicien_id', 'techniciens'),
-        champ('temps_prevu_h', 'decimal'),
+        champ('temps_prevu_h', 'decimal', { duree: true }),          // L21 : saisi « 1h15 », montré « 1 h 15 »
         champ('date_debut', 'date_heure'),
         champ('date_fin', 'date_heure'),
         booleen('arret_production'),
-        champ('duree_arret_h', 'decimal'),
+        champ('duree_arret_h', 'decimal', { duree: true }),
         codeDefaillance('symptome_code', 'symptôme'),
         codeDefaillance('cause_code', 'cause'),
         codeDefaillance('remede_code', 'remède'),
@@ -278,7 +278,7 @@ const Schema = (function () {
         reference('ot_id', 'ordres_travail'),
         reference('technicien_id', 'techniciens'),
         champ('date', 'date'),
-        champ('heures', 'decimal'),
+        champ('heures', 'decimal', { duree: true }),
       ],
     },
 
@@ -300,7 +300,7 @@ const Schema = (function () {
         champ('derniere_realisation', 'date'),
         champ('releve_derniere_realisation', 'decimal'),
         champ('prochaine_echeance', 'date'),
-        champ('temps_prevu_h', 'decimal'),
+        champ('temps_prevu_h', 'decimal', { duree: true }),          // L21 : saisi « 1h15 », montré « 1 h 15 »
         champ('consignes', 'texte_long'),
         champActif(),
       ],

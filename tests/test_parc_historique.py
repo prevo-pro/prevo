@@ -16,7 +16,7 @@ import io
 import re
 import unittest
 
-from commun import CasNavigateur, DOSSIER_DEMO, attendre_pret, url_fichier
+from commun import CasNavigateur, DOSSIER_DEMO, attendre_pret, duree_fr, url_fichier
 
 EQUIPEMENT = "EQ-0005"                       # PO-02, pompe de la démo : pannes de garniture et préventif
 CORRECTIFS = ("correctif immédiat", "correctif différé")
@@ -34,9 +34,8 @@ def simple(texte):
 
 
 def heures_fr(valeur):
-    """2.75 → « 2,75 h » (UI.heures : jusqu'à deux décimales)."""
-    texte = ("%.2f" % valeur).rstrip("0").rstrip(".")
-    return texte.replace(".", ",") + " h"
+    """2.75 → « 2 h 45 » (UI.heures, L21 : à la minute)."""
+    return duree_fr(valeur)
 
 
 class TestHistoriqueMachine(CasNavigateur):

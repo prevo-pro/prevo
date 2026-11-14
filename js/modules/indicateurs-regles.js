@@ -397,7 +397,7 @@ const Indicateurs = (() => {
     // Durée d'arrêt plus longue que le temps requis (panne à cheval sur une période courte, ou heures
     // par jour sous-estimées) : MTBF et disponibilité seraient négatifs → non calculables.
     const depasse = requis.valeur !== null && sommeArret > requis.valeur;
-    const raisonDepasse = I18n.t('indicateurs.fiabilite.non_calculable_duree_arret', { duree: UI.nombreFr(sommeArret, 1), requis: UI.nombreFr(requis.valeur, 1) });
+    const raisonDepasse = I18n.t('indicateurs.fiabilite.non_calculable_duree_arret', { duree: UI.heures(sommeArret), requis: UI.heures(requis.valeur) });
     let mtbf;
     if (requis.valeur === null) mtbf = resultat(null, requis.raison, { ots });
     else if (liste.length === 0) mtbf = resultat(null, I18n.t('indicateurs.fiabilite.aucune_panne_periode'));
@@ -514,7 +514,7 @@ const Indicateurs = (() => {
       if (TYPES_PREVENTIFS.includes(texte(ot.type))) preventif += heures;
     });
     return resultat(total > 0 ? preventif / total : null, I18n.t('indicateurs.part_preventif.non_calculable_aucune_heure'),
-      { effectif: saisies, note: I18n.t('indicateurs.part_preventif.h_preventif_h', { preventif: UI.nombreFr(preventif, 1), total: UI.nombreFr(total, 1) }) });
+      { effectif: saisies, note: I18n.t('indicateurs.part_preventif.h_preventif_h', { preventif: UI.heures(preventif), total: UI.heures(total) }) });
   }
 
   function estUniteHeure(unite) {
