@@ -326,6 +326,9 @@ class TestLangueInstallation(CasNavigateur):
                     # Ce qui est affiché, lui, suit l'écran.
                     self.assertEqual(self.page.evaluate("I18n.t('magasin.inventorier.inventaire')"),
                                      texte_du_dictionnaire(choix or installation, "magasin.inventorier.inventaire"))
+                    # T545 (L32) : l'accueil relève le serveur toutes les 5 s ; la page est fermée AVANT l'arrêt du
+                    # serveur, sinon la relève suivante échoue (connexion refusée) et compte comme erreur du navigateur.
+                    self.page.close()
 
     def test_demo_rien_retenu_ni_recharge(self):
         self.contexte.add_init_script(CHOIX_UNE_FOIS_JS % "localStorage.setItem('prevo.langue.installation', 'en');")
