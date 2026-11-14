@@ -98,6 +98,7 @@ ATTENDU = {
     ("POST", "acces/comptes/<identifiant>"): RESPONSABLE,
     ("GET", "acces/journal"): RESPONSABLE,
     ("POST", "erreur-ecran"): TOUS,                     # T547 (L34) : chacun envoie, le responsable seul lit
+    ("GET", "diagnostic"): RESPONSABLE,                 # T547 (L34) : fichier de diagnostic (tests/test_journaux_l34.py)
     ("POST", "enroler"): TOUS,
     ("GET", "acces/invitations"): RESPONSABLE,
     ("POST", "acces/invitations"): RESPONSABLE,

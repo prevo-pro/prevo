@@ -8,6 +8,9 @@
 // Modes dossier et démo : ni bouton ni note (rien de tout cela n'y existe). Le tableau des sauvegardes est construit
 // par parametres.js, qui appelle ce fichier par un relais (actionsSauvegarde, noteSauvegardes). Complète l'objet
 // Parametres.
+//   T547 (L34) : carte « Fichier de diagnostic » (carteDiagnostic, brancherDiagnostic), en mode serveur et pour le
+//   responsable seulement (le serveur refuse GET /api/diagnostic aux autres rôles ; sans comptes, ce PC, Q5) : un ZIP
+//   pour une demande d'aide ; la carte dit avant l'envoi qu'il contient le journal des connexions (Q6).
 
 Object.assign(Parametres.interne, (() => {
 
@@ -82,5 +85,34 @@ Object.assign(Parametres.interne, (() => {
     return UI.html`<p class="note sauvegardes-explication" id="note-sauvegardes-serveur">${I18n.t('sauvegardes.note_sauvegardes.tester_relit_sauvegarde_compte')}</p>`;
   }
 
-  return { actionsSauvegarde, noteSauvegardes };
+  // --- Fichier de diagnostic (T547, L34) ------------------------------------------------------------------------
+
+  function carteDiagnostic() {
+    if (App.mode !== 'serveur' || !App.estResponsable()) return '';
+    return UI.html`<article class="carte" id="carte-diagnostic">
+      <div class="entete-carte"><h2>${I18n.t('parametres.diagnostic.titre')}</h2></div>
+      <p>${I18n.t('parametres.diagnostic.contenu')}</p>
+      <p class="note" id="diagnostic-connexions">${I18n.t('parametres.diagnostic.journal_connexions')}</p>
+      <div class="actions"><button type="button" class="btn btn-secondaire" id="btn-diagnostic">${UI.icone('export')}${I18n.t('parametres.diagnostic.preparer')}</button></div>
+    </article>`;
+  }
+
+  async function preparerDiagnostic() {
+    const reponse = await fetch('/api/diagnostic', { cache: 'no-store', credentials: 'same-origin' });
+    if (!reponse.ok) {
+      const donnees = await reponse.json().catch(() => null);
+      throw new Error(donnees && donnees.erreur ? StockageServeur.texte(donnees, 'erreur')
+        : I18n.t('commun.message.serveur_a_repondu', { status: reponse.status }));
+    }
+    const nom = /filename="([^"]+)"/.exec(reponse.headers.get('Content-Disposition') || '');
+    UI.telecharger(nom ? nom[1] : 'prevo-diagnostic.zip', await reponse.blob());
+    UI.toast(I18n.t('parametres.diagnostic.pret'), 'succes');
+  }
+
+  function brancherDiagnostic(conteneur, pendant) {
+    const bouton = UI.$('#btn-diagnostic', conteneur);
+    if (bouton) bouton.addEventListener('click', () => pendant(bouton, 'fichier de diagnostic', preparerDiagnostic));
+  }
+
+  return { actionsSauvegarde, noteSauvegardes, carteDiagnostic, brancherDiagnostic };
 })());

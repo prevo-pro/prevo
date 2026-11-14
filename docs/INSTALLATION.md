@@ -590,6 +590,11 @@ Started with no console (scheduled task, `pythonw.exe`), Prévo writes what it d
 The sign-in log is exported as CSV from Team › Access › Sign-in log (“Export (CSV)”).
 No password or token is ever written to it.
 
+Diagnostic file (for a help request): Settings › “Prepare a diagnostic file”, manager only (without accounts: the
+server PC). A ZIP with the version, the system, the configuration without secrets (no AI key, certificate or private
+key), the last two server log files and the sign-in log (account names, workstation addresses); no data on machines
+or work orders.
+
 ## 11. Backups and restoring
 
 What Prévo does by itself (server mode):

@@ -6,14 +6,23 @@ Ce qui est vérifié :
                      message sur une ligne, coupé à 300 caractères) et rien d'autre du corps ; 401 sans session, 400
                      sans message, 413 au-delà de 4 Ko ; sans comptes, ce PC envoie (« ce PC ») et le 21e envoi en
                      10 minutes n'est pas écrit (200, « note » faux) ; DebitParPoste compte par poste et oublie après la fenêtre.
+    diagnostic       GET /api/diagnostic : ZIP au responsable (diagnostic.json, configuration.json, journaux du serveur,
+                     journal des connexions), 403 au technicien, au demandeur et à la direction, 401 sans session,
+                     200 à ce PC sans comptes (Q5) ; aucun CSV de données, aucun secret (clé d'IA, certificat, clé
+                     privée, identifiant dans l'adresse de l'IA, ligne de journal qui cite PREVO_IA_CLE), ni comptes,
+                     ni sessions ; navigateur : la carte et son avertissement (Q6) chez le responsable, rien chez le
+                     technicien.
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_journaux_l34.py" -v
 """
+import io
+import json
 import shutil
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 
 import commun
@@ -58,6 +67,26 @@ class TestErreursEcranAvecComptes(unittest.TestCase):
         self.assertIn("x" * 300 + "…", journal_serveur(self.serveur.dossier))
         self.assertNotIn("x" * 301, journal_serveur(self.serveur.dossier))
 
+    def test_diagnostic_au_responsable_seul(self):
+        reponse = self.client.requete("GET", "/api/diagnostic", cookie=self.cookies["responsable"])
+        self.assertEqual(reponse.statut, 200, reponse.octets[:300])
+        self.assertEqual(reponse.entetes["content-type"], "application/zip")
+        self.assertRegex(reponse.entetes["content-disposition"],
+                         r'^attachment; filename="prevo-diagnostic-\d{4}-\d{2}-\d{2}-\d{4}\.zip"$')
+        with zipfile.ZipFile(io.BytesIO(reponse.octets)) as archive:
+            noms = set(archive.namelist())
+            self.assertTrue({"diagnostic.json", "configuration.json", "journaux/journal-serveur.log",
+                             "journaux/journal-acces.csv"} <= noms, noms)
+            self.assertFalse([nom for nom in noms if nom.endswith(".csv") and nom != "journaux/journal-acces.csv"])
+            self.assertIn("nicolas.briand", archive.read("journaux/journal-acces.csv").decode("utf-8-sig"))
+            self.assertTrue(json.loads(archive.read("configuration.json"))["comptes"])
+        for role in ("technicien", "demandeur", "direction"):
+            with self.subTest(role=role):
+                refus = self.client.requete("GET", "/api/diagnostic", cookie=self.cookies[role])
+                self.assertEqual(refus.statut, 403, refus.octets[:300])
+                self.assertTrue(refus.json()["erreur"].startswith("Accès refusé"))
+        self.assertEqual(self.client.requete("GET", "/api/diagnostic").statut, 401)
+
     def test_refus(self):
         self.assertEqual(self.envoyer({"message": "sans session"}).statut, 401)
         self.assertEqual(self.envoyer({"ecran": "#/accueil"}, "technicien").statut, 400)
@@ -86,6 +115,48 @@ class TestErreursEcranSansComptes(unittest.TestCase):
         journal = journal_serveur(lance.dossier)
         self.assertIn("Erreur d'écran  127.0.0.1  ce PC  v?  ? : essai 0", journal)
         self.assertNotIn("essai %d" % serveur.ERREURS_ECRAN_PAR_POSTE, journal)
+        # Q5 : sans comptes, celui qui est devant le PC serveur prépare le fichier de diagnostic.
+        diagnostic = client.requete("GET", "/api/diagnostic")
+        self.assertEqual(diagnostic.statut, 200, diagnostic.octets[:300])
+        with zipfile.ZipFile(io.BytesIO(diagnostic.octets)) as archive:
+            self.assertIn("essai 0", archive.read("journaux/journal-serveur.log").decode("utf-8"))
+
+
+class TestDiagnosticSansSecret(unittest.TestCase):
+
+    def test_ni_secret_ni_donnees(self):
+        dossier = Path(tempfile.mkdtemp(prefix="prevo-l34-diag-"))
+        self.addCleanup(shutil.rmtree, dossier, True)
+        config = serveur.Configuration(str(dossier / "donnees"), [])
+        serveur.creer_dossiers(config)
+        config.reglages.update({"_present": True, "ia_cle": "sk-secret-ia-123", "certificat": "C:/certs/atelier.pem",
+                                "cle": "C:/certs/atelier-cle.pem", "ia_fournisseur": "openai",
+                                "ia_url": "https://moi:motdepasse@ia.example:8443/v1?key=jeton-secret#x"})
+        donnees = Path(config.dossier_donnees)
+        (donnees / "journal-serveur.log").write_text("2026-11-14 08:00:00 démarrage\n2026-11-14 08:00:01 "
+                                                     "PREVO_IA_CLE=sk-secret-ia-123\n", encoding="utf-8")
+        (donnees / "journal-serveur.log.1").write_text("ancienne ligne\n", encoding="utf-8")
+        (donnees / "journal-serveur.log.2").write_text("trop ancienne\n", encoding="utf-8")
+        (donnees / "equipements.csv").write_bytes(b"id;nom\r\nEQ-0001;Presse secrete\r\n")
+        (donnees / "acces").mkdir(exist_ok=True)
+        (donnees / "acces" / "comptes.json").write_text('{"empreinte": "hachage-secret"}', encoding="utf-8")
+        octets = serveur.archive_de_diagnostic(config)
+        with zipfile.ZipFile(io.BytesIO(octets)) as archive:
+            self.assertEqual(sorted(archive.namelist()), ["configuration.json", "diagnostic.json",
+                                                          "journaux/journal-serveur.log",
+                                                          "journaux/journal-serveur.log.1"])
+            tout = b"".join(archive.read(nom) for nom in archive.namelist())
+            configuration = json.loads(archive.read("configuration.json"))
+            systeme = json.loads(archive.read("diagnostic.json"))
+        for secret in (b"sk-secret-ia-123", b"atelier.pem", b"atelier-cle.pem", b"motdepasse", b"jeton-secret",
+                       b"hachage-secret", b"Presse secrete", b"trop ancienne"):
+            self.assertNotIn(secret, tout, secret)
+        self.assertEqual(configuration["ia_url"], "https://ia.example:8443/v1")
+        self.assertEqual(configuration["ia_cle"], serveur.LIBELLE_RETIRE)
+        self.assertEqual(configuration["certificat"], serveur.LIBELLE_RETIRE)
+        self.assertEqual(configuration["ia_fournisseur"], "openai")
+        self.assertEqual(systeme["version"], serveur.VERSION_APPLICATION)
+        self.assertIn(b"ancienne ligne", tout)
 
 
 class TestDebitParPoste(unittest.TestCase):
@@ -120,6 +191,34 @@ class TestNavigateurErreurEcran(CasNavigateurComptes):
         self.attendre_ligne("technicien  v%s  #/accueil : Essai L34 erreur" % page.evaluate("App.version"))
         page.evaluate("() => { Promise.reject(new Error('Essai L34 promesse')); }")
         self.attendre_ligne("#/accueil : Essai L34 promesse")
+
+
+class TestNavigateurDiagnostic(CasNavigateurComptes):
+    """Carte « Fichier de diagnostic » de Paramètres : chez le responsable (avec l'avertissement du journal des
+    connexions, Q6) et téléchargement du ZIP ; absente chez le technicien (qui n'a pas Paramètres)."""
+
+    def test_carte_chez_le_responsable_et_telechargement(self):
+        self.poser_session("responsable", "responsable", "Nicolas Briand")
+        page = self.page
+        page.goto(self.serveur.url + "/#/parametres")
+        attendre_pret(page)
+        page.wait_for_selector("#carte-diagnostic")
+        self.assertIn("noms des comptes et les adresses des postes", page.inner_text("#diagnostic-connexions"))
+        with page.expect_download() as attente:
+            page.click("#btn-diagnostic")
+        telechargement = attente.value
+        self.assertRegex(telechargement.suggested_filename, r"^prevo-diagnostic-.*\.zip$")
+        with zipfile.ZipFile(telechargement.path()) as archive:
+            self.assertIn("diagnostic.json", archive.namelist())
+
+    def test_rien_chez_le_technicien(self):
+        self.poser_session("technicien", "technicien", "Julien Moreau", "TEC-0001")
+        page = self.page
+        page.goto(self.serveur.url + "/#/parametres")
+        attendre_pret(page)
+        page.wait_for_timeout(500)
+        self.assertEqual(page.locator("#carte-diagnostic").count(), 0)
+        self.assertEqual(page.locator("#btn-diagnostic").count(), 0)
 
 
 if __name__ == "__main__":

@@ -1567,6 +1567,11 @@ processing activities.</p>
     result (sign-in, failure, lockout, sign-out, invitation, revocation…). It is kept for <b>12 months</b>: older
     rows are erased. The change log (<code>journal.csv</code>) records who changed
     what, with no time limit: it is the maintenance history.</li>
+  <li><b>Server log and diagnostic file.</b> The server records what it does and the screen errors in
+    <code>journal-serveur.log</code> (never a password or a key); only the manager reads it. For a help request,
+    Settings › <i>Diagnostic file</i> prepares a ZIP: version, system, configuration without secrets, recent server
+    logs and the sign-in log (account names, workstation addresses), no data on machines or work orders. Manager only
+    (without accounts: the server PC).</li>
   <li><b>Right of access, export.</b> Everything is in CSV files readable in Excel; “Export as ZIP” (Settings)
     gives the 27 files and the documents, “Export (CSV)” (Team › Access) the sign-in log.
     A deactivated account stays in the list (for the history) but cannot sign in.</li>

@@ -589,6 +589,11 @@ Lancé sans console (tâche planifiée, `pythonw.exe`), Prévo écrit ce qu'il f
 Le journal des connexions s'exporte en CSV depuis Équipe › Accès › Journal des connexions (« Exporter (CSV) »).
 Jamais un mot de passe ni un jeton n'y est écrit.
 
+Fichier de diagnostic (pour une demande d'aide) : Paramètres › « Préparer un fichier de diagnostic », responsable
+seul (sans comptes : le PC serveur). Un ZIP avec la version, le système, la configuration sans secret (ni clé d'IA,
+ni certificat, ni clé privée), les deux derniers fichiers du journal du serveur et le journal des connexions (noms
+des comptes, adresses des postes) ; aucune donnée des machines ni des OT.
+
 ## 11. Sauvegardes et restauration
 
 Ce que Prévo fait tout seul (mode serveur) :

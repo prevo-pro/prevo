@@ -34,6 +34,9 @@ const Parametres = (() => {
   const actionsSauvegarde = (sauvegarde, boutonRestaurer) => (Parametres.interne.actionsSauvegarde
     ? Parametres.interne.actionsSauvegarde(sauvegarde, boutonRestaurer, pendant) : boutonRestaurer);
   const noteSauvegardes = () => (Parametres.interne.noteSauvegardes ? Parametres.interne.noteSauvegardes() : '');
+  // T547 (L34) : carte « Fichier de diagnostic » (mode serveur, responsable), même fichier, même relais.
+  const carteDiagnostic = () => (Parametres.interne.carteDiagnostic ? Parametres.interne.carteDiagnostic() : '');
+  const brancherDiagnostic = (conteneur) => { if (Parametres.interne.brancherDiagnostic) Parametres.interne.brancherDiagnostic(conteneur, pendant); };
   // Import ZIP (T191, D172) : bouton « Importer un ZIP… » de la carte, dans parametres-zip.js (même relais).
   const blocImportZip = () => (Parametres.interne.blocImportZip ? Parametres.interne.blocImportZip() : '');
   const brancherImportZip = (conteneur) => { if (Parametres.interne.brancherImportZip) Parametres.interne.brancherImportZip(conteneur, pendant); };
@@ -407,6 +410,7 @@ const Parametres = (() => {
             <div class="actions"><button type="button" class="btn btn-secondaire" id="btn-export-zip">${UI.icone('export')}${I18n.t('parametres.parametres.exporter_zip')}</button>
               <button type="button" class="btn btn-secondaire" id="btn-export-donnees-seules">${UI.icone('export')}${I18n.t('parametres.parametres.exporter_donnees_seules_sans')}</button></div>
           </article>
+          ${carteDiagnostic()}
         </div>
       </div>
       <div id="zone-codes"></div>`);
@@ -420,6 +424,7 @@ const Parametres = (() => {
     brancherSolo(conteneur);
     brancherAcces(conteneur);
     brancherImportZip(conteneur);
+    brancherDiagnostic(conteneur);
     mettreSurLeBouton(conteneur, '#btn-export-zip', (bouton) => pendant(bouton, 'export ZIP', () => App.exporterZip()));
     mettreSurLeBouton(conteneur, '#btn-export-donnees-seules', (bouton) => pendant(bouton, 'export des données seules',
       () => App.exporterZip({ sansDocuments: true })));

@@ -57,6 +57,7 @@ import unicodedata
 import urllib.error
 import urllib.request
 import webbrowser
+import zipfile
 from urllib.parse import unquote, urlsplit
 
 
@@ -3028,6 +3029,79 @@ class DebitParPoste:
 
 
 DEBIT_ERREURS_ECRAN = DebitParPoste(ERREURS_ECRAN_PAR_POSTE, FENETRE_ERREURS_ECRAN_S)
+
+
+# --- Fichier de diagnostic (T547, L34 ; Q5, Q6) : GET /api/diagnostic, responsable seul (sans comptes : ce PC) -------
+# Un ZIP pour une demande d'aide : diagnostic.json (application, version, format des données, système, Python),
+# configuration.json (prevo.config.json SANS secret : liste blanche des clés de CLES_CONFIGURATION ; certificat, clé
+# privée et clé d'IA réduits à « réglé » ou non ; adresse de l'IA sans identifiant ni paramètres), les journaux du
+# serveur récents (journal-serveur.log et le précédent, lignes qui citent une clé d'IA retirées) et le journal des
+# connexions (Q6 : noms des comptes et adresses des postes, l'écran le dit avant). Aucun CSV de données (machines,
+# OT…), aucun document, rien de donnees/acces/ d'autre (comptes, sessions, jetons, empreintes).
+CLES_CONFIGURATION_SECRETES = ('certificat', 'cle', 'ia_cle')
+JOURNAUX_SERVEUR_DU_DIAGNOSTIC = 2              # journal-serveur.log et journal-serveur.log.1 (2 Mo au plus)
+MOTIF_LIGNE_SECRETE_DU_DIAGNOSTIC = re.compile(r'ia_cle|PREVO_IA_CLE|authorization|bearer', re.IGNORECASE)
+LIBELLE_RETIRE = 'retiré (réglé)'
+
+
+def adresse_sans_secret(adresse):
+    """Adresse d'un service (ia_url) sans identifiant, mot de passe, paramètres ni fragment."""
+    if not isinstance(adresse, str) or not adresse:
+        return adresse
+    try:
+        morceaux = urlsplit(adresse)
+        hote = morceaux.hostname or ''
+        if ':' in hote:
+            hote = '[%s]' % hote
+        port = ':%d' % morceaux.port if morceaux.port else ''
+    except ValueError:
+        return LIBELLE_RETIRE
+    return '%s://%s%s%s' % (morceaux.scheme, hote, port, morceaux.path)
+
+
+def configuration_sans_secret(reglages):
+    """Réglages de prevo.config.json pour le diagnostic : les clés connues seulement, secrets réduits à leur
+    présence (LIBELLE_RETIRE, ou vide), ia_url sans identifiant ni paramètres ; « fichier_present »."""
+    sortie = {'fichier_present': bool(reglages.get('_present'))}
+    for cle, _, _, _ in CLES_CONFIGURATION:
+        valeur = reglages.get(cle)
+        if cle in CLES_CONFIGURATION_SECRETES:
+            valeur = LIBELLE_RETIRE if valeur else ''
+        elif cle == 'ia_url':
+            valeur = adresse_sans_secret(valeur)
+        sortie[cle] = valeur
+    return sortie
+
+
+def lignes_de_journal_sans_secret(octets):
+    """Texte d'un journal du serveur, sans les lignes qui citent une clé d'IA ou un en-tête d'autorisation."""
+    lignes = octets.decode('utf-8', 'replace').splitlines()
+    return '\n'.join(ligne for ligne in lignes if not MOTIF_LIGNE_SECRETE_DU_DIAGNOSTIC.search(ligne)) + '\n'
+
+
+def archive_de_diagnostic(config):
+    """Octets du ZIP de diagnostic (voir plus haut) ; rien n'est écrit sur le disque."""
+    systeme = {'application': NOM_APPLICATION, 'version': VERSION_APPLICATION, 'api': VERSION_API,
+               'format_des_donnees': VERSION_SCHEMA_CSV,
+               'prepare_le': datetime.datetime.now().astimezone().isoformat(timespec='seconds'),
+               'systeme': platform.platform(), 'python': platform.python_version(),
+               'actif_depuis': getattr(config, 'actif_depuis', None)}
+    tampon = io.BytesIO()
+    with zipfile.ZipFile(tampon, 'w', zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr('diagnostic.json', json.dumps(systeme, ensure_ascii=False, indent=2))
+        archive.writestr('configuration.json', json.dumps(configuration_sans_secret(config.reglages or {}),
+                                                          ensure_ascii=False, indent=2))
+        chemin = os.path.join(config.dossier_donnees, NOM_JOURNAL_SERVEUR)
+        for numero in range(JOURNAUX_SERVEUR_DU_DIAGNOSTIC):
+            nom = NOM_JOURNAL_SERVEUR + ('.%d' % numero if numero else '')
+            octets = lire_octets(chemin + ('.%d' % numero if numero else ''))
+            if octets is not None:
+                archive.writestr('journaux/' + nom, lignes_de_journal_sans_secret(octets))
+        with VERROU_ACCES_JOURNAL:
+            octets = lire_octets(os.path.join(dossier_acces(config), 'journal-acces.csv'))
+        if octets is not None:
+            archive.writestr('journaux/journal-acces.csv', octets)
+    return tampon.getvalue()
 
 
 def valeur_du_brouillon(cle, valeur):
@@ -6684,6 +6758,7 @@ ROUTES_API = {
     ('POST', 'acces/comptes/<identifiant>'): 'api_compte_changer',
     ('GET', 'acces/journal'): 'api_journal_acces',
     ('POST', 'erreur-ecran'): 'api_erreur_ecran',
+    ('GET', 'diagnostic'): 'api_diagnostic',
     ('POST', 'enroler'): 'api_enroler',
     ('GET', 'acces/invitations'): 'api_invitations',
     ('POST', 'acces/invitations'): 'api_invitation_creer',
@@ -6824,6 +6899,7 @@ ROLES_PAR_ROUTE = {
     ('POST', 'acces/comptes/<identifiant>'): RESPONSABLE,
     ('GET', 'acces/journal'): RESPONSABLE,
     ('POST', 'erreur-ecran'): TOUS,             # T547 (L34) : chacun envoie, le responsable seul lit le journal
+    ('GET', 'diagnostic'): RESPONSABLE,         # T547 (L34) : fichier de diagnostic (sans comptes : ce PC, Q5)
     ('POST', 'enroler'): TOUS,
     ('GET', 'acces/invitations'): RESPONSABLE,
     ('POST', 'acces/invitations'): RESPONSABLE,
@@ -8069,6 +8145,13 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             return
         noter_au_journal_serveur(self.config, ligne)
         self.envoyer_json(200, {'note': True})
+
+    def api_diagnostic(self, segment, corps):
+        """GET /api/diagnostic (T547, L34 ; responsable, ce PC sans comptes) : le ZIP d'archive_de_diagnostic, en
+        téléchargement (prevo-diagnostic-AAAA-MM-JJ-HHMM.zip) ; no-store comme toute l'API."""
+        nom = 'prevo-diagnostic-%s.zip' % datetime.datetime.now().strftime('%Y-%m-%d-%H%M')
+        self.envoyer(200, archive_de_diagnostic(self.config), 'application/zip',
+                     {'Content-Disposition': 'attachment; filename="%s"' % nom})
 
     def api_invitations(self, segment, corps):
         """GET /api/acces/invitations (responsable, §22.4) : invitations et appareils, sans empreinte, et si
