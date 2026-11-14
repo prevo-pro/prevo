@@ -90,10 +90,11 @@
 }
 .etiquette-entreprise { color: var(--encre-2); line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-/* Consigne réseau (T518) : en bas de l'étiquette, sur toute la largeur, deux lignes au plus ; l'étiquette réserve
-   sa place (padding du bas) et le QR rapetisse un peu : ni le QR ni le repère ne sont rognés. */
+/* Consigne réseau (T518, L10/T535) : EN HAUT de l'étiquette, au-dessus du QR, sur toute la largeur, en gros, deux
+   lignes au plus ; l'étiquette réserve sa place (padding du haut) et le QR rapetisse un peu : ni le QR ni le repère
+   ne sont rognés. */
 .etiquette-consigne {
-  position: absolute; left: 3mm; right: 3mm; bottom: 1mm; color: var(--encre); font-weight: 600; line-height: 1.15;
+  position: absolute; left: 3mm; right: 3mm; top: 1.5mm; color: var(--encre); font-weight: 600; line-height: 1.15;
   overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
 
@@ -102,9 +103,10 @@
 .format-24 .etiquette-repere { font-size: 15pt; }
 .format-24 .etiquette-designation { font-size: 7.5pt; -webkit-line-clamp: 3; }
 .format-24 .etiquette-entreprise { font-size: 6pt; }
-.format-24 .etiquette.avec-consigne { padding-top: 2mm; padding-bottom: 6mm; }
-.format-24 .avec-consigne .etiquette-qr svg { width: 27mm; height: 27mm; }
-.format-24 .etiquette-consigne { font-size: 6pt; }
+.format-24 .etiquette.avec-consigne { padding-top: 8.5mm; padding-bottom: 2mm; }
+.format-24 .avec-consigne .etiquette-qr svg { width: 26mm; height: 26mm; }
+.format-24 .etiquette-consigne { font-size: 8pt; }
+.format-24 .etiquette-consigne.consigne-longue { font-size: 6.5pt; }
 
 /* 8 par planche : 105 × 74 mm, QR de 54 mm */
 .format-8 .etiquette { padding: 5mm; gap: 4mm; }
@@ -112,8 +114,10 @@
 .format-8 .etiquette-repere { font-size: 24pt; }
 .format-8 .etiquette-designation { font-size: 10pt; -webkit-line-clamp: 4; }
 .format-8 .etiquette-entreprise { font-size: 8pt; }
-.format-8 .etiquette.avec-consigne { padding-top: 4mm; padding-bottom: 11mm; }
-.format-8 .etiquette-consigne { left: 5mm; right: 5mm; bottom: 2.5mm; font-size: 9pt; }
+.format-8 .etiquette.avec-consigne { padding-top: 15mm; padding-bottom: 4mm; }
+.format-8 .avec-consigne .etiquette-qr svg { width: 52mm; height: 52mm; }
+.format-8 .etiquette-consigne { left: 5mm; right: 5mm; top: 3mm; font-size: 14pt; }
+.format-8 .etiquette-consigne.consigne-longue { font-size: 10pt; }
 
 /* --- téléphone : aperçu plus réduit, actions pleine largeur ------------------------------- */
 

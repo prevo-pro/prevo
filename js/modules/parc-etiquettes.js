@@ -31,6 +31,7 @@ Object.assign(Parc, (() => {
     '8': { colonnes: 2, lignes: 4, largeurMm: 105, hauteurMm: 74 },
   };
   const FORMAT_DEFAUT = '24';
+  const SEUIL_CONSIGNE_LONGUE = 60;                   // consigne plus longue (nom de Wi-Fi long) : police réduite pour tenir en deux lignes (L10)
   const A4 = { largeurMm: 210, hauteurMm: 297 };
   const DECALAGE_MAX_MM = 10;                         // décalage d'impression accepté : -10 à +10 mm
   const CLE_MEMOIRE = 'prevo.etiquettes';            // localStorage : { format, haut, gauche }
@@ -187,7 +188,7 @@ Object.assign(Parc, (() => {
   }
 
   // Une étiquette, placée en mm dans sa planche : QR, repère en gros, désignation, entreprise ; la consigne réseau
-  // (T518) en bas, sur toute la largeur, quand il y en a une.
+  // (T518) EN HAUT au-dessus du QR (L10), sur toute la largeur, quand il y en a une.
   function etiquetteHtml(equipement, position, gabarit, entreprise, consigne) {
     const boite = { left: mm(position.gaucheMm), top: mm(position.hautMm), width: mm(gabarit.largeurMm), height: mm(gabarit.hauteurMm) };
     const style = Object.keys(boite).map((propriete) => propriete + ': ' + boite[propriete] + 'mm').join('; ');
@@ -198,7 +199,7 @@ Object.assign(Parc, (() => {
         <span class="etiquette-designation">${equipement.designation}</span>
         ${entreprise ? UI.html`<span class="etiquette-entreprise">${entreprise}</span>` : ''}
       </div>
-      ${consigne ? UI.html`<span class="etiquette-consigne">${consigne}</span>` : ''}
+      ${consigne ? UI.html`<span class="etiquette-consigne ${consigne.length > SEUIL_CONSIGNE_LONGUE ? 'consigne-longue' : 'consigne-courte'}">${consigne}</span>` : ''}
     </div>`;
   }
 

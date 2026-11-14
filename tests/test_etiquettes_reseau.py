@@ -58,8 +58,9 @@ MESURER_CONSIGNES_JS = """(selecteur) => Array.from(document.querySelectorAll(se
   const rect = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
     return { haut: b.top - r.top, bas: b.bottom - r.top, gauche: b.left - r.left, droite: b.right - r.left, largeur: b.width }; };
   const consigne = e.querySelector('.etiquette-consigne');
-  return { id: e.dataset.equipement, hauteur: r.height, largeur: r.width,
+  return { id: e.dataset.equipement, grand: !!e.closest('.format-8'), hauteur: r.height, largeur: r.width,
     consigne: consigne ? consigne.textContent.trim() : null,
+    pt: consigne ? parseFloat(getComputedStyle(consigne).fontSize) * 0.75 : 0,
     coupee: consigne ? consigne.scrollHeight > consigne.clientHeight + 1 : false,
     qr: rect(e.querySelector('svg.qr-svg')), repere: rect(e.querySelector('.etiquette-repere')),
     texte: rect(e.querySelector('.etiquette-texte')), zone: rect(consigne) };
@@ -99,17 +100,19 @@ class CasReseau(CasEtiquettes):
                                     arg=format_)
 
     def verifier_consignes(self, selecteur, attendue):
-        """Chaque étiquette de la zone porte « attendue », entière, sous le QR et le texte, dans l'étiquette."""
+        """Chaque étiquette de la zone porte « attendue », entière, AU-DESSUS du QR et du texte, dans l'étiquette."""
         mesures = self.page.evaluate(MESURER_CONSIGNES_JS, selecteur)
         self.assertTrue(mesures, "aucune étiquette dans " + selecteur)
         for m in mesures:
             with self.subTest(zone=selecteur, equipement=m["id"]):
                 self.assertEqual(m["consigne"], attendue)
                 self.assertFalse(m["coupee"], "consigne coupée : %r" % m)
+                # En gros (L10) : au moins 8 pt sur la planche de 24, 14 pt sur celle de 8.
+                if len(m["consigne"]) <= 60: self.assertGreaterEqual(m["pt"], 13.9 if m["grand"] else 7.9, "consigne trop petite : %r" % m)
                 z, qr, repere, texte = m["zone"], m["qr"], m["repere"], m["texte"]
-                self.assertGreaterEqual(z["haut"], qr["bas"] - 0.5, "consigne sur le QR : %r" % m)
-                self.assertGreaterEqual(z["haut"], repere["bas"] - 0.5, "consigne sur le repère : %r" % m)
-                self.assertGreaterEqual(z["haut"], texte["bas"] - 0.5, "consigne sur la désignation : %r" % m)
+                self.assertLessEqual(z["bas"], qr["haut"] + 0.5, "consigne sur le QR : %r" % m)
+                self.assertLessEqual(z["bas"], repere["haut"] + 0.5, "consigne sur le repère : %r" % m)
+                self.assertLessEqual(z["bas"], texte["haut"] + 0.5, "consigne sur la désignation : %r" % m)
                 for boite in (z, qr, repere):
                     self.assertGreaterEqual(boite["haut"], -0.5, m)
                     self.assertLessEqual(boite["bas"], m["hauteur"] + 0.5, m)
@@ -199,7 +202,7 @@ class TestEtiquettesAtelier(CasReseau):
                     mesures = page.evaluate(MESURER_CONSIGNES_JS, "#etiquettes-apercu")
                     for m in mesures:
                         self.assertFalse(m["coupee"], m)
-                        self.assertGreaterEqual(m["zone"]["haut"], m["qr"]["bas"] - 0.5, m)
+                        self.assertLessEqual(m["zone"]["bas"], m["qr"]["haut"] + 0.5, m)
             # Effacé : retour à « le Wi-Fi de l'usine ».
             page.fill("#etiquettes-wifi", "")
             page.click("#etiquettes-wifi-enregistrer")

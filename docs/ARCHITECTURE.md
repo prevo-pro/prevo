@@ -1810,7 +1810,7 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
 - Lot 1 ergonomie (T518, thème « qr-4g ») : `Parc.porteeAdresse(adresse)` classe l'adresse des QR (`ce-pc` :
   127.0.0.0/8, localhost, ::1 ; `locale` : 10/8, 172.16/12, 192.168/16, 169.254/16, nom sans point ou en
   .local/.lan/.home, fe80::/10, fc00::/7 ; `tailscale` : 100.64.0.0/10, *.ts.net ; `exterieur` sinon). Adresse
-  `locale` : chaque étiquette porte en bas « Connectez-vous au Wi-Fi de l'usine pour déclarer une panne » (avec le
+  `locale` : chaque étiquette porte, EN HAUT au-dessus du QR et en gros (L10), « Connectez-vous au Wi-Fi de l'usine pour déclarer une panne » (avec le
   nom du Wi-Fi quand le paramètre `wifi_nom` est rempli, champ de l'écran Étiquettes) ; `tailscale` : « Ouvrez
   l'application Tailscale… ». Le QR rapetisse (27 mm en format 24) pour laisser deux lignes. L'encadré
   `Parc.avertissementReseau` (conséquence en 4G, solutions, liens) s'affiche sur l'écran Étiquettes, dans
