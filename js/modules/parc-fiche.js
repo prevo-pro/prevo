@@ -46,7 +46,9 @@ Object.assign(Parc, (() => {
         <p class="parc-rappel"><b>${I18n.t('parc.carte_consignation.cocher_case_consigne_rien')}</b></p>
         ${procedure
           ? UI.html`<div class="parc-procedure">${procedure}</div>`
-          : UI.html`<div class="encadre manque">${I18n.html('parc.carte_consignation.aucune_procedure_consignation_renseignee')}</div>`}
+          : UI.html`<div class="encadre manque">${App.modeSolo()   // Solo (T546, L33) : personne à qui la demander
+            ? I18n.html('parc.carte_consignation.aucune_procedure_solo', { lien: '#/equipement/' + encodeURIComponent(equipement.id) + '/modifier' })
+            : I18n.html('parc.carte_consignation.aucune_procedure_consignation_renseignee')}</div>`}
         ${habilitation ? '' : UI.html`<p class="note">${I18n.t('parc.carte_consignation.aucune_habilitation_particuliere_demandee')}</p>`}
       </section>`;
   }

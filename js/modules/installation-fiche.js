@@ -63,10 +63,13 @@ const InstallationFiche = (() => {
     const reinitialisation = fiche.reinitialisation || {};
     const commande = reinitialisation.commande || I18n.t('installation.mot_de_passe.commande_reinitialiser');
     const responsables = fiche.responsables || [];
+    const solo = fiche.situation === 'seul' || App.modeSolo();
     return UI.html`<p>${reinitialisation.script
       ? I18n.html('installation.mot_de_passe.perdu_script', { script: reinitialisation.script, commande })
       : I18n.html('installation.mot_de_passe.perdu', { commande })}</p>
-      ${responsables.length ? UI.html`<p>${I18n.html('installation.mot_de_passe.responsables', { n: responsables.length, responsables: responsables.join(', ') })}</p>` : ''}`;
+      ${responsables.length ? UI.html`<p>${solo   // T546 (L33) : en Solo, pas d'entrée Équipe au menu : lien vers « Accès : QR des opérateurs » (Paramètres)
+        ? I18n.html('installation.mot_de_passe.responsables_solo', { n: responsables.length, responsables: responsables.join(', '), lien: '#/equipe/acces' })
+        : I18n.html('installation.mot_de_passe.responsables', { n: responsables.length, responsables: responsables.join(', ') })}</p>` : ''}`;
   }
 
   /** Élément de la fiche d'accès (données de GET /api/installation/fiche). L02 (lot 2) : tant que l'installation n'est

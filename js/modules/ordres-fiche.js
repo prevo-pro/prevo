@@ -256,7 +256,7 @@ Object.assign(Ordres, (() => {
     return UI.html`<section class="carte ot-consignation" aria-labelledby="ot-titre-consignation">
       <div class="entete-carte"><h2 id="ot-titre-consignation">${UI.icone('cle')} ${I18n.t('ordres.consignation.consignation_equipement')}</h2></div>
       ${procedure ? UI.html`<div class="ot-procedure">${procedure}</div>`
-        : UI.html`<p class="muted">${I18n.t('ordres.consignation.aucune_procedure_consignation_renseignee')}</p>`}
+        : UI.html`<p class="muted">${equipement && App.modeSolo() ? I18n.html('ordres.consignation.aucune_procedure_solo', { lien: '#/equipement/' + encodeURIComponent(equipement.id) + '/modifier' }) : I18n.t('ordres.consignation.aucune_procedure_consignation_renseignee')}</p>`}
       <p class="ot-rappel"><b>${Ordres.rappelConsignation()}</b></p>
     </section>`;
   }

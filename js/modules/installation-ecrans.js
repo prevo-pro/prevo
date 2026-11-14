@@ -113,12 +113,12 @@ const Installation = (() => {
     if (!accesDirection) return '';
     if (!accesDirection.compte) {
       const message = StockageServeur.texte(accesDirection, 'erreur') || '';
-      return UI.html`<div class="alerte attention installation-acces-direction" role="status"><div class="alerte-texte">${I18n.t('installation.direction.non_cree', { message })}</div></div>`;
+      return UI.html`<div class="alerte attention installation-acces-direction" role="status"><div class="alerte-texte">${I18n.t(situation() === 'seul' ? 'installation.direction.non_cree_solo' : 'installation.direction.non_cree', { message })}</div></div>`;
     }
     return UI.html`<div class="alerte info installation-acces-direction" role="status"><div class="alerte-texte">
       <p>${I18n.html('installation.direction.cree', { identifiant: accesDirection.compte.identifiant })}</p>
       <p><code class="mot-de-passe-provisoire">${accesDirection.mot_de_passe_provisoire}</code></p>
-      <p>${I18n.t('installation.direction.noter')}</p></div></div>`;
+      <p>${I18n.t(situation() === 'seul' ? 'installation.direction.noter_solo' : 'installation.direction.noter')}</p></div></div>`;
   }
 
   // ===========================================================================================

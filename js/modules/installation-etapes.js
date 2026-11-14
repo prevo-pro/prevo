@@ -198,10 +198,10 @@ const InstallationEtapes = (() => {
 
   // T520 (A7) : accès facultatif de la direction (lecture seule : tableau de bord, bilan, historique), créé avec le
   // compte du responsable ; son mot de passe provisoire est montré une fois par l'écran (installation-ecrans.js).
-  function blocDirection() {
+  function blocDirection(c) {
     return UI.html`<fieldset class="installation-direction">
       <legend>${I18n.t('installation.direction.titre')}</legend>
-      <p class="note">${I18n.t('installation.direction.explication')}</p>
+      <p class="note">${I18n.t(c.situation() === 'seul' ? 'installation.direction.explication_solo' : 'installation.direction.explication')}</p>
       <div class="form-colonne">
         <div class="champ"><label class="libelle" for="inst-direction-prenom">${I18n.t('commun.champ.prenom')}</label>
           <input type="text" id="inst-direction-prenom" name="direction_prenom" autocomplete="off" maxlength="80"></div>
@@ -250,7 +250,7 @@ const InstallationEtapes = (() => {
           <div class="champ"><label class="libelle" for="inst-confirmation">${I18n.t('installation.formulaire_compte.confirmation')}</label>
             <input type="password" id="inst-confirmation" name="confirmation" autocomplete="new-password" maxlength="256"></div>`}
         </div>
-        ${sansMotDePasse || existant || !directionProposee(c) ? '' : blocDirection()}`,
+        ${sansMotDePasse || existant || !directionProposee(c) ? '' : blocDirection(c)}`,
       autrement: UI.html`<p class="note">${notePlusTard()}</p>${['session_heures', 'session_longue_jours', 'invitation_heures', 'demandeurs_avec_compte'].map((cle) => reglageLu(c, cle))}`,
       passer: existant,
       lire(section) {
