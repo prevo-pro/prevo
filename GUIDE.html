@@ -730,6 +730,13 @@ machine arrêtée (production perdue, pénalités, heures supplémentaires…), 
 dit «&nbsp;non chiffré&nbsp;»&nbsp;: Prévo n'estime jamais ce coût. Le technicien, le demandeur et l'appareil ne le
 voient pas. La fiche montre aussi «&nbsp;Sous garantie jusqu'au…&nbsp;» et la carte des garanties et contrats de
 l'équipement (voir <a href="#garanties">4.12</a>).</p>
+<p><b>Historique et pannes à répétition</b>&nbsp;: la carte «&nbsp;Historique&nbsp;» de la fiche liste les interventions de
+la machine, avec le filtre <span class="bouton">Pannes</span> / <span class="bouton">Préventif</span> /
+<span class="bouton">Tout</span>&nbsp;; chaque ligne dit le technicien, le temps passé, la cause et le remède quand ils sont
+connus. Quand une machine tombe en panne à répétition (3 pannes en 30 jours par défaut), l'accueil du responsable
+le dit dans la tuile «&nbsp;Pannes récurrentes&nbsp;» (en mode Solo, une carte de l'accueil), et un bandeau avec les
+interventions précédentes s'affiche sur la demande et sur l'OT correctif ouvert. Les deux seuils se règlent dans
+Paramètres (voir <a href="#parametres">4.15</a>).</p>
 <p><b>Étiquettes QR</b> (responsable)&nbsp;: choisissez un atelier ou une ligne (avec tout ce qu'il contient),
 une planche A4 de 24 ou de 8 étiquettes, et réglez le décalage d'impression si besoin. Le repère de
 l'équipement est toujours écrit en clair sous le code. En modes dossier et démo, le QR contient
@@ -881,6 +888,8 @@ Avec l'assistant IA, un commentaire peut être proposé avant d'enregistrer (voi
     serveur, voir <a href="#ia-en-ligne">5.7</a>), fréquence de rafraîchissement entre postes&nbsp;;</li>
   <li><b>Garanties et contrats</b>&nbsp;: «&nbsp;Alerte avant l'échéance (jours)&nbsp;», 60 par défaut (de 1 à 365), pour les
     garanties (avant la fin) et les contrats (avant la date limite de résiliation)&nbsp;;</li>
+  <li><b>Pannes récurrentes</b>&nbsp;: «&nbsp;Pannes pour alerter&nbsp;» (3 par défaut) et «&nbsp;Période observée (jours)&nbsp;»
+    (30 par défaut), pour la tuile de l'accueil et les bandeaux (voir <a href="#parc">4.9</a>)&nbsp;;</li>
   <li><b>Mode Solo</b>&nbsp;: passer en mode Solo ou le quitter (voir <a href="#solo">8.8</a>)&nbsp;;</li>
   <li><b>Accès et installation</b> (mode serveur, depuis le PC serveur)&nbsp;: refaire une étape de l'assistant,
     réimprimer la fiche d'accès (voir <a href="#assistant">2.4</a>)&nbsp;;</li>

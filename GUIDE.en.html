@@ -722,6 +722,12 @@ history. The manager adds and edits equipment.</p>
 production, penalties, overtime…), in the currency set. Left empty, it reads “not costed”: Prévo never estimates
 this cost. The technician, the requester and the device do not see it. The record also shows “Under warranty until…”
 and the card of the equipment's warranties and contracts (see <a href="#garanties">4.12</a>).</p>
+<p><b>History and repeat breakdowns</b>: the “History” card on the record lists the machine's jobs, with the
+<span class="bouton">Breakdowns</span> / <span class="bouton">Preventive</span> / <span class="bouton">All</span> filter;
+each line gives the technician, the time spent, the cause and the remedy when they are known. When a machine breaks
+down repeatedly (3 breakdowns in 30 days by default), the manager's home screen says so in the “Recurring breakdowns”
+tile (in Solo mode, a card on the home screen), and a banner with the previous jobs appears on the request and on the
+open corrective job. Both thresholds are set in Settings (see <a href="#parametres">4.15</a>).</p>
 <p><b>QR labels</b> (manager): choose a workshop or a line (with everything it contains),
 an A4 sheet of 24 or 8 labels, and adjust the print offset if needed. The equipment tag
 is always written in plain text under the code. In folder and demo modes, the QR contains
@@ -875,6 +881,8 @@ With the AI assistant, a comment can be proposed before saving (see <a href="#ia
     PC, see <a href="#ia-en-ligne">5.7</a>), refresh frequency between workstations;</li>
   <li><b>Warranties and contracts</b>: “Alert before the due date (days)”, 60 by default (from 1 to 365), for
     warranties (before the end) and contracts (before the termination deadline);</li>
+  <li><b>Recurring breakdowns</b>: “Breakdowns before alerting” (3 by default) and “Period observed (days)” (30 by default),
+    for the home-screen tile and the banners (see <a href="#parc">4.9</a>);</li>
   <li><b>Solo mode</b>: switching to Solo mode or leaving it (see <a href="#solo">8.8</a>);</li>
   <li><b>Access and installation</b> (server mode, from the server PC): redo a step of the wizard,
     reprint the access record (see <a href="#assistant">2.4</a>);</li>
