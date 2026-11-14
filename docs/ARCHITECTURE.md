@@ -4098,6 +4098,10 @@ L12 (lot 2) : le QR d'une machine (`#/equipement/<id>`) flashé sans session arr
 « Vous voulez signaler une panne ? Ce téléphone n'est pas encore autorisé… » (`Connexion.estRouteEquipement`, la forme de
 la route seule : l'identifiant n'est ni lu ni affiché, aucune table demandée). Aucun accès élargi ; la route est gardée,
 la fiche de la machine s'ouvre après connexion.
+R4 (lot 2) : la route d'une machine vue à l'écran de connexion est gardée une heure dans `localStorage`
+(`prevo.cible.machine`, forme `#/equipement/<id>` seule : le QR d'invitation s'ouvre souvent dans un autre onglet) ; un
+enrôlement réussi (`#/enroler/<jeton>`) arrive sur cette machine si elle existe encore (sinon l'accueil), la mémoire est
+effacée après usage ; la fiche s'ouvre avec les droits du demandeur (gardes de route habituelles).
 
 Précisions de T152 :
 

@@ -97,6 +97,7 @@ const App = (() => {
   let comptesExiges = false;       // mode serveur : les comptes sont exigés (lot 7, D124) ; le profil vient de la session
   let session = null;              // mode comptes : session du serveur (camelCase, adaptateur.session()), sinon null
   let raisonDejaDite = '';         // langue : rechargement déjà refusé (et dit) pour cette raison sur cette page
+  let cibleApresEnrolement = '';   // R4 : machine flashée avant l'invitation, route à ouvrir une fois l'appareil enrôlé
   let promesseConnexion = null;    // écran de connexion en cours (une seule fois à la fois)
   let poste = '';                  // nom du poste (journal, verrou)
   let adressesReseau = [];         // mode serveur : ['http://192.168.1.10:8080/', …]
@@ -1003,7 +1004,11 @@ const App = (() => {
       promesseConnexion = Connexion.demander(options || {}).then((nouvelle) => {
         promesseConnexion = null;
         session = nouvelle;
-        if (Connexion.estRouteEnrolement(location.hash)) remplacerRoute(ROUTE_ACCUEIL);
+        if (Connexion.estRouteEnrolement(location.hash)) {
+          // R4 : la machine flashée avant l'invitation (moins d'une heure), sinon l'accueil ; vérifiée à l'ouverture de la coque.
+          cibleApresEnrolement = Connexion.cibleMachineMemorisee();
+          remplacerRoute(cibleApresEnrolement || ROUTE_ACCUEIL);
+        }
         return nouvelle;
       });
     }
@@ -1324,6 +1329,15 @@ const App = (() => {
     appliquerRepli(lireMemoire(CLE_MENU_REPLIE) === '1');
     mettreAJourEntreprise();
     placerSelecteurLangue();
+    if (cibleApresEnrolement) {
+      // R4 : la machine n'existe plus (ou l'identifiant n'en est pas une) : l'accueil, comme avant ; sinon sa fiche s'ouvre,
+      // avec les droits du demandeur (la garde des routes d'afficherRoute).
+      const cible = cibleApresEnrolement;
+      cibleApresEnrolement = '';
+      let identifiant = '';
+      try { identifiant = decodeURIComponent(cible.slice('#/equipement/'.length)); } catch (erreur) { /* adresse mal formée */ }
+      if (location.hash === cible && !(identifiant && Donnees.trouver('equipements', identifiant))) remplacerRoute(ROUTE_ACCUEIL);
+    }
     if (!location.hash || location.hash === '#' || location.hash === '#/'
         || (typeof Connexion !== 'undefined' && Connexion.estRouteEnrolement(location.hash))) remplacerRoute(ROUTE_ACCUEIL);
     construireMenus();

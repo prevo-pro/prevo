@@ -416,6 +416,51 @@ class TestConnexion(CasConnexion):
         return requete(self.serveur.url, "POST", "/api/connexion",
                        {"identifiant": identifiant, "mot_de_passe": mot_de_passe, "rester": False})[0]
 
+    def test_invitation_apres_un_qr_de_machine_arrive_sur_la_machine_flashee(self):
+        """R4 (lot 2) : un téléphone qui a flashé le QR d'une machine sans être invité, puis s'enrôle par le QR
+        d'invitation, arrive sur la machine flashée (au plus une heure ; effacée après usage) ; machine inconnue,
+        mémoire trop ancienne ou absente : l'accueil comme avant ; la fiche n'est pas montrée avant l'enrôlement."""
+        page = self.page
+        self.autoriser_erreur(motif_refus_du_demandeur())
+        self.autoriser_erreur(ERREUR_401_TABLES)
+        cle = "prevo.cible.machine"
+
+        def inviter_et_enroler(nom):
+            statut, invitation = self.api("POST", "/api/acces/invitations", {})
+            self.assertEqual(statut, 200, invitation)
+            page.context.clear_cookies()                  # un autre téléphone : pas d'appareil déjà reconnu
+            page.goto(self.serveur.url + "/?autre=1")      # hors de la page ouverte : une vraie ouverture du lien
+            page.goto(self.serveur.url + invitation["chemin"])
+            page.reload()
+            self.attendre_etat("connexion")
+            page.fill("#connexion-nom", nom)
+            page.click("#connexion-enroler")
+            attendre_pret(page)
+
+        # 1. QR de la machine, sans invitation : l'écran de connexion ; rien de la machine n'est montré.
+        page.goto(self.serveur.url + "/#/equipement/EQ-0001")
+        self.attendre_etat("connexion")
+        self.assertNotIn("CP-01", page.inner_text("body"))
+        self.assertEqual(json.loads(page.evaluate("localStorage.getItem('%s')" % cle))["route"], "#/equipement/EQ-0001")
+        # 2. puis le QR d'invitation : l'arrivée est la machine flashée, la mémoire est effacée.
+        inviter_et_enroler("Karim Benali")
+        self.assertEqual(page.evaluate("location.hash"), "#/equipement/EQ-0001")
+        page.wait_for_selector("#contenu >> text=CP-01")
+        self.assertEqual(page.evaluate("App.profil.type"), "demandeur")
+        self.assertIsNone(page.evaluate("localStorage.getItem('%s')" % cle))
+        # 3. Machine disparue : l'accueil.
+        page.evaluate("() => { localStorage.setItem('%s', JSON.stringify({route: '#/equipement/EQ-9999', le: Date.now()})); }" % cle)
+        inviter_et_enroler("Lea Martin")
+        self.assertEqual(page.evaluate("location.hash"), "#/accueil")
+        self.assertIsNone(page.evaluate("localStorage.getItem('%s')" % cle))
+        # 4. Mémoire de plus d'une heure, ou qui n'est pas une machine : l'accueil.
+        for memo in ({"route": "#/equipement/EQ-0001", "le": 1}, {"route": "#/accueil", "le": None}):
+            memo["le"] = memo["le"] if memo["le"] == 1 else int(page.evaluate("Date.now()"))
+            page.evaluate("(m) => localStorage.setItem('%s', JSON.stringify(m))" % cle, memo)
+            inviter_et_enroler("Zoe Petit")
+            self.assertEqual(page.evaluate("location.hash"), "#/accueil", memo)
+            self.assertIsNone(page.evaluate("localStorage.getItem('%s')" % cle))
+
     def test_appareil_enrole_par_le_lien_puis_revoque(self):
         page = self.page
         self.autoriser_erreur(motif_refus_du_demandeur())

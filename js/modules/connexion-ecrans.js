@@ -31,6 +31,11 @@ const Connexion = (() => {
   // L12 (T535) : #/equipement/<id>, l'adresse que porte le QR d'une machine ; seule la FORME de la route compte ici
   // (rien de la machine n'est lu ni affiché avant connexion, pas même son nom).
   const MOTIF_ROUTE_EQUIPEMENT = /^#\/equipement\/(?!nouveau$)[^/?#]+$/;
+  // R4 (lot 2) : la machine flashée par un téléphone pas encore invité (route #/equipement/<id>, forme seule) attend dans
+  // localStorage (le QR d'invitation s'ouvre souvent dans un autre onglet) : au plus une heure, effacée après usage ;
+  // jamais plus que la route : la fiche ne s'affiche qu'après l'enrôlement, avec les droits du demandeur.
+  const CLE_CIBLE_MACHINE = 'prevo.cible.machine';
+  const DUREE_CIBLE_MACHINE_MS = 3600000;
   const PANNEAUX = {
     connexion: 'connexion-formulaire',
     enrolement: 'connexion-enrolement',
@@ -309,7 +314,28 @@ const Connexion = (() => {
     try { return window.sessionStorage.getItem(CLE_IDENTIFIANT_INSTALLATION) || ''; } catch (erreur) { return ''; }
   }
 
+  function memoriserCibleMachine(hash) {
+    try { window.localStorage.setItem(CLE_CIBLE_MACHINE, JSON.stringify({ route: hash, le: Date.now() })); } catch (erreur) { /* sans mémoire */ }
+  }
+
+  /** R4 : la machine flashée avant l'invitation (route #/equipement/<id>) si elle date de moins d'une heure, sinon ''. Lue = effacée. */
+  function cibleMachineMemorisee() {
+    let cible = '';
+    try {
+      const memo = JSON.parse(window.localStorage.getItem(CLE_CIBLE_MACHINE) || 'null');
+      if (memo && typeof memo.route === 'string' && estRouteEquipement(memo.route)
+          && Date.now() - Number(memo.le) >= 0 && Date.now() - Number(memo.le) < DUREE_CIBLE_MACHINE_MS) cible = memo.route;
+    } catch (erreur) { /* mémoire illisible : pas de cible */ }
+    oublierCibleMachine();
+    return cible;
+  }
+
+  function oublierCibleMachine() {
+    try { window.localStorage.removeItem(CLE_CIBLE_MACHINE); } catch (erreur) { /* sans mémoire */ }
+  }
+
   function terminer(session) {
+    if (!jetonInvitation) oublierCibleMachine();    // connexion ordinaire : la route gardée suffit ; un enrôlement la laisse à App
     try { window.sessionStorage.removeItem(CLE_IDENTIFIANT_INSTALLATION); } catch (erreur) { /* sans mémoire d'onglet */ }
     arreterBlocage();
     viderMotsDePasse();
@@ -412,6 +438,7 @@ const Connexion = (() => {
       montrerPanneau('motDePasse');
     } else {
       jetonInvitation = jetonDeLaRoute(location.hash);
+      if (estRouteEquipement(location.hash)) memoriserCibleMachine(location.hash);
       montrerPanneau(jetonInvitation ? 'enrolement' : 'connexion');
       const identifiant = jetonInvitation ? '' : identifiantDeLInstallation();
       if (identifiant && !$('connexion-identifiant').value) {
@@ -444,6 +471,7 @@ const Connexion = (() => {
     estRouteEnrolement,
     documentDeLaRoute,
     estRouteEquipement,
+    cibleMachineMemorisee,
     sessionLue,
     LONGUEUR_MIN_MOT_DE_PASSE,
     LONGUEUR_MAX_MOT_DE_PASSE,
