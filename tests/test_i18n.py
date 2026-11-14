@@ -155,6 +155,18 @@ class TestFichiers(unittest.TestCase):
         self.assertEqual(declarations, [tuple(langue.values()) + ("",) * (5 - len(langue)) for langue in LANGUES])
         self.assertEqual(langues.count("I18n.declarer("), len(LANGUES))
 
+    def test_aucun_numero_de_regle_dans_les_textes_affiches(self):
+        """L31 : « RG7 », « règle de gestion 6 » et leurs équivalents ne s'affichent nulle part (cinq langues)."""
+        motif = re.compile(r"\bRG ?\d|business rule \d|r[èe]gle de gestion \d|regra de gest[ãa]o \d"
+                           r"|regola di gestione \d|iş kuralı \d", re.IGNORECASE)
+        for fichier in sorted((RACINE / "js" / "i18n").rglob("*.js")):
+            if fichier.name == "langues.js":
+                continue
+            for numero, ligne in enumerate(fichier.read_text(encoding="utf-8").splitlines(), 1):
+                if ligne.lstrip().startswith("'"):
+                    with self.subTest(fichier=fichier.name, ligne=numero):
+                        self.assertIsNone(motif.search(ligne.split("': ", 1)[-1]), ligne[:120])
+
     def test_index_charge_la_traduction_juste_avant_le_schema(self):
         scripts = scripts_de_la_page((RACINE / "index.html").read_text(encoding="utf-8"))
         debut = scripts.index("js/schema.js") - len(SCRIPTS_I18N)
