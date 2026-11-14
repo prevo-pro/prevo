@@ -842,6 +842,33 @@ class TestLangueDePrevo(CasInstallation):
         self.assertEqual(page.inner_text("#ecran-profil h1").strip(),
                          texte_du_dictionnaire("en", "socle.ecran_profil.utilise_poste"))
 
+    def test_question_de_la_dictee_espacee_comme_la_langue_a_1280_et_375_px(self):
+        """T549 (L24) : le titre « Dictée vocale » ne colle plus au bloc de la langue au-dessus (même espacement que
+        « Langue de Prévo » sous « Par quoi commencer ? »), à 1280 px comme à 375 px."""
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        page = self.page
+        instance = self.lancer()
+        client = Client(instance.url)
+        for etape, corps in (("situation", {"situation": "seul"}), ("portee", {"portee": "ce-pc"}),
+                             ("compte", {"prenom": "Nicolas", "nom": "Briand"}),
+                             ("demarrage", {"demarrage": "aucun", "veille_desactivee": False}),
+                             ("sauvegardes", {"dossier": ""})):
+            self.assertEqual(client.post(etape, corps).statut, 200, etape)
+        self.ouvrir_assistant(instance)
+        self.attendre_etape("recapitulatif")
+        mesure = """() => {
+          const langue = document.querySelector('#inst-base .installation-langue').getBoundingClientRect();
+          const dictee = document.querySelector('#inst-dictee').getBoundingClientRect();
+          const choix = document.querySelector('#inst-base .installation-choix-liste').getBoundingClientRect();
+          return { langue: dictee.top - langue.bottom, choix: document.querySelector('#inst-base .installation-langue').getBoundingClientRect().top - choix.bottom };
+        }"""
+        for largeur in (1280, 375):
+            with self.subTest(largeur=largeur):
+                page.set_viewport_size({"width": largeur, "height": 900})
+                ecarts = page.evaluate(mesure)
+                self.assertGreaterEqual(ecarts["langue"], 14)
+                self.assertAlmostEqual(ecarts["langue"], ecarts["choix"], delta=1)
+
     def test_navigateur_francais_francais_propose(self):
         self.autoriser_erreur(ERREUR_404_TABLES)
         page = self.page                                         # contexte des tests : fr-FR
