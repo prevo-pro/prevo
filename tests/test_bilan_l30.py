@@ -12,11 +12,36 @@ Lancer depuis la racine du projet (navigateur : au travers du verrou) :
 import unittest
 
 import test_rapport_bilan_mois as base
+from commun import attendre_pret, preregler_profil, url_fichier
 
 blancs = base.blancs
 
 
 class CasL30(base.CasBilan):
+
+    PROFIL = ("responsable", "Responsable")
+
+    def ouvrir(self, tables=None):
+        self.contexte.clock.set_fixed_time(self.HORLOGE)
+        preregler_profil(self.contexte, *self.PROFIL)
+        self.page.goto(url_fichier("index.html"))
+        self.page.click("#btn-demo")
+        attendre_pret(self.page)
+        self.page.evaluate("""async (tables) => {
+          Donnees.initialiser(StockageDemo.creer(tables), { poste: 'Poste test', profil: 'Test' });
+          await Donnees.chargerTout();
+        }""", tables or base.TABLES)
+
+    def sans_taux_ni_prix(self):
+        self.page.evaluate("""async () => {
+            await Donnees.modifier('techniciens', (l) => { l.forEach((t) => { t.taux_horaire = ''; }); });
+            await Donnees.modifier('articles', (l) => { l.forEach((a) => { a.prix_unitaire = ''; }); }); }""")
+
+    def instrument_cout(self):
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        cout = self.page.locator('#contenu [data-indicateur="cout"]')
+        cout.wait_for()
+        return blancs(cout.inner_text())
 
     def regler_taux(self, valeur):
         self.page.evaluate("""async (valeur) => { await Donnees.modifier('parametres', (lignes) => {
@@ -78,6 +103,47 @@ class TestTauxMoyen(CasL30):
         self.page.click("#form-parametres button[type=submit]")
         self.page.locator('#form-parametres [name="taux_horaire_moyen"][aria-invalid="true"]').wait_for()
         self.assertEqual(self.page.evaluate("() => Donnees.parametre('taux_horaire_moyen', '')"), "38.5")
+
+
+class TestNonChiffreAuTableauDeBord(CasL30):
+    """Défaut 36 : « 0,00 € » au tableau de bord contre « non chiffré » au rapport du même mois."""
+
+    def test_aucun_taux_ni_prix_non_chiffre_comme_le_bilan(self):
+        self.sans_taux_ni_prix()
+        cout = self.instrument_cout()
+        self.assertNotIn("0,00 €", cout)
+        self.assertIn("non chiffré", cout)
+        self.assertIn("5,5 h sans taux horaire (Paramètres ou Équipe), 2 pièces sans prix (Magasin)", cout)
+        self.assertIn("5,5 h de main-d'œuvre", cout)
+        self.assertEqual(self.page.get_attribute('#contenu [data-indicateur="cout"]', "data-valeur"), "")
+        self.assertEqual(self.tuile(self.donnees(), "cout")["texteValeur"], "non chiffré")      # le bilan dit pareil
+        # Tableau par équipement : PI-01 et CP-01 (heures sans taux) ne disent plus 0,00 €.
+        lignes = self.page.locator("#contenu .indicateurs-equipements tbody tr")
+        textes = [blancs(texte) for texte in lignes.all_inner_texts()]
+        for repere in ("PI-01", "CP-01"):
+            ligne = [texte for texte in textes if repere in texte]
+            self.assertEqual(len(ligne), 1, textes)
+            self.assertIn("non chiffré", ligne[0], repere)
+            self.assertNotIn("0,00 €", ligne[0], repere)
+
+    def test_cout_partiel_garde_son_montant(self):
+        cout = self.instrument_cout()
+        self.assertIn("173,50 €", cout)
+        self.assertIn("Partiel : 2,5 h sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin)", cout)
+
+    def test_complet_avec_le_taux_moyen(self):
+        self.regler_taux("40")
+        self.page.evaluate("""async () => { await Donnees.modifier('articles', (l) => { l.forEach((a) => { a.prix_unitaire = a.prix_unitaire || '2'; }); }); }""")
+        cout = self.instrument_cout()
+        self.assertIn("277,50 €", cout)                                # 135 + 100 + 38,50 + 2 × 2
+        self.assertNotIn("Partiel", cout)
+        self.assertNotIn("non chiffré", cout)
+
+
+class TestNonChiffreDirection(TestNonChiffreAuTableauDeBord):
+    """La direction voit les coûts (T520) : elle a aussi la réserve (avant : « 0,00 € » sans réserve)."""
+
+    PROFIL = ("direction", "")
 
 
 if __name__ == "__main__":

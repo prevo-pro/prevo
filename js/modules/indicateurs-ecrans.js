@@ -148,9 +148,9 @@ Object.assign(Indicateurs, (() => {
     reglages.periode = periode.code;                 // « du-au » sans dates valables → 12 mois
     const filtres = { criticite: reglages.criticite, atelier: reglages.atelier };
     const global = Indicateurs.global(periode, filtres, jour);
-    // T519 : taux horaires et prix manquants (comptés 0 dans le coût) dits sous le coût ; responsable seul (D126 : les
-    // taux horaires sont cachés aux autres profils, qui y verraient de faux manques).
-    global.manquesCout = App.estResponsable() ? Indicateurs.manquesCout(periode, filtres) : null;
+    // T519 : taux horaires et prix manquants (comptés 0 dans le coût) dits sous le coût ; aux profils qui ont les coûts
+    // (D126 : cachés aux autres, qui y verraient de faux manques) : responsable et, L30, direction (« 0,00 € » sans réserve).
+    global.manquesCout = App.estResponsable() || App.estDirection() ? Indicateurs.manquesCout(periode, filtres) : null;
     // Coût de l'arrêt (D188) : montré au seul profil qui a les coûts (D126 : le serveur cache cout_arret_h au
     // technicien et au demandeur, qui y verraient de faux « non chiffré ») ; et à la Direction (T520), qui a les coûts.
     const coutArret = App.estResponsable() || App.estDirection() ? Indicateurs.coutArret(periode, filtres) : null;
@@ -171,7 +171,7 @@ Object.assign(Indicateurs, (() => {
           <p class="note">${I18n.t('indicateurs.resultats.equipements_suivis_cliquez_tete', { resumeFiltres: resumeFiltres(filtres) })}</p>
           <div class="indicateurs-equipements"></div></article>
       </div>`);
-    UI.$('.indicateurs-equipements', zone).appendChild(tableauEquipements(periode, filtres));
+    UI.$('.indicateurs-equipements', zone).appendChild(tableauEquipements(periode, filtres, global.manquesCout));
     dessinerGraphiques(UI.$('.indicateurs-graphiques', zone), periode, filtres, jour, coutArret);
   }
 
@@ -215,13 +215,13 @@ Object.assign(Indicateurs, (() => {
     </details>`;
   }
 
-  /** Un instrument : libellé, chiffre (ou tiret et raison), compléments (effectifs). */
-  function instrument({ cle, libelle, resultat, format, valeurAffichee, complements, lien }) {
-    const calcule = resultat.valeur !== null;
+  /** Un instrument : libellé, chiffre (ou tiret et raison ; « non chiffré » et ses compléments, L30), compléments. */
+  function instrument({ cle, libelle, resultat, format, valeurAffichee, complements, lien, nonChiffre }) {
+    const calcule = resultat.valeur !== null && !nonChiffre;
     // Les OT sources (D35) sous chaque chiffre, sauf dans un instrument qui est lui-même un lien.
-    const lignes = (calcule ? complements.filter(Boolean) : [phrase(resultat.raison)]).concat(lien ? [] : [sources(resultat)]).filter(Boolean);
+    const lignes = (calcule || nonChiffre ? complements.filter(Boolean) : [phrase(resultat.raison)]).concat(lien ? [] : [sources(resultat)]).filter(Boolean);
     const contenu = UI.html`<div class="lib">${libelle}</div>
-      <div class="chiffre">${calcule ? format(resultat.valeur) : '–'}</div>
+      <div class="chiffre">${calcule ? format(resultat.valeur) : (nonChiffre ? I18n.t('indicateurs.instruments.non_chiffre') : '–')}</div>
       ${lignes.map((ligne) => (UI.estSur(ligne) ? ligne : UI.html`<div class="comp">${ligne}</div>`))}`;
     const valeur = calcule ? String(valeurAffichee(resultat.valeur)) : '';
     return lien
@@ -264,21 +264,32 @@ Object.assign(Indicateurs, (() => {
         valeurAffichee: (valeur) => valeur, lien: '#/ot?filtre=retard',
         complements: [I18n.t('indicateurs.instruments.date_prevue_depassee', { jour: UI.dateFr(jour) })] }),
       instrument({ cle: 'cout', libelle: I18n.t('indicateurs.instruments.cout_maintenance'), resultat: global.cout, format: formats.euros,
-        valeurAffichee: enEuros, complements: [I18n.t('indicateurs.instruments.heures_homme', { duree: formats.heures(arrondi(global.cout.heures || 0, 1)) }),
-          I18n.t('indicateurs.instruments.ot_clotures_pieces_prix', { n: global.cout.effectif }), coutPartiel(global.manquesCout)] }),
+        valeurAffichee: enEuros, nonChiffre: estNonChiffre(global),
+        complements: [estNonChiffre(global) ? manqueDuCout(global.manquesCout) : '', I18n.t('indicateurs.instruments.heures_homme', { duree: formats.heures(arrondi(global.cout.heures || 0, 1)) }),
+          I18n.t('indicateurs.instruments.ot_clotures_pieces_prix', { n: global.cout.effectif }), estNonChiffre(global) ? '' : coutPartiel(global.manquesCout)] }),
       instrument({ cle: 'valeur-stock', libelle: I18n.t('indicateurs.instruments.valeur_stock'), resultat: global.valeurStock, format: formats.euros,
         valeurAffichee: enEuros,
         complements: [I18n.t('indicateurs.instruments.articles_tout_magasin', { n: global.valeurStock.effectif }) + (global.valeurStock.exclus.length ? ' ' + I18n.t('indicateurs.instruments.sans_prix', { nbExclus: global.valeurStock.exclus.length }) : '')] }),
     ];
   }
 
-  /** « Partiel : 2,5 h sans taux horaire (Équipe), 1 pièce sans prix (Magasin) » ('' si le coût est complet, T519). */
-  function coutPartiel(manques) {
+  /** « 2,5 h sans taux horaire (Paramètres ou Équipe), 1 pièce sans prix (Magasin) » ('' si le coût est complet). */
+  function manqueDuCout(manques) {
     if (!manques || manques.complet) return '';
     const heures = manques.techniciens.reduce((somme, element) => somme + element.heures, 0);
-    const morceaux = [heures ? I18n.t('indicateurs.instruments.heures_sans_taux', { duree: formats.heures(arrondi(heures, 1)) }) : '',
-      manques.articles.length ? I18n.t('indicateurs.instruments.pieces_sans_prix', { n: manques.articles.length }) : ''];
-    return I18n.t('indicateurs.instruments.cout_partiel', { manque: morceaux.filter(Boolean).join(', ') });
+    return [heures ? I18n.t('indicateurs.instruments.heures_sans_taux', { duree: formats.heures(arrondi(heures, 1)) }) : '',
+      manques.articles.length ? I18n.t('indicateurs.instruments.pieces_sans_prix', { n: manques.articles.length }) : ''].filter(Boolean).join(', ');
+  }
+
+  /** « Partiel : … » sous un coût chiffré en partie ('' s'il est complet, T519). */
+  function coutPartiel(manques) {
+    const manque = manqueDuCout(manques);
+    return manque ? I18n.t('indicateurs.instruments.cout_partiel', { manque }) : '';
+  }
+
+  /** L30 : coût de 0 alors que des heures ou des pièces n'ont ni taux ni prix → « non chiffré », comme le bilan. */
+  function estNonChiffre(global) {
+    return Boolean(global.manquesCout) && !global.manquesCout.complet && global.cout.valeur === 0;
   }
 
   /** Ce qui n'a pas pu être calculé sur la sélection, avec la raison. */
@@ -548,7 +559,14 @@ Object.assign(Indicateurs, (() => {
     return resultat.valeur === null ? null : resultat.valeur;
   }
 
-  function tableauEquipements(periode, filtres) {
+  /** Coût d'un équipement : « non chiffré » à 0 avec des heures ou des pièces sans taux ni prix, « (partiel) » au-delà (L30). */
+  function celluleCout(resultat, incomplet) {
+    if (resultat.valeur === null || !incomplet) return cellule(resultat, formats.euros);
+    return resultat.valeur === 0 ? I18n.t('indicateurs.instruments.non_chiffre') : formats.euros(resultat.valeur) + ' ' + I18n.t('indicateurs.tableau_equipements.partiel');
+  }
+
+  function tableauEquipements(periode, filtres, manques) {
+    const incomplets = new Set((manques && manques.equipements) || []);
     const ctx = contexte();
     const lignes = Array.from(ctx.equipements.values()).filter((equipement) => estSuivi(equipement) && passeFiltres(equipement, filtres, ctx))
       .map((equipement) => Object.assign({ equipement }, Indicateurs.parEquipement(equipement.id, periode, ctx)));
@@ -567,7 +585,7 @@ Object.assign(Indicateurs, (() => {
         { cle: 'mttr', libelle: I18n.t('indicateurs.tableau_equipements.mttr_h'), type: 'nombre', valeurTri: (l) => valeurTri(l.mttr), rendu: (l) => cellule(l.mttr, heures) },
         { cle: 'disponibilite', libelle: I18n.t('indicateurs.instruments.disponibilite'), type: 'nombre', valeurTri: (l) => valeurTri(l.disponibilite),
           rendu: (l) => cellule(l.disponibilite, formats.pourcentage) },
-        { cle: 'cout', libelle: I18n.t('indicateurs.tableau_equipements.cout'), type: 'nombre', valeurTri: (l) => valeurTri(l.cout), rendu: (l) => cellule(l.cout, formats.euros) },
+        { cle: 'cout', libelle: I18n.t('indicateurs.tableau_equipements.cout'), type: 'nombre', valeurTri: (l) => valeurTri(l.cout), rendu: (l) => celluleCout(l.cout, incomplets.has(l.equipement.id)) },
       ],
       lignes,
     });

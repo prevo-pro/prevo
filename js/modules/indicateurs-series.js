@@ -245,7 +245,8 @@ Object.assign(Indicateurs, (() => {
 
   /**
    * Ce qui manque au coût de maintenance (RG7, mêmes OT que Indicateurs.global : clôturés dans la période) →
-   * { techniciens: [{ technicienId, technicien, heures }], articles: [{ articleId, article, quantite }], complet }.
+   * { techniciens: [{ technicienId, technicien, heures }], articles: [{ articleId, article, quantite }], complet,
+   * equipements } ; equipements (L30) : identifiants des équipements dont un OT compté a une heure ou une pièce non chiffrée.
    * Un taux horaire ou un prix vide (ou illisible) compte pour 0 dans le coût : ces heures et ces pièces y manquent ; une
    * heure d'un technicien sans taux propre prend le taux moyen du service quand il est réglé (L30) : elle ne manque pas.
    * Un 0 saisi est une valeur (non listé).
@@ -254,7 +255,9 @@ Object.assign(Indicateurs, (() => {
     const ctx = contexte();
     const techniciens = new Map();
     const articles = new Map();
+    const equipements = new Set();
     ordresFiltres(filtres, ctx).filter((ot) => clotureDansPeriode(ot, periodeChoisie)).forEach((ot) => {
+      const noter = () => equipements.add(texte(ot.equipement_id));
       (ctx.tempsParOt.get(ot.id) || []).forEach((ligne) => {
         const heures = nombreOuZero(ligne.heures);
         const technicien = ctx.techniciens.get(texte(ligne.technicien_id));
@@ -262,6 +265,7 @@ Object.assign(Indicateurs, (() => {
         const element = techniciens.get(texte(ligne.technicien_id)) || { technicienId: texte(ligne.technicien_id), technicien: technicien || null, heures: 0 };
         element.heures += heures;
         techniciens.set(element.technicienId, element);
+        noter();
       });
       const quantites = new Map();
       (ctx.mouvementsParOt.get(ot.id) || []).forEach((mouvement) => {
@@ -274,10 +278,11 @@ Object.assign(Indicateurs, (() => {
         const element = articles.get(articleId) || { articleId, article: article || null, quantite: 0 };
         element.quantite += quantite;
         articles.set(articleId, element);
+        noter();
       });
     });
     return { techniciens: trier(techniciens.values(), 'heures', 'technicienId'), articles: trier(articles.values(), 'quantite', 'articleId'),
-      complet: !techniciens.size && !articles.size };
+      complet: !techniciens.size && !articles.size, equipements: Array.from(equipements) };
   }
 
   /**
