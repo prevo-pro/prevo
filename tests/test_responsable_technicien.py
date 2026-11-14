@@ -11,7 +11,10 @@ Ce qui est vérifié :
     serveur      rien au démarrage (techniciens.csv et comptes.json à l'octet) ; à la connexion du responsable, sa
                  fiche ; GET /api/session relie aussi une session ouverte avant (« rester connecté ») ;
                  POST /api/acces/comptes : un responsable créé reçoit sa fiche, la Direction non ; un demandeur devenu
-                 responsable la reçoit ; un responsable devenu Direction la quitte.
+                 responsable la reçoit ; un responsable devenu Direction la quitte ;
+    écran        (navigateur) le responsable connecté garde son accueil de responsable, se voit proposer « Je prends
+                 cet OT » et met l'OT à son nom (sa fiche) ; Équipe › Accès accepte une fiche pour un responsable et la
+                 refuse pour la Direction.
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_responsable_technicien.py" -v
@@ -27,7 +30,7 @@ import urllib.request
 from pathlib import Path
 
 import commun
-from commun import RACINE, ServeurPrevo
+from commun import RACINE, CasNavigateur, ServeurPrevo, attendre_pret
 
 SCRIPT = RACINE / "serveur.py"
 MOT_DE_PASSE = "une phrase de passe assez longue"
@@ -184,6 +187,36 @@ class TestServeurReel(unittest.TestCase):
                                   cookie)
             self.assertEqual((change["compte"]["role"], change["compte"]["technicien_id"]), ("direction", ""))
             self.assertEqual(len(techniciens(srv.dossier)), 7)
+
+
+class TestEcranResponsableTechnicien(CasNavigateur):
+
+    def test_accueil_responsable_prise_et_controle_acces(self):
+        with ServeurPrevo(comptes=True) as srv:
+            srv.poser_session(self.contexte, "responsable", profil=False)
+            self.page.goto(srv.url + "/#/accueil")
+            attendre_pret(self.page)
+            self.assertEqual(self.page.evaluate("[App.profil.type, App.profil.technicienId, App.estTechnicien()]"),
+                             ["responsable", "TEC-0005", False])
+            titre = self.page.evaluate("I18n.t('accueil.accueil_technicien.accueil')")
+            self.assertNotEqual(self.page.locator("h1").first.text_content().strip(), titre)   # accueil du responsable
+            ot_id = self.page.evaluate("""() => Ordres.creer({ origine: 'manuel', type: 'correctif différé',
+                priorite: 'P3', titre: 'Essai L06', technicien_id: '', date_prevue: '' })""")
+            self.page.evaluate("id => { location.hash = '#/ot/' + id; }", ot_id)
+            bouton = self.page.locator('.ot-fiche [data-action="prendre-ot"]').first
+            bouton.click()
+            self.page.wait_for_function(
+                "id => (Donnees.trouver('ordres_travail', id) || {}).technicien_id === 'TEC-0005'", arg=ot_id)
+            # Équipe › Accès : une fiche pour un responsable passe la vérification, pas pour la Direction.
+            erreurs = self.page.evaluate("""() => [
+                EquipeAcces.verifierCompte({ prenom: 'A', role: 'responsable', technicien_id: 'TEC-0001' }),
+                EquipeAcces.verifierCompte({ prenom: 'A', role: 'technicien', technicien_id: 'TEC-0001' }),
+                EquipeAcces.verifierCompte({ prenom: 'A', role: 'responsable', technicien_id: '' }),
+                EquipeAcces.verifierCompte({ prenom: 'A', role: 'direction', technicien_id: 'TEC-0001' }).map((e) => e.message),
+                EquipeAcces.verifierCompte({ prenom: 'A', role: 'technicien', technicien_id: '' }).length]""")
+            self.assertEqual(erreurs[:3], [[], [], []])
+            self.assertEqual(erreurs[3], [self.page.evaluate("I18n.t('equipe.verifier_compte.direction_sans_fiche')")])
+            self.assertEqual(erreurs[4], 1)                     # technicien sans fiche : toujours refusé
 
 
 if __name__ == "__main__":

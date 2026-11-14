@@ -39,10 +39,11 @@ Object.assign(Ordres, (() => {
     return avant ? avant + '\n' + ligne : ligne;
   }
 
-  /** Le technicien du profil : sa fiche (technicien), « moi » en mode Solo (responsable), sinon ''. */
+  /** Le technicien du profil : sa fiche (technicien), « moi » en mode Solo (responsable), sinon la fiche liée au compte
+   *  du responsable (L06, lot 2 : le responsable est aussi technicien), sinon ''. */
   function monTechnicien() {
     if (estTechnicien()) return texte(App.profil && App.profil.technicienId);
-    return estResponsable() ? texte(App.technicienSolo()) : '';
+    return estResponsable() ? texte(App.technicienSolo()) || texte(App.profil && App.profil.technicienId) : '';
   }
 
   /** Geste proposé au technicien `moi` sur cet OT : 'prendre' (ouvert, sans technicien), 'reprendre' (ouvert, au nom

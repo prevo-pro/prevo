@@ -248,8 +248,10 @@ const EquipeAcces = (() => {
     if (texte(valeurs.role) === 'technicien' && !texte(valeurs.technicien_id)) {
       erreurs.push({ nom: 'technicien_id', message: I18n.t('equipe.verifier_compte.compte_technicien_lie_fiche') });
     }
-    if (texte(valeurs.role) !== 'technicien' && texte(valeurs.technicien_id)) {
-      erreurs.push({ nom: 'technicien_id', message: I18n.t('equipe.verifier_compte.seul_compte_technicien_lie') });
+    // L06 (lot 2) : le responsable est aussi technicien (fiche choisie, ou créée d'office par le serveur) ; la
+    // Direction et le demandeur restent sans fiche.
+    if (['direction', 'demandeur'].includes(texte(valeurs.role)) && texte(valeurs.technicien_id)) {
+      erreurs.push({ nom: 'technicien_id', message: I18n.t('equipe.verifier_compte.direction_sans_fiche') });
     }
     return erreurs;
   }
@@ -672,5 +674,5 @@ const EquipeAcces = (() => {
     });
   });
 
-  return { lignesCsv, entreesJournal, lienInvitation, api };
+  return { lignesCsv, entreesJournal, lienInvitation, verifierCompte, api };
 })();

@@ -209,6 +209,7 @@ const InstallationEtapes = (() => {
       champs: UI.html`
         ${existant ? UI.html`<div class="alerte"><div class="alerte-texte">${I18n.html('installation.formulaire_compte.compte_responsable_existe_deja')}</div></div>` : ''}
         ${sansMotDePasse ? UI.html`<p class="note">${I18n.t('installation.formulaire_compte.pc_seulement_nom_cree')}</p>` : ''}
+        ${sansMotDePasse || existant ? '' : UI.html`<p class="note">${I18n.t('installation.formulaire_compte.responsable_aussi_technicien')}</p>`}
         <div class="form-colonne">
           <div class="champ"><label class="libelle" for="inst-prenom">${I18n.t('commun.champ.prenom')} <span class="requis" aria-hidden="true">*</span></label>
             <input type="text" id="inst-prenom" name="prenom" autocomplete="given-name" maxlength="80"></div>
