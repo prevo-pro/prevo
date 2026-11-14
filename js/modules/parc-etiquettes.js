@@ -15,6 +15,7 @@
 //   Parc.consigneEtiquette(adresse, wifi)   ligne imprimée au-dessus du QR ('' si l'adresse est joignable de partout)
 //   Parc.avertissementReseau(adresse, { lienPortee, lienEtiquettes })   encadré « le QR ne s'ouvrira pas en 4G »
 //   Parc.atelierSansWifi()            vrai si l'atelier n'a pas de Wi-Fi (parametres.csv : atelier_sans_wifi = 1 ; T536)
+//   Parc.qrSansTelephone()            'ce-pc' | 'sans-wifi' | '' : pourquoi les QR ne s'ouvriront sur aucun téléphone (T536)
 //
 // Impression : chaque planche est une page A4 dessinée en millimètres (positions absolues). La
 // feuille css/modules/etiquettes.css lui donne une page nommée « etiquettes » sans marge
@@ -163,7 +164,10 @@ Object.assign(Parc, (() => {
     const portee = porteeAdresse(adresse);
     if (portee !== 'ce-pc' && portee !== 'locale' && portee !== 'tailscale') return '';
     const { lienPortee = false, lienEtiquettes = false } = options || {};
-    const textes = {
+    // T536 (L11) : adresse de l'atelier, mais l'atelier n'a pas de Wi-Fi : les deux solutions sans Wi-Fi.
+    const sansWifi = portee === 'locale' && atelierSansWifi();
+    const textes = sansWifi ? ['parc.avertissement_reseau.sans_wifi_titre', 'parc.avertissement_reseau.sans_wifi_consequence',
+      'parc.avertissement_reseau.sans_wifi_solution_1', 'parc.avertissement_reseau.sans_wifi_solution_2'] : {
       'ce-pc': ['parc.avertissement_reseau.ce_pc_titre', 'parc.avertissement_reseau.ce_pc_consequence',
         'parc.avertissement_reseau.ce_pc_solution_1', 'parc.avertissement_reseau.ce_pc_solution_2'],
       locale: ['parc.avertissement_reseau.locale_titre', 'parc.avertissement_reseau.locale_consequence',
@@ -175,7 +179,7 @@ Object.assign(Parc, (() => {
       lienPortee ? UI.html`<a href="#/parametres">${I18n.t('parc.avertissement_reseau.lien_portee')}</a>` : '',
       lienEtiquettes ? UI.html`<a href="#/parc/etiquettes">${I18n.t('parc.avertissement_reseau.lien_etiquettes')}</a>` : '',
     ].filter(Boolean);
-    return UI.html`<div class="encadre attention avertissement-reseau" data-portee="${portee}" role="note">${UI.icone('alerte')}
+    return UI.html`<div class="encadre attention avertissement-reseau" data-portee="${sansWifi ? 'sans-wifi' : portee}" role="note">${UI.icone('alerte')}
       <div>
         <p><b>${I18n.t(textes[0])}</b></p>
         <p>${I18n.html(textes[1], { adresse })}</p>
@@ -287,6 +291,34 @@ Object.assign(Parc, (() => {
   /** Vrai quand le responsable a dit que l'atelier n'a pas de Wi-Fi (assistant ou Paramètres ; T536, L11). */
   function atelierSansWifi() {
     return String(Donnees.parametre(CLE_SANS_WIFI, '0') || '').trim() === '1';
+  }
+
+  /**
+   * T536 (L11) : pourquoi les QR ne s'ouvriront sur aucun téléphone, en mode serveur : 'ce-pc' (Prévo n'est joignable
+   * que sur ce PC), 'sans-wifi' (adresse du réseau de l'atelier, et l'atelier n'a pas de Wi-Fi) ; '' sinon (un QR en
+   * Tailscale ou joignable de l'extérieur s'ouvre en 4G ; en dossier et en démo, le QR ne contient pas d'adresse).
+   */
+  function qrSansTelephone() {
+    if (App.mode !== 'serveur') return '';
+    const portee = porteeAdresse(adresseDeBase());
+    if (portee === 'ce-pc' || (App.cePcSeulement && App.cePcSeulement())) return 'ce-pc';
+    return portee === 'locale' && atelierSansWifi() ? 'sans-wifi' : '';
+  }
+
+  /** Fenêtre avant d'imprimer quand les QR ne s'ouvriront sur aucun téléphone : vrai pour imprimer quand même. */
+  async function confirmerSansTelephone(raison) {
+    const t = (cle) => I18n.t('parc.imprimer_sans_telephone.' + cle);
+    const contenu = UI.element(UI.html`<div class="form-colonne" id="etiquettes-sans-telephone" data-raison="${raison}">
+      <p>${t(raison === 'ce-pc' ? 'raison_ce_pc' : 'raison_sans_wifi')}</p>
+      <p>${t('solutions')}</p>
+      <ul><li>${t('poste')}</li><li>${t('borne')}</li></ul>
+      ${raison === 'ce-pc' ? UI.html`<p>${t('reseau_d_abord')}</p>` : ''}
+    </div>`);
+    const choix = await UI.fenetre({ titre: t('titre'), contenu, boutons: [
+      { libelle: I18n.t('commun.bouton.annuler'), valeur: false, classe: 'btn-fantome' },
+      { libelle: t('imprimer_quand_meme'), valeur: true, classe: 'btn-primaire', defaut: true },
+    ] });
+    return choix === true;
   }
 
   function adresseDeBase() {
@@ -597,7 +629,12 @@ Object.assign(Parc, (() => {
       });
     }
 
-    boutonImprimer.addEventListener('click', () => imprimer(equipementsCoches(), reglages));
+    // T536 (L11) : ce PC seulement, ou atelier sans Wi-Fi : le dire avant d'imprimer, avec les deux solutions.
+    boutonImprimer.addEventListener('click', async () => {
+      const raison = qrSansTelephone();
+      if (raison && !(await confirmerSansTelephone(raison))) return;
+      imprimer(equipementsCoches(), reglages);
+    });
     dessinerListe();
   }
 
@@ -621,5 +658,6 @@ Object.assign(Parc, (() => {
     consigneEtiquette,
     avertissementReseau,
     atelierSansWifi,
+    qrSansTelephone,
   };
 })());

@@ -229,6 +229,50 @@ class TestEtiquettesTailscaleEtExterieur(CasReseau):
         self.assertEqual(page.locator(".avertissement-reseau, #etiquettes-rappel-consigne, #etiquettes-wifi").count(), 0)
 
 
+class TestSansTelephone(CasReseau):
+    """T536 (L11) : atelier sans Wi-Fi (parametres.csv : atelier_sans_wifi = 1) ou Prévo sur ce PC seulement : l'écran
+    le dit AVANT d'imprimer (encadré, puis fenêtre au clic sur « Imprimer »), avec les deux solutions (poste de
+    déclaration, borne Wi-Fi) ; « Annuler » n'imprime rien, « Imprimer quand même » imprime."""
+
+    def imprimer_apres_la_fenetre(self, raison, attendus):
+        page = self.page
+        # Espion posé dans une fonction : une expression qui vaut une fonction serait appelée par evaluate.
+        page.evaluate("() => { window.print = () => { window.__impressions = (window.__impressions || 0) + 1; }; }")
+        self.assertEqual(page.evaluate("Parc.qrSansTelephone()"), raison)
+        page.click("#etiquettes-imprimer")
+        fenetre = page.locator("dialog[open] #etiquettes-sans-telephone[data-raison='%s']" % raison)
+        fenetre.wait_for()
+        texte = fenetre.inner_text()
+        self.assertEqual(page.evaluate("window.__impressions || 0"), 0)                 # rien avant la réponse
+        for attendu in attendus + ["poste de déclaration", "borne Wi-Fi réservée à Prévo", "50"]:
+            self.assertIn(attendu, texte)
+        page.click("dialog[open] button:has-text('Annuler')")
+        self.assertEqual(page.evaluate("window.__impressions || 0"), 0)
+        page.click("#etiquettes-imprimer")
+        page.click("dialog[open] button:has-text('Imprimer quand même')")
+        page.wait_for_function("window.__impressions === 1")
+
+    def test_atelier_sans_wifi_encadre_et_fenetre_avant_d_imprimer(self):
+        with ServeurPrevo() as serveur:
+            page = self.ouvrir(["http://192.168.50.10:%d/"], serveur)
+            self.assertEqual(page.evaluate("Parc.qrSansTelephone()"), "")          # Wi-Fi : comme avant, sans fenêtre
+            page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+                lignes.push({ cle: 'atelier_sans_wifi', valeur: '1' }); })""")
+            page.evaluate("App.reafficher()")
+            avertissement = page.locator("#etiquettes-avertissement-reseau .avertissement-reseau[data-portee='sans-wifi']")
+            avertissement.wait_for()
+            texte = avertissement.inner_text()
+            self.assertIn("L'atelier n'a pas de Wi-Fi", texte)
+            self.assertIn("poste de déclaration", texte.lower())
+            self.assertIn("borne Wi-Fi", texte)
+            self.assertTrue(page.evaluate("Parc.atelierSansWifi()"))
+            self.imprimer_apres_la_fenetre("sans-wifi", ["L'atelier n'a pas de Wi-Fi"])
+
+    def test_ce_pc_seulement_fenetre_avant_d_imprimer(self):
+        self.ouvrir([])
+        self.imprimer_apres_la_fenetre("ce-pc", ["que sur ce PC", "Accès et installation"])
+
+
 class TestParametresAcces(acces.CasAcces):
 
     @classmethod

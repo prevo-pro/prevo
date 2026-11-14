@@ -1834,6 +1834,10 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   l'application Tailscale… ». Le QR rapetisse (27 mm en format 24) pour laisser deux lignes. L'encadré
   `Parc.avertissementReseau` (conséquence en 4G, solutions, liens) s'affiche sur l'écran Étiquettes, dans
   Paramètres › Accès et installation et sur la fiche d'accès ; un rappel non imprimé en tête de l'aperçu.
+- Lot 2 ergonomie (T536, L11) : `atelier_sans_wifi` = 1 (assistant ou Paramètres, `Parc.atelierSansWifi`) et adresse
+  `locale` : l'encadré dit « L'atelier n'a pas de Wi-Fi » (`data-portee="sans-wifi"`) et propose le poste de
+  déclaration ou une borne Wi-Fi réservée à Prévo. `Parc.qrSansTelephone()` (`ce-pc`, `sans-wifi` ou '') : au clic sur
+  « Imprimer », une fenêtre le dit avant d'imprimer, avec ces deux solutions (« Annuler » ou « Imprimer quand même »).
 - Écarts retenus (T45) : les planches utilisent une page **nommée** (`@page etiquettes { size: A4;
   margin: 0 }`, `css/modules/etiquettes.css`) : une `@page` sans nom aurait aussi annulé les marges de
   12 mm du bon de travail ; le décalage est borné de −10 à +10 mm (pas de 0,5 mm), une valeur hors
