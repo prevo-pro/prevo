@@ -240,7 +240,7 @@ ECRANS = {
             "indicateurs : rien n'est estimé. Le responsable ajoute et modifie ; les étiquettes QR "
             "s'impriment par atelier ou par ligne, planche A4 de 24 ou de 8."
         ),
-        "essayez": "dépliez l'Atelier Usinage et ouvrez une machine.",
+        "essayez": "dépliez un atelier et ouvrez une machine.",
     },
     "equipement": {
         "titre": "Équipement",
@@ -260,7 +260,7 @@ ECRANS = {
             "d'impression si besoin, et imprimez. Le repère de l'équipement est toujours écrit en clair sous "
             "le code."
         ),
-        "essayez": "l'Atelier Usinage, planche de 24, Aperçu.",
+        "essayez": "un atelier, planche de 24, Aperçu.",
     },
     "controles": {
         "titre": "Contrôles réglementaires",
@@ -617,7 +617,7 @@ ECRANS_EN = {
             "downtime cost per hour, the equipment is “not costed” in the indicators: nothing is estimated. "
             "The manager adds and edits; QR labels are printed by workshop or by line, on A4 sheets of 24 or 8."
         ),
-        "essayez": "expand the Machining workshop and open a machine.",
+        "essayez": "expand a workshop and open a machine.",
     },
     "equipement": {
         "titre": "Equipment",
@@ -634,7 +634,7 @@ ECRANS_EN = {
             "Choose a workshop or a line, a sheet of 24 or 8 labels, a print offset if needed, and print. The "
             "equipment tag is always written in plain text under the code."
         ),
-        "essayez": "the Machining workshop, sheet of 24, Preview.",
+        "essayez": "a workshop, sheet of 24, Preview.",
     },
     "controles": {
         "titre": "Statutory inspections",
