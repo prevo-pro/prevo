@@ -715,6 +715,8 @@ class Releveur:
         element = page.query_selector(selecteur)
         if element is None:
             raise ErreurReleve("%s : bouton introuvable (%s)" % (quoi, selecteur))
+        # T538 (L18) : un geste rare peut être rangé sous « Plus d'options » (<details> replié) : l'ouvrir d'abord.
+        element.evaluate("(e) => { const d = e.closest('details'); if (d && !d.open) d.open = true; }")
         element.scroll_into_view_if_needed()
         element.click()
 
