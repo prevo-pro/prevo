@@ -90,7 +90,7 @@ Object.assign(Ordres, (() => {
 
   /** Message non bloquant d'une famille vide (et, pour le responsable, le lien et la liste de départ). */
   function noteFamilleVide(cle, surAjout) {
-    const note = UI.element(UI.html`<p class="aide ot-codes-vides">${cle === 'cause' ? I18n.t('ordres.codes.aucun_code_cause') : I18n.t('ordres.codes.aucun_code_remede')}</p>`);
+    const note = UI.element(UI.html`<p class="aide ot-codes-vides">${cle === 'cause' ? I18n.t(App.modeSolo() ? 'ordres.codes.aucun_code_cause_solo' : 'ordres.codes.aucun_code_cause') : I18n.t(App.modeSolo() ? 'ordres.codes.aucun_code_remede_solo' : 'ordres.codes.aucun_code_remede')}</p>`);
     if (!Ordres.interne.estResponsable()) return note;
     note.appendChild(UI.element(UI.html` <a href="#/parametres">${I18n.t('ordres.codes.ouvrir_parametres')}</a>`));
     const bouton = boutonListeDeDepart(surAjout);

@@ -63,7 +63,7 @@ Object.assign(Ordres, (() => {
         </section>
       </div>
       <section class="bt-consignation"><h2>${I18n.t('ordres.bon_de_travail.consignation')}</h2>
-        <p class="bt-texte">${texte(equipement.consignation) || I18n.t('ordres.bon_de_travail.aucune_procedure_renseignee_voir')}</p>
+        <p class="bt-texte">${texte(equipement.consignation) || I18n.t(App.modeSolo() ? 'ordres.bon_de_travail.aucune_procedure_solo' : 'ordres.bon_de_travail.aucune_procedure_renseignee_voir')}</p>
         <p class="bt-rappel">${Ordres.rappelConsignation()}</p>
         <div class="bt-case"><span class="bt-coche"></span>${I18n.t('ordres.bon_de_travail.consignation_appliquee')}</div>
       </section>

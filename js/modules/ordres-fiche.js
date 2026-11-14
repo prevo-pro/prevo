@@ -284,7 +284,7 @@ Object.assign(Ordres, (() => {
         ${verrouille ? UI.html`<span class="aide">${I18n.t('ordres.anomalie.ot_verrouille_lecture_seule')}</span>` : ''}</div>
       <label class="case"><input type="checkbox" id="ot-anomalie-constatee"${ot.anomalie_constatee === '1' ? UI.brut(' checked') : ''}${verrouille ? UI.brut(' disabled') : ''}>
         <span>${I18n.t('ordres.anomalie.anomalie_constatee')}</span></label>
-      ${verrouille ? '' : UI.html`<p class="aide">${I18n.t('ordres.anomalie.anomalie_traiter_signale_demande')}</p>
+      ${verrouille ? '' : UI.html`<p class="aide">${I18n.t(App.modeSolo() ? 'ordres.anomalie.anomalie_traiter_solo' : 'ordres.anomalie.anomalie_traiter_signale_demande')}</p>
         <div class="actions"><a class="btn btn-secondaire" id="ot-signaler-anomalie" href="${adresse}">${UI.icone('alerte')}${I18n.t('ordres.anomalie.signaler_anomalie_di_liee')}</a></div>`}
       <h3 class="ot-sous-titre">${I18n.t('ordres.anomalie.demandes_liees', { nbLiees: liees.length })}</h3>
       ${liees.length ? UI.html`<ul class="ot-di-liees">${liees.map((di) => UI.html`<li>

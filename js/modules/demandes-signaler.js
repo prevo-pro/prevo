@@ -79,7 +79,7 @@ Object.assign(Demandes, (() => {
       <div class="di-nouvelle">
         <div class="entete-page"><div>
           <h1>${I18n.t('demandes.nouvelle.signaler_probleme')}</h1>
-          <p>${I18n.t('demandes.nouvelle.cinq_questions_minute_responsable')}</p>
+          <p>${I18n.t(App.modeSolo() ? 'demandes.nouvelle.cinq_questions_solo' : 'demandes.nouvelle.cinq_questions_minute_responsable')}</p>
         </div></div>
         <div class="di-dernieres-zone"></div>
         <div class="di-brouillon"></div>
@@ -251,7 +251,7 @@ Object.assign(Demandes, (() => {
       zoneSecurite.textContent = '';
       if (impact === 'sécurité') {
         zoneSecurite.appendChild(UI.bandeau('securite',
-          UI.html`<b>${I18n.t('demandes.nouvelle.danger_mettez_zone_securite')}</b>`));
+          UI.html`<b>${I18n.t(App.modeSolo() ? 'demandes.nouvelle.danger_solo' : 'demandes.nouvelle.danger_mettez_zone_securite')}</b>`));
       }
       const equipement = Donnees.trouver('equipements', selecteur.valeur());
       if (!impact) {
@@ -583,7 +583,7 @@ Object.assign(Demandes, (() => {
       </div>`);
     if (demande.impact === 'sécurité') {
       UI.$('.di-zone-securite', conteneur).appendChild(UI.bandeau('securite',
-        UI.html`${I18n.html('demandes.confirmation.danger_mettez_zone_securite')}`));
+        UI.html`${I18n.html(App.modeSolo() ? 'demandes.confirmation.danger_solo' : 'demandes.confirmation.danger_mettez_zone_securite')}`));
     }
     UI.$('.di-autre', conteneur).addEventListener('click', () => App.naviguer('#/di/nouvelle'));
     window.scrollTo(0, 0);

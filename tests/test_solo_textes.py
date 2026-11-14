@@ -4,6 +4,8 @@ Une personne seule est à la fois responsable et technicien, sans menu Équipe :
     - consignation sans procédure (fiche d'un OT, fiche de la machine) : « Aucune procédure de consignation pour cette
       machine : ajoutez-la sur sa fiche », avec le lien vers la fiche à modifier ; en équipe, le texte « voyez votre
       responsable » ne change pas ;
+    - relecture des textes affichés en Solo (T546) : plus de « votre responsable » ni d'« Équipe › » dans les textes Solo
+      (bon de travail, codes de clôture, anomalie, signalement, rapport) ;
     - l'assistant et la fiche d'accès renvoient à Paramètres › Accès (lien vers #/equipe/acces), pas à Équipe › Accès ;
 
 Lancer depuis la racine du projet :
@@ -20,7 +22,10 @@ RACINE = Path(__file__).resolve().parent.parent
 LANGUES = ("fr", "en", "tr", "it", "pt-PT")
 CLES = ("ordres.consignation.aucune_procedure_solo", "parc.carte_consignation.aucune_procedure_solo",
         "installation.direction.explication_solo", "installation.direction.non_cree_solo",
-        "installation.direction.noter_solo", "installation.mot_de_passe.responsables_solo")
+        "installation.direction.noter_solo", "installation.mot_de_passe.responsables_solo",
+        "ordres.bon_de_travail.aucune_procedure_solo", "ordres.codes.aucun_code_cause_solo", "ordres.codes.aucun_code_remede_solo",
+        "ordres.anomalie.anomalie_traiter_solo", "demandes.confirmation.danger_solo", "demandes.nouvelle.danger_solo",
+        "demandes.nouvelle.cinq_questions_solo", "rapport.ou.taux_horaire_solo")
 
 
 class TestTextesSolo(unittest.TestCase):
@@ -33,7 +38,7 @@ class TestTextesSolo(unittest.TestCase):
                     ligne = next((l for l in texte.splitlines() if l.startswith("  '" + cle + "':")), None)
                     self.assertIsNotNone(ligne, "clé absente")
                     self.assertNotRegex(ligne, r"(Équipe|Team|Ekip|Squadra|Equipa) ›")
-                    self.assertNotRegex(ligne, r"(?i)responsable?s? (avant|before)|manager before")
+                    self.assertNotRegex(ligne, r"(?i)votre responsable|le responsable|your manager|the manager|manager before")
             for cle in ("ordres.consignation.aucune_procedure_solo", "parc.carte_consignation.aucune_procedure_solo",
                         "installation.mot_de_passe.responsables_solo"):
                 self.assertIn("{lien}", next(l for l in texte.splitlines() if l.startswith("  '" + cle + "':")))
@@ -47,6 +52,7 @@ class TestAffichageSolo(CasSolo):
 
     def test_consignation_sans_procedure_en_solo_et_en_equipe(self):
         page = self.page
+        page.add_init_script("window.print = function () {};")
         preregler_profil(self.contexte, "responsable", nom="Thomas")
         with ServeurPrevo() as serveur:
             self.ouvrir(serveur, "#/ot")
@@ -71,6 +77,26 @@ class TestAffichageSolo(CasSolo):
             page.wait_for_selector(".parc-consignation")
             self.assertEqual(page.locator('.parc-consignation a[href="#/equipement/EQ-0005/modifier"]').count(), 1)
             self.assertNotIn("demandez-la au responsable", page.inner_text(".parc-consignation"))
+            # Bon de travail imprimé : la même consigne, sans « voir le responsable »
+            page.evaluate("id => { location.hash = '#/ot/' + id; }", ot_id)
+            page.wait_for_selector("#ot-imprimer")
+            page.click("#ot-imprimer")
+            page.emulate_media(media="print")
+            bon = page.inner_text("#impression")
+            self.assertIn("ajoutez-la sur la fiche de la machine", bon)
+            self.assertNotIn("voir le responsable", bon)
+
+    def test_signalement_en_solo_et_en_equipe(self):
+        page = self.page
+        preregler_profil(self.contexte, "responsable", nom="Thomas")
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/di/nouvelle")
+            self.poser_mode(page, False)
+            page.wait_for_selector(".di-nouvelle")
+            self.assertIn("Le responsable maintenance reçoit votre demande", page.inner_text(".di-nouvelle h1 + p"))
+            self.poser_mode(page, True)
+            page.wait_for_selector(".di-nouvelle")
+            self.assertIn("L'OT s'ouvre aussitôt à votre nom", page.inner_text(".di-nouvelle h1 + p"))
 
 
 if __name__ == "__main__":

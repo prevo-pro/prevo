@@ -437,7 +437,7 @@ Object.assign(Rapport, (() => {
   function manquesDuCout(manques) {
     const lignes = [];
     if (manques.techniciens.length) {
-      lignes.push({ libelle: I18n.t('rapport.manque.main_oeuvre_non_chiffree'), ou: I18n.t('rapport.ou.taux_horaire'),
+      lignes.push({ libelle: I18n.t('rapport.manque.main_oeuvre_non_chiffree'), ou: I18n.t(App.modeSolo() ? 'rapport.ou.taux_horaire_solo' : 'rapport.ou.taux_horaire'),
         raison: I18n.t('rapport.manque.taux_horaire_non_renseigne', { n: manques.techniciens.length,
           liste: citer(manques.techniciens, (element) => nomTechnicien(element) + ' (' + enHeures(element.heures) + ')') }) });
     }
