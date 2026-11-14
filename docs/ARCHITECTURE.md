@@ -1784,7 +1784,7 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   `Indicateurs.graphique` accepte aussi `id`, `classe`, `sousTitre`, `notes` et `vide` (texte affiché
   à la place d'un graphique sans données) ; une carte « Délais de prise en charge » donne, par
   priorité, la médiane, la part dans le délai cible et l'effectif. Sous la part du préventif, une note
-  dit les heures comptées (« x h de préventif sur y h »).
+  dit les heures comptées (« x h de préventif sur y h pointées » : ot_temps datés dans la période, OT en cours compris ; la tuile « Heures des OT clôturés et coût » du tableau de bord compte, elle, les heures des OT clôturés dans la période, celles du coût et du bilan).
 - Limite connue : dans « charge et capacité », les semaines 1 et 4 restent proches en protanopie ;
   elles se distinguent par leur position, la légende et « Voir les valeurs » (une rampe de bleus,
   essayée, a été écartée : 4e semaine à 1,9:1 de contraste sur le fond).

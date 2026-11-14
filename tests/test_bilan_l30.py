@@ -269,7 +269,8 @@ class TestDirectionArriveSurLesQuatreChiffres(CasL30):
         tete.wait_for()
         texte = blancs(tete.inner_text())
         self.assertIn("Ce mois-ci : ", texte)
-        for attendu in ("Disponibilité", "à compléter", "Heures et coût", "5 h 30", "Pannes", "1 h 30 d'arrêt", "Part du préventif", "18,2 %"):
+        for attendu in ("Disponibilité", "à compléter", "Heures des OT clôturés et coût", "5 h 30", "Pannes", "1 h 30 d'arrêt",
+                        "Part du préventif", "18,2 %", "pointées sur la période"):     # relevé T549 : deux mesures, dites
             self.assertIn(attendu, texte)
         self.assertTrue(self.page.is_visible('#contenu a[href="#/indicateurs"]'))      # le tableau de bord reste à un clic
 
