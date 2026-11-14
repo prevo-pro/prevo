@@ -1655,6 +1655,12 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   d'arrêt » malgré des pannes saisies). `Indicateurs.manquesCout(periode)` liste les heures sans taux horaire et les
   pièces sans prix des OT clôturés (comptées 0 dans le coût : le tableau de bord le dit sous le coût, au responsable) ;
   `Indicateurs.activite(periode)` : correctifs du mois, OT clôturés et ouverts, heures passées, correctifs par machine.
+- **Taux horaire moyen** (lot 2 ergonomie, T544, L30) : réglage facultatif `taux_horaire_moyen` de `parametres.csv`
+  (vide = aucun, rien de supposé, D35). Le coût d'une heure d'un technicien (RG7) est donné par `Ordres.tauxHoraire`,
+  seul lecteur du réglage : son taux propre s'il est renseigné (0 compris), sinon le taux moyen, sinon l'heure reste
+  « sans taux horaire » (comptée 0, dite). Même calcul à la fiche de l'OT, au tableau de bord et au bilan. Les
+  heures-homme des OT clôturés de la période sont toujours dites (« 5,5 h de main-d'œuvre »), chiffrées ou non ; sans
+  taux, le coût s'écrit « non chiffré (x h sans taux horaire) » au tableau de bord comme au bilan, jamais « 0,00 € ».
 - **MTBF** = (temps requis − durée d'arrêt) / nombre de pannes ; 0 panne → `null`, « aucune panne
   sur la période ».
 - **MTTR** (D36 a) = Σ `duree_arret_h` / nombre de pannes mesurables ; mesurable = clôturée
@@ -1750,6 +1756,12 @@ Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, �
   (`.indicateurs-non-chiffre`) listant en entier les équipements sans coût horaire avec leurs heures d'arrêt et le
   lien « Saisir le coût horaire » (formulaire de l'équipement) et les OT sans durée avec leur raison. Filtres de
   criticité et d'atelier respectés ; l'encadré « Comprendre » ajoute la définition du coût de l'arrêt.
+- Tableau de bord en familles (T544, L30) : en tête, les quatre chiffres du bilan de la période (disponibilité, « à
+  compléter » sans heures de marche ; heures et coût ; pannes avec heures d'arrêt ; part du préventif), puis des
+  familles repliables, toutes repliées d'office : Fiabilité, Préventif, Retards et délais de prise en charge, Coûts et
+  stock, Heures passées et charge, Par équipement ; « Comprendre » reste en bas. Une famille ouverte le reste sur ce poste
+  (`localStorage`, clé `prevo.indicateurs.familles`, sans données). L'accueil de la direction commence par ces quatre
+  chiffres du mois en cours (`Indicateurs.teteDuMois`). Aucun calcul ne change.
 - Tableau par équipement (repère, criticité, pannes, arrêt, MTBF, MTTR, disponibilité, coût), tri
   par clic, lien vers la fiche.
 - `Indicateurs.graphique(conteneur, { titre, option, colonnes, lignes, nomFichier })` :
@@ -2074,6 +2086,13 @@ le rapport de <mois> » (avec élision : « d'octobre », « d'août ») ; rien 
   isolée dans un nouvel onglet, rien n'est écrit) pour le mois en cours et le premier mois s'il est passé ;
   `Rapport.figer` refuse le mois en cours. Fonctions du bilan : §7 de `rapport-ecrans.js` (par `Rapport.interne`).
   Mise en page A4 resserrée (« Comprendre » sur deux colonnes en 8 pt, graphiques de 140 px).
+- Lot 2 ergonomie (T544, L30) : la ligne « Activité du mois » se termine par « n OT en retard au <jour du bilan> » et par
+  le « délai de prise en charge (médiane) » par priorité (« P1 0,4 h (2 OT) »), ou « rien à mesurer ce mois-ci » ; les
+  deux viennent de `Indicateurs.global` (`otEnRetard`, `delaisPriseEnCharge`) sur le mois du bilan, page et courriel.
+  « Voir le bilan » propose le mois en cours puis chaque mois passé qui a des données (OT créé, démarré ou terminé,
+  temps passé, demande), du plus récent au plus ancien. « Figer » devient « Enregistrer ce bilan » (« Bilans
+  enregistrés » pour la liste) ; noms de fichiers, paramètre `rapports_mensuels` et document enregistré inchangés, le
+  mois en cours ne s'enregistre toujours pas (T519). La tuile du coût dit toujours les heures-homme.
 - `Rapport.texteCourriel(donnees)` → objet et corps (résumé en texte) ; bouton « Préparer un
   courriel » = lien `mailto:?subject=…&body=…` (`encodeURIComponent`, corps < 1 800 caractères) ;
   rien n'est envoyé par Prévo.
@@ -2113,6 +2132,8 @@ le rapport de <mois> » (avec élision : « d'octobre », « d'août ») ; rien 
 - 2.2, lot L4 (T454, D187) : réglage `alerte_echeances_jours` (section « Garanties et contrats », entier de 1 à 365,
   défaut 60 ; absent de `parametres.csv` → 60), lu par `Garanties.delaiAlerte` ; les réglages sont déclarés dans
   `parametres-reglages.js` (§15.1) et gardés par l'import ZIP quand le ZIP ne les a pas (T319).
+- Lot 2 ergonomie (T544, L30) : réglage `taux_horaire_moyen` (décimal ≥ 0 facultatif, devise par heure, déclaré dans
+  `parametres-reglages.js`), voir §15.3 pour la règle. Le serveur ne le sert qu'au responsable et à la direction (§22.5).
 - Écart retenu (T46) : les réglages sont réunis dans une carte « Réglages » ;
   `Parametres.FAMILLES_CODES`, `codePropose(famille, lignes)` et `verifierCode(valeurs, lignes,
   idCourant)` sont exposés (contrôles affichés sous les champs avant d'écrire).
@@ -2923,6 +2944,11 @@ absent = aucun) ; `mettreAJour` est sans effet. `Import.ligneAncienNumero(numero
   l'instantané, puis rechargement de chacune. Journal (table `parametres`) : `import <fichier> annulé :
   <tables> rendues dans leur état d'avant`. La confirmation (« … les modifications faites depuis l'import,
   sur ces tables, seront perdues ») est demandée par l'écran.
+
+- Heures de marche (T544, L30) : à l'étape « Importer », si des machines créées ou mises à jour n'ont pas d'heures par
+  jour, un champ vide « Combien d'heures par jour tournent vos machines ? » (sans valeur proposée, 0 à 24) ; rempli, la
+  valeur est donnée à ces machines seules (option `heuresParJour` de `Import.importer`, jamais à la place d'une valeur du
+  fichier ou de la base), écrite avec l'import, donc annulée par « Annuler cet import ». Vide : question passée (D35).
 
 ### 18.8 Modèles à remplir (`import-modeles.js`)
 `Import.modele(type, format)` → **`Promise<Blob>`** : `xlsx` (feuille « Données » avec les en-têtes en
@@ -4170,6 +4196,11 @@ Précisions de T152 :
   l'appareil : colonne du format 4 dans une table du format 1, elle garde son nom dans l'en-tête et ses valeurs sont
   vidées (retirée, le navigateur lirait `equipements` au format 3 et ne générerait plus les OT préventifs échus à
   l'ouverture) ; même remise au `PUT` et même vidage à l'ajout que ci-dessous.
+- **Taux horaire moyen** (T544, L30, D126) : la ligne `taux_horaire_moyen` de `parametres.csv`, lisible par tous les rôles,
+  est retirée des octets servis au technicien, au demandeur et à l'appareil (`LIGNES_CACHEES_PAR_ROLE`, constante
+  `LIGNE_TAUX_HORAIRE_MOYEN`) ; leur `X-Version` de `parametres` est voilée comme au T506 (`voile_des_versions`), sans
+  quoi le taux se retrouverait en recomposant le fichier. `parametres` ne s'écrit que par le responsable. Le responsable et
+  la direction reçoivent la ligne. Mode dossier (`file://`) : pas de serveur, comme le taux de chaque technicien.
 - **Technicien, écriture** — écart voulu au refus prévu d'abord : un `PUT` du technicien sur une table dont il ne voit
   pas toutes les colonnes (`articles`, `achats`, `equipements`) n'est pas refusé ; le serveur remet chaque colonne cachée depuis le
   fichier actuel, ligne par ligne d'après `id`, vide pour une ligne nouvelle (`remettre_colonnes_cachees`), puis écrit.
