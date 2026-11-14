@@ -1772,6 +1772,7 @@ I18n.ajouter('it', {
   'parc.liste.equipements_actifs_localisations_touchez': { one: '{n} attrezzatura attiva in {localisations}. Tocca un\'attrezzatura per aprire la sua scheda.', other: '{n} attrezzature attive in {localisations}. Tocca un\'attrezzatura per aprire la sua scheda.' },
   'parc.liste.equipements_trouves_pour': { one: '{n} attrezzatura trovata per «{terme}».', other: '{n} attrezzature trovate per «{terme}».' },
   'parc.liste.imprimer_etiquettes': 'Stampa etichette',
+  'parc.liste.importer_machines': 'Importa macchine',
   'parc.liste.n_localisations': { one: '{n} ubicazione', other: '{n} ubicazioni' },
   'parc.liste.nouvel_equipement': 'Nuova attrezzatura',
   'parc.liste.nouvelle_localisation': 'Nuova ubicazione',

@@ -155,6 +155,9 @@ class TestParcDemo(CasParc):
         # Boutons du responsable
         self.assertTrue(page.is_visible("text=Nouvel équipement"))
         self.assertTrue(page.is_visible("#parc-nouvelle-localisation"))
+        # L08 : « Importer des machines » ouvre l'assistant d'import (même rôle que la carte de Paramètres)
+        self.assertEqual(page.inner_text("#parc-importer-machines").strip(), "Importer des machines")
+        self.assertEqual(page.get_attribute("#parc-importer-machines", "href"), "#/import")
         # API pour les autres modules
         self.assertEqual(page.evaluate("Parc.libelleEquipement('EQ-0005')"), LIBELLE_PO02)
         self.assertEqual(page.evaluate("Parc.libelleEquipement('EQ-9999')"), "EQ-9999")
@@ -560,6 +563,7 @@ class TestParcServeur(CasParc):
             page = self.page
             self.assertEqual(page.locator("text=Nouvel équipement").count(), 0)
             self.assertEqual(page.locator("#parc-nouvelle-localisation").count(), 0)
+            self.assertEqual(page.locator("#parc-importer-machines").count(), 0)
             self.assertEqual(page.locator(".parc-modifier-localisation").count(), 0)
             self.assertIn("PO-02", self.reperes_visibles())
             self.aller("#/equipement/EQ-0005")

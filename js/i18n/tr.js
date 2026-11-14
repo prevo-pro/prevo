@@ -1772,6 +1772,7 @@ I18n.ajouter('tr', {
   'parc.liste.equipements_actifs_localisations_touchez': { one: '{localisations} içinde {n} aktif ekipman. Kaydını açmak için bir ekipmana dokunun.', other: '{localisations} içinde {n} aktif ekipman. Kaydını açmak için bir ekipmana dokunun.' },
   'parc.liste.equipements_trouves_pour': { one: '“{terme}” için {n} ekipman bulundu.', other: '“{terme}” için {n} ekipman bulundu.' },
   'parc.liste.imprimer_etiquettes': 'Etiket yazdır',
+  'parc.liste.importer_machines': 'Makine içe aktar',
   'parc.liste.n_localisations': { one: '{n} konum', other: '{n} konum' },
   'parc.liste.nouvel_equipement': 'Yeni ekipman',
   'parc.liste.nouvelle_localisation': 'Yeni konum',

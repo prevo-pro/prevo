@@ -1770,6 +1770,7 @@ I18n.ajouter('en', {
   'parc.liste.equipements_actifs_localisations_touchez': { one: '{n} active item of equipment in {localisations}. Tap an item to open its record.', other: '{n} active items of equipment in {localisations}. Tap an item to open its record.' },
   'parc.liste.equipements_trouves_pour': { one: '{n} item of equipment found for “{terme}”.', other: '{n} items of equipment found for “{terme}”.' },
   'parc.liste.imprimer_etiquettes': 'Print labels',
+  'parc.liste.importer_machines': 'Import machines',
   'parc.liste.n_localisations': { one: '{n} location', other: '{n} locations' },
   'parc.liste.nouvel_equipement': 'New equipment',
   'parc.liste.nouvelle_localisation': 'New location',
