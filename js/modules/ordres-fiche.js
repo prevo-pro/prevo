@@ -378,6 +378,7 @@ Object.assign(Ordres, (() => {
     if (etat) UI.$('.ot-bandeau-etat', racine).appendChild(etat);
     const derogation = Ordres.interne.bandeauDerogation(ot);      // RG8 : ordres-habilitations.js, chargé après
     if (derogation) UI.$('.ot-bandeau-etat', racine).appendChild(derogation);
+    PannesRecurrentes.poserSurOt(UI.$('.ot-bandeau-etat', racine), ot);    // L29 : panne à répétition (correctif ouvert)
 
     UI.onglets(UI.$('.ot-onglets', racine), [
       { id: 'preparation', libelle: I18n.t('ordres.fiche.preparation'), afficher: (panneau) => afficherPreparation(panneau, ot) },

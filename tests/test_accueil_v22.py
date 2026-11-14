@@ -304,14 +304,16 @@ class TestDemo(CasAccueilV22):
               attendu: c.controlesSous30j.length + c.habilitationsARenouveler.length + c.reservesEnRetard.length }; }""")
         self.assertEqual(conformite["liens"], LIENS_CONFORMITE)
         self.assertEqual(conformite["total"], conformite["attendu"])
-        # Quatre tuiles « à surveiller » ; les trois d'avant sur une ligne, « Garanties et contrats » dessous, toute
-        # la largeur de la grille
+        # Cinq tuiles « à surveiller » ; les trois d'avant sur une ligne, puis « Pannes récurrentes » (L29) et
+        # « Garanties et contrats » dessous, chacune sur toute la largeur de la grille
         tuiles = page.evaluate(BOITE_JS, "#bento > .bento-surveiller")
-        self.assertEqual(len(tuiles), 4)
+        self.assertEqual(len(tuiles), 5)
         self.assertEqual(len({t["haut"] for t in tuiles[:3]}), 1)
         grille = page.evaluate(BOITE_JS, "#bento")[0]
         self.assertGreater(tuiles[3]["haut"], max(t["bas"] for t in tuiles[:3]))
-        self.assertEqual((tuiles[3]["gauche"], tuiles[3]["largeur"]), (grille["gauche"], grille["largeur"]))
+        self.assertGreater(tuiles[4]["haut"], tuiles[3]["bas"])
+        for tuile in tuiles[3:]:
+            self.assertEqual((tuile["gauche"], tuile["largeur"]), (grille["gauche"], grille["largeur"]))
         self.assertEqual(page.evaluate("document.querySelector('#bento > .bento-surveiller:last-child').id"), "bento-echeances")
 
 
@@ -345,7 +347,7 @@ class TestTelephone(CasAccueilV22):
         self.assertEqual((len({c["haut"] for c in compteurs}), len({c["gauche"] for c in compteurs})), (2, 2))
         # Tuiles « à surveiller » l'une sous l'autre, même largeur, « Garanties et contrats » la dernière
         tuiles = page.evaluate(BOITE_JS, "#bento > .bento-surveiller")
-        self.assertEqual(len(tuiles), 4)
+        self.assertEqual(len(tuiles), 5)                      # « Pannes récurrentes » (L29) comprise
         self.assertEqual([t["haut"] for t in tuiles], sorted(t["haut"] for t in tuiles))
         self.assertEqual(len({(t["gauche"], t["largeur"]) for t in tuiles}), 1)
         # Ses trois liens empilés, 48 px au moins (D31 : zones du téléphone)

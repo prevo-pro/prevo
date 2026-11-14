@@ -61,7 +61,9 @@ MODULES_PARTICULIERS = {'parametres-sauvegardes.js': 'sauvegardes', 'parametres-
                         'aide-ecrans-textes.js': 'aide-longue',
                         'brouillons.js': 'socle',       # T329 : saisie gardée, commune aux écrans (textes commun.*)
                         # T521 : mode Solo sans la couche équipe ; ses textes vont avec les écrans qu'il change.
-                        'solo-flux.js': 'ordres', 'solo-accueil.js': 'accueil'}
+                        'solo-flux.js': 'ordres', 'solo-accueil.js': 'accueil',
+                        # T543 (L29) : pannes à répétition, statistique voisine des causes fréquentes (textes causes.*).
+                        'pannes-recurrentes.js': 'causes'}
 # Domaines qui ne sont pas une section de fr.js : domaine → (section, dictionnaire). L'aide longue générée
 # (aide-ecrans-textes.js) va dans js/i18n/aide/fr.js (clés aide.*, T247) : un domaine à part, pour que le contrôle
 # du domaine « aide » (aide courte, aide-ecrans.js) ne la compte pas (T237).

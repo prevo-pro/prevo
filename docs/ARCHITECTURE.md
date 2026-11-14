@@ -1507,9 +1507,13 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
 - **Ordre de chargement** (remplace celui du §14.2 ; `ORDRE_MODULES` de `tests/test_depot.py` change
   avec lui ; T329 : `brouillons.js` juste après `poste.js`, voir « Brouillons gardés sur l'appareil » ; T515 :
   `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11 ; T521 : `solo-flux.js` et
-  `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11) :
+  `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11 ; lot 2 ergonomie, T543 (L29) :
+  `pannes-recurrentes.js` juste après `causes-frequentes.js`, objet `PannesRecurrentes` : panne à répétition sur une
+  machine — 3 pannes (demandes ou OT correctifs, une demande et son OT comptés une fois) en 30 jours, réglages
+  `pannes_recurrentes_seuil` et `pannes_recurrentes_jours` ; tuile de l'accueil du responsable, bandeau sur la demande
+  qu'il traite et sur l'OT correctif ouvert) :
   ```
-  apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js
+  apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js  pannes-recurrentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-retour.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
   ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js

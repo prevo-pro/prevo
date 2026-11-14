@@ -225,6 +225,16 @@ a.bento-tuile:hover { transform: translateY(-4px); border-color: var(--bord-bleu
 .bento-echeances .bento-surveiller-corps { flex-direction: row; flex-wrap: wrap; column-gap: 24px; }
 .bento-echeances h2.lib { flex: 1 0 100%; }
 .bento-echeances .bento-sous-lien { flex: 1 1 240px; margin: 0; }
+/* « Pannes récurrentes » (lot 2 ergonomie, L29) : même ligne pleine que « Garanties et contrats », une machine par lien ;
+   sans panne à répétition, une tuile basse et discrète (pastille neutre, plus petite) */
+.bento-surveiller.bento-recurrentes { grid-column: span 12; align-items: flex-start; }
+.bento-recurrentes h2.lib { margin-bottom: 2px; flex: 1 0 100%; }
+.bento-recurrentes .bento-surveiller-corps { flex-direction: row; flex-wrap: wrap; column-gap: 24px; }
+.bento-recurrentes .bento-sous-lien { flex: 1 1 240px; margin: 0; }
+.bento-surveiller.bento-calme { align-items: center; padding: 10px 20px; }
+.bento-calme .bento-carre { width: 40px; height: 40px; border-radius: 12px; }
+.bento-calme .bento-carre .chiffre { font-size: 1.125rem; }
+.bento-carre.neutre { background: var(--carte-2); color: var(--texte-2); }
 /* Un lien par liste (contrôles, habilitations, réserves en retard) : chiffre, libellé, puis le détail coloré dessous */
 .bento-sous-lien {
   display: flex; align-items: center; gap: 10px; min-height: var(--tactile); margin: 0 -8px; padding: 4px 8px;
@@ -254,7 +264,7 @@ a.bento-tuile:hover { transform: translateY(-4px); border-color: var(--bord-bleu
   .bento-rapport-texte { flex: 1 1 320px; min-width: 0; }
   .bento-rapport-actions { margin-top: 0; }
   .bento-surveiller { grid-column: span 6; }
-  .bento-conformite, .bento-echeances { grid-column: span 12; order: 1; }
+  .bento-conformite, .bento-echeances, .bento-recurrentes { grid-column: span 12; order: 1; }
   .bento-conformite .bento-surveiller-corps { flex-direction: row; flex-wrap: wrap; column-gap: 24px; }
   .bento-conformite h2.lib { flex: 1 0 100%; }
   .bento-conformite .bento-sous-lien { flex: 1 1 240px; margin: 0; }
@@ -275,9 +285,10 @@ a.bento-tuile:hover { transform: translateY(-4px); border-color: var(--bord-bleu
 }
 /* Moins de 900 px : les tuiles « à surveiller » l'une sous l'autre, dans l'ordre */
 @media (max-width: 899.98px) {
-  .bento-surveiller, .bento-conformite, .bento-echeances { grid-column: span 12; order: 0; }
-  .bento-conformite .bento-surveiller-corps, .bento-echeances .bento-surveiller-corps { flex-direction: column; }
-  .bento-conformite .bento-sous-lien, .bento-echeances .bento-sous-lien { flex: none; margin: 0 -8px; }
+  .bento-surveiller, .bento-conformite, .bento-echeances, .bento-recurrentes { grid-column: span 12; order: 0; }
+  .bento-conformite .bento-surveiller-corps, .bento-echeances .bento-surveiller-corps,
+  .bento-recurrentes .bento-surveiller-corps { flex-direction: column; }
+  .bento-conformite .bento-sous-lien, .bento-echeances .bento-sous-lien, .bento-recurrentes .bento-sous-lien { flex: none; margin: 0 -8px; }
 }
 @media (min-width: 641px) and (max-width: 799.98px) {
   .bento-compteur, .bento:has(> .bento-rapport) .bento-compteur { grid-column: span 6; }

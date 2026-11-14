@@ -101,6 +101,8 @@ Object.assign(Demandes, (() => {
     const encart = CausesFrequentes.encart(demande.equipement_id, demande.symptome_code);
     if (encart) UI.$('.di-causes', conteneur).appendChild(encart);
     if (demande.photo) chargerPhoto(conteneur, demande.photo);
+    // L29 : panne à répétition sur cette machine — bandeau pour le responsable qui traite la demande.
+    if (decisionPossible) PannesRecurrentes.poserSurDemande(UI.$('.di-zone-securite', conteneur), demande);
     if (decisionPossible) afficherPanneauDecision(UI.$('.di-decision', conteneur), demande, priorite);
   }
 

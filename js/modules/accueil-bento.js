@@ -13,7 +13,8 @@
 //     5. « Demandes à traiter » (pas au téléphone) et « OT en retard » : 5 lignes au plus ;
 //     6. « à surveiller » : articles à commander, contrôles et habilitations (contrôles sous 30 jours,
 //        habilitations à renouveler, réserves en retard depuis la 2.2), suggestions de préventif ; puis, depuis
-//        la 2.2 (CS173), « Garanties et contrats » sur sa propre ligne (accueil.css).
+//        la 2.2 (CS173), « Garanties et contrats » sur sa propre ligne (accueil.css) ; avant elle, depuis le lot 2
+//        ergonomie (L29), « Pannes récurrentes » sur sa propre ligne (discrète quand aucune machine).
 //   Puis la carte « Connecter un téléphone » (mode serveur, pas au téléphone : accueil.js).
 //   Mode serveur : avertissement « Copie externe des sauvegardes » (D133, §22.11) quand la copie de la nuit a échoué
 //   ou n'a pas été faite depuis plus d'un jour, avec le nombre de jours ; avertissement Tailscale (D128, §22.8) quand
@@ -349,6 +350,32 @@ Object.assign(Accueil, (() => {
     </div>`;
   }
 
+  // « Pannes récurrentes » (lot 2 ergonomie, L29) : machines à `seuil` pannes ou plus en `jours` jours
+  // (PannesRecurrentes, chargé après ce fichier), les 3 premières en lien vers leur fiche (historique, L28), la mention
+  // de la même cause en rouge ; aucune : tuile basse et discrète, sans lien.
+  function tuileRecurrentes(aujourdhui) {
+    if (typeof PannesRecurrentes === 'undefined') return '';
+    const alertes = PannesRecurrentes.machinesEnAlerte(aujourdhui);
+    const { seuil, jours } = PannesRecurrentes.reglages();
+    if (!alertes.length) {
+      return UI.html`<div class="bento-tuile bento-surveiller bento-recurrentes bento-calme" id="bento-recurrentes">
+        <span class="bento-carre neutre">${chiffre(0)}</span>
+        <span class="bento-surveiller-corps"><span class="lib">${I18n.t('accueil.tuile_recurrentes.titre')}</span>
+          ${complement(I18n.t('accueil.tuile_recurrentes.aucune', { seuil, jours }))}</span></div>`;
+    }
+    const reste = alertes.length - 3;
+    return UI.html`<div class="bento-tuile bento-surveiller bento-recurrentes" id="bento-recurrentes">
+      <span class="bento-carre rouge">${chiffre(alertes.length)}</span>
+      <div class="bento-surveiller-corps">
+        <h2 class="lib">${I18n.t('accueil.tuile_recurrentes.titre')}</h2>
+        ${alertes.slice(0, 3).map((a) => sousLien('#/equipement/' + encodeURIComponent(a.equipementId), 'bento-recurrente-' + a.equipementId, a.nombre,
+          I18n.t('accueil.tuile_recurrentes.machine', { repere: PannesRecurrentes.repere(a.equipementId), n: a.nombre, jours }),
+          a.memeCause ? complement(I18n.t('accueil.tuile_recurrentes.meme_cause', { n: a.memeCause.nombre, cause: a.memeCause.libelle }), 'rouge')
+            : complement(I18n.t('accueil.tuile_recurrentes.causes_differentes'))))}
+        ${reste > 0 ? complement(I18n.t('accueil.tuile_recurrentes.et_autres', { n: reste })) : ''}
+      </div></div>`;
+  }
+
   function tuilesSurveiller(compteurs, aujourdhui) {
     const critiques = compteurs.articlesACommander.filter((a) => a.article.critique === '1').length;
     // Suggestions est chargé après ce fichier : appelé au moment de l'affichage.
@@ -360,6 +387,7 @@ Object.assign(Accueil, (() => {
       ${tuileConformite(compteurs, aujourdhui)}
       ${surveiller('#/preventif?onglet=suggestions', 'vert', suggestions.length, I18n.t('accueil.tuiles_surveiller.suggestions_preventif'),
         surA ? complement(I18n.t('accueil.tuiles_surveiller.dont_criticite', { surA }), 'ambre') : complement(I18n.t('accueil.tuiles_surveiller.examiner')))}
+      ${tuileRecurrentes(aujourdhui)}
       ${tuileEcheances(compteurs, aujourdhui)}`;
   }
 

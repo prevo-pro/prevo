@@ -56,6 +56,12 @@ const ParametresReglages = (() => {
       get aide() { return I18n.t('parametres.aide.visites_suite_sans_anomalie'); } },
     { cle: 'suggestion_fenetre_mois', type: 'entier', get libelle() { return I18n.t('parametres.libelle.periode_observee_mois'); }, defaut: '12', min: 3, max: 24,
       get aide() { return I18n.t('parametres.aide.pannes_comptees_sont_celles'); } },
+    // Lot 2 ergonomie (T543, L29) : panne à répétition sur une machine ; lus par PannesRecurrentes.reglages
+    // (pannes-recurrentes.js : vide, illisible ou hors bornes → défaut).
+    { cle: 'pannes_recurrentes_seuil', type: 'entier', get libelle() { return I18n.t('parametres.libelle.pannes_recurrentes_seuil'); }, defaut: '3', min: 2, max: 20,
+      get section() { return I18n.t('parametres.section.pannes_recurrentes'); }, get aide() { return I18n.t('parametres.aide.pannes_recurrentes_seuil'); } },
+    { cle: 'pannes_recurrentes_jours', type: 'entier', get libelle() { return I18n.t('parametres.libelle.pannes_recurrentes_jours'); }, defaut: '30', min: 7, max: 365,
+      get aide() { return I18n.t('parametres.aide.pannes_recurrentes_jours'); } },
     // 2.2, lot L4 (T454, D187) : délai d'alerte des garanties et des contrats de prestataires, un seul pour les deux ;
     // lu par Garanties.delaiAlerte (garanties-regles.js : vide, illisible ou hors de 1 à 365 → 60).
     { cle: 'alerte_echeances_jours', type: 'entier', get libelle() { return I18n.t('parametres.libelle.alerte_avant_echeance_jours'); }, defaut: '60', min: 1, max: 365,
