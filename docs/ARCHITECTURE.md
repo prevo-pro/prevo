@@ -5372,6 +5372,15 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
   l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`
   (`tests/test_ordres_prise.py`).
+- **Carte Actions de la fiche d'un OT (lot 2 ergonomie, L18)** : `Ordres.interne.rangerActions` (ordres-prise.js,
+  appelée par `brancherPrise`) met en avant UN bouton (`.ot-bouton-principal`, seul `btn-primaire`, en tête), celui de
+  la prochaine étape utile pour la personne connectée, dans cet ordre : « Je prends cet OT », « Démarrer » (ou la
+  reprise d'un OT en attente ; jamais « Rouvrir »), « Clore », « Clôturer techniquement », « Clôturer
+  administrativement », « Créer un OT lié » ; aucun s'il n'y a pas de passage obligé (OT sans technicien vu du
+  responsable). Les autres passent en `btn-secondaire` ; « Marquer préparé » (et « Déplanifier ») et « Annuler l'OT »
+  sont rangés sous `<details class="ot-plus-options">` « Plus d'options » (replié), que le mode Solo réutilise
+  (`#solo-plus-options`). La frise garde les six étapes ; Préparé et Planifié portent `data-facultatif` (plus clairs,
+  bord pointillé) et la mention « facultatif » (`tests/test_ordres_actions.py`).
 - **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
   `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
   4→5.

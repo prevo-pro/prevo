@@ -911,6 +911,7 @@ I18n.ajouter('fr', {
 I18n.ajouter('fr', {
   'ordres.actions.actions': 'Actions',
   'ordres.actions.creer_ot_lie': 'Créer un OT lié',
+  'ordres.actions.plus_options': 'Plus d\'options',
   'ordres.aide_astuce.aurait_fait_gagner_temps': 'Ce qui vous aurait fait gagner du temps. Les consignes de sécurité restent dans la consignation de l\'équipement.',
   'ordres.ajouter_temps.temps_passe': 'temps passé sur {otId}',
   'ordres.ajouter_temps.temps_passe_choisissez_technicien': 'Temps passé : choisissez le technicien, la date et un nombre d\'heures entre 0 et 24 (ex. 1,5).',
@@ -1110,6 +1111,7 @@ I18n.ajouter('fr', {
   'ordres.equipement.habilitation_requise': 'Habilitation requise',
   'ordres.equipement.localisation': 'Localisation',
   'ordres.etapes.avancement_ot': 'Avancement de l\'OT',
+  'ordres.etapes.facultatif': 'facultatif',
   'ordres.etats_liste.annules': 'Annulés',
   'ordres.etats_liste.clotures': 'Clôturés',
   'ordres.etats_liste.ouverts': 'Ouverts',

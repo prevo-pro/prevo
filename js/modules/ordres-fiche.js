@@ -189,7 +189,8 @@ Object.assign(Ordres, (() => {
         let classe = '';
         if (rang < rangCourant || (rang === rangCourant && horsEtape)) classe = 'fait';
         if (rang === rangCourant && !horsEtape) classe = 'courant';
-        return UI.html`<li class="${classe}"${classe === 'courant' ? UI.brut(' aria-current="step"') : ''}>${Schema.libelleValeur('ordres_travail', 'statut', etape)}</li>`;
+        const facultative = etape === 'Préparé' || etape === 'Planifié';          // L18 : en plus clair, « facultatif »
+        return UI.html`<li class="${classe}"${facultative ? UI.brut(' data-facultatif') : ''}${classe === 'courant' ? UI.brut(' aria-current="step"') : ''}>${Schema.libelleValeur('ordres_travail', 'statut', etape)}${facultative ? UI.html` <small class="etape-facultatif">${I18n.t('ordres.etapes.facultatif')}</small>` : ''}</li>`;
       })}
       ${horsEtape ? UI.html`<li class="hors" aria-current="step">${Schema.libelleValeur('ordres_travail', 'statut', ot.statut)}</li>` : ''}
     </ol>`;
@@ -313,8 +314,7 @@ Object.assign(Ordres, (() => {
     const boutons = boutonsTransitions(ot, ['Préparé', 'Planifié', 'En cours', 'Clôturé techniquement', 'Clôturé administrativement', 'En attente', 'Annulé']);
     const lie = estVerrouille(ot) && estResponsable()
       ? UI.html`<button type="button" class="btn btn-primaire" id="ot-lie">${UI.icone('ajouter')}${I18n.t('ordres.actions.creer_ot_lie')}</button>` : '';
-    const clore = boutonClore(ot);                                  // §22.11, D132 : réglage cloture_une_etape
-    const prise = Ordres.interne.boutonsPrise(ot);                  // A3 : « Je prends cet OT », reprise (ordres-prise.js)
+    const clore = boutonClore(ot), prise = Ordres.interne.boutonsPrise(ot);   // §22.11 (D132) ; A3, L18 : ordres-prise.js
     if (!boutons.length && !lie && !clore && !prise) return '';
     return UI.html`<div class="carte ot-actions sans-impression"><div class="entete-carte"><h2>${I18n.t('ordres.actions.actions')}</h2></div>
       <div class="actions">${prise}${clore}${boutons}${lie}</div></div>`;

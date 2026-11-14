@@ -9,6 +9,8 @@
 // inchangée (Ordres.controlerAffectation ; la dérogation reste au responsable, Ordres.avecDerogation).
 // Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, la carte
 // « À prendre » et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises récentes ».
+// Carte Actions de la fiche (lot 2, L18) : un seul bouton mis en avant, celui de la prochaine étape utile pour la
+// personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ».
 // Chargé après ordres-habilitations.js ; les écrans des fichiers précédents l'appellent par Ordres.interne au moment
 // de l'appel. Complète l'objet Ordres.
 
@@ -170,7 +172,7 @@ Object.assign(Ordres, (() => {
   function boutonPrise(sorte, otId) {
     if (!sorte) return '';
     const libelle = sorte === 'prendre' ? I18n.t('ordres.prise.je_prends') : I18n.t('ordres.prise.reprendre');
-    return UI.html`<button type="button" class="btn ${sorte === 'prendre' ? 'btn-primaire' : 'btn-secondaire'}" data-action="prendre-ot" data-ot="${otId}">${UI.icone('valider')}${libelle}</button>`;
+    return UI.html`<button type="button" class="btn ${sorte === 'prendre' ? 'btn-primaire' : 'btn-secondaire'}" data-action="prendre-ot" data-sorte="${sorte}" data-ot="${otId}">${UI.icone('valider')}${libelle}</button>`;
   }
 
   /** Bouton de la carte Actions de la fiche (« Je prends cet OT » ou « Reprendre cet OT à mon nom »), ou ''. */
@@ -192,8 +194,52 @@ Object.assign(Ordres, (() => {
     if (bouton && fieldset) fieldset.after(UI.element(UI.html`<div class="actions ot-prise-preparation">${bouton}</div>`));
   }
 
-  /** Clics sur « Je prends » / « Reprendre » dans la fiche (carte Actions, onglet Préparation). */
+  // --- Carte Actions de la fiche : le bouton de la prochaine étape mis en avant (L18) ----------
+
+  // Gestes rangés sous « Plus d'options » (passages facultatifs ou rares).
+  const CIBLES_REPLIEES = ['Préparé', 'Annulé'];
+
+  /** Le bouton de la prochaine étape utile parmi ceux de la carte (zone .actions), ou null : prendre l'OT, le démarrer
+   *  ou reprendre le travail, le clore, le clôturer, puis créer l'OT lié d'un OT verrouillé. */
+  function boutonPrincipal(zone, ot) {
+    const parCible = (cible) => 'button[data-cible="' + cible + '"]';
+    const selecteurs = ['button[data-action="prendre-ot"][data-sorte="prendre"]',
+      ot.statut === 'Clôturé techniquement' ? '' : parCible('En cours'),                  // « Rouvrir » : jamais en avant
+      '#ot-clore', parCible('Clôturé techniquement'), parCible('Clôturé administrativement'), '#ot-lie'];
+    for (const selecteur of selecteurs) {
+      const bouton = selecteur && zone.querySelector(':scope > ' + selecteur);
+      if (bouton) return bouton;
+    }
+    return null;
+  }
+
+  /** Range la carte Actions : le bouton principal en tête (seul en bleu), les autres en second, « Marquer préparé »
+   *  et « Annuler » sous « Plus d'options » (replié). Rend le bouton principal (ou null). */
+  function rangerActions(racine, ot) {
+    const zone = racine.querySelector('.ot-actions > .actions');
+    if (!zone) return null;
+    const principal = boutonPrincipal(zone, ot);
+    UI.$$('button.btn-primaire', zone).forEach((bouton) => {
+      if (bouton !== principal) bouton.classList.replace('btn-primaire', 'btn-secondaire');
+    });
+    if (principal) {
+      principal.classList.add('btn-primaire', 'ot-bouton-principal');
+      principal.classList.remove('btn-secondaire');
+      zone.prepend(principal);
+    }
+    const replies = UI.$$('button[data-action="transition"]', zone).filter((bouton) => CIBLES_REPLIEES.includes(bouton.dataset.cible));
+    if (replies.length) {
+      const plus = UI.element(UI.html`<details class="ot-plus-options">
+        <summary>${I18n.t('ordres.actions.plus_options')}</summary><div class="actions"></div></details>`);
+      replies.forEach((bouton) => UI.$('.actions', plus).appendChild(bouton));
+      zone.after(plus);
+    }
+    return principal;
+  }
+
+  /** Clics sur « Je prends » / « Reprendre » dans la fiche (carte Actions, onglet Préparation) ; carte Actions rangée. */
   function brancherPrise(racine, ot) {
+    rangerActions(racine, ot);
     racine.addEventListener('click', (evenement) => {
       const bouton = evenement.target.closest('button[data-action="prendre-ot"]');
       if (bouton) demanderPrise(ot.id, bouton, false);
@@ -315,7 +361,7 @@ Object.assign(Ordres, (() => {
   }
 
   Object.assign(Ordres.interne, {
-    noterPrise, boutonsPrise, brancherPrise, placerTechnicienLecture, prisesEnChargeHtml, prisesEnChargeBon,
+    noterPrise, boutonsPrise, brancherPrise, rangerActions, placerTechnicienLecture, prisesEnChargeHtml, prisesEnChargeBon,
     technicienOuPrendre, boutonPrendreCarte, brancherPriseListe,
   });
 

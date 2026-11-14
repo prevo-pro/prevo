@@ -191,16 +191,19 @@ const Solo = (() => {
 
   /** Range sous « Plus d'options » les boutons qui ne sont pas un passage obligé en Solo. */
   function replierActions(racine) {
-    const zone = UI.$('.ot-actions .actions', racine);
+    const zone = UI.$('.ot-actions > .actions', racine);
     if (!zone) return;
     const clore = UI.$('#ot-clore', zone);
     const cibles = CIBLES_REPLIEES.concat(clore ? CIBLES_CLOTURE : []);
     const boutons = UI.$$('button[data-action="transition"]', zone).filter((bouton) => cibles.includes(bouton.dataset.cible));
+    // L18 : le « Plus d'options » de la carte (Marquer préparé, Annuler) s'il est là, un seul pour tout.
+    const existant = UI.$('.ot-actions .ot-plus-options', racine);
+    if (existant) Object.assign(existant, { id: 'solo-plus-options' }).classList.add('solo-plus-options');
     if (!boutons.length) return;
-    const plus = UI.element(UI.html`<details class="solo-plus-options" id="solo-plus-options">
+    const plus = existant || UI.element(UI.html`<details class="solo-plus-options ot-plus-options" id="solo-plus-options">
       <summary>${I18n.t('ordres.solo.plus_options')}</summary><div class="actions"></div></details>`);
     boutons.forEach((bouton) => UI.$('.actions', plus).appendChild(bouton));
-    zone.closest('.ot-actions').appendChild(plus);
+    if (!existant) zone.closest('.ot-actions').appendChild(plus);
   }
 
   /** Fiche d'un OT en Solo (appelé par ordres-fiche.js après l'affichage) : rien hors Solo. */

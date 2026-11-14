@@ -915,6 +915,7 @@ I18n.ajouter('it', {
 I18n.ajouter('it', {
   'ordres.actions.actions': 'Azioni',
   'ordres.actions.creer_ot_lie': 'Crea un OdL collegato',
+  'ordres.actions.plus_options': 'Altre opzioni',
   'ordres.aide_astuce.aurait_fait_gagner_temps': 'Ciò che ti avrebbe fatto risparmiare tempo. Le istruzioni di sicurezza restano nella messa in sicurezza dell\'attrezzatura.',
   'ordres.ajouter_temps.temps_passe': 'tempo impiegato su {otId}',
   'ordres.ajouter_temps.temps_passe_choisissez_technicien': 'Tempo impiegato: scegli il tecnico, la data e un numero di ore tra 0 e 24 (es. 1,5).',
@@ -1114,6 +1115,7 @@ I18n.ajouter('it', {
   'ordres.equipement.habilitation_requise': 'Abilitazione richiesta',
   'ordres.equipement.localisation': 'Ubicazione',
   'ordres.etapes.avancement_ot': 'Avanzamento dell\'OdL',
+  'ordres.etapes.facultatif': 'facoltativo',
   'ordres.etats_liste.annules': 'Annullati',
   'ordres.etats_liste.clotures': 'Chiusi',
   'ordres.etats_liste.ouverts': 'Aperti',

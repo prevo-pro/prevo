@@ -100,6 +100,12 @@
 .ot-date-fin .lien-bouton { font-size: .9375rem; padding: 0 .2rem; }
 .ot-actions-preparation .actions, .ot-demarrer .actions { margin-top: 0; }
 .ot-demarrer p { color: var(--texte-2); }
+/* L18 : étapes facultatives de la frise (Préparé, Planifié) en plus clair ; « Plus d'options » de la carte Actions */
+.ot-etapes li[data-facultatif]:not(.fait):not(.courant) { opacity: .55; border-top-style: dashed; }
+.etape-facultatif { display: block; font-size: .75rem; font-weight: 500; }
+.ot-plus-options { margin-top: 10px; }
+.ot-plus-options summary { cursor: pointer; color: var(--texte-2); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.ot-plus-options .actions { margin-top: 6px; }
 .ot-remise .case { font-weight: 600; }
 .ot-lignes-cout { max-width: 34rem; }
 .ot-detail-cout { margin-top: .8rem; }
@@ -127,6 +133,9 @@
   .ot-lien-equipement { min-height: 48px; display: inline-flex; align-items: center; }
   .ot-liste-tete .btn { flex: 1 1 auto; }
   .ot-entete .actions { width: 100%; }
+  .ot-etapes li[data-facultatif]:not(.fait):not(.courant) { border-left-style: dashed; }
+  .etape-facultatif { display: inline; }
+  .ot-plus-options summary { min-height: 48px; }
   .ot-filtres select { flex: 1 1 140px; min-width: 0; }
   /* Tableaux de saisie (opérations, pièces) et de l'historique : une carte par ligne, chaque
      cellule précédée du libellé de sa colonne (data-libelle) */

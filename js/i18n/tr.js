@@ -915,6 +915,7 @@ I18n.ajouter('tr', {
 I18n.ajouter('tr', {
   'ordres.actions.actions': 'İşlemler',
   'ordres.actions.creer_ot_lie': 'Bağlantılı iş emri oluştur',
+  'ordres.actions.plus_options': 'Diğer seçenekler',
   'ordres.aide_astuce.aurait_fait_gagner_temps': 'Size zaman kazandıracak olan şey. Güvenlik talimatları ekipmanın enerji izolasyonu bölümünde kalır.',
   'ordres.ajouter_temps.temps_passe': '{otId} üzerinde harcanan süre',
   'ordres.ajouter_temps.temps_passe_choisissez_technicien': 'Harcanan süre: teknisyeni, tarihi ve 0 ile 24 arasında bir saat sayısını seçin (örn. 1,5).',
@@ -1114,6 +1115,7 @@ I18n.ajouter('tr', {
   'ordres.equipement.habilitation_requise': 'Yetkilendirme gerekli',
   'ordres.equipement.localisation': 'Konum',
   'ordres.etapes.avancement_ot': 'İş emri ilerlemesi',
+  'ordres.etapes.facultatif': 'isteğe bağlı',
   'ordres.etats_liste.annules': 'İptal edilenler',
   'ordres.etats_liste.clotures': 'Kapatılanlar',
   'ordres.etats_liste.ouverts': 'Açık olanlar',

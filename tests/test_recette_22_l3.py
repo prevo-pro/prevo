@@ -577,6 +577,7 @@ class CasRecette(Ecran, CasNavigateur):
         page.click("#form-nouvel-ot button[type=submit]")
         ot_id = self.attendre_fiche_ot()
         self.assertEqual(page.locator("dialog").count(), 0)
+        page.click(".ot-plus-options summary")                       # L18 : « Marquer préparé » sous « Plus d'options »
         page.click(PLANIFIER_FICHE % "Préparé")
         self.attendre_statut("Préparé")
         self.fiche_ot(ot_id, "preparation")

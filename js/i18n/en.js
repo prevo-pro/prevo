@@ -913,6 +913,7 @@ I18n.ajouter('en', {
 I18n.ajouter('en', {
   'ordres.actions.actions': 'Actions',
   'ordres.actions.creer_ot_lie': 'Create linked WO',
+  'ordres.actions.plus_options': 'More options',
   'ordres.aide_astuce.aurait_fait_gagner_temps': 'What would have saved you time. Safety instructions stay in the equipment isolation procedure.',
   'ordres.ajouter_temps.temps_passe': 'time spent on {otId}',
   'ordres.ajouter_temps.temps_passe_choisissez_technicien': 'Time spent: choose the technician, the date and a number of hours between 0 and 24 (e.g. 1.5).',
@@ -1112,6 +1113,7 @@ I18n.ajouter('en', {
   'ordres.equipement.habilitation_requise': 'Authorisation required',
   'ordres.equipement.localisation': 'Location',
   'ordres.etapes.avancement_ot': 'WO progress',
+  'ordres.etapes.facultatif': 'optional',
   'ordres.etats_liste.annules': 'Cancelled',
   'ordres.etats_liste.clotures': 'Closed',
   'ordres.etats_liste.ouverts': 'Open',

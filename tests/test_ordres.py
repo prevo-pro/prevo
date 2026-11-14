@@ -103,6 +103,8 @@ class CasOrdres(CasNavigateur):
         self.page.click(".onglet[data-onglet='%s']" % identifiant)
 
     def transition(self, cible, zone=".ot-actions"):
+        # L18 : « Marquer préparé », « Annuler » sous « Plus d'options » (replié) : il est ouvert d'abord
+        self.page.evaluate("() => document.querySelectorAll('.ot-plus-options').forEach((d) => { d.open = true; })")
         self.page.click("%s button[data-action='transition'][data-cible='%s']" % (zone, cible))
 
     def ids_affiches(self):

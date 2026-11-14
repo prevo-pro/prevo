@@ -915,6 +915,7 @@ I18n.ajouter('pt-PT', {
 I18n.ajouter('pt-PT', {
   'ordres.actions.actions': 'Ações',
   'ordres.actions.creer_ot_lie': 'Criar uma OT associada',
+  'ordres.actions.plus_options': 'Mais opções',
   'ordres.aide_astuce.aurait_fait_gagner_temps': 'O que lhe teria feito poupar tempo. As instruções de segurança ficam na consignação do equipamento.',
   'ordres.ajouter_temps.temps_passe': 'tempo dedicado em {otId}',
   'ordres.ajouter_temps.temps_passe_choisissez_technicien': 'Tempo dedicado: escolha o técnico, a data e um número de horas entre 0 e 24 (ex. 1,5).',
@@ -1114,6 +1115,7 @@ I18n.ajouter('pt-PT', {
   'ordres.equipement.habilitation_requise': 'Habilitação necessária',
   'ordres.equipement.localisation': 'Localização',
   'ordres.etapes.avancement_ot': 'Progresso da OT',
+  'ordres.etapes.facultatif': 'facultativo',
   'ordres.etats_liste.annules': 'Canceladas',
   'ordres.etats_liste.clotures': 'Encerradas',
   'ordres.etats_liste.ouverts': 'Abertas',
