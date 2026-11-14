@@ -141,6 +141,9 @@ class TestLigneDeCommande(CasComptes):
         self.assertTrue(compte["a_changer"])
         self.assertTrue(serveur.mot_de_passe_juste(compte, provisoire))
         self.assertFalse(serveur.mot_de_passe_juste(compte, "ancien mot de passe long"))
+        # T547 (L34) : le journal du serveur est toujours écrit, mais jamais le mot de passe provisoire.
+        journal = self.dossier / "donnees" / "journal-serveur.log"
+        self.assertNotIn(provisoire, journal.read_text(encoding="utf-8") if journal.exists() else "")
         code, console = self.lancer("--reinitialiser", "inconnu.personne")
         self.assertEqual(code, 1, console)
         self.assertIn("introuvable", console)

@@ -251,7 +251,7 @@ navigateurs à l'application en https sur `port_https`) :
 | `--config FICHIER` | Autre fichier de configuration que `prevo.config.json` à côté de `serveur.py`. |
 | `--donnees DOSSIER` | Autre dossier de données que `donnees/` à côté de `serveur.py`. |
 | `--sans-navigateur` | N'ouvre pas le navigateur au démarrage (service, serveur sans écran). |
-| `--journal` | Écrit aussi la console dans `donnees/journal-serveur.log` (automatique sans console). |
+| `--journal` | Sans effet (gardé pour les anciens lanceurs) : `donnees/journal-serveur.log` est toujours écrit. |
 | `--aide` | Imprime chaque clé de la configuration avec son aide, puis s'arrête. |
 | `--reinitialiser IDENTIFIANT` | Donne un mot de passe provisoire à un compte (§9), puis s'arrête. |
 | `--servir-tests` | Pour les tests automatiques seulement ; inutile en usage normal. |
@@ -522,8 +522,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now prevo
 ```
 
-Sous systemd, la console va dans le journal du système (`journalctl -u prevo`). Ajoutez `--journal` à
-`ExecStart` pour avoir aussi `donnees/journal-serveur.log`, que Paramètres › Accès et installation affiche.
+Sous systemd, la console va dans le journal du système (`journalctl -u prevo`) et, comme partout, dans
+`donnees/journal-serveur.log`, que Paramètres › Accès et installation affiche.
 Ouvrez au réseau local `port_http` et `port_https` seulement, par exemple
 `sudo ufw allow from 192.168.1.0/24 to any port 8080,8443 proto tcp`. Retirer :
 `sudo systemctl disable --now prevo`.
@@ -584,7 +584,7 @@ Lancé sans console (tâche planifiée, `pythonw.exe`), Prévo écrit ce qu'il f
 | --- | --- | --- | --- |
 | Connexions | `donnees/acces/journal-acces.csv` | un an, purgé chaque jour | `date;qui;adresse;agent;resultat;tailscale` : connexions, échecs, blocages, déconnexions, invitations, appareils, révocations, comptes créés, modifiés ou réinitialisés |
 | Modifications | `donnees/journal.csv` | sans limite | qui a changé quoi dans les données (l'historique de la maintenance) |
-| Serveur | `donnees/journal-serveur.log` | 5 fichiers de 1 Mo | démarrage, refus, copie externe, erreurs (sans console, ou avec `--journal`) |
+| Serveur | `donnees/journal-serveur.log` | 5 fichiers de 1 Mo | démarrage, écritures, refus, copie externe, erreurs du serveur et des écrans ; toujours écrit, jamais un mot de passe, un jeton ni une clé |
 
 Le journal des connexions s'exporte en CSV depuis Équipe › Accès › Journal des connexions (« Exporter (CSV) »).
 Jamais un mot de passe ni un jeton n'y est écrit.

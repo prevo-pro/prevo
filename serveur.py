@@ -634,11 +634,12 @@ def preparer_console():
             pass
 
 
-def afficher(texte):
+def afficher(texte, journal=True):
     """Affiche une ligne tout de suite (flush) : les tests lisent la console en direct. Un Traduisible est écrit dans
-    la langue de la console (texte_de_la_console, T297)."""
+    la langue de la console (texte_de_la_console, T297). Aussi dans journal-serveur.log (T547, L34), sauf
+    journal=False : une ligne qui porte un secret (mot de passe provisoire de --reinitialiser) ne va qu'à l'écran."""
     texte = texte_de_la_console(texte)
-    if JOURNAL_SERVEUR is not None:
+    if journal and JOURNAL_SERVEUR is not None:
         JOURNAL_SERVEUR.ecrire(texte)
     if sys.stdout is None:          # lancé sans console (pythonw)
         return
@@ -902,7 +903,10 @@ def verifier_regles_portee(reglages, responsable_existe):
 
 
 class JournalServeur:
-    """Journal du serveur sans console (pythonw) : donnees/journal-serveur.log, 5 fichiers de 1 Mo au plus."""
+    """Journal du serveur : donnees/journal-serveur.log, 5 fichiers de 1 Mo au plus. Écrit dans tous les cas, avec
+    ou sans console (T547, L34) : la console (afficher), les erreurs internes et celles des écrans (POST
+    /api/erreur-ecran). Jamais de secret : ni mot de passe, ni jeton, ni clé (afficher journal=False). Lisible par le
+    responsable seul (Paramètres, fichier de diagnostic) ; donnees/ n'est jamais servi en statique."""
 
     def __init__(self, chemin):
         self.chemin = chemin
@@ -931,7 +935,7 @@ class JournalServeur:
         os.replace(self.chemin, self.chemin + '.1')
 
 
-JOURNAL_SERVEUR = None          # JournalServeur quand le serveur tourne sans console ou avec --journal
+JOURNAL_SERVEUR = None          # JournalServeur posé par main, toujours (T547, L34)
 
 
 # ---------------------------------------------------------------------------
@@ -7546,6 +7550,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             pass                        # le navigateur a fermé la connexion
         except Exception:               # bogue : on le trace sans arrêter le serveur
             traceback.print_exc()
+            if JOURNAL_SERVEUR is not None:     # T547 (L34) : l'erreur se relit après coup (fichier de diagnostic)
+                JOURNAL_SERVEUR.ecrire('%s %s : %s' % (self.command, repr(self.path[:200]),
+                                                       traceback.format_exc().rstrip()))
             self.envoyer_erreur(ErreurHttp(500, traduisible('requete.erreur_interne', 'Erreur interne du serveur.')))
 
     def traiter_api(self, methode, morceaux, corps):
@@ -8959,7 +8966,8 @@ def lire_arguments(arguments=None):
     analyseur.add_argument('--aide', action='store_true',
                            help='afficher chaque clé de la configuration avec son aide, puis quitter')
     analyseur.add_argument('--journal', action='store_true',
-                           help='écrire aussi la console dans donnees/journal-serveur.log (automatique sans console)')
+                           help='sans effet, gardé pour les anciens lanceurs : donnees/journal-serveur.log est '
+                                'toujours écrit')
     analyseur.add_argument('--reinitialiser', metavar='IDENTIFIANT',
                            help='donner un mot de passe provisoire à un compte (affiché une fois), puis quitter')
     analyseur.add_argument('--servir-tests', action='store_true',
@@ -9019,7 +9027,7 @@ def reinitialiser_en_ligne_de_commande(config, identifiant):
     compte = trouver_compte(lire_comptes(config), identifiant)        # T301 : l'identifiant réel du compte
     afficher(traduisible('console.reinitialiser.provisoire', 'Mot de passe provisoire de « {identifiant} » : '
                          '{provisoire}', identifiant=compte['identifiant'] if compte else identifiant,
-                         provisoire=provisoire))
+                         provisoire=provisoire), journal=False)          # T547 : jamais dans journal-serveur.log
     afficher(traduisible('console.reinitialiser.notez', 'Notez-le : il ne sera plus affiché. Il faudra le changer à la '
                          'première connexion.'))
 
@@ -9038,8 +9046,8 @@ def main(arguments=None):
         config.reglages = reglages
         creer_dossiers(config)
         choisir_langue_console(config)      # T297 : langue_defaut de parametres.csv, sinon celle du système
-        if options.journal or sys.stdout is None:
-            JOURNAL_SERVEUR = JournalServeur(os.path.join(config.dossier_donnees, 'journal-serveur.log'))
+        # T547 (L34) : le journal est écrit dans tous les cas, avec ou sans console (--journal reste accepté).
+        JOURNAL_SERVEUR = JournalServeur(os.path.join(config.dossier_donnees, NOM_JOURNAL_SERVEUR))
         if options.reinitialiser:
             reinitialiser_en_ligne_de_commande(config, options.reinitialiser)
             return

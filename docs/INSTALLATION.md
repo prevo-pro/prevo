@@ -252,7 +252,7 @@ browsers to the application over https on `port_https`):
 | `--config FICHIER` | A configuration file other than `prevo.config.json` next to `serveur.py`. |
 | `--donnees DOSSIER` | A data folder other than `donnees/` next to `serveur.py`. |
 | `--sans-navigateur` | Does not open the browser at start-up (service, server with no screen). |
-| `--journal` | Also writes the console to `donnees/journal-serveur.log` (automatic with no console). |
+| `--journal` | No effect (kept for older launchers): `donnees/journal-serveur.log` is always written. |
 | `--aide` | Prints each configuration key with its help, then stops. |
 | `--reinitialiser IDENTIFIANT` | Gives an account a temporary password (§9), then stops. |
 | `--servir-tests` | For automated tests only; not needed in normal use. |
@@ -523,8 +523,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now prevo
 ```
 
-Under systemd, the console goes to the system journal (`journalctl -u prevo`). Add `--journal` to
-`ExecStart` to also get `donnees/journal-serveur.log`, which Settings › Access and installation displays.
+Under systemd, the console goes to the system journal (`journalctl -u prevo`) and, as everywhere, to
+`donnees/journal-serveur.log`, which Settings › Access and installation displays.
 Open only `port_http` and `port_https` to the local network, for example
 `sudo ufw allow from 192.168.1.0/24 to any port 8080,8443 proto tcp`. To remove:
 `sudo systemctl disable --now prevo`.
@@ -585,7 +585,7 @@ Started with no console (scheduled task, `pythonw.exe`), Prévo writes what it d
 | --- | --- | --- | --- |
 | Sign-ins | `donnees/acces/journal-acces.csv` | one year, purged every day | `date;qui;adresse;agent;resultat;tailscale`: sign-ins, failures, lock-outs, sign-outs, invitations, devices, revocations, accounts created, edited or reset |
 | Changes | `donnees/journal.csv` | no limit | who changed what in the data (the maintenance history) |
-| Server | `donnees/journal-serveur.log` | 5 files of 1 MB | start-up, refusals, external copy, errors (with no console, or with `--journal`) |
+| Server | `donnees/journal-serveur.log` | 5 files of 1 MB | start-up, writes, refusals, external copy, server and screen errors; always written, never a password, token or key |
 
 The sign-in log is exported as CSV from Team › Access › Sign-in log (“Export (CSV)”).
 No password or token is ever written to it.

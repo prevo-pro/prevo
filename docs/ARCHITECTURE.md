@@ -4365,7 +4365,7 @@ repli `onlogon` (tâche de l'utilisateur, sans droits). L'assistant lance `Insta
 `Start-Process powershell -Verb RunAs` après avoir affiché son contenu ; refus de l'élévation ⇒ repli proposé.
 Linux : `prevo.service` (utilisateur `prevo`, `Restart=on-failure`, `ProtectSystem=full`, `ProtectHome=yes`,
 `ReadWritePaths=<donnees>`) et les commandes à copier ; macOS : `pro.prevo.serveur.plist` (agent, `RunAtLoad`,
-`KeepAlive`). Sans console, le serveur écrit `donnees/journal-serveur.log` (rotation 5 × 1 Mo) et expose son état
+`KeepAlive`). Le serveur écrit toujours `donnees/journal-serveur.log` (rotation 5 × 1 Mo ; T547) et expose son état
 à `/api/installation/etat` (loopback).
 
 ### 22.10 Assistant d'installation (D131, CS130)
@@ -4505,7 +4505,7 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   - `GET journal` → `{"fichier": chemin | null, "lignes": [...]}` : les 20 dernières lignes de
     `donnees/journal-serveur.log` (`dernieres_lignes_du_journal`, `LIGNES_DU_JOURNAL`), sans celles qui contiennent
     « cle » (`MOTIF_LIGNE_JOURNAL_RETIREE`, prudence : le journal n'écrit jamais une clé ni un mot de passe) ;
-    `[]` et `null` sans journal (serveur avec console et sans `--journal`).
+    `[]` et `null` sans journal (aucune ligne écrite encore ; depuis T547, le journal est écrit avec ou sans console).
   - `POST reprendre` `{}` → brouillon repris de la **configuration en cours** (`brouillon_depuis_configuration` :
     `config.reglages`, ce que `terminer` réécrira clé à clé ; `situation` déduite par `situation_de_la_configuration`
     : `seul` si `mode_solo` = 1 dans `parametres.csv`, `informaticien` si `demandeurs_avec_compte`, `equipe` sinon ;

@@ -10,7 +10,7 @@ Ce qui est vérifié :
     priorité       la ligne de commande passe avant le fichier, le fichier avant les défauts ; clé inconnue signalée ;
     --aide         chaque clé de CLES_CONFIGURATION avec son type, son défaut et son aide ;
     écriture       ecrire_configuration puis lire_configuration rend les mêmes réglages ;
-    journal        --journal écrit donnees/journal-serveur.log ; rotation à 1 Mo, 5 fichiers au plus.
+    journal        donnees/journal-serveur.log écrit toujours (T547), --journal accepté ; rotation à 1 Mo, 5 fichiers au plus.
 
 Lancer depuis la racine du projet :
     py -m unittest discover -s tests -p "test_acces_config.py" -v
@@ -198,6 +198,14 @@ class TestReglages(CasConfiguration):
 
 
 class TestJournal(CasConfiguration):
+
+    def test_journal_ecrit_sans_option(self):
+        """T547 (L34) : avec une console et sans --journal, le journal est écrit quand même."""
+        processus, port, lignes = self.demarrer()
+        self.lire_ping("127.0.0.1", port)
+        journal = self.donnees / "journal-serveur.log"
+        self.assertTrue(journal.is_file())
+        self.assertIn("serveur local de GMAO", journal.read_text(encoding="utf-8"))
 
     def test_option_journal_ecrit_le_fichier(self):
         processus, port, lignes = self.demarrer("--journal")
