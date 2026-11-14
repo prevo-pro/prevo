@@ -513,6 +513,31 @@ class TestRefus(CasAssistant):
         self.assertEqual(client.post("inconnue").statut, 404)
         self.assertEqual(self.ok(client.get("etat"))["brouillon"]["port_http"], 8080)     # rien de refusé n'est gardé
 
+    def test_wifi_de_l_atelier_garde_puis_ecrit_dans_les_parametres(self):
+        """T536 (L11) : « Y a-t-il du Wi-Fi dans l'atelier ? » (wifi_atelier, facultatif) : gardé dans le brouillon,
+        refusé hors de oui, non ou vide, écrit à « terminer » dans parametres.csv (atelier_sans_wifi) ; sans réponse,
+        aucune ligne. Relu par « reprendre » (Paramètres)."""
+        client, instance = self.lancer()
+        self.ok(client.post("situation", {"situation": "seul"}))
+        brouillon = self.ok(client.post("portee", {"portee": "ce-pc"}))["brouillon"]
+        self.assertNotIn("wifi_atelier", brouillon)
+        for valeur in ("peut-être", True, 1):
+            with self.subTest(valeur=valeur):
+                reponse = client.post("portee", {"portee": "ce-pc", "wifi_atelier": valeur})
+                self.assertEqual(reponse.statut, 400)
+                self.assertIn("wifi_atelier", reponse.json()["erreur"])
+        self.assertEqual(self.ok(client.post("portee", {"portee": "ce-pc", "wifi_atelier": "non"}))["brouillon"]["wifi_atelier"],
+                         "non")
+        self.assertEqual(self.ok(client.post("portee", {"portee": "ce-pc", "wifi_atelier": ""}))["brouillon"]["wifi_atelier"],
+                         "non")                                                    # vide : la réponse d'avant reste
+        self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand"}))
+        self.ok(client.post("sauvegardes", {"dossier": ""}))
+        self.ok(client.post("terminer"))
+        self.assertEqual(parametres_de(instance.config.dossier_donnees)["atelier_sans_wifi"], "1")
+        self.assertEqual(serveur.brouillon_depuis_configuration(instance.config)["wifi_atelier"], "non")
+        self.assertEqual((serveur.parametre_du_wifi_atelier("oui"), serveur.parametre_du_wifi_atelier("non"),
+                          serveur.parametre_du_wifi_atelier(None)), ("0", "1", None))
+
     def test_compte_refuse(self):
         client, instance = self.lancer(source=commun.DOSSIER_DEMO)
         self.ok(client.post("situation", {"situation": "equipe"}))

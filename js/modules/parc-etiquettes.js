@@ -14,6 +14,7 @@
 //   Parc.adresseDesQr()               début de l'adresse mise dans les QR (mode serveur), '' sinon
 //   Parc.consigneEtiquette(adresse, wifi)   ligne imprimée au-dessus du QR ('' si l'adresse est joignable de partout)
 //   Parc.avertissementReseau(adresse, { lienPortee, lienEtiquettes })   encadré « le QR ne s'ouvrira pas en 4G »
+//   Parc.atelierSansWifi()            vrai si l'atelier n'a pas de Wi-Fi (parametres.csv : atelier_sans_wifi = 1 ; T536)
 //
 // Impression : chaque planche est une page A4 dessinée en millimètres (positions absolues). La
 // feuille css/modules/etiquettes.css lui donne une page nommée « etiquettes » sans marge
@@ -37,6 +38,7 @@ Object.assign(Parc, (() => {
   const CLE_MEMOIRE = 'prevo.etiquettes';            // localStorage : { format, haut, gauche }
   const CLE_ADRESSE_QR = 'adresse_qr';                // parametres.csv (§15.1)
   const CLE_WIFI = 'wifi_nom';                        // parametres.csv : nom du Wi-Fi écrit sur l'étiquette (T518)
+  const CLE_SANS_WIFI = 'atelier_sans_wifi';          // parametres.csv : 1 = l'atelier n'a pas de Wi-Fi (T536, L11)
   const TAILLE_QR_PX = 160;                           // taille du dessin ; l'impression la fixe en mm (CSS)
 
   // ===========================================================================================
@@ -282,6 +284,11 @@ Object.assign(Parc, (() => {
 
   // Début de l'adresse mise dans les QR (« http://192.168.1.10:8080/ ») : App.urlFicheEquipement
   // la calcule (adresse_qr, sinon première adresse détectée) ; on retire la fin propre à la fiche.
+  /** Vrai quand le responsable a dit que l'atelier n'a pas de Wi-Fi (assistant ou Paramètres ; T536, L11). */
+  function atelierSansWifi() {
+    return String(Donnees.parametre(CLE_SANS_WIFI, '0') || '').trim() === '1';
+  }
+
   function adresseDeBase() {
     const exemple = App.urlFicheEquipement('X');
     const fin = '#/equipement/X';
@@ -613,5 +620,6 @@ Object.assign(Parc, (() => {
     adresseDesQr,
     consigneEtiquette,
     avertissementReseau,
+    atelierSansWifi,
   };
 })());

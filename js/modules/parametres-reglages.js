@@ -103,6 +103,11 @@ const ParametresReglages = (() => {
       get aide() { return I18n.t('parametres.aide.techniciens_creent_articles'); } },
     { cle: 'rafraichissement_s', type: 'entier', get libelle() { return I18n.t('parametres.libelle.rafraichissement_secondes'); }, defaut: '20', min: 2, max: 3600,
       get section() { return I18n.t('parametres.section.echanges_entre_postes'); }, get aide() { return I18n.t('parametres.aide.frequence_lecture_changements_faits'); } },
+    // Lot 2 ergonomie (T536, L11) : réponse de l'assistant à « Y a-t-il du Wi-Fi dans l'atelier ? » (1 : non) ; lu par
+    // Parc.atelierSansWifi seul (écran Étiquettes : le dire avant d'imprimer). Ne protège aucune donnée.
+    { cle: 'atelier_sans_wifi', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true,
+      get libelle() { return I18n.t('parametres.libelle.atelier_sans_wifi'); },
+      get aide() { return I18n.t('parametres.aide.atelier_sans_wifi'); } },
   ];
 
   return { REGLAGES: Object.freeze(REGLAGES) };

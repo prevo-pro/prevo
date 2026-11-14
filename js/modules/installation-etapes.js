@@ -132,13 +132,36 @@ const InstallationEtapes = (() => {
     };
   }
 
+  // Lot 2 ergonomie (T536, L11) : « Y a-t-il du Wi-Fi dans l'atelier ? », près du choix de la portée (facultatif). « Non »
+  // montre les deux solutions (CSS :has, installation.css) : un poste de déclaration relié par câble, ou une borne Wi-Fi
+  // réservée à Prévo. La réponse (wifi_atelier : oui, non) est écrite à « terminer » dans parametres.csv
+  // (atelier_sans_wifi), que l'écran Étiquettes lit ; elle se change ensuite dans Paramètres.
+  function questionWifi(reponse) {
+    const t = (cle) => I18n.t('installation.formulaire_portee.' + cle);
+    return UI.html`<fieldset class="installation-wifi" id="inst-wifi">
+        <legend>${t('wifi_question')}</legend>
+        <p class="aide">${t('wifi_aide')}</p>
+        <div class="installation-choix-liste">
+          ${choixRadio('wifi_atelier', 'oui', reponse === 'oui', t('wifi_oui'), '')}
+          ${choixRadio('wifi_atelier', 'non', reponse === 'non', t('wifi_non'), '')}
+        </div>
+        <div class="encadre attention installation-sans-wifi" id="inst-sans-wifi" role="note">
+          <p><b>${t('sans_wifi_titre')}</b></p>
+          <p>${t('sans_wifi_solutions')}</p>
+          <ul><li>${I18n.html('installation.formulaire_portee.sans_wifi_poste')}</li>
+            <li>${I18n.html('installation.formulaire_portee.sans_wifi_borne')}</li></ul>
+          <p>${t('sans_wifi_portee')}</p>
+        </div>
+      </fieldset>`;
+  }
+
   function formulairePortee(c) {
     const b = c.brouillon();
     const details = { 'ce-pc': I18n.t('installation.formulaire_portee.ni_compte_ni_https'),
       atelier: I18n.t('installation.formulaire_portee.postes_telephones_entreprise_compte'),
       dehors: I18n.t('installation.formulaire_portee.telephone_deplacement_maison_reseau') };
     return {
-      champs: UI.html`<p class="aide">${c.aideOption('portee')}</p>
+      champs: UI.html`${questionWifi(b.wifi_atelier)}<p class="aide">${c.aideOption('portee')}</p>
         <div class="installation-choix-liste">${Object.keys(LIBELLES_PORTEE).map((cle) =>
           choixRadio('portee', cle, cle === b.portee, LIBELLES_PORTEE[cle], details[cle]))}</div>`,
       autrement: UI.html`<div class="form-colonne">
@@ -149,8 +172,10 @@ const InstallationEtapes = (() => {
       lire(section) {
         const coche = UI.$('input[name="portee"]:checked', section);
         if (!coche) return null;
+        const wifi = UI.$('input[name="wifi_atelier"]:checked', section);
         return { portee: coche.value, port_http: Number(UI.$('#inst-port_http', section).value),
-          port_https: Number(UI.$('#inst-port_https', section).value), noms: nomsSaisis(section) };
+          port_https: Number(UI.$('#inst-port_https', section).value), noms: nomsSaisis(section),
+          wifi_atelier: wifi ? wifi.value : '' };
       },
       message: I18n.t('installation.formulaire_portee.choisissez_ou_prevo_doit'),
     };

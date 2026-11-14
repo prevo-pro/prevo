@@ -246,6 +246,8 @@ Règles propres au portugais du Portugal (`pt-PT`) :
 | journal des modifications | change log | değişiklik günlüğü | registro delle modifiche | registo de alterações | table `journal`. |
 | appareil | device | cihaz | dispositivo | dispositivo | téléphone ou navigateur enrôlé ; ne pas confondre avec « poste » (workstation). |
 | enrôler, enrôlement, appareil enrôlé | enrol, enrolment, enrolled device | eşleştir, eşleştirme, eşleştirilmiş cihaz | abbinare, abbinamento, dispositivo abbinato | associar, associação, dispositivo associado | orthographe britannique (un seul « l » à enrol, deux à enrolled). |
+| poste de déclaration | reporting workstation | arıza bildirim istasyonu | postazione di segnalazione | estação de comunicação | PC ou tablette de l'atelier, relié par câble, enrôlé comme un appareil, qui n'ouvre que « Signaler un problème » (T536). |
+| borne Wi-Fi | Wi-Fi access point | Wi-Fi erişim noktası | access point Wi-Fi | ponto de acesso Wi-Fi | petite borne réservée à Prévo, sans accès Internet (T536). |
 | révoquer | revoke | yetkisini kaldır | revocare | revogar |  |
 | fiche d'accès | access record | erişim kaydı | scheda di accesso | ficha de acesso | pas « access sheet ». |
 | journal des connexions | sign-in log | oturum açma günlüğü | registro degli accessi | registo de inícios de sessão |  |

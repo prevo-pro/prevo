@@ -2966,6 +2966,18 @@ def brouillon_neuf(config, situation, autres=None):
     return completer_brouillon(config, brouillon)
 
 
+# Lot 2 ergonomie (T536, L11) : réponse de l'assistant à « Y a-t-il du Wi-Fi dans l'atelier ? » (brouillon :
+# wifi_atelier), écrite à « terminer » dans parametres.csv : atelier_sans_wifi = 1 (non) ou 0 (oui). Le navigateur la
+# lit (Paramètres, écran Étiquettes) ; elle ne protège aucune donnée.
+REPONSES_WIFI_ATELIER = ('oui', 'non')
+PARAMETRE_ATELIER_SANS_WIFI = 'atelier_sans_wifi'
+
+
+def parametre_du_wifi_atelier(reponse):
+    """Réponse de l'assistant (oui, non) → valeur d'atelier_sans_wifi ('0', '1') ; None sans réponse."""
+    return {'oui': '0', 'non': '1'}.get(reponse)
+
+
 def valeur_parametre_csv(config, cle):
     """Valeur d'une clé de parametres.csv (texte, '' si la ligne ou le fichier manque) ; lecture tolérante."""
     for ligne in dictionnaires_csv(lire_octets(chemin_table(config, 'parametres')), 'parametres'):
@@ -2994,6 +3006,9 @@ def brouillon_depuis_configuration(config):
     brouillon['etapes']['deplacer'] = ETAT_A_FAIRE
     brouillon['mode_solo'] = False
     brouillon['base_presente'] = True
+    wifi = {'0': 'oui', '1': 'non'}.get(valeur_parametre_csv(config, PARAMETRE_ATELIER_SANS_WIFI))  # T536 (L11)
+    if wifi:
+        brouillon['wifi_atelier'] = wifi
     return completer_brouillon(config, brouillon)
 
 
@@ -8852,12 +8867,21 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         return {'brouillon': None, 'etapes': {etape: ETAT_A_FAIRE for etape in ETAPES_INSTALLATION}}
 
     def installation_portee(self, brouillon, demande):
-        """{"portee": ce-pc | atelier | dehors, "port_http"?, "port_https"?, "noms"?} : « ce PC » ⇒ comptes faux et
-        aucun mandataire ; au-delà ⇒ comptes exigés ; ports et noms contrôlés comme dans le fichier (400 sinon)."""
+        """{"portee": ce-pc | atelier | dehors, "port_http"?, "port_https"?, "noms"?, "wifi_atelier"?} : « ce PC » ⇒
+        comptes faux et aucun mandataire ; au-delà ⇒ comptes exigés ; ports et noms contrôlés comme dans le fichier
+        (400 sinon). Lot 2 ergonomie (T536, L11) : « wifi_atelier » (oui, non ; vide : pas de réponse), réponse à « Y
+        a-t-il du Wi-Fi dans l'atelier ? », gardée dans le brouillon puis écrite à « terminer » dans parametres.csv
+        (atelier_sans_wifi, PARAMETRE_ATELIER_SANS_WIFI) ; 400 pour une autre valeur."""
         portee = demande.get('portee')
         if portee not in PORTEES:
             raise ErreurHttp(400, traduisible('installation.portee_inconnue',
                                               'Portée inconnue : « ce-pc », « atelier » ou « dehors ».'))
+        wifi = demande.get('wifi_atelier', '')
+        if wifi not in REPONSES_WIFI_ATELIER + ('',):
+            raise ErreurHttp(400, traduisible('installation.wifi_atelier',
+                                              '« wifi_atelier » : « oui », « non » ou vide.'))
+        if wifi:
+            brouillon['wifi_atelier'] = wifi
         for cle in ('port_http', 'port_https', 'noms'):
             if cle in demande:
                 brouillon[cle] = valeur_du_brouillon(cle, demande[cle])
@@ -9153,7 +9177,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         js/i18n/langues.js, 400 sinon, défaut fr, T296). Règles de portée sur le brouillon (400 au message : comptes sans
         responsable, réseau sans https…), jeu de démo écrit s'il est demandé (installer_jeu_de_demo), puis
         prevo.config.json écrit (seulement ici : ecrire_configuration, ou modifier_configuration s'il existe déjà,
-        les clés inconnues gardées) ; Solo ⇒ mode_solo dans parametres.csv, base absente au départ ⇒ langue_defaut
+        les clés inconnues gardées) ; Solo ⇒ mode_solo dans parametres.csv, réponse sur le Wi-Fi de l'atelier ⇒
+        atelier_sans_wifi (T536), base absente au départ ⇒ langue_defaut
         (les autres lignes gardées ; une base présente au départ n'a jamais sa langue changée ici) ; brouillon
         supprimé ; base « vide » absente au départ ⇒ codes_defaillance.csv avec la liste de départ dans sa langue
         (T515, installer_codes_de_depart) ; puis le serveur se relance avec la configuration (config.relancer). Rend
@@ -9174,7 +9199,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                               'Des fichiers de données sont déjà là : la démonstration ne remplace '
                                               'jamais une base existante. Terminez avec « vide » (vos fichiers sont '
                                               'gardés).'))
-        if base == 'demo' or brouillon.get('mode_solo') or base_neuve:
+        sans_wifi = parametre_du_wifi_atelier(brouillon.get('wifi_atelier'))   # T536 (L11)
+        if base == 'demo' or brouillon.get('mode_solo') or base_neuve or sans_wifi is not None:
             verifier_ecriture_permise(self.config)          # T185 : tables écrites (lecture seule), avant la config
         reglages = reglages_par_defaut()
         reglages.update({cle: brouillon[cle] for cle in CLES_DU_BROUILLON if cle in brouillon})
@@ -9213,6 +9239,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         a_poser = valeurs_du_mode_solo(brouillon.get('solo_technicien_id', '')) if brouillon.get('mode_solo') else {}
         if base_neuve:
             a_poser['langue_defaut'] = langue
+        if sans_wifi is not None:
+            a_poser[PARAMETRE_ATELIER_SANS_WIFI] = sans_wifi
         if a_poser:
             with VERROU_ECRITURE:
                 poser_parametres(self.config, a_poser)

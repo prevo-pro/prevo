@@ -64,6 +64,14 @@
 .installation-autres legend { font-weight: 600; color: var(--fort); padding: 0; margin-bottom: 6px; }
 .installation-situation:has(input[name="situation"][value="seul"]:checked) .installation-autres-seul,
 .installation-situation:has(input[name="situation"][value="equipe"]:checked) .installation-autres-equipe { display: flex; }
+/* T536 (L11) : étape « portée », « Y a-t-il du Wi-Fi dans l'atelier ? » ; « Non » montre les deux solutions. */
+.installation-wifi { display: flex; border: 0; margin: 0 0 14px; padding: 0; flex-direction: column; gap: 8px; min-width: 0; }
+.installation-wifi legend { font-weight: 600; color: var(--fort); padding: 0; margin-bottom: 6px; }
+.installation-wifi .installation-choix-liste { flex-direction: row; flex-wrap: wrap; }
+.installation-wifi .installation-choix { flex: 1 1 120px; }
+.installation-sans-wifi { display: none; margin: 4px 0 0; }
+.installation-sans-wifi ul { margin: 6px 0; padding-left: 1.2em; }
+.installation-wifi:has(input[name="wifi_atelier"][value="non"]:checked) .installation-sans-wifi { display: block; }
 .installation-case { min-height: 48px; }
 .installation-case input { width: 24px; height: 24px; flex-shrink: 0; }
 

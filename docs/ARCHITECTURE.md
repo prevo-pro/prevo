@@ -1501,6 +1501,8 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   `parametres.csv` (lues par `Donnees.parametre(cle, defaut)`, absentes → défaut) :
   `seuil_remplacement_pct` (`50`), `adresse_qr` (`''` : première adresse réseau détectée),
   `wifi_nom` (`''` : nom du Wi-Fi écrit sur les étiquettes QR, T518),
+  `atelier_sans_wifi` (`0` ; `1` : l'atelier n'a pas de Wi-Fi, réponse de l'assistant ou de Paramètres, lue par
+  `Parc.atelierSansWifi` : l'écran Étiquettes le dit avant d'imprimer, T536),
   `rapports_mensuels` (`''` : noms des rapports figés, séparés par des virgules, du plus ancien au
   plus récent).
 - **Documents** : l'extension `html` s'ajoute aux types acceptés (`TYPES_DOCUMENTS` de `serveur.py`,
