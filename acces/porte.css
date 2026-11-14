@@ -129,6 +129,32 @@ img { max-width: 100%; height: auto; }
 .etapes figcaption { color: var(--muted); font-size: .8125rem; margin-top: .3rem; }
 .etapes .btn { margin-top: .25rem; }
 
+/* Lot 2 ergonomie, Q7 : pourquoi cet écran, ce qu'il faut faire en trois schémas (dessinés dans la page, sans mot),
+   l'alternative pour qui ne veut pas, puis le détail écran par écran */
+.pourquoi h3, .trois h3, .detail { margin: 1rem 0 .5rem; }
+.pourquoi .chapeau { color: var(--fort); font-weight: 600; }
+.trois figure {
+  display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 14px; margin: 0 0 12px;
+}
+.trois figcaption { color: var(--texte); }
+.schema { width: 64px; height: auto; display: block; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.schema .telephone { fill: var(--champ); stroke: var(--texte-2); stroke-width: 2.5; }
+.schema .ecran { fill: var(--fond); stroke: none; }
+.schema .cle, .schema .cle-trait { stroke: var(--ambre); stroke-width: 4; }
+.schema .fleche, .schema .bac { stroke: var(--cyan); stroke-width: 4; }
+.schema .engrenage { fill: var(--texte-2); }
+.schema .engrenage-dents { stroke: var(--texte-2); stroke-width: 4; }
+.schema .alerte { fill: var(--ambre); stroke: var(--ambre); stroke-width: 2; }
+.schema .alerte-trait { stroke: var(--fond); stroke-width: 3; }
+.schema .bouton { fill: var(--bleu-bouton); }
+.schema .doigt { fill: var(--cyan); fill-opacity: .35; stroke: var(--cyan); stroke-width: 2; }
+.schema .logo-schema { fill: var(--logo-fin); }
+.schema .ok { fill: var(--bleu-bouton); }
+.schema .ok-trait { stroke: var(--sur-couleur); stroke-width: 4; }
+.refus ul { margin: 0; padding-left: 1.2rem; }
+.refus li { margin-bottom: .3rem; }
+.detail { padding-top: .25rem; }
+
 .message { padding: 10px 14px; border-radius: 12px; background: var(--teinte-ambre-faible); border: 1px solid var(--bord-ambre); color: var(--texte-ambre); }
 .message.ok { background: var(--teinte-bleu); border-color: var(--teinte-bleu-forte); color: var(--texte-bleu); }
 

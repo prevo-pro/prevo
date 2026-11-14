@@ -41,7 +41,67 @@
   <!-- 2. « Faites confiance au PC atelier » : une étape numérotée par écran du téléphone, dans l'ordre des réglages. -->
   <section id="confiance" class="carte" hidden>
     <h2 data-i18n="porte.confiance.faites_confiance_pc_atelier">Faites confiance au PC atelier</h2>
-    <p data-i18n="porte.confiance.prevo_tourne_pc_atelier">Prévo tourne sur le PC de l'atelier, pas sur Internet. Pour que votre téléphone lui fasse confiance (caméra, micro, mot de passe protégé), il faut installer une fois son certificat. Cinq minutes, une seule fois par téléphone.</p>
+
+    <!-- Lot 2 ergonomie, Q7 (Nicolas, 14/11) : d'abord POURQUOI cet écran (et l'avertissement que le téléphone va
+         montrer), puis ce qu'il faut faire en trois images, puis l'alternative pour qui ne veut pas ; le détail écran
+         par écran (D127) suit. Schémas dessinés dans la page, sans mot ni marque : les légendes portent le texte. -->
+    <div class="pourquoi" id="pourquoi">
+      <h3 data-i18n="porte.pourquoi.titre">Pourquoi cet écran ?</h3>
+      <p class="chapeau" data-i18n="porte.pourquoi.pc_atelier">Prévo tourne sur un PC de l'atelier, pas sur Internet.</p>
+      <p data-i18n="porte.pourquoi.cle_fabriquee">Pour protéger vos mots de passe, ce PC fabrique lui-même sa clé de confiance (le « certificat »).</p>
+      <p data-i18n="porte.pourquoi.telephone_avertit">Votre téléphone ne connaît pas encore cette clé. C'est pour ça qu'il vous avertit : c'est normal.</p>
+      <p data-i18n="porte.pourquoi.une_fois">Vous l'installez une seule fois sur ce téléphone. Cinq minutes, et c'est fini.</p>
+    </div>
+
+    <div class="trois" id="trois-gestes">
+      <h3 data-i18n="porte.trois.titre">Ce qu'il faut faire</h3>
+      <figure>
+        <svg class="schema" viewBox="0 0 80 132" width="80" height="132" aria-hidden="true" focusable="false">
+          <rect class="telephone" x="4" y="4" width="72" height="124" rx="12"/>
+          <rect class="ecran" x="10" y="16" width="60" height="100" rx="5"/>
+          <circle class="cle" cx="31" cy="42" r="9"/>
+          <path class="cle-trait" d="M40 42h18M52 42v7M58 42v5"/>
+          <path class="fleche" d="M40 62v26M30 79l10 10 10-10"/>
+          <path class="bac" d="M24 98v6h32v-6"/>
+        </svg>
+        <figcaption><b>1.</b> <span data-i18n="porte.trois.telecharger">Téléchargez la clé de confiance de ce PC.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="schema" viewBox="0 0 80 132" width="80" height="132" aria-hidden="true" focusable="false">
+          <rect class="telephone" x="4" y="4" width="72" height="124" rx="12"/>
+          <rect class="ecran" x="10" y="16" width="60" height="100" rx="5"/>
+          <circle class="engrenage" cx="40" cy="40" r="11"/>
+          <circle class="ecran" cx="40" cy="40" r="4"/>
+          <path class="engrenage-dents" d="M40 25v4M40 51v4M25 40h4M51 40h4M29.4 29.4l2.8 2.8M47.8 47.8l2.8 2.8M29.4 50.6l2.8-2.8M47.8 32.2l2.8-2.8"/>
+          <path class="alerte" d="M40 64l14 24H26z"/>
+          <path class="alerte-trait" d="M40 72v8M40 83.5v.5"/>
+          <rect class="bouton" x="20" y="96" width="40" height="12" rx="4"/>
+          <circle class="doigt" cx="52" cy="102" r="7"/>
+        </svg>
+        <figcaption><b>2.</b> <span data-i18n="porte.trois.installer">Installez-la dans les réglages du téléphone. Il vous avertit : continuez, c'est la clé de votre atelier.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="schema" viewBox="0 0 80 132" width="80" height="132" aria-hidden="true" focusable="false">
+          <rect class="telephone" x="4" y="4" width="72" height="124" rx="12"/>
+          <rect class="ecran" x="10" y="16" width="60" height="100" rx="5"/>
+          <rect class="logo-schema" x="28" y="30" width="24" height="24" rx="7"/>
+          <circle class="ok" cx="40" cy="80" r="14"/>
+          <path class="ok-trait" d="M33 80l5 5 9-10"/>
+        </svg>
+        <figcaption><b>3.</b> <span data-i18n="porte.trois.revenir">Revenez ici et touchez « Réessayer » : Prévo s'ouvre.</span></figcaption>
+      </figure>
+    </div>
+
+    <div class="encadre refus" id="refus">
+      <p><b data-i18n="porte.refus.titre">Vous ne voulez pas l'installer ?</b></p>
+      <p data-i18n="porte.refus.choix">C'est votre choix. Sans cette clé, Prévo ne s'ouvre pas sur ce téléphone. Pour signaler une panne quand même :</p>
+      <ul>
+        <li data-i18n="porte.refus.poste">utilisez le poste de déclaration de l'atelier, s'il y en a un ;</li>
+        <li data-i18n="porte.refus.technicien">ou demandez à un technicien de la déclarer pour vous.</li>
+      </ul>
+    </div>
+
+    <h3 class="detail" data-i18n="porte.trois.detail">Le détail, écran par écran</h3>
 
     <div id="choix-systeme" class="choix" hidden>
       <p><b data-i18n="porte.choix_systeme.quel_telephone_avez">Quel téléphone avez-vous ?</b></p>
@@ -129,7 +189,7 @@
       <p id="texte-firefox"></p>
     </div>
 
-    <p class="note" data-i18n="porte.confiance.certificat_sert_reconnaitre_pc">Ce certificat ne sert qu'à reconnaître le PC de l'atelier. Il ne donne aucun accès à votre téléphone et peut être retiré à tout moment dans les mêmes réglages.</p>
+    <p class="note" data-i18n="porte.confiance.certificat_sert_reconnaitre_pc">Cette clé ne sert qu'à reconnaître le PC de l'atelier. Elle ne donne aucun accès à votre téléphone. Vous pouvez la retirer à tout moment, dans les mêmes réglages.</p>
   </section>
 
   <noscript>

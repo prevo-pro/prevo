@@ -125,6 +125,48 @@ class TestIllustrationsAnglaises(unittest.TestCase):
                 self.assertEqual(francais_restant, [])
 
 
+CLES_POURQUOI = ("porte.pourquoi.titre", "porte.pourquoi.pc_atelier", "porte.pourquoi.cle_fabriquee",
+                 "porte.pourquoi.telephone_avertit", "porte.pourquoi.une_fois", "porte.trois.titre",
+                 "porte.trois.telecharger", "porte.trois.installer", "porte.trois.revenir", "porte.trois.detail",
+                 "porte.refus.titre", "porte.refus.choix", "porte.refus.poste", "porte.refus.technicien")
+
+
+class TestPourquoiEtTroisGestes(unittest.TestCase):
+    """Lot 2 ergonomie, Q7 (Nicolas, 14/11) : avant les étapes, la porte dit POURQUOI cet écran (Prévo sur un PC de
+    l'atelier, clé fabriquée par ce PC, inconnue du téléphone, d'où son avertissement, une seule fois), ce qu'il faut
+    faire en trois schémas dessinés dans la page (sans fichier ni adresse de plus), et l'alternative pour qui refuse
+    (poste de déclaration, technicien) ; textes dans les cinq langues, sans jargon."""
+
+    def test_ordre_et_trois_schemas_dans_la_page(self):
+        page = PAGE_PORTE.read_text(encoding="utf-8")
+        positions = [page.index(repere) for repere in
+                     ('id="confiance"', 'id="pourquoi"', 'id="trois-gestes"', 'id="refus"', 'id="etapes-android"')]
+        self.assertEqual(positions, sorted(positions), "pourquoi, trois gestes, refus, puis le détail")
+        trois = page[page.index('id="trois-gestes"'):page.index('id="refus"')]
+        self.assertEqual(trois.count("<figure>"), 3)
+        self.assertEqual(trois.count("<svg "), 3)
+        self.assertNotIn("<img", trois)                                     # dessinés dans la page : rien à servir
+        self.assertNotIn("<text", trois)                                    # sans mot : les légendes sont traduites
+        self.assertNotRegex(trois, r'\b(?:src|href)=')
+        for cle in CLES_POURQUOI:
+            self.assertIn('data-i18n="%s"' % cle, page)
+        self.assertNotIn("porte.confiance.prevo_tourne_pc_atelier", page)
+
+    def test_textes_dans_les_cinq_langues_sans_jargon(self):
+        for code, _nom in langues_declarees():
+            for cle in CLES_POURQUOI + ("porte.confiance.certificat_sert_reconnaitre_pc",):
+                with self.subTest(langue=code, cle=cle):
+                    self.assertTrue(texte_du_dictionnaire(code, cle).strip())
+        francais = " ".join(texte_du_dictionnaire("fr", cle) for cle in CLES_POURQUOI)
+        for mot in ("racine", "autorité", "CA ", "TLS", "https", "chiffr"):
+            self.assertNotIn(mot, francais)
+        self.assertIn("pas sur Internet", texte_du_dictionnaire("fr", "porte.pourquoi.pc_atelier"))
+        self.assertIn("une seule fois", texte_du_dictionnaire("fr", "porte.pourquoi.une_fois"))
+        self.assertIn("avertit", texte_du_dictionnaire("fr", "porte.pourquoi.telephone_avertit"))
+        self.assertIn("poste de déclaration", texte_du_dictionnaire("fr", "porte.refus.poste"))
+        self.assertIn("technicien", texte_du_dictionnaire("fr", "porte.refus.technicien"))
+
+
 # ---------------------------------------------------------------------------
 # Serveur réel en portée « atelier » : porte, ca.crt, PC, application en https
 # ---------------------------------------------------------------------------
@@ -538,6 +580,20 @@ class CasPorteNavigateur(CasNavigateur):
     def attendre_confiance(self, page):
         attendre(page, "() => !document.getElementById('confiance').hidden")
 
+    def verifier_pourquoi(self, page, systeme):
+        """Q7 : pourquoi, trois schémas et refus visibles, au-dessus du détail écran par écran."""
+        for selecteur in ("#pourquoi", "#trois-gestes", "#refus"):
+            self.assertTrue(page.is_visible(selecteur), selecteur)
+        self.assertIn("pas sur Internet", page.inner_text("#pourquoi"))
+        self.assertIn("poste de déclaration", page.inner_text("#refus"))
+        self.assertEqual(page.locator("#trois-gestes figure svg").count(), 3)
+        for indice in range(3):
+            boite = page.locator("#trois-gestes figure svg").nth(indice).bounding_box()
+            self.assertGreater(boite["width"], 40)
+        haut = lambda selecteur: page.locator(selecteur).bounding_box()["y"]
+        self.assertLess(haut("#pourquoi"), haut("#trois-gestes"))
+        self.assertLess(haut("#refus"), haut("#etapes-" + systeme))
+
     def verifier_etapes(self, page, systeme, texte_attendu, autre):
         self.assertEqual(page.evaluate("document.documentElement.dataset.systeme"), systeme)
         self.assertTrue(page.is_visible("#etapes-" + systeme))
@@ -739,6 +795,7 @@ class TestPorteNavigateur(CasPorteNavigateur):
         self.assertEqual(page.evaluate("location.href"), self.atelier.url_porte + "/#/equipement/EQ-0005")
         self.assertIn(TITRE_PORTE, page.inner_text("#confiance"))
         self.assertTrue(page.is_visible("#note-firefox"))
+        self.verifier_pourquoi(page, "android")
         bouton = self.verifier_etapes(page, "android", "Certificat CA", "iphone")
         self.assertIn("Installer quand même", page.inner_text("#etapes-android"))
         bouton.click()
@@ -753,6 +810,7 @@ class TestPorteNavigateur(CasPorteNavigateur):
         contexte, page = self.telephone("iPhone 14")
         page.goto(self.atelier.url_porte + "/")
         self.attendre_confiance(page)
+        self.verifier_pourquoi(page, "iphone")
         self.verifier_etapes(page, "iphone", "Réglages de confiance des certificats", "android")
         self.assertIn("Profil téléchargé", page.inner_text("#etapes-iphone"))
         self.assertFalse(page.is_visible("#note-firefox"))

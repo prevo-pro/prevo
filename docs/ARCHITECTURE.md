@@ -4284,6 +4284,12 @@ le fournisseur réglé sur le PC serveur et un fournisseur en ligne reste soumis
   (`location.replace`, la route `#/…` gardée) ; échec ⇒ étapes « Faites confiance au PC atelier » du système
   reconnu (`navigator.userAgent` : Android, iPhone/iPad, sinon les deux au choix), numérotées, une par écran du
   téléphone, captures, bouton « Réessayer ».
+  Lot 2 ergonomie, Q7 (Nicolas, 14/11) : en tête de cet écran, « Pourquoi cet écran ? » (Prévo sur un PC de
+  l'atelier, pas sur Internet ; clé de confiance fabriquée par ce PC, inconnue du téléphone, d'où son avertissement ;
+  une seule fois par téléphone), puis « Ce qu'il faut faire » en trois schémas SVG dessinés dans la page (sans mot ni
+  marque, légendes traduites : télécharger, installer dans les réglages, « Réessayer »), puis « Vous ne voulez pas
+  l'installer ? » (poste de déclaration, ou un technicien qui déclare pour vous) ; le détail écran par écran suit.
+  Aucun fichier ni route de plus.
 - **Langue de la porte et de la connexion** (T297, D148 ; conception validée par Nicolas le 07/11) : serveur.py pose
   la langue de l'installation dans l'attribut `data-langue-installation` de `porte.html` (langue_defaut déclarée et
   bien formée, `MOTIF_CODE_LANGUE` + `langues_declarees()`, sinon « fr ») et de `index.html` (seulement quand
