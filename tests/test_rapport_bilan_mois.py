@@ -222,7 +222,7 @@ class TestMoisDuBilan(CasBilan):
 
     def test_le_mois_en_cours_ne_se_fige_jamais(self):
         message = self.page.evaluate("() => Rapport.figer('2026-11').then(() => 'figé', (e) => e.message)")
-        self.assertEqual(message, "Mois pas encore terminé (novembre 2026) : son bilan est provisoire et ne se fige pas. "
+        self.assertEqual(message, "Mois pas encore terminé (novembre 2026) : son bilan est provisoire et ne s'enregistre pas. "
                                   "Affichez-le avec « Voir le bilan ».")
         self.assertEqual(self.page.evaluate("() => Rapport.rapportsFiges()"), [])
 

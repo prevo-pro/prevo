@@ -315,7 +315,7 @@ class TestRevisions(CasRapport):
         self.assertTrue(self.attendre(lambda: self.rapport(revision) is not None))
         self.assertEqual(self.rapport(NOM).read_text(encoding="utf-8"), premier)
         self.page.wait_for_selector('.rapports-liste tr[data-nom="%s"]' % self.rapport(revision).name)
-        self.assertIn("figé", self.page.inner_text("#rapports-message"))
+        self.assertIn("enregistré", self.page.inner_text("#rapports-message"))
         self.assertEqual(parametre(self.serveur.dossier, "rapports_mensuels"), nom + "," + self.rapport(revision).name)
         # À 375 px, la liste des rapports défile dans son cadre, jamais la page (correction de relecture)
         self.page.set_viewport_size({"width": 375, "height": 812})

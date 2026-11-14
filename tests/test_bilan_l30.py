@@ -170,5 +170,43 @@ class TestDeuxLignesDuBilan(CasL30):
         self.assertIn("1 OT en retard au 20/11/2026", blancs(r["courriel"]["corps"]))
 
 
+class TestTousLesMoisEtEnregistrer(CasL30):
+    """Défaut 31 : « Voir le bilan » ne proposait que le mois en cours et le premier mois ; « Figer » faisait hésiter."""
+
+    HORLOGE = "2027-01-04T09:00:00"
+
+    def test_tous_les_mois_qui_ont_des_donnees(self):
+        self.page.evaluate("""async () => { await Donnees.modifier('ordres_travail', (lignes) => {
+            lignes.push({ id: 'OT-2026-0009', equipement_id: 'EQ-0002', type: 'amélioration', statut: 'Créé', titre: 'Carter',
+              date_creation: '2026-12-05 10:00', arret_production: '0' }); }); }""")
+        self.page.evaluate("() => { location.hash = '#/indicateurs?onglet=rapports'; }")
+        self.page.locator("#rapports-apercu-mois").wait_for()
+        self.assertEqual(self.page.locator("#rapports-apercu-mois option").all_inner_texts(),
+                         ["janvier 2027 (en cours)", "décembre 2026", "novembre 2026 (premier mois d'utilisation)"])
+        self.page.select_option("#rapports-apercu-mois", "2026-12")
+        with self.page.expect_popup() as attente:
+            self.page.click(".rapports-apercu-formulaire button[type=submit]")
+        fenetre = attente.value
+        fenetre.wait_for_load_state()
+        self.assertIn("décembre 2026", blancs(fenetre.frame_locator("iframe").locator("body").inner_text()))
+        self.assertEqual(self.page.evaluate("() => Rapport.rapportsFiges()"), [])
+
+    def test_enregistrer_ce_bilan_avec_sa_phrase(self):
+        self.page.evaluate("() => { location.hash = '#/indicateurs?onglet=rapports'; }")
+        carte = self.page.locator(".rapports-figer")
+        carte.wait_for()
+        texte = blancs(carte.inner_text())
+        self.assertIn("Enregistrer le bilan d'un mois", texte)
+        self.assertIn("Les chiffres de ce mois ne changeront plus, même si un OT est corrigé ensuite.", texte)
+        self.assertEqual(blancs(carte.locator("button[type=submit]").inner_text()), "Enregistrer ce bilan")
+        self.assertNotIn("Figer", texte)
+        carte.locator("button[type=submit]").click()
+        self.page.wait_for_function("() => Rapport.rapportsFiges().length === 1")
+        bandeau = self.page.locator("#rapports-message")
+        bandeau.wait_for()
+        self.assertIn("Bilan de décembre 2026 enregistré", blancs(bandeau.inner_text()))
+        self.assertIn("Bilans enregistrés", blancs(self.page.inner_text(".rapports-liste")))
+
+
 if __name__ == "__main__":
     unittest.main()

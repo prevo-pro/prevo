@@ -94,12 +94,22 @@ Object.assign(Rapport, (() => {
     return liste;
   }
 
-  /** Mois dont on peut voir le bilan sans le figer (T519) : le mois en cours, et le premier mois d'utilisation s'il est
-   *  passé et que l'historique ne le couvre pas (il a commencé avant le premier OT : jamais proposé à figer). */
+  /** Mois dont on peut voir le bilan sans l'enregistrer : le mois en cours (T519), puis (L30) chaque mois passé qui a des
+   *  données — un OT créé, démarré ou terminé, un temps passé, une demande —, du plus récent au plus ancien. */
   function moisApercu() {
     const courant = Donnees.aujourdhui().slice(0, 7);
-    const premier = debutHistorique().slice(0, 7);
-    return premier && premier < courant && premier >= decalerMois(courant, -24) && !estCouvert(premier) ? [courant, premier] : [courant];
+    const mois = new Set();
+    const noter = (valeur) => { const m = texte(valeur).slice(0, 7); if (/^\d{4}-\d{2}$/.test(m) && m < courant) mois.add(m); };
+    Donnees.lignes('ordres_travail').forEach((ot) => { noter(ot.date_creation); noter(ot.date_debut); noter(ot.date_fin); });
+    Donnees.lignes('ot_temps').forEach((ligne) => noter(ligne.date));
+    Donnees.lignes('demandes').forEach((demande) => noter(demande.date_heure));
+    return [courant].concat(Array.from(mois).sort().reverse());
+  }
+
+  /** Libellé d'un mois de « Voir le bilan » : en cours, premier mois d'utilisation (commencé avant le 1er OT), ou le mois. */
+  function libelleApercu(mois, courant) {
+    if (mois === courant) return I18n.t('rapport.apercu.mois_en_cours', { mois: libelleMois(mois) });
+    return mois === debutHistorique().slice(0, 7) && !estCouvert(mois) ? I18n.t('rapport.apercu.premier_mois', { mois: libelleMois(mois) }) : libelleMois(mois);
   }
 
   /** Bilan d'un mois affiché dans un nouvel onglet, isolé (Donnees.documentAffichable), sans rien enregistrer. */
@@ -182,8 +192,7 @@ Object.assign(Rapport, (() => {
         <p class="note">${I18n.t('rapport.apercu.note')}</p>
         <form class="rapports-apercu-formulaire" data-hors-saisie>
           <div class="champ"><label class="libelle" for="rapports-apercu-mois">${I18n.t('rapport.onglet.mois')}</label>
-            <select id="rapports-apercu-mois">${apercu.map((mois) => UI.html`<option value="${mois}">${I18n.t(mois === courant
-              ? 'rapport.apercu.mois_en_cours' : 'rapport.apercu.premier_mois', { mois: libelleMois(mois) })}</option>`)}</select></div>
+            <select id="rapports-apercu-mois">${apercu.map((mois) => UI.html`<option value="${mois}">${libelleApercu(mois, courant)}</option>`)}</select></div>
           <button type="submit" class="btn btn-secondaire">${I18n.t('rapport.apercu.voir_bilan')}</button>
         </form>
       </article>
@@ -197,6 +206,7 @@ Object.assign(Rapport, (() => {
             <select id="rapports-langue">${I18n.langues.map((langue) => UI.html`<option value="${langue.code}" ${langue.code === I18n.installation ? 'selected' : ''}>${langue.nom}</option>`)}</select></div>
           <div class="champ large"><label class="libelle" for="rapports-commentaire">${I18n.t('rapport.onglet.commentaire_mois_facultatif')}</label>
             <textarea id="rapports-commentaire" rows="4" maxlength="4000" data-dictee></textarea></div>
+          <p class="note large rapports-enregistrer-explication">${I18n.t('rapport.onglet.enregistrer_explication')}</p>
           <button type="submit" class="btn btn-primaire">${I18n.t('rapport.onglet.figer_rapport')}</button>
         </form>` : UI.html`<p>${I18n.t('rapport.onglet.aucun_mois_complet_historique')}</p>`}
       </article>`}

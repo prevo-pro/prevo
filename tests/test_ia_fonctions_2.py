@@ -267,7 +267,7 @@ class TestCommentaireRapport(CasFonctions):
         self.assertEqual(self.octets("parametres.csv", "journal.csv"), avant)
         self.assertEqual(sorted(p.name for p in (self.serveur.dossier / "documents").iterdir()), documents_avant)
         page.click(".rapports-figer button[type=submit]")
-        self.attendre_toast("Rapport figé")
+        self.attendre_toast("Bilan enregistré")
         nouveaux = [p for p in (self.serveur.dossier / "documents").iterdir() if p.name not in documents_avant]
         self.assertEqual(len(nouveaux), 1)
         document = nouveaux[0].read_text(encoding="utf-8")
@@ -300,7 +300,7 @@ class TestCommentaireRapport(CasFonctions):
         documents_avant = sorted(p.name for p in (self.serveur.dossier / "documents").iterdir())
         page.fill("#rapports-commentaire", "Mois calme : rien à signaler.")
         page.click(".rapports-figer button[type=submit]")
-        self.attendre_toast("Rapport figé")
+        self.attendre_toast("Bilan enregistré")
         nouveau = next(p for p in (self.serveur.dossier / "documents").iterdir() if p.name not in documents_avant)
         document = nouveau.read_text(encoding="utf-8")
         self.assertIn("Mois calme : rien à signaler.", document)
@@ -327,7 +327,7 @@ class TestCommentaireRapport(CasFonctions):
         page.select_option("#rapports-mois", options[0])
         page.wait_for_selector(".rapports-ecart-mois", state="hidden")
         page.click(".rapports-figer button[type=submit]")
-        self.attendre_toast("Rapport figé")
+        self.attendre_toast("Bilan enregistré")
 
     def test_points_envoyes_a_l_ia_sans_chiffres(self):
         """Relecture du lot 4 : les points à examiner partent sans chiffre ni montant (l'IA n'en écrit aucun)."""
