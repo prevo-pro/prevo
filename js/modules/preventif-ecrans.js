@@ -299,16 +299,24 @@ Object.assign(Preventif, (() => {
     return Schema.table('gammes').champs.find((champ) => champ.nom === nom);
   }
 
-  function listeEquipements(valeur) {
-    return Donnees.lignes('equipements').filter((e) => e.actif !== '0' || e.id === valeur)
-      .map((e) => ({ valeur: e.id, libelle: libelleEquipement(e.id) }))
-      .sort((a, b) => comparerLibelles(a.libelle, b.libelle));
-  }
-
   function listeCompteurs() {
     return Donnees.lignes('compteurs')
       .map((c) => ({ valeur: c.id, libelle: repere(c.equipement_id) + ' — ' + texte(c.libelle) + (c.unite ? ' (' + c.unite + ')' : '') + ' · ' + c.id }))
       .sort((a, b) => comparerLibelles(a.libelle, b.libelle));
+  }
+
+  /** Champ « Équipement » (L13) : le sélecteur commun (repère, désignation, emplacement ; recherche sur les trois). */
+  function champEquipement(valeurInitiale) {
+    const bloc = UI.champ(definitionChamp('equipement_id'), valeurInitiale, { liste: [], obligatoire: true });
+    const zone = UI.element(UI.html`<div class="pv-selecteur"></div>`);
+    bloc.querySelector('select').replaceWith(zone);
+    UI.selecteurEquipement(zone, { equipements: Donnees.lignes('equipements'), localisations: Donnees.lignes('localisations'),
+      valeur: valeurInitiale || '', nom: 'equipement_id' });
+    const cache = bloc.querySelector('input[name="equipement_id"]');
+    cache.required = true;
+    cache.setAttribute('aria-required', 'true');
+    bloc.querySelector('label.libelle').htmlFor = zone.querySelector('input[type=search]').id;
+    return bloc;
   }
 
   function formulaireGamme(gamme, valeursInitiales) {
@@ -319,8 +327,7 @@ Object.assign(Preventif, (() => {
       if (DECLENCHEURS_DU_CHAMP[nom]) bloc.dataset.declencheurs = DECLENCHEURS_DU_CHAMP[nom].join(' ');
       formulaire.appendChild(bloc);
     };
-    ajouter('equipement_id', UI.champ(definitionChamp('equipement_id'), valeur('equipement_id'),
-      { liste: listeEquipements(valeur('equipement_id')), obligatoire: true }));
+    ajouter('equipement_id', champEquipement(valeur('equipement_id')));
     ajouter('libelle', UI.champ(definitionChamp('libelle'), valeur('libelle'), { obligatoire: true, attributs: { maxlength: '160' } }));
     ajouter('declencheur', UI.champ(Object.assign({}, definitionChamp('declencheur'), { type: 'ref' }), valeur('declencheur') || 'date', {
       obligatoire: true, liste: Object.keys(DECLENCHEURS).map((cle) => ({ valeur: cle, libelle: DECLENCHEURS[cle] })),

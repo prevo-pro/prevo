@@ -467,7 +467,20 @@ class TestEcrans(CasPreventif):
             page.select_option(formulaire + "[name=declencheur]", "date")
             page.click(formulaire + "button[type=submit]")                        # vide : erreurs, rien d'écrit
             self.assertTrue(page.is_visible(formulaire + "[data-champ=libelle] .erreur-champ"))
-            page.select_option(formulaire + "[name=equipement_id]", equipement)
+            # L13 : le sélecteur commun (repère · désignation · emplacement) ; la recherche porte sur les trois
+            ligne = par_id(serveur.dossier, "equipements.csv")[equipement]
+            self.assertEqual(page.locator(formulaire + "select[name=equipement_id]").count(), 0)
+            page.fill(formulaire + ".selecteur-recherche input[type=search]", brut(ligne["designation"]))
+            option = page.locator(formulaire + '.selecteur-option[data-id="%s"]' % equipement)
+            option.wait_for()
+            self.assertIn(brut(ligne["repere"]), option.inner_text())
+            self.assertIn(brut(ligne["designation"]), option.inner_text())
+            if option.locator("small").count():
+                page.fill(formulaire + ".selecteur-recherche input[type=search]", option.locator("small").inner_text())
+                self.assertTrue(page.locator(formulaire + '.selecteur-option[data-id="%s"]' % equipement).count() == 1)
+            page.fill(formulaire + ".selecteur-recherche input[type=search]", brut(ligne["repere"]))
+            page.click(formulaire + '.selecteur-option[data-id="%s"]' % equipement)
+            self.assertEqual(page.input_value(formulaire + "input[name=equipement_id]"), equipement)
             page.fill(formulaire + "[name=libelle]", "Contrôle des carters (test)")
             page.fill(formulaire + "[name=periodicite_jours]", "45")
             page.fill(formulaire + "[name=avance_jours]", "2")
