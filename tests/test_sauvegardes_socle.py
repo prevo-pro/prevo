@@ -104,6 +104,12 @@ def fichiers_de(dossier):
     return {p.relative_to(dossier).as_posix(): p.read_bytes() for p in sorted(dossier.rglob("*")) if p.is_file()}
 
 
+def sans_le_journal_du_serveur(fichiers):
+    """Les fichiers sans journal-serveur.log et ses anciens fichiers (T547, L34 : écrit à chaque démarrage, une fois le
+    format contrôlé ; ce n'est pas une donnée)."""
+    return {chemin: octets for chemin, octets in fichiers.items() if not chemin.startswith("journal-serveur.log")}
+
+
 def csv_a_la_racine(fichiers):
     return {chemin: octets for chemin, octets in fichiers.items() if "/" not in chemin and chemin.endswith(".csv")}
 
@@ -377,9 +383,10 @@ class TestAvantMiseAJour(CasDossier):
 
     def test_f2_premier_demarrage_puis_second_sans_effet(self):
         copie = self.premier_demarrage("f2-v1.1.0")
-        avant_second = fichiers_de(copie)
+        avant_second = sans_le_journal_du_serveur(fichiers_de(copie))
         with commun.ServeurPrevo(source=copie) as second:
-            self.assertEqual(fichiers_de(second.dossier), avant_second)       # ni sauvegarde, ni fichier réécrit
+            # ni sauvegarde, ni fichier réécrit ; journal-serveur.log (T547, L34), le journal du serveur, grandit
+            self.assertEqual(sans_le_journal_du_serveur(fichiers_de(second.dossier)), avant_second)
 
     def test_f3_premier_demarrage_passage_au_format_4(self):
         self.premier_demarrage("f3-v1.2.0")

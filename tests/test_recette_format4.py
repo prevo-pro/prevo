@@ -67,7 +67,7 @@ from jeux_formats import copier_jeu
 import test_formats_navigateur as navigateur
 from test_migration_serveur import (AJOUTS_PAR_FORMAT, COLONNES_RESERVES, FORMATS_D_UNE_BASE_3, FORMATS_DE_F1,
                                     FORMATS_DE_F2, QUINZE_RESERVES, RESERVES, SERVEUR, UNE_RESERVE, ajouts_depuis,
-                                    fichiers_de, lire_table, octets_csv, requete)
+                                    fichiers_de, lire_table, octets_csv, requete, sans_le_journal_du_serveur)
 
 # ---------------------------------------------------------------------------
 # Ce que la recette attend de chaque jeu
@@ -192,9 +192,9 @@ def passage_serveur(nom_jeu, comptes=False):
             resultat["console"] = serveur.sortie_console()
             copie = temporaire / "apres"
             shutil.copytree(serveur.dossier, copie)
-        resultat["avant_second"] = fichiers_de(copie)
+        resultat["avant_second"] = sans_le_journal_du_serveur(fichiers_de(copie))
         with ServeurPrevo(source=copie, arguments=arguments) as second:
-            resultat["second"] = fichiers_de(second.dossier)
+            resultat["second"] = sans_le_journal_du_serveur(fichiers_de(second.dossier))
             resultat["etat_second"] = etat_du_format(second)
         return resultat
 
@@ -311,8 +311,9 @@ class TestServeur(VerificationsDuPassage, unittest.TestCase):
     def verifier_demarrages(self, nom_jeu, comptes=False):
         resultat = passage_serveur(nom_jeu, comptes)
         passage = ATTENDUS[nom_jeu][0] < FORMAT_COURANT
+        # T547 (L34) : le serveur écrit aussi son journal (journal-serveur.log), une fois le format contrôlé.
         self.verifier_ecritures_du_passage(nom_jeu, "serveur", resultat["origine"], resultat["apres"],
-                                           {DERNIERE_VERSION})
+                                           {DERNIERE_VERSION, "journal-serveur.log"})
         self.assertEqual(resultat["etat"]["migration"], "faite" if passage else "rien", resultat["etat"])
         self.assertEqual((resultat["etat"]["base"], resultat["etat"]["plus_recent"], resultat["etat"]["tables_abimees"]),
                          (FORMAT_COURANT, False, []))

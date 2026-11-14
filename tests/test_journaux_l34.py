@@ -159,6 +159,25 @@ class TestDiagnosticSansSecret(unittest.TestCase):
         self.assertIn(b"ancienne ligne", tout)
 
 
+class TestJournalEnAttente(unittest.TestCase):
+
+    def test_rien_ecrit_avant_le_controle_du_format_et_jamais_en_lecture_seule(self):
+        dossier = Path(tempfile.mkdtemp(prefix="prevo-l34-attente-"))
+        self.addCleanup(shutil.rmtree, dossier, True)
+        ouvert = serveur.JournalServeur(str(dossier / "ouvert.log"), attente=True)
+        ouvert.ecrire("ligne du démarrage")
+        self.assertFalse((dossier / "ouvert.log").exists())
+        ouvert.ouvrir()
+        ouvert.ecrire("après le contrôle")
+        lignes = (dossier / "ouvert.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([ligne[20:] for ligne in lignes], ["ligne du démarrage", "après le contrôle"])
+        lecture_seule = serveur.JournalServeur(str(dossier / "lecture-seule.log"), attente=True)
+        lecture_seule.ecrire("ligne du démarrage")
+        lecture_seule.abandonner()
+        lecture_seule.ecrire("plus tard")
+        self.assertFalse((dossier / "lecture-seule.log").exists())
+
+
 class TestDebitParPoste(unittest.TestCase):
 
     def test_par_poste_et_fenetre_glissante(self):

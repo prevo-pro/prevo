@@ -4384,7 +4384,8 @@ repli `onlogon` (tâche de l'utilisateur, sans droits). L'assistant lance `Insta
 `Start-Process powershell -Verb RunAs` après avoir affiché son contenu ; refus de l'élévation ⇒ repli proposé.
 Linux : `prevo.service` (utilisateur `prevo`, `Restart=on-failure`, `ProtectSystem=full`, `ProtectHome=yes`,
 `ReadWritePaths=<donnees>`) et les commandes à copier ; macOS : `pro.prevo.serveur.plist` (agent, `RunAtLoad`,
-`KeepAlive`). Le serveur écrit toujours `donnees/journal-serveur.log` (rotation 5 × 1 Mo ; T547) et expose son état
+`KeepAlive`). Le serveur écrit toujours `donnees/journal-serveur.log` (rotation 5 × 1 Mo ; T547), une fois le format des
+données contrôlé (lignes du démarrage gardées en mémoire jusque-là ; lecture seule D169 : rien) et expose son état
 à `/api/installation/etat` (loopback).
 
 ### 22.10 Assistant d'installation (D131, CS130)

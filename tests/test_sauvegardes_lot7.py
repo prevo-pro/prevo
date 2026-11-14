@@ -106,10 +106,13 @@ def contenu_du_dossier(dossier):
 
 
 def etat_du_dossier(dossier):
-    """{chemin relatif: (taille, date, empreinte)} de tout ce que contient un dossier (dossiers compris)."""
+    """{chemin relatif: (taille, date, empreinte)} de tout ce que contient un dossier (dossiers compris), sauf le journal
+    du serveur (T547, L34 : journal-serveur.log note chaque écriture demandée, ce n'est pas une donnée)."""
     dossier = Path(dossier)
     etat = {}
     for chemin in sorted(dossier.rglob("*")):
+        if chemin.name.startswith("journal-serveur.log"):
+            continue
         statistiques = chemin.stat()
         empreinte = hashlib.sha256(chemin.read_bytes()).hexdigest() if chemin.is_file() else "dossier"
         etat[chemin.relative_to(dossier).as_posix()] = (statistiques.st_size, statistiques.st_mtime_ns, empreinte)

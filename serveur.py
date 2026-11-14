@@ -907,18 +907,42 @@ class JournalServeur:
     """Journal du serveur : donnees/journal-serveur.log, 5 fichiers de 1 Mo au plus. Écrit dans tous les cas, avec
     ou sans console (T547, L34) : la console (afficher), les erreurs internes et celles des écrans (POST
     /api/erreur-ecran). Jamais de secret : ni mot de passe, ni jeton, ni clé (afficher journal=False). Lisible par le
-    responsable seul (Paramètres, fichier de diagnostic) ; donnees/ n'est jamais servi en statique."""
+    responsable seul (Paramètres, fichier de diagnostic) ; donnees/ n'est jamais servi en statique.
+    T547 : ouvert par main « en attente » (attente=True) : les lignes du démarrage sont gardées en mémoire (500 au plus)
+    et rien n'est écrit dans donnees/ tant que le format des données n'est pas contrôlé (D168, D169, CS141). ouvrir()
+    les écrit et passe à l'écriture directe ; abandonner() les jette et n'écrit plus jamais (lecture seule : données
+    d'un format plus récent, aucune écriture ; --reinitialiser : la console seule)."""
 
-    def __init__(self, chemin):
+    LIGNES_EN_ATTENTE_MAX = 500
+
+    def __init__(self, chemin, attente=False):
         self.chemin = chemin
         self.verrou = threading.Lock()
+        self.en_attente = [] if attente else None
+        self.abandonne = False
 
-    def ecrire(self, texte):
+    def ouvrir(self):
         with self.verrou:
+            lignes, self.en_attente = self.en_attente or [], None
+        for horodatage, texte in lignes:
+            self.ecrire(texte, horodatage)
+
+    def abandonner(self):
+        with self.verrou:
+            self.en_attente, self.abandonne = None, True
+
+    def ecrire(self, texte, horodatage=None):
+        horodatage = horodatage or datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with self.verrou:
+            if self.abandonne:
+                return
+            if self.en_attente is not None:
+                if len(self.en_attente) < self.LIGNES_EN_ATTENTE_MAX:
+                    self.en_attente.append((horodatage, texte))
+                return
             try:
                 if os.path.exists(self.chemin) and os.path.getsize(self.chemin) >= TAILLE_JOURNAL_SERVEUR:
                     self.tourner()
-                horodatage = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 with open(self.chemin, 'a', encoding='utf-8', newline='\n') as fichier:
                     fichier.write('%s %s\n' % (horodatage, texte))
             except OSError:
@@ -936,7 +960,7 @@ class JournalServeur:
         os.replace(self.chemin, self.chemin + '.1')
 
 
-JOURNAL_SERVEUR = None          # JournalServeur posé par main, toujours (T547, L34)
+JOURNAL_SERVEUR = None          # JournalServeur posé par main, toujours (T547, L34), écrit après le contrôle du format
 
 
 # ---------------------------------------------------------------------------
@@ -9342,9 +9366,11 @@ def main(arguments=None):
         config.reglages = reglages
         creer_dossiers(config)
         choisir_langue_console(config)      # T297 : langue_defaut de parametres.csv, sinon celle du système
-        # T547 (L34) : le journal est écrit dans tous les cas, avec ou sans console (--journal reste accepté).
-        JOURNAL_SERVEUR = JournalServeur(os.path.join(config.dossier_donnees, NOM_JOURNAL_SERVEUR))
+        # T547 (L34) : le journal est écrit dans tous les cas, avec ou sans console (--journal reste accepté), mais
+        # seulement une fois le format des données contrôlé (en attente jusque-là ; lecture seule : jamais).
+        JOURNAL_SERVEUR = JournalServeur(os.path.join(config.dossier_donnees, NOM_JOURNAL_SERVEUR), attente=True)
         if options.reinitialiser:
+            JOURNAL_SERVEUR.abandonner()
             reinitialiser_en_ligne_de_commande(config, options.reinitialiser)
             return
         avertissements = verifier_regles_portee(reglages, il_existe_un_responsable(config))
@@ -9361,6 +9387,10 @@ def main(arguments=None):
     # plus récentes : lecture seule (D169). T187 (D170) : la sauvegarde « avant-mise-a-jour » d'abord (nouvelle
     # version de Prévo), la sauvegarde du jour ensuite (rotation à 30 jours).
     preparer_donnees_au_demarrage(config)
+    if (config.format_donnees or {}).get('plus_recent'):
+        JOURNAL_SERVEUR.abandonner()            # D169, CS141 : lecture seule, aucune écriture (console seule)
+    else:
+        JOURNAL_SERVEUR.ouvrir()
     serveurs, config.port = demarrer_serveur(reglages['port_http'], config)
     if tailscale_attendu(reglages):
         detecter_tailscale_pour(config)         # §22.8 : commandes locales, une fois au démarrage (ligne de console)

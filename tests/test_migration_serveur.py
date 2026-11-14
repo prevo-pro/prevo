@@ -204,6 +204,14 @@ def fichiers_de(dossier):
 MOTIF_SAUVEGARDE_DU_DEMARRAGE = re.compile(r"^sauvegardes/\d{4}-\d{2}-\d{2}(_\d{6}_avant-mise-a-jour)?/")
 
 
+def sans_le_journal_du_serveur(fichiers):
+    """Les fichiers sans journal-serveur.log et ses anciens fichiers (T547, L34) : le journal du serveur est écrit à
+    chaque démarrage, une fois le format contrôlé ; ce n'est pas une donnée. Jamais retiré en lecture seule (D169) :
+    là, rien n'est écrit, journal compris (tests du format plus récent, qui n'appellent pas cette fonction)."""
+    return {chemin: octets for chemin, octets in fichiers.items()
+            if not re.match(r"^journal-serveur\.log(\.\d+)?$", chemin)}
+
+
 def sans_le_demarrage(fichiers):
     """Les fichiers (fichiers_de) sans ce que T187 ajoute au démarrage : derniere-version.json, les sauvegardes du jour
     et « avant-mise-a-jour » ; ni fichiers-abimes.json (T206, écrit quand une table est abîmée)."""
@@ -363,7 +371,7 @@ class CasJeux(unittest.TestCase):
             self.assertRegex(ligne["date_heure"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
         crees = {RESERVES} if reserves else set()
         changes = set(ajouts) | {"journal", "parametres"} | ({TABLE_RESERVES} if reserves else set())
-        donnees_apres = {c: o for c, o in sans_le_demarrage(apres).items() if "/" not in c}
+        donnees_apres = {c: o for c, o in sans_le_journal_du_serveur(sans_le_demarrage(apres)).items() if "/" not in c}
         self.assertEqual(set(donnees_apres), {c for c in origine if "/" not in c} | {"journal.csv"} | crees)
         for chemin, octets in origine.items():
             if chemin[:-len(".csv")] not in changes:
@@ -372,9 +380,9 @@ class CasJeux(unittest.TestCase):
         completes = list(ajouts) + ([TABLE_RESERVES] if reserves else [])
         self.assertIn("fichiers complétés : %s." % noms_de_fichiers(completes), console)
         # Second démarrage : rien n'est écrit, aucune sauvegarde de plus.
-        avant_second = fichiers_de(copie)
+        avant_second = sans_le_journal_du_serveur(fichiers_de(copie))
         with ServeurPrevo(source=copie) as second:
-            self.assertEqual(fichiers_de(second.dossier), avant_second)
+            self.assertEqual(sans_le_journal_du_serveur(fichiers_de(second.dossier)), avant_second)
             self.assertEqual(self.info_format(second)["migration"], "rien")
         return sauvegarde
 
