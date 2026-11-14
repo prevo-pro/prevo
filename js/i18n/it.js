@@ -4894,6 +4894,7 @@ I18n.ajouter('it', {
   'installation.formulaire_certificat.ai_mon_certificat_deux': 'Ho il mio certificato (due file PEM)',
   'installation.formulaire_certificat.automatique_recommande': 'Automatico (consigliato)',
   'installation.formulaire_certificat.certificat_fichier_pem': 'Certificato (file PEM)',
+  'installation.formulaire_certificat.certificat_pret': 'Certificato pronto per: {noms}.',
   'installation.formulaire_certificat.certificat_pret_etiquettes_qr': 'Certificato pronto per: {noms}. Le etichette QR già stampate in http vanno ristampate.',
   'installation.formulaire_certificat.certificat_reconnu_partout_rien': 'Certificato riconosciuto ovunque, nulla da installare sui telefoni; Prévo è raggiungibile solo tramite l\'indirizzo Tailscale.',
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Scegli come Prévo ottiene il suo certificato.',

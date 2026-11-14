@@ -4890,6 +4890,7 @@ I18n.ajouter('fr', {
   'installation.formulaire_certificat.ai_mon_certificat_deux': 'J\'ai mon certificat (deux fichiers PEM)',
   'installation.formulaire_certificat.automatique_recommande': 'Automatique (recommandé)',
   'installation.formulaire_certificat.certificat_fichier_pem': 'Certificat (fichier PEM)',
+  'installation.formulaire_certificat.certificat_pret': 'Certificat prêt pour : {noms}.',
   'installation.formulaire_certificat.certificat_pret_etiquettes_qr': 'Certificat prêt pour : {noms}. Les étiquettes QR déjà imprimées en http sont à réimprimer.',
   'installation.formulaire_certificat.certificat_reconnu_partout_rien': 'Certificat reconnu partout, rien à installer sur les téléphones ; Prévo n\'est joignable que par l\'adresse Tailscale.',
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Choisissez comment Prévo obtient son certificat.',

@@ -701,6 +701,7 @@ class TestDeplacerEtBrouillon(CasAssistant):
         self.assertEqual((etat["etapes"]["situation"], etat["etapes"]["portee"], etat["etapes"]["compte"],
                           etat["etapes"]["tailscale"]), ("fait", "fait", "fait", "a_faire"))
         self.assertTrue(etat["responsable_existe"])
+        self.assertTrue(etat["parc_present"])                                   # L07 : la démo a des machines
         fiche = self.ok(client.get("fiche"))
         self.assertIn("http://pc-atelier.lan:8090/", fiche["adresses"])
         self.assertTrue(all(a.startswith("http://") and a.endswith(":8090/") for a in fiche["adresses"]))
@@ -720,6 +721,7 @@ class TestDeplacerEtBrouillon(CasAssistant):
         self.assertEqual(self.ok(client.post("identifiant", {"prenom": 3})), {"identifiant": ""})
         self.assertFalse(Path(instance.config.dossier_donnees, "installation.json").exists())
         self.assertIsNone(self.ok(client.get("etat"))["responsable_identifiant"])
+        self.assertFalse(self.ok(client.get("etat"))["parc_present"])            # L07 : aucune machine (aucun CSV)
         self.ok(client.post("situation", {"situation": "equipe"}))
         self.ok(client.post("portee", {"portee": "atelier"}))
         annonce = self.ok(client.post("identifiant", {"prenom": "Nicolas", "nom": "Briand"}))["identifiant"]

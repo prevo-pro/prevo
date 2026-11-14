@@ -4412,7 +4412,8 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   réglage avant tout brouillon), "portee", "situation", "etapes", "brouillon" (null sans brouillon),
   "csv_presents" (des CSV dans le dossier des données : migration 1.2), "donnees_anterieures" (T521 : une ligne au
   moins dans une table hors `TABLES_D_UNE_BASE_NEUVE` — `parametres`, `codes_defaillance`, `journal` — ; faux pour une
-  base que cette version vient de créer vide), "nombre_csv", "derniere_modification"
+  base que cette version vient de créer vide), "nombre_csv", "parc_present" (L07 : une ligne au moins dans
+  `equipements.csv` ; sans elle, le certificat fait ne parle pas d'étiquettes QR à réimprimer), "derniere_modification"
   (`AAAA-MM-JJTHH:MM:SS` du CSV le plus récent, null sans CSV), "dossier" (celui de Prévo),
   "dossier_conseille" (`C:\Prevo` sous Windows, null ailleurs), "dans_dossier_conseille", "python_embarque"
   (`python/python.exe` présent), "responsable_existe", "responsable_identifiant" (L03 : identifiant du responsable

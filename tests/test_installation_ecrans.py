@@ -317,6 +317,11 @@ class TestParcours(CasInstallation):
         self.assertEqual(len(retenues), 1)
         retenues[0].continue_()
         page.unroute("**/api/installation/certificat")
+        # L07 : la démo a des machines, le rappel des étiquettes QR à réimprimer est dit ; sans machine, il ne l'est pas.
+        page.wait_for_function("document.getElementById('toast').textContent.includes('à réimprimer')")
+        self.assertEqual(page.evaluate("""(parc) => InstallationEtapes.formulaire('certificat', { brouillon: () => ({}),
+            situation: () => 'equipe', etat: { parc_present: parc, tailscale: {} }, aideOption: () => '' })
+            .reussite({ mode: 'automatique', noms_certificat: ['pc-atelier'] })""", False), "Certificat prêt pour : pc-atelier.")
         # Tailscale sans objet sur le Wi-Fi : sauté.
         self.attendre_etape("demarrage")
         self.assertEqual(len(self.lignes_sautees()), 1)

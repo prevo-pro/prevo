@@ -3172,6 +3172,17 @@ def donnees_anterieures(dossier, tables):
     return False
 
 
+def parc_present(dossier, tables):
+    """L07 (lot 2) : vrai si equipements.csv a au moins une ligne (des étiquettes QR ont pu être imprimées) ; un fichier
+    illisible compte comme présent (le rappel de réimpression reste dit)."""
+    if 'equipements' not in tables:
+        return False
+    try:
+        return bool(dictionnaires_csv(lire_octets(os.path.join(dossier, 'equipements.csv')), 'equipements'))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return True
+
+
 def etat_installation(config):
     """GET /api/installation/etat : la configuration est-elle présente, le brouillon et ses étapes, des CSV dans le
     dossier des données (migration depuis 1.2 : combien, modifiés quand), le dossier de Prévo, le Python embarqué, un
@@ -3198,6 +3209,7 @@ def etat_installation(config):
             'brouillon': brouillon,
             'csv_presents': bool(tables),
             'nombre_csv': len(tables),
+            'parc_present': parc_present(config.dossier_donnees, tables),             # L07 (lot 2)
             'derniere_modification': derniere_modification_csv(config.dossier_donnees, tables),
             'dossier': os.path.abspath(config.dossier_application),
             'dossier_conseille': DOSSIER_CONSEILLE_WINDOWS if windows else None,

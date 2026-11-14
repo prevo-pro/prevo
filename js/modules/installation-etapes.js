@@ -293,7 +293,11 @@ const InstallationEtapes = (() => {
       },
       reussite(donnees) {
         const noms = (donnees.noms_certificat || []).join(', ');
-        if (donnees.mode === 'automatique') return I18n.t('installation.formulaire_certificat.certificat_pret_etiquettes_qr', { noms });
+        // L07 (lot 2) : « étiquettes à réimprimer » seulement si le parc a déjà des machines (GET etat : parc_present).
+        if (donnees.mode === 'automatique') {
+          return I18n.t(c.etat.parc_present ? 'installation.formulaire_certificat.certificat_pret_etiquettes_qr'
+            : 'installation.formulaire_certificat.certificat_pret', { noms });
+        }
         return '';
       },
     };

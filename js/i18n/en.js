@@ -4892,6 +4892,7 @@ I18n.ajouter('en', {
   'installation.formulaire_certificat.ai_mon_certificat_deux': 'I have my own certificate (two PEM files)',
   'installation.formulaire_certificat.automatique_recommande': 'Automatic (recommended)',
   'installation.formulaire_certificat.certificat_fichier_pem': 'Certificate (PEM file)',
+  'installation.formulaire_certificat.certificat_pret': 'Certificate ready for: {noms}.',
   'installation.formulaire_certificat.certificat_pret_etiquettes_qr': 'Certificate ready for: {noms}. QR labels already printed with http need to be printed again.',
   'installation.formulaire_certificat.certificat_reconnu_partout_rien': 'Certificate recognised everywhere, nothing to install on the phones; Prévo can only be reached through the Tailscale address.',
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Choose how Prévo gets its certificate.',

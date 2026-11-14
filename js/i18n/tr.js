@@ -4895,6 +4895,7 @@ I18n.ajouter('tr', {
   'installation.formulaire_certificat.ai_mon_certificat_deux': 'Sertifikam var (iki PEM dosyası)',
   'installation.formulaire_certificat.automatique_recommande': 'Otomatik (önerilir)',
   'installation.formulaire_certificat.certificat_fichier_pem': 'Sertifika (PEM dosyası)',
+  'installation.formulaire_certificat.certificat_pret': 'Sertifika şunlar için hazır: {noms}.',
   'installation.formulaire_certificat.certificat_pret_etiquettes_qr': 'Sertifika şunlar için hazır: {noms}. http ile basılmış QR etiketlerinin yeniden basılması gerekir.',
   'installation.formulaire_certificat.certificat_reconnu_partout_rien': 'Sertifika her yerde tanınır, telefonlara kurulacak bir şey yok; Prévo yalnızca Tailscale adresinden erişilebilir.',
   'installation.formulaire_certificat.choisissez_comment_prevo_obtient': 'Prévo\'nun sertifikasını nasıl alacağını seçin.',
