@@ -10,7 +10,7 @@
 //                           1. Constantes et petits outils (textes, dates, libellés)
 //                           2. Règles métier PURES, exposées pour les tests (aucune écriture)
 //   ordres-ecritures.js    3. Écritures : toujours par Donnees.modifier (contrôles DANS la fonction)
-//   ordres-liste.js        4. Liste des OT (#/ot) : filtres, tableau triable, cartes, export CSV
+//   ordres-liste.js        4. Liste des OT (#/ot) : filtres (règle filtrer), tableau triable, cartes, export CSV
 //   ordres-fiche.js        5. Nouvel OT (#/ot/nouveau, ?equipement=…, ?urgence=1)
 //                          6. Fiche OT (#/ot/<id>) : en-tête, étapes, consignation, anomalie d'un
 //                             OT préventif et demandes liées, actions, messages
@@ -656,34 +656,11 @@ const Ordres = (() => {
     };
   }
 
-  /** Filtre des OT de la liste. filtres : { etat, priorite, technicien, type, recherche }. */
-  function filtrer(ordres, filtres) {
-    const reglages = filtres || {};
-    const mots = UI.normaliserRecherche(reglages.recherche).split(' ').filter(Boolean);
-    const date = aujourdhui();
-    return ordres.filter((ot) => {
-      if (reglages.etat === 'ouverts' && !estOuvert(ot)) return false;
-      if (reglages.etat === 'retard' && !enRetard(ot, date)) return false;
-      if (reglages.etat === 'clotures' && !STATUTS_CLOTURES.includes(ot.statut)) return false;
-      if (reglages.etat === 'annules' && ot.statut !== 'Annulé') return false;
-      if (reglages.priorite && ot.priorite !== reglages.priorite) return false;
-      if (reglages.technicien === '__aucun' && ot.technicien_id) return false;
-      if (reglages.technicien && reglages.technicien !== '__aucun' && ot.technicien_id !== reglages.technicien) return false;
-      if (reglages.type && ot.type !== reglages.type) return false;
-      if (mots.length) {
-        const equipement = Donnees.trouver('equipements', ot.equipement_id) || {};
-        const cible = UI.normaliserRecherche([ot.id, ot.titre, equipement.repere, equipement.designation, ot.equipement_id].join(' '));
-        if (!mots.every((mot) => cible.includes(mot))) return false;
-      }
-      return true;
-    });
-  }
-
   return {
     STATUTS, TYPES, PRIORITES, rappelConsignation, RAISONS_HABILITATION, ORIGINES_HABILITATION,
     // règles pures (ARCHITECTURE.md §10)
     transitionsPossibles, verifierPassage, verifierCloture, cout, verifierHabilitation, estOuvert, enRetard,
-    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, filtrer, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire,
+    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire,
     // RG8 (D186, D191) : exigences de l'OT, contrôle, dérogation du responsable (marqueur du journal)
     habilitationsExigees, controleHabilitation, marqueurDerogation, lireDerogation, derogationAccordee,
     // affichage (les écritures, l'export et le bon de travail sont ajoutés par les fichiers suivants)

@@ -7,13 +7,36 @@
 Object.assign(Ordres, (() => {
 
   // Constantes, outils et règles de ordres-regles.js.
-  const { STATUTS, TYPES, PRIORITES, enRetard, filtrer, nomTechnicien } = Ordres;
-  const { memoire, texte, aujourdhui, estResponsable, estTechnicien, monTechnicienId, equipementDe,
+  const { STATUTS, TYPES, PRIORITES, estOuvert, enRetard, nomTechnicien } = Ordres;
+  const { STATUTS_CLOTURES, memoire, texte, aujourdhui, estResponsable, estTechnicien, monTechnicienId, equipementDe,
     repereEquipement, listeTechniciens } = Ordres.interne;
 
   // ===========================================================================================
   // 4. Liste des OT (#/ot)
   // ===========================================================================================
+
+  /** Filtre des OT de la liste (règle pure, exposée : Ordres.filtrer ; T539 : venue de ordres-regles.js). filtres : { etat, priorite, technicien, type, recherche }. */
+  function filtrer(ordres, filtres) {
+    const reglages = filtres || {};
+    const mots = UI.normaliserRecherche(reglages.recherche).split(' ').filter(Boolean);
+    const date = aujourdhui();
+    return ordres.filter((ot) => {
+      if (reglages.etat === 'ouverts' && !estOuvert(ot)) return false;
+      if (reglages.etat === 'retard' && !enRetard(ot, date)) return false;
+      if (reglages.etat === 'clotures' && !STATUTS_CLOTURES.includes(ot.statut)) return false;
+      if (reglages.etat === 'annules' && ot.statut !== 'Annulé') return false;
+      if (reglages.priorite && ot.priorite !== reglages.priorite) return false;
+      if (reglages.technicien === '__aucun' && ot.technicien_id) return false;
+      if (reglages.technicien && reglages.technicien !== '__aucun' && ot.technicien_id !== reglages.technicien) return false;
+      if (reglages.type && ot.type !== reglages.type) return false;
+      if (mots.length) {
+        const equipement = Donnees.trouver('equipements', ot.equipement_id) || {};
+        const cible = UI.normaliserRecherche([ot.id, ot.titre, equipement.repere, equipement.designation, ot.equipement_id].join(' '));
+        if (!mots.every((mot) => cible.includes(mot))) return false;
+      }
+      return true;
+    });
+  }
 
   // Choix du filtre « état » de la liste (valeur → libellé).
   function etatsListe() {
@@ -237,7 +260,7 @@ Object.assign(Ordres, (() => {
   Object.assign(Ordres.interne, { afficherListe, optionsHtml, badgeRetard, badgeAnomalie, origineHtml });
 
   return {
-    // export (ARCHITECTURE.md §10)
-    csvListe,
+    // règle pure et export (ARCHITECTURE.md §10)
+    filtrer, csvListe,
   };
 })());
