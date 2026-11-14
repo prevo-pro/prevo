@@ -44,7 +44,8 @@ NON_IGNORES = ["donnees/demo/equipements.csv", "donnees/.gitkeep", "docs/brief-g
 # garanties-encarts.js) juste après le module Controles (controles-reserves-ecrans.js). Lot L4 (T454) :
 # parametres-reglages.js (le tableau REGLAGES, sorti de parametres.js) juste avant parametres.js. Lot 1 ergonomie
 # (T515) : ordres-codes.js (codes cause et remède de la clôture) juste après ordres-regles.js. Lot 1 ergonomie (T521) :
-# solo-flux.js et solo-accueil.js (mode Solo sans la couche équipe) juste après ordres-prise.js.
+# solo-flux.js et solo-accueil.js (mode Solo sans la couche équipe) juste après ordres-prise.js. Lot 2 ergonomie (T539) :
+# ordres-cloture.js (fenêtre « Clore » et messages après une clôture, sortis de ordres-fiche.js) juste après ordres-fiche.js.
 ORDRE_MODULES = [
     "apropos.js", "mise-a-jour.js", "aide-ecrans-textes.js", "aide-ecrans.js", "acces-textes.js", "connexion-ecrans.js",
     "installation-etapes.js", "installation-ecrans.js", "installation-fiche.js",
@@ -52,7 +53,8 @@ ORDRE_MODULES = [
     "ia.js", "ia-masquage.js", "ia-prompts.js", "ia-encadre.js", "ia-serveur.js", "dictee.js", "poste.js", "brouillons.js",
     "parc-regles.js", "parc-arbre.js", "parc-formulaires.js", "parc-etiquettes.js", "parc-fiche.js",
     "demandes-regles.js", "demandes-retour.js", "demandes-ecritures.js", "demandes-signaler.js", "demandes-liste.js", "demandes-fiche.js",
-    "ordres-regles.js", "ordres-codes.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-onglets.js",
+    "ordres-regles.js", "ordres-codes.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-cloture.js",
+    "ordres-onglets.js",
     "ordres-pieces.js", "ordres-impression.js", "ordres-habilitations.js", "ordres-prise.js",
     "solo-flux.js", "solo-accueil.js",
     "preventif-regles.js", "preventif-ecritures.js", "preventif-ecrans.js", "preventif-calendrier.js",

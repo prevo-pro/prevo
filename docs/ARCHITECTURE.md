@@ -82,7 +82,8 @@ le lot 5 ajoute les sept fichiers `import-*.js` à la fin, après `parametres-co
 `equipe-ecrans.js` et `ordres-habilitations.js` juste après `ordres-impression.js`, §15.1 ; le lot L4 (T450) insère
 les cinq fichiers `garanties-*.js` juste après `controles-reserves-ecrans.js`, puis (T454) `parametres-reglages.js`
 juste avant `parametres.js`, §15.1 ; T486 : `import-types.js` juste après `import-regles.js`, §18.1 ; T515 :
-`ordres-codes.js` juste après `ordres-regles.js`, §15.1), `js/app.js` (en dernier).
+`ordres-codes.js` juste après `ordres-regles.js`, §15.1 ; T539 : `ordres-cloture.js` juste après `ordres-fiche.js`,
+§15.1), `js/app.js` (en dernier).
 Langue active (T234, T295) : `js/i18n-chargeur.js` lit `localStorage` « prevo.langue » (le choix du poste, écrit par
 le sélecteur de langue, §24.10) puis « prevo.langue.installation » (la langue de l'installation, §24.11 ; la langue du
 compte viendra plus tard) ; la première des deux déclarée par `js/i18n/langues.js` (sinon le français) est la langue
@@ -1529,7 +1530,9 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
 - **Ordre de chargement** (remplace celui du §14.2 ; `ORDRE_MODULES` de `tests/test_depot.py` change
   avec lui ; T329 : `brouillons.js` juste après `poste.js`, voir « Brouillons gardés sur l'appareil » ; T515 :
   `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11 ; T521 : `solo-flux.js` et
-  `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11 ; lot 2 ergonomie, T543 (L29) :
+  `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11 ; lot 2 ergonomie, T539 :
+  `ordres-cloture.js` juste après `ordres-fiche.js` (fenêtre « Clore » sortie de la fiche, messages après une clôture :
+  L22, L23) ; T543 (L29) :
   `pannes-recurrentes.js` juste après `causes-frequentes.js`, objet `PannesRecurrentes` : panne à répétition sur une
   machine — 3 pannes (demandes ou OT correctifs, une demande et son OT comptés une fois) en 30 jours, réglages
   `pannes_recurrentes_seuil` et `pannes_recurrentes_jours` ; tuile de l'accueil du responsable, bandeau sur la demande
@@ -1538,8 +1541,8 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js  pannes-recurrentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-retour.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
-  ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-onglets.js  ordres-pieces.js
-  ordres-impression.js  ordres-habilitations.js  ordres-prise.js  solo-flux.js  solo-accueil.js
+  ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-cloture.js  ordres-onglets.js
+  ordres-pieces.js  ordres-impression.js  ordres-habilitations.js  ordres-prise.js  solo-flux.js  solo-accueil.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
@@ -4799,7 +4802,10 @@ Une seule base de code : tout ce qui suit ne vaut que si `App.modeSolo()` (mode_
   (`.solo-etapes` : À faire = Créé, Préparé, Planifié ; En cours = En cours, « En attente » ; Fini = clôturés ; Annulé
   à part) à la place des étapes ; « Marquer préparé », « Planifier » (et « Clôturer techniquement / administrativement »
   quand « Clore » est là) déplacés dans `<details id="solo-plus-options">` « Plus d'options » des Actions ; ceux de
-  l'onglet Préparation cachés. `<html data-solo>` (`Solo.marquer`, appelé par `construireMenus`) : solo.css cache le
+  l'onglet Préparation cachés. Lot 2 ergonomie (T539, L22 ; `ordres-cloture.js`) : une seule clôture, la fenêtre « Clore »
+  valide par « Clore » (pas « Clore et verrouiller »), sans parler de deux clôtures, et dit « OT-… est clos. » ; en
+  équipe, le technicien qui clôture techniquement lit « Votre part est terminée. Le responsable validera. » (toast et
+  message au-dessus des onglets). `<html data-solo>` (`Solo.marquer`, appelé par `construireMenus`) : solo.css cache le
   champ « Technicien » (nouvel OT, préparation, temps passé ; la valeur reste dans le formulaire), le filtre
   « Technicien » de la liste des OT (« Mes OT », « Tous les techniciens », « Non affectés ») ; la liste perd sa colonne
   « Technicien » (ordres-liste.js).

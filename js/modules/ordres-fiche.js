@@ -4,7 +4,8 @@
 // contrôles), messages et structure des onglets ; et l'écran de création #/ot/nouveau (manuel, ou
 // d'urgence avec ?urgence=1 ; ?type=, ?titre= et ?travail= pré-remplissent le formulaire, §15.7 ;
 // ?reserve= : l'OT créé est relié à cette réserve, T420). Le contenu des onglets est dans
-// ordres-onglets.js et ordres-pieces.js (ARCHITECTURE.md §14.2). Complète l'objet Ordres.
+// ordres-onglets.js et ordres-pieces.js (ARCHITECTURE.md §14.2) ; la fenêtre « Clore » et les messages après une
+// clôture dans ordres-cloture.js (T539). Complète l'objet Ordres.
 
 Object.assign(Ordres, (() => {
 
@@ -314,7 +315,7 @@ Object.assign(Ordres, (() => {
     const boutons = boutonsTransitions(ot, ['Préparé', 'Planifié', 'En cours', 'Clôturé techniquement', 'Clôturé administrativement', 'En attente', 'Annulé']);
     const lie = estVerrouille(ot) && estResponsable()
       ? UI.html`<button type="button" class="btn btn-primaire" id="ot-lie">${UI.icone('ajouter')}${I18n.t('ordres.actions.creer_ot_lie')}</button>` : '';
-    const clore = boutonClore(ot), prise = Ordres.interne.boutonsPrise(ot);   // §22.11 (D132) ; A3, L18 : ordres-prise.js
+    const clore = Ordres.interne.boutonClore(ot), prise = Ordres.interne.boutonsPrise(ot);   // ordres-cloture.js ; ordres-prise.js
     if (!boutons.length && !lie && !clore && !prise) return '';
     return UI.html`<div class="carte ot-actions sans-impression"><div class="entete-carte"><h2>${I18n.t('ordres.actions.actions')}</h2></div>
       <div class="actions">${prise}${clore}${boutons}${lie}</div></div>`;
@@ -400,7 +401,7 @@ Object.assign(Ordres, (() => {
       if (evenement.target.closest('#ot-imprimer')) imprimerBon(ot.id);
       if (evenement.target.closest('#ot-priorite')) demanderPriorite(ot);
       if (evenement.target.closest('#ot-lie')) lancerOtLie(ot);
-      if (evenement.target.closest('#ot-clore')) demanderClore(ot);
+      if (evenement.target.closest('#ot-clore')) Ordres.interne.demanderClore(ot);           // ordres-cloture.js
       const attentePiece = evenement.target.closest('button[data-action="attente-piece"]');
       if (attentePiece) mettreEnAttentePiece(ot);
     });
@@ -490,9 +491,8 @@ Object.assign(Ordres, (() => {
     // Clôture d'un préventif dont la gamme n'a pas pu être mise à jour (RG5) : l'avertissement
     // reste affiché au-dessus des onglets, et le toast le redit au lieu du succès.
     const avertissementGamme = lireAvertissementGamme(actuel.id);
-    UI.toast(avertissementGamme || actuel.id + ' : ' + Schema.libelleValeur('ordres_travail', 'statut', cible) + '.', avertissementGamme ? 'attention' : 'succes');
     const avertissements = verification.avertissements.concat(avertissementGamme ? [avertissementGamme] : []);
-    if (avertissements.length) afficherMessage('attention', avertissements.join(' '));
+    Ordres.interne.direApresTransition(actuel.id, cible, avertissementGamme, avertissements);   // L22, L23 : ordres-cloture.js
   }
 
   // Motif demandé pour En attente et Annulé : { motif_… } ; null si l'utilisateur renonce.
@@ -575,66 +575,6 @@ Object.assign(Ordres, (() => {
     App.naviguer('#/ot/' + encodeURIComponent(id));
   }
 
-  // --- Clôture en une étape (ARCHITECTURE.md §22.11, D132) : « Clore », réglage cloture_une_etape ---
-
-  /** Bouton « Clore » : réglage actif, profil responsable, OT qui peut recevoir la clôture technique. */
-  function boutonClore(ot) {
-    return Ordres.clotureUneEtape() && transitionsPossibles(ot).includes('Clôturé techniquement')
-      ? UI.html`<button type="button" class="btn btn-primaire" id="ot-clore">${UI.icone('valider')}${I18n.t('ordres.bouton_clore.clore')}</button>` : '';
-  }
-
-  // Champs de la fenêtre « Clore » : ceux des onglets Exécution et Compte rendu (mêmes libellés et
-  // aides), le temps passé et une pièce sortie du magasin (facultative, Magasin.sortir).
-  function champsClore(ot) {
-    const { lignesDeLOt, libelleArticle, nombre, aideAstuce } = Ordres.interne;
-    const total = lignesDeLOt('ot_temps', ot.id).reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
-    const technicien = App.technicienSolo() || ot.technicien_id || '';
-    const articles = Donnees.lignes('articles').filter((a) => texte(a.actif) !== '0')
-      .map((a) => ({ valeur: a.id, libelle: I18n.t('ordres.options_articles.libelle_article_stock_stock_article', { libelleArticle: libelleArticle(a), stockArticle: UI.nombreFr(Donnees.stockArticle(a.id)) }) }));
-    const fin = champOt('date_fin', texte(ot.date_fin) || Donnees.maintenant().slice(0, 16));
-    UI.$('input', fin).max = Donnees.maintenant().replace(' ', 'T');     // pas de date de fin dans le futur
-    const remise = champOt('remise_service', ot.remise_service, {
-      libelle: I18n.t('ordres.champs_clore.equipement_remis_service_securite'),
-    });
-    if (texte((equipementDe(ot) || {}).habilitation_requise)) remise.appendChild(UI.element(UI.html`<p class="aide">${Ordres.rappelConsignation()}</p>`));
-    return [
-      fin,
-      champOt('arret_production', ot.arret_production, { libelle: I18n.t('ordres.champs_clore.arret_production_pendant_intervention') }),
-      champOt('duree_arret_h', ot.duree_arret_h),
-      UI.champ({ nom: 'heures', type: 'duree', libelle: I18n.t('ordres.champs_clore.temps_passe_ajouter_heures') }, '',
-        { aide: total > 0 ? I18n.t('ordres.champs_clore.deja_saisi', { total: UI.heures(total) }) : I18n.t('ordres.champs_clore.moins_temps_passe_exige') }),
-      champOt('technicien_id', technicien, { liste: listeTechniciens(technicien), libelle: I18n.t('ordres.champs_clore.technicien_temps_passe') }),
-      UI.champ({ nom: 'article_id', type: 'ref', libelle: I18n.t('ordres.champs_clore.piece_sortie_magasin_facultatif') }, '', { liste: articles }),
-      UI.champ({ nom: 'quantite', type: 'decimal', libelle: I18n.t('ordres.champs_clore.quantite_sortie') }, '1'),
-      ...Ordres.champsCodes(ot),                 // T515 : symptôme, cause (sauf préventif), remède, « Autre »
-      champOt('compte_rendu', ot.compte_rendu, {
-        aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
-      }),
-      ...Demandes.champsMotOperateur(ot),                         // A4 : mot pour l'opérateur, si l'OT vient d'une demande
-      champOt('astuce', ot.astuce, { aide: aideAstuce() }),
-      remise,
-    ];
-  }
-
-  /** « Clore » : saisies de la fiche enregistrées, puis une seule fenêtre → Ordres.clore (technique + administrative). */
-  async function demanderClore(ot) {
-    viderMessage();
-    const sauvegarde = await enregistrerFormulairesModifies();
-    if (!sauvegarde.ok) return;
-    const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
-    const fait = await UI.fenetreAction({
-      titre: I18n.t('ordres.demander_clore.clore_actuel_id', { actuelId: actuel.id }), libelleValider: I18n.t('ordres.demander_clore.clore_verrouiller'), classe: 'ot-fenetre-clore',
-      introduction: UI.html`<p>${I18n.t('ordres.demander_clore.cloture_technique_puis_administrative')}</p>`,
-      champs: champsClore(actuel),
-      verifier: () => [],
-      action: (valeurs, contenu) => Ordres.clore(actuel, UI.lireFormulaire(contenu.closest('form'))),
-    });
-    if (!fait) { if (sauvegarde.enregistres) await apresEnregistrement(); return; }
-    await apresEnregistrement();
-    const avertissementGamme = lireAvertissementGamme(actuel.id);
-    UI.toast(avertissementGamme || I18n.t('ordres.demander_clore.cloture_techniquement_administrativement', { actuelId: actuel.id }), avertissementGamme ? 'attention' : 'succes');
-  }
-
   // Panneau d'onglet : zone de titre + contenu en lecture seule ou modifiable.
   function enteteOnglet(titre, explication) {
     return UI.html`<div class="entete-carte"><h2>${titre}</h2>${explication ? UI.html`<span class="aide">${explication}</span>` : ''}</div>`;
@@ -692,7 +632,7 @@ Object.assign(Ordres, (() => {
   // Outils prêtés aux fichiers suivants du module (usage interne).
   Object.assign(Ordres.interne, {
     afficherNouveau, afficherFiche, boutonsTransitions, declarerFormulaire, apresEnregistrement, pendant,
-    listeErreursHtml, enteteOnglet, lienOt,
+    listeErreursHtml, enteteOnglet, lienOt, afficherMessage, viderMessage, enregistrerFormulairesModifies,
     garderLeCompteRendu,
   });
 
