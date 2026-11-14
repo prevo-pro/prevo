@@ -7,7 +7,7 @@
 //      version web (VERSION_WEB, démo en ligne) : pas de serveur cherché, la démo seule et
 //      « Télécharger Prévo » ;
 //   2. chargement des 23 tables ; dossier : sauvegarde « avant-mise-a-jour » si la version de Prévo notée dans le
-//      dossier n'est pas celle-ci (D170, sauf lecture seule) ; base vide (serveur ou dossier) → « Partir des données de démo »
+//      dossier n'est pas celle-ci (D170, sauf lecture seule) ; base vide (serveur ou dossier) → « Essayer avec les données de démo »
 //      ou « Créer une base vide » ; puis format des fichiers, avant toute autre écriture (D168, D169) :
 //      dossier et démo → passage au format courant par le navigateur (sauvegarde « avant-format-vN »
 //      d'abord) ; serveur → le navigateur ne migre pas (le serveur le fait à son démarrage), bandeau au
@@ -304,8 +304,7 @@ const App = (() => {
   // T514 (A1) : #/installation (pas la fiche seule) sur le PC serveur, installation à faire → l'assistant, et non la
   // fiche d'accès, mêmes conditions qu'au démarrage (installationAFaire, lu dans /api/info avant la base vide).
   function assistantDemande(hash) {
-    return mode === 'serveur' && installationAFaire && pcServeur() && typeof Installation !== 'undefined'
-      && Installation.estRoute(hash) && !/^#\/installation\/fiche/.test(hash);
+    return assistantPossible() && Installation.estRoute(hash) && !/^#\/installation\/fiche/.test(hash);
   }
 
   // L'assistant ouvert depuis la coque (lien de Paramètres, de l'accueil, adresse tapée) : écran plein, sans recharger
@@ -318,11 +317,34 @@ const App = (() => {
     await afficherRoute(false);
   }
 
-  // Lien discret « Installer Prévo (assistant) » des écrans de démarrage en mode serveur : sur le PC serveur seulement,
+  // L'assistant d'installation est-il possible ici : mode serveur, sur le PC serveur, installation pas encore faite.
+  function assistantPossible() {
+    return mode === 'serveur' && installationAFaire && pcServeur() && typeof Installation !== 'undefined';
+  }
+
+  // Lien discret « Installer Prévo (assistant) » de l'écran de profil en mode serveur : sur le PC serveur seulement,
   // tant que l'installation n'est pas faite ; depuis le réseau, rien.
   function montrerLienInstallation() {
-    const visible = mode === 'serveur' && installationAFaire && pcServeur() && typeof Installation !== 'undefined';
+    const visible = assistantPossible();
     UI.$$('.lien-installation').forEach((zone) => { zone.hidden = !visible; });
+  }
+
+  // L01 (lot 2) : écran « base vide ». Assistant possible : « Installer Prévo » (l'assistant crée la base au passage),
+  // puis « Essayer avec les données de démo », et « Créer une base vide, sans assistant » en petit lien (le même
+  // bouton #btn-base-vide). Ailleurs (mode dossier, autre poste, démo) : la démo et la base vide, en gros boutons.
+  function presenterChoixBaseVide() {
+    const avecAssistant = assistantPossible();
+    UI.$('#btn-base-installer').hidden = !avecAssistant;
+    const demo = UI.$('#btn-base-demo');
+    demo.classList.toggle('btn-primaire', !avecAssistant);
+    demo.classList.toggle('btn-secondaire', avecAssistant);
+    const vide = UI.$('#btn-base-vide');
+    vide.className = avecAssistant ? 'lien-bouton' : 'btn btn-secondaire btn-gros';
+    UI.$('.base-vide-gros', vide).hidden = avecAssistant;
+    UI.$('.base-vide-lien', vide).hidden = !avecAssistant;
+    const zoneLien = UI.$('#ecran-base-vide .base-vide-sans-assistant');
+    (avecAssistant ? zoneLien : UI.$('#ecran-base-vide .pile-gros')).appendChild(vide);
+    zoneLien.hidden = !avecAssistant;
   }
 
   async function afficherDemarrage() {
@@ -818,6 +840,7 @@ const App = (() => {
     UI.$('#texte-base-vide').textContent = I18n.t('socle.demander_base_vide.aucun_fichier_trouve',
       { n: Schema.nomsTables().length, stockage: adaptateur.libelle || mode });
     UI.remplir(UI.$('#base-vide-langue'), UI.optionsLangues(UI.langueDuNavigateur()));
+    presenterChoixBaseVide();
     montrer('ecran-base-vide', 'demarrage');
     return new Promise((resoudre) => { resoudreBaseVide = resoudre; });
   }
@@ -1717,6 +1740,11 @@ const App = (() => {
       location.hash = ROUTE_INSTALLATION;
       location.reload();
     }));
+    // L01 : « Installer Prévo » de l'écran « base vide », de même (l'assistant crée la base à « Terminer »).
+    UI.$('#btn-base-installer').addEventListener('click', () => {
+      location.hash = ROUTE_INSTALLATION;
+      location.reload();
+    });
 
     // Base vide
     UI.$('#btn-base-demo').addEventListener('click', () => { if (resoudreBaseVide) resoudreBaseVide('demo'); resoudreBaseVide = null; });

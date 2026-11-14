@@ -556,7 +556,7 @@ class TestOuverture(CasInstallation):
 
 
 class TestDepuisLaCoque(CasInstallation):
-    """T514 (A1, étude d'ergonomie) : « Créer une base vide » (ou « Partir des données de démo »), profil Responsable,
+    """T514 (A1, étude d'ergonomie) : « Créer une base vide » (ou « Essayer avec les données de démo »), profil Responsable,
     puis le lien de Paramètres vers #/installation ouvre l'assistant, sans rechargement de la page ; avant, la même
     adresse montrait la fiche d'accès tant qu'on n'avait pas rechargé. Quitté : la coque sur l'accueil."""
 
@@ -630,6 +630,52 @@ class TestDepuisLaCoque(CasInstallation):
         instance.config.reglages["_present"] = True              # le serveur « relancé » : installation faite
         page.wait_for_function("location.hash === '#/accueil' && document.documentElement.dataset.etat === 'pret'")
         self.assertTrue(page.is_hidden("#ecran-installation"))
+
+
+# L01 (lot 2) : ordre, classes et textes visibles des choix de l'écran « base vide ».
+CHOIX_BASE_VIDE_JS = """() => [...document.querySelectorAll('#ecran-base-vide button')]
+  .filter((b) => b.offsetParent !== null)
+  .map((b) => [b.id, b.className, b.innerText.split('\\n')[0].trim()])"""
+
+
+class TestEcranBaseVide(CasInstallation):
+    """L01 (lot 2, retest d'ergonomie du 14/11) : sur le PC serveur, installation à faire, l'écran « base vide » met
+    « Installer Prévo » (l'assistant) en premier, « Essayer avec les données de démo » ensuite et « Créer une base vide,
+    sans assistant » en petit lien ; installation faite (ou hors du PC serveur), pas de bouton d'assistant."""
+
+    def test_pc_serveur_installation_a_faire_l_assistant_d_abord(self):
+        page = self.page
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        instance = self.lancer()                                 # dossier de données vide : premier lancement
+        page.goto(instance.url + "/")
+        page.wait_for_selector("#btn-base-installer", state="visible")
+        self.assertEqual(page.evaluate(CHOIX_BASE_VIDE_JS), [
+            ["btn-base-installer", "btn btn-primaire btn-gros", "Installer Prévo"],
+            ["btn-base-demo", "btn btn-gros btn-secondaire", "Essayer avec les données de démo"],
+            ["btn-base-vide", "lien-bouton", "Créer une base vide, sans assistant"]])
+        self.assertEqual(page.locator("#ecran-base-vide .lien-installation").count(), 0)   # le gros bouton suffit
+        page.click("#btn-base-installer")
+        page.wait_for_function("document.documentElement.dataset.etat === 'installation'")
+        page.wait_for_selector('#installation-contenu section[data-etape="situation"]')
+        self.assertEqual(page.evaluate("location.hash"), "#/installation")
+        # Quitter sans terminer : de retour sur le même choix ; le petit lien crée la base vide comme avant.
+        page.click("#installation-quitter")
+        page.wait_for_selector("#btn-base-vide.lien-bouton", state="visible")
+        page.click("#btn-base-vide")
+        page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
+        self.assertTrue((Path(instance.config.dossier_donnees) / "equipements.csv").is_file())
+
+    def test_installation_faite_la_demo_et_la_base_vide_seules(self):
+        page = self.page
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        instance = self.lancer()
+        instance.config.reglages["_present"] = True              # installation faite, données encore absentes
+        page.goto(instance.url + "/")
+        page.wait_for_selector("#btn-base-demo", state="visible")
+        self.assertEqual(page.evaluate(CHOIX_BASE_VIDE_JS), [
+            ["btn-base-demo", "btn btn-primaire btn-gros", "Essayer avec les données de démo"],
+            ["btn-base-vide", "btn btn-secondaire btn-gros", "Créer une base vide"]])
+        self.assertTrue(page.is_hidden("#btn-base-installer"))
 
 
 # Liste « Langue de Prévo » de l'étape 8 : options (valeur, nom, lang), valeur, libellé et aide.

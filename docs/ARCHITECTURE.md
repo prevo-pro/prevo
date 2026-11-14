@@ -535,7 +535,8 @@ le serveur en https (adresses, `/api/info` et QR en `https://`).
 serveur. Sinon écran de démarrage : « Choisir le dossier de données » (si
 `showDirectoryPicker` existe), « Reprendre le dossier précédent » (si une poignée est mémorisée),
 « Essayer avec les données de démo », zone de dépôt de CSV (démo à partir de fichiers déposés).
-Base vide (aucun CSV) → choix « Créer une base vide » ou « Partir des données de démo ».
+Base vide (aucun CSV) → choix « Créer une base vide » ou « Essayer avec les données de démo » (sur le PC serveur, installation
+à faire : « Installer Prévo » d'abord, L01).
 Navigateur sans File System Access → message « utilisez Chrome ou Edge » + démo.
 
 Suite du démarrage (lot 2), dans cet ordre, **avant le premier écran** :
@@ -4570,8 +4571,11 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   `App` quand la page est sur `#/installation` (ou `#/installation/fiche`), servie depuis le PC serveur
   (`location.hostname` 127.0.0.1 ou localhost) et que `/api/info` rend `installation_a_faire` (`adaptateur.info().
   installationAFaire`) ; jamais sur une autre route (les tests des lots 1 à 6 ouvrent `/` sans configuration et voient
-  l'écran de profil comme avant) ; depuis le réseau, rien. Les écrans « base vide » et « profil » montrent un lien discret
-  « Installer Prévo (assistant) » (`.lien-installation`) sur le PC serveur tant que l'installation n'est pas faite.
+  l'écran de profil comme avant) ; depuis le réseau, rien. L'écran « profil » montre un lien discret « Installer Prévo
+  (assistant) » (`.lien-installation`) sur le PC serveur tant que l'installation n'est pas faite ; l'écran « base vide »,
+  dans ce cas, met en premier le gros bouton « Installer Prévo » (`#btn-base-installer`, l'assistant crée la base à
+  « Terminer »), puis « Essayer avec les données de démo », et « Créer une base vide, sans assistant » en petit lien
+  (même bouton `#btn-base-vide`, `presenterChoixBaseVide`) ; ailleurs, la démo et la base vide en gros boutons (L01).
   Dans la coque aussi (base créée, profil choisi : liens de Paramètres, adresse tapée), `#/installation` ouvre
   l'assistant sans recharger la page tant que l'installation est à faire (T514) ; quitté, la coque revient sur
   l'accueil ; `#/installation/fiche` y reste la fiche d'accès.

@@ -25,6 +25,9 @@
 
 /* Gros boutons des écrans de démarrage : le texte long passe à la ligne au lieu de déborder */
 .boite-demarrage .btn-gros > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+/* L01 (lot 2) : « Créer une base vide » en gros bouton (sans assistant) ou en petit lien (lien-bouton, js/app.js) */
+#btn-base-vide .base-vide-gros { display: contents; }
+#btn-base-vide .base-vide-gros > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 
 /* --- en-tête du menu latéral (D32, T89) : logo, « Prévo » et « GMAO » sur la première ligne (« Prévo »
    ne rétrécit jamais), puis le nom de l'entreprise sur sa propre ligne, de toute la largeur du menu, en

@@ -118,18 +118,25 @@
       <select id="base-vide-langue"></select>
       <p class="aide" data-i18n="socle.ecran_base_vide.langue_prevo_aide">Proposée d'après ce navigateur. Prévo s'ouvrira dans cette langue sur les postes qui n'ont pas choisi la leur ; c'est aussi celle des textes qu'il écrit dans les données. Elle se change ensuite dans Paramètres.</p>
     </div>
+    <!-- L01 (lot 2) : sur le PC serveur, installation à faire, « Installer Prévo » (l'assistant) d'abord, la démo
+         ensuite, « Créer une base vide » en petit lien ; ailleurs (dossier, autre poste), la démo et la base vide
+         (js/app.js, presenterChoixBaseVide) -->
     <div class="pile-gros">
+      <button type="button" class="btn btn-primaire btn-gros" id="btn-base-installer" hidden>
+        <span data-icone="parametres"></span>
+        <span><span data-i18n="socle.btn_base_installer.installer_prevo">Installer Prévo</span><small data-i18n="socle.btn_base_installer.assistant_cree_base">L'assistant crée la base et règle les comptes, les téléphones et le démarrage avec le PC</small></span>
+      </button>
       <button type="button" class="btn btn-primaire btn-gros" id="btn-base-demo">
         <span data-icone="engrenage"></span>
-        <span><span data-i18n="socle.btn_base_demo.partir_donnees_demo">Partir des données de démo</span><small data-i18n="socle.btn_base_demo.atelier_fictif_complet_pourrez">Un atelier fictif complet, que vous pourrez modifier ou remplacer</small></span>
+        <span><span data-i18n="socle.btn_demo.essayer_donnees_demo">Essayer avec les données de démo</span><small data-i18n="socle.btn_base_demo.atelier_fictif_complet_pourrez">Un atelier fictif complet, que vous pourrez modifier ou remplacer</small></span>
       </button>
       <button type="button" class="btn btn-secondaire btn-gros" id="btn-base-vide">
-        <span data-icone="document"></span>
-        <span><span data-i18n="socle.btn_base_vide.creer_base_vide">Créer une base vide</span><small data-i18n="socle.btn_base_vide.23_fichiers_csv_seuls">23 fichiers CSV avec leurs seuls en-têtes de colonnes</small></span>
+        <span class="base-vide-gros"><span data-icone="document"></span>
+        <span><span data-i18n="socle.btn_base_vide.creer_base_vide">Créer une base vide</span><small data-i18n="socle.btn_base_vide.23_fichiers_csv_seuls">23 fichiers CSV avec leurs seuls en-têtes de colonnes</small></span></span>
+        <span class="base-vide-lien" data-i18n="socle.btn_base_vide.creer_base_vide_sans_assistant" hidden>Créer une base vide, sans assistant</span>
       </button>
     </div>
-    <!-- Lot 7 (§22.10) : visible sur le PC serveur tant que l'installation n'est pas faite (js/app.js, qui la remplit) -->
-    <p class="note lien-installation" hidden></p>
+    <p class="note base-vide-sans-assistant" hidden></p>
   </div>
 </div>
 
