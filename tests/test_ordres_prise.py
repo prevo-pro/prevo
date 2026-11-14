@@ -123,6 +123,15 @@ class TestReglesPrise(CasPrise):
                 { id: 'D', statut: 'Créé', priorite: 'P1', date_prevue: '', technicien_id: 'TEC-0001' },
                 { id: 'E', statut: 'Annulé', priorite: 'P1', date_prevue: '', technicien_id: '' }]).map((o) => o.id)""")
             self.assertEqual(ordre, ["B", "A", "C"])
+            # L14 : en attente dans l'équipe = OT « En attente » au nom d'un collègue (ni le mien, ni sans technicien)
+            attente = evaluer("""Ordres.otsEnAttenteEquipe([
+                { id: 'A', statut: 'En attente', priorite: 'P3', date_prevue: '', technicien_id: 'TEC-0001' },
+                { id: 'B', statut: 'En attente', priorite: 'P1', date_prevue: '', technicien_id: 'TEC-0003' },
+                { id: 'C', statut: 'En attente', priorite: 'P1', date_prevue: '', technicien_id: 'TEC-0002' },
+                { id: 'D', statut: 'En attente', priorite: 'P1', date_prevue: '', technicien_id: '' },
+                { id: 'E', statut: 'En cours', priorite: 'P1', date_prevue: '', technicien_id: 'TEC-0001' }], 'TEC-0002')
+                .map((o) => o.id)""")
+            self.assertEqual(attente, ["B", "A"])
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +155,13 @@ class TestParcoursPrise(CasPrise):
             self.page.wait_for_selector(".accueil-a-prendre")
             self.assertIn(preventif, self.page.inner_text(".accueil-a-prendre"))
             self.assertEqual(self.page.get_attribute(".accueil-a-prendre .accueil-voir-tout a", "href"), "#/ot?technicien=__aucun")
+            self.assertRegex(self.page.inner_text(".accueil-a-prendre h2"), r"^À prendre \(\d+\)$")       # L14 : le nombre dans le titre
+            # L14 : la panne de Julien, en attente, dans « En attente dans l'équipe », avec son prénom et le motif
+            attente = self.page.inner_text(".accueil-en-attente-equipe")
+            self.assertIn(panne, attente)
+            self.assertIn("Julien", attente)
+            self.assertIn("pièce", attente)
+            self.assertEqual(self.page.locator(".accueil-en-attente-equipe a[href='#/ot/%s']" % panne).count(), 1)
 
             # Fiche : pas de liste « Technicien » sans bouton ; « Je prends cet OT »
             self.aller_fiche(preventif)
@@ -197,9 +213,11 @@ class TestParcoursPrise(CasPrise):
             texte = self.page.inner_text(".accueil-reprises")
             self.assertIn("Karim a repris votre " + panne, texte)
             self.assertEqual(self.page.get_attribute(".accueil-reprises a", "href"), "#/ot/" + panne)
-            # T528 : la reprise en tête (avant ses OT) ; habilitations juste après ses OT (D199), « À prendre » ensuite
+            # T528 : la reprise en tête (avant ses OT) ; L14 : « À prendre » et « En attente dans l'équipe » juste après
+            # ses OT, ses habilitations ensuite
             blocs = self.page.evaluate("() => [...document.querySelectorAll('#contenu > article.carte')].map(e => e.classList[1]).filter(Boolean)")
-            self.assertEqual(blocs, ["accueil-reprises", "accueil-mes-ordres", "accueil-mes-habilitations", "accueil-a-prendre"])
+            self.assertEqual(blocs, ["accueil-reprises", "accueil-mes-ordres", "accueil-a-prendre", "accueil-en-attente-equipe",
+                                     "accueil-mes-habilitations"])
 
             # Le responsable : bloc « Reprises récentes » de l'accueil et historique de la fiche
             self.changer_profil(serveur, "#/accueil", "responsable")

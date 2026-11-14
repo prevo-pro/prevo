@@ -182,7 +182,7 @@ class TestDemo(CasHabilitationsTechnicien):
         self.assertNotIn("B2V", carte["texte"])
         self.assertIn(PHRASE, carte["texte"])
         self.assertIn("Tenues à jour par le responsable", carte["texte"])
-        self.assertIn("accueil-mes-ordres", carte["precedente"])
+        self.assertIn("accueil-en-attente-equipe", carte["precedente"])      # L14 : après ses OT et ceux de l'équipe
         self.sans_justificatif(page, carte, [])
 
 

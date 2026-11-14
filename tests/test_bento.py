@@ -108,6 +108,16 @@ STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicie
 # et « Réparée » (badges, phrase « Réparée le … par … » et mot du technicien) au lieu de « Acceptée » (violet).
 STRUCTURE_AVANT["demandeur"]["classes"] = sorted((set(STRUCTURE_AVANT["demandeur"]["classes"]) - {"violet"})
                                                  | {"cyan", "di-mot", "di-retour", "di-retour-phrase"})
+# Lot 2, L14 (T537) : « Mes ordres de travail » en une liste (préventifs marqués : plus de sous-titres « Mes préventifs
+# de la semaine » ni « Autres »), puis « À prendre » et « En attente dans l'équipe », puis ses habilitations.
+STRUCTURE_AVANT["technicien"]["blocs"] = [bloc for bloc in STRUCTURE_AVANT["technicien"]["blocs"]
+                                          if bloc not in ("article.carte.accueil-mes-habilitations",
+                                                          "article.carte.accueil-a-prendre")] + [
+    "article.carte.accueil-a-prendre", "article.carte.accueil-en-attente-equipe", "article.carte.accueil-mes-habilitations"]
+STRUCTURE_AVANT["technicien"]["classes"] = sorted((set(STRUCTURE_AVANT["technicien"]["classes"])
+                                                   - {"accueil-sous-titre", "accueil-preventifs-vide"})
+                                                  | {"accueil-en-attente-equipe", "accueil-collegue", "accueil-motif-attente",
+                                                     "accent-p2", "prio-p2"})
 
 NOTER_TOASTS_JS = """(() => {
   window.__toasts = [];

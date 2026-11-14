@@ -203,17 +203,17 @@ class TestCompteurs(CasAccueil):
             page.wait_for_selector(".magasin-a-commander")
             page.wait_for_load_state("networkidle")
 
-    def test_compteurs_technicien_ses_preventifs_de_la_semaine_dans_sa_liste_puis_mention_si_vide(self):
+    def test_technicien_ses_ot_en_une_liste_pannes_puis_preventifs_marques(self):
+        # Lot 2, L14 (T537) : plus de sous-titres « Mes préventifs de la semaine » ni « Autres ordres de travail » ;
+        # tous ses OT ouverts en une liste, les pannes d'abord, les préventifs marqués d'une étiquette.
         with ServeurPrevo() as serveur:
-            # Un technicien actif qui n'a aucun préventif de la semaine (les OT générés à l'ouverture
-            # ne sont affectés à personne : le choix fait avant l'ouverture reste juste après).
             jour = datetime.date.today()
             avec_preventif = {ot["technicien_id"] for ot in preventifs_de_la_semaine(serveur.dossier, jour)}
             technicien = next(t["id"] for t in lire_csv(serveur.dossier, "techniciens.csv")
                               if brut(t["actif"]) != "0" and t["id"] not in avec_preventif)
             page = self.ouvrir(serveur, profil="technicien", technicien_id=technicien)
-            self.assertEqual(page.locator("#contenu .accueil-preventifs > li").count(), 0)
-            self.assertIn("Aucun préventif", page.inner_text("#contenu .accueil-preventifs-vide"))
+            self.assertEqual(page.locator("#contenu .accueil-sous-titre, #contenu .accueil-preventifs").count(), 0)
+            self.assertNotIn("Autres ordres", page.inner_text("#contenu"))
             # Chaque OT ouvert du technicien apparaît une seule fois dans la carte.
             ouverts = sorted(ot["id"] for ot in lire_csv(serveur.dossier, "ordres_travail.csv")
                              if ot["technicien_id"] == technicien and ot["statut"] not in STATUTS_FERMES)
@@ -230,11 +230,16 @@ class TestCompteurs(CasAccueil):
             page.evaluate("""([id, tech]) => Donnees.modifier('ordres_travail', (lignes) => {
                 lignes.find((l) => l.id === id).technicien_id = tech; })""", [candidat["id"], technicien])
             page.evaluate("App.reafficher()")
-            page.wait_for_function("id => [...document.querySelectorAll('#contenu .accueil-preventifs > li b')].some((b) => b.textContent.trim() === id)",
+            page.wait_for_function("id => [...document.querySelectorAll('#contenu .accueil-mes-ordres .liste-cartes > li b')].some((b) => b.textContent.trim() === id)",
                                    arg=candidat["id"])
-            self.assertEqual(page.locator("#contenu .accueil-preventifs-vide").count(), 0)
-            # Il n'est pas répété dans « Autres ordres de travail ».
-            self.assertEqual(page.locator("#contenu .accueil-mes-ordres .liste-cartes > li a[href='#/ot/%s']" % candidat["id"]).count(), 1)
+            # Une seule fois, marqué « Préventif », après toutes ses pannes.
+            lien = "#contenu .accueil-mes-ordres .liste-cartes > li a[href='#/ot/%s']" % candidat["id"]
+            self.assertEqual(page.locator(lien).count(), 1)
+            self.assertEqual(page.locator(lien + " .accueil-etiquette-preventif").count(), 1)
+            etiquettes = page.eval_on_selector_all("#contenu .accueil-mes-ordres .liste-cartes > li",
+                                                   "els => els.map((e) => Boolean(e.querySelector('.accueil-etiquette-preventif')))")
+            self.assertEqual(etiquettes, sorted(etiquettes), "pannes d'abord, préventifs ensuite")
+            self.assertRegex(page.inner_text("#contenu .accueil-mes-ordres h2"), r"^Mes ordres de travail \(\d+\)$")
             page.wait_for_load_state("networkidle")
 
 
@@ -263,6 +268,38 @@ class TestTelephone(CasAccueil):
             page = self.ouvrir(serveur)
             page.wait_for_selector("#carte-connexion", state="visible")
             self.assertIn("Connecter un téléphone", page.inner_text("#carte-connexion"))
+
+    def test_telephone_technicien_ses_blocs_au_dessus_de_l_aide_et_des_compteurs(self):
+        # Lot 2, L14 (T537) : sur téléphone, « Mes ordres de travail », « À prendre » et « En attente dans l'équipe »
+        # passent au-dessus de l'aide à l'écran, du bouton Signaler et des compteurs ; sur PC, l'ordre ne change pas.
+        ordre_js = """() => [...document.querySelectorAll('#contenu > *')].map((e) => e.id === 'aide-ecran' ? 'aide'
+            : ['entete-page', 'accueil-signaler', 'instruments', 'accueil-mes-ordres', 'accueil-a-prendre',
+               'accueil-en-attente-equipe', 'accueil-mes-habilitations'].find((c) => e.classList.contains(c)) || '')
+            .filter(Boolean)"""
+        with ServeurPrevo() as serveur:
+            contexte = self.navigateur.new_context(locale="fr-FR", viewport={"width": 375, "height": 812},
+                                                   is_mobile=True, has_touch=True, device_scale_factor=2)
+            try:
+                telephone = contexte.new_page()
+                self.surveiller(telephone)
+                self.ouvrir(serveur, profil="technicien", technicien_id="TEC-0002", largeur=375, hauteur=812,
+                            page=telephone, contexte=contexte)
+                telephone.wait_for_selector("#contenu .accueil-en-attente-equipe")
+                telephone.evaluate("AideEcrans.rouvrir()")
+                telephone.wait_for_selector("#aide-ecran")
+                self.assertEqual(telephone.evaluate(ordre_js),
+                                 ["entete-page", "accueil-mes-ordres", "accueil-a-prendre", "accueil-en-attente-equipe",
+                                  "aide", "accueil-signaler", "instruments", "accueil-mes-habilitations"])
+                self.sans_defilement_horizontal(telephone, "accueil du technicien, téléphone 375 px")
+            finally:
+                contexte.close()
+            page = self.ouvrir(serveur, profil="technicien", technicien_id="TEC-0002")
+            page.wait_for_selector("#contenu .accueil-en-attente-equipe")
+            page.evaluate("AideEcrans.rouvrir()")
+            page.wait_for_selector("#aide-ecran")
+            self.assertEqual(page.evaluate(ordre_js),
+                             ["entete-page", "aide", "accueil-signaler", "instruments", "accueil-mes-ordres", "accueil-a-prendre",
+                              "accueil-en-attente-equipe", "accueil-mes-habilitations"])
 
 
 # ---------------------------------------------------------------------------

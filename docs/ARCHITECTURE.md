@@ -1451,9 +1451,14 @@ prochain mouvement de l'article la corrige) :
   (nom complet en infobulle).
   - Précisions du code : `Accueil.calculerCompteurs()` renvoie les **listes** (`preventifsSemaine`,
     `articlesACommander`) et l'écran en affiche la longueur ; les indicateurs mènent à
-    `#/preventif?onglet=calendrier` et `#/magasin?onglet=a-commander`. Le technicien voit d'abord
-    ses préventifs de la semaine, puis ses autres OT. Règles exposées : `Accueil.dimancheDe`,
-    `Accueil.preventifDeLaSemaine` (§10).
+    `#/preventif?onglet=calendrier` et `#/magasin?onglet=a-commander`. Le technicien voit (lot 2
+    ergonomie, L14) « Mes ordres de travail (n) » : tous ses OT ouverts en une liste, pannes d'abord, préventifs
+    marqués d'une étiquette (plus de sous-titres « Mes préventifs de la semaine » ni « Autres ») ; vide, la carte
+    dit combien attendent dans « À prendre ». Puis « À prendre (n) » et, hors mode Solo, « En attente dans l'équipe
+    (n) » (OT « En attente » au nom d'un collègue, son prénom et le motif d'attente ; lien vers la fiche, où
+    « Prendre la suite » existe), `Ordres.blocsAccueilTechnicien` (ordres-prise.js). Sur téléphone, ces blocs
+    passent au-dessus de l'aide à l'écran (repère `data-aide-apres`, §23), du bouton Signaler et des compteurs.
+    Règles exposées : `Accueil.dimancheDe`, `Accueil.preventifDeLaSemaine` (§10).
 
 ### 14.7 Serveur : liste blanche (D29)
 Sont servis : `/` (→ `index.html`), `index.html`, `favicon.svg`, `GUIDE.html` s'il existe,
@@ -5044,7 +5049,7 @@ Un encart d'explication à la première visite de chaque écran, dans la démo c
   par `outils/generer_acces_textes.py`) ; une langue sans fichier d'aide affiche l'aide française, sans erreur.
 - **Branchement** : `App.rendre`, après un affichage réussi d'un écran nouveau (pas sur une erreur d'affichage),
   appelle `AideEcrans.apresAffichage(ecran, conteneur)` ; l'encart (`UI.bandeau('info')`, `#aide-ecran`,
-  `role="status"`, titre en `h2`) se place après `.entete-page` s'il existe, sinon en tête de `#contenu` ; il ne
+  `role="status"`, titre en `h2`) se place après `.entete-page` s'il existe (après le dernier bloc `data-aide-apres` s'il y en a un, L14), sinon en tête de `#contenu` ; il ne
   bloque rien et ne s'imprime pas.
 - **Choix du texte** : l'entrée de l'écran, sinon celle de son `parent` (formulaires) ; À propos n'en a pas ; variante
   du profil (`App.profil.type`) ; version web (`App.versionWeb`) : phrase `demo` en tête de l'accueil, avant le geste
@@ -5386,10 +5391,10 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   existant, dérogation au responsable seul) ; journal « reprise de l'OT à TEC-… » / « prise en charge par le
   technicien ». Toute affectation qui change le technicien ajoute sa ligne (`Ordres.interne.noterPrise`, appelée par
   `modifierOt` — onglet Préparation — et par `Planning.planifier`) ; la création d'un OT n'en ajoute pas. Règles pures :
-  `lirePrises`, `ajouterPrise`, `priseProposee`, `reprisesRecentes`, `otsAPrendre`. Affichage : bloc « Prises en
+  `lirePrises`, `ajouterPrise`, `priseProposee`, `reprisesRecentes`, `otsAPrendre`, `otsEnAttenteEquipe` (L14). Affichage : bloc « Prises en
   charge » de la carte Repères et du bon de travail (prénoms lus dans `techniciens`) ; accueil du technicien : carte
-  « À prendre » (nombre d'OT ouverts sans technicien, les 5 premiers par priorité puis date, lien vers la liste filtrée
-  « Non affectés »), après « Mes habilitations », et les reprises de ses OT des 7 derniers jours, en tête, avant ses OT
+  « À prendre » (nombre d'OT ouverts sans technicien dans le titre, les 5 premiers par priorité puis date, lien vers la
+  liste filtrée « Non affectés ») et « En attente dans l'équipe », juste après ses OT (L14), et les reprises de ses OT des 7 derniers jours, en tête, avant ses OT
   (`Ordres.repriseDeMesOt`, T528) ; accueil du responsable : « Reprises récentes ».
   Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
   l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`

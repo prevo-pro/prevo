@@ -9,10 +9,12 @@
 //                 habilitations à renouveler, lot 3 ; suggestions de préventif, lot 3 bis, §16.6 ; garanties
 //                 et contrats, 2.2), une alerte si « Contrôle de la base » signale des erreurs (accueil-bento.js).
 //   Technicien  : gros bouton « Signaler », les trois indicateurs des contrôles et de l'équipe (contrôles
-//                 sous 30 jours, habilitations à renouveler, réserves en retard depuis la 2.2) et la liste
-//                 de ses OT ouverts : d'abord ses préventifs de la semaine (ou la mention qu'il n'en a pas),
-//                 puis ses autres OT ; enfin « Mes habilitations » (2.2, D199 : les siennes seulement, type,
-//                 échéance, statut, sans justificatif ; carte d'equipe-habilitations.js).
+//                 sous 30 jours, habilitations à renouveler, réserves en retard depuis la 2.2), puis (lot 2, L14)
+//                 « Mes ordres de travail » (tous ses OT ouverts en une liste, pannes d'abord, préventifs
+//                 marqués), « À prendre » et « En attente dans l'équipe » (ordres-prise.js) ; sur téléphone,
+//                 ces trois blocs passent au-dessus de l'aide à l'écran et des compteurs ; enfin « Mes
+//                 habilitations » (2.2, D199 : les siennes seulement, type, échéance, statut, sans
+//                 justificatif ; carte d'equipe-habilitations.js).
 //   Demandeur   : gros bouton « Signaler un problème » et ses 5 dernières demandes (statut,
 //                 motif de refus).
 //   Tous, en mode serveur et sauf sur téléphone (D31) : carte « Connecter un téléphone » (QR code
@@ -183,12 +185,12 @@ const Accueil = (() => {
     </a></li>`;
   }
 
-  function carteOrdre(ot, aujourdhui) {
+  function carteOrdre(ot, aujourdhui, etiquette) {
     const enRetard = otEnRetard(ot, aujourdhui);
     const retard = enRetard ? UI.html`<span class="accueil-retard">${I18n.t('accueil.carte_ordre.retard_jours', { n: joursEntre(ot.date_prevue, aujourdhui) })}</span>` : '';
     const prevu = ot.date_prevue ? UI.html`<span>${I18n.t('accueil.carte_ordre.prevu_date_prevue', { date_prevue: UI.dateFr(ot.date_prevue) })}</span>` : UI.html`<span>${I18n.t('accueil.carte_ordre.pas_date_prevue')}</span>`;
     return UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}" class="${ot.priorite === 'P1' ? 'accent-p1' : (ot.priorite === 'P2' ? 'accent-p2' : '')}">
-      <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</div>
+      <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}${etiquette || ''}</div>
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${libelleEquipement(ot.equipement_id)}</span>${prevu}${retard}</div>
     </a></li>`;
@@ -312,24 +314,24 @@ const Accueil = (() => {
   // 4. Accueils du technicien et du demandeur (celui du responsable : accueil-bento.js)
   // ===========================================================================================
 
-  // Carte du technicien : ses préventifs de la semaine d'abord (ou la mention qu'il n'en a pas),
-  // puis ses autres OT ouverts. Un OT n'apparaît qu'une fois.
-  function carteOrdresTechnicien(mesOrdres, idsPreventifs, aujourdhui) {
-    const preventifs = mesOrdres.filter((ot) => idsPreventifs.has(ot.id));
-    const autres = mesOrdres.filter((ot) => !idsPreventifs.has(ot.id));
-    const montres = autres.slice(0, NOMBRE_OT_TECHNICIEN);
-    const reste = autres.length - montres.length;
+  // Carte du technicien (lot 2, L14) : « Mes ordres de travail », tous ses OT ouverts en une liste, les pannes d'abord
+  // puis les préventifs (marqués d'une étiquette), chaque groupe dans l'ordre reçu (priorité puis date prévue). Plus de
+  // sous-titre « Autres » (lu comme « les OT des autres »). Vide : ce qui attend dans « À prendre » est dit.
+  function carteOrdresTechnicien(mesOrdres, aujourdhui, nombreAPrendre) {
+    const estPreventif = (ot) => ot.origine === ORIGINE_PREVENTIF;
+    const ordonnes = mesOrdres.filter((ot) => !estPreventif(ot)).concat(mesOrdres.filter(estPreventif));
+    const montres = ordonnes.slice(0, NOMBRE_OT_TECHNICIEN);
+    const reste = ordonnes.length - montres.length;
+    const etiquette = (ot) => (estPreventif(ot)
+      ? UI.html`<span class="badge violet accueil-etiquette-preventif">${Schema.libelleValeur('ordres_travail', 'origine', ot.origine)}</span>` : '');
     return UI.html`<article class="carte accueil-mes-ordres">
-      <div class="entete-carte"><h2>${I18n.t('accueil.carte_ordres_technicien.mes_ordres_travail_ouverts')}</h2><span class="badge ${mesOrdres.length > 0 ? 'info' : 'neutre'}">${mesOrdres.length}</span></div>
-      <h3 class="accueil-sous-titre">${I18n.t('accueil.carte_ordres_technicien.mes_preventifs_semaine')} <span class="badge ${preventifs.length > 0 ? 'info' : 'neutre'}">${preventifs.length}</span></h3>
-      ${preventifs.length
-        ? UI.html`<ul class="liste-cartes accueil-preventifs">${preventifs.map((ot) => carteOrdre(ot, aujourdhui))}</ul>`
-        : UI.html`<p class="muted accueil-preventifs-vide">${I18n.t('accueil.carte_ordres_technicien.aucun_preventif_faire_ici', { dimancheDe: UI.dateFr(dimancheDe(aujourdhui)) })}</p>`}
-      <h3 class="accueil-sous-titre">${I18n.html('accueil.carte_ordres_technicien.autres_ordres_travail', { nbAutres: autres.length })}</h3>
+      <div class="entete-carte"><h2>${I18n.t('accueil.carte_ordres_technicien.mes_ordres_travail', { n: mesOrdres.length })}</h2></div>
       ${montres.length
-        ? UI.html`<ul class="liste-cartes">${montres.map((ot) => carteOrdre(ot, aujourdhui))}</ul>`
-        : UI.vide(I18n.t('accueil.carte_ordres_technicien.aucun_autre_ordre_travail'), I18n.t('accueil.carte_ordres_technicien.rien_autre_affecte_moment'), 'ordres')}
-      <p class="accueil-voir-tout"><a href="#/ot">${reste > 0 ? I18n.t('accueil.carte_ordres_technicien.voir_tous_ordres_travail', { reste }) : I18n.t('accueil.carte_ordres_technicien.voir_tous_ordres_travail_2')}</a></p>
+        ? UI.html`<ul class="liste-cartes">${montres.map((ot) => carteOrdre(ot, aujourdhui, etiquette(ot)))}</ul>`
+        : UI.html`<p class="muted accueil-mes-ordres-vide">${nombreAPrendre > 0
+          ? I18n.t('accueil.carte_ordres_technicien.aucun_a_votre_nom_a_prendre', { n: nombreAPrendre })
+          : I18n.t('accueil.carte_ordres_technicien.aucun_a_votre_nom')}</p>`}
+      ${montres.length ? UI.html`<p class="accueil-voir-tout"><a href="#/ot">${reste > 0 ? I18n.t('accueil.carte_ordres_technicien.voir_tous_ordres_travail', { reste }) : I18n.t('accueil.carte_ordres_technicien.voir_tous_ordres_travail_2')}</a></p>` : ''}
     </article>`;
   }
 
@@ -349,23 +351,26 @@ const Accueil = (() => {
       .filter((ot) => ot.technicien_id === identifiant && otOuvert(ot))
       .sort((a, b) => (rangPriorite[a.priorite] || 9) - (rangPriorite[b.priorite] || 9)
         || (a.date_prevue || '9999').localeCompare(b.date_prevue || '9999'));
-    // Ses préventifs de la semaine : même définition que le compteur du responsable.
-    const dimanche = dimancheDe(aujourdhui);
-    const idsPreventifs = new Set(mesOrdres.filter((ot) => preventifDeLaSemaine(ot, dimanche)).map((ot) => ot.id));
     const compteurs = calculerCompteurs();
+    // L14 : « Mes ordres de travail », « À prendre », « En attente dans l'équipe » (ordres-prise.js, chargé après ce
+    // fichier) ; sur téléphone, au-dessus de l'aide à l'écran (repère data-aide-apres, aide-ecrans.js) et des compteurs.
+    const telephone = UI.estTelephone();
+    const equipe = typeof Ordres !== 'undefined' && Ordres.blocsAccueilTechnicien
+      ? Ordres.blocsAccueilTechnicien(telephone) : { html: '', nombreAPrendre: 0 };
+    const blocs = UI.html`${typeof Ordres !== 'undefined' && Ordres.repriseDeMesOt ? Ordres.repriseDeMesOt() : ''}
+      ${carteOrdresTechnicien(mesOrdres, aujourdhui, equipe.nombreAPrendre)}${equipe.html}`;
     return UI.html`
       <div class="entete-page"><div>
         <h1>${I18n.t('accueil.accueil_technicien.accueil')}</h1>
         <p>${I18n.t('accueil.accueil_technicien.bonjour_voici_ordres_travail', { profilNom: App.profil.nom })}</p>
       </div></div>
+      ${telephone ? blocs : ''}
       <div class="pile-gros accueil-signaler">
         <a href="#/di/nouvelle" class="btn btn-primaire btn-gros">${UI.icone('ajouter')}<span>${I18n.html('accueil.accueil_technicien.signaler_probleme_creer_demande')}</span></a>
       </div>
       <div class="instruments accueil-instruments accueil-instruments-technicien">${indicateursConformite(compteurs, aujourdhui)}</div>
-      ${typeof Ordres !== 'undefined' && Ordres.repriseDeMesOt ? Ordres.repriseDeMesOt() : ''}
-      ${carteOrdresTechnicien(mesOrdres, idsPreventifs, aujourdhui)}
-      ${carteMesHabilitations(aujourdhui)}
-      ${typeof Ordres !== 'undefined' && Ordres.accueilTechnicien ? Ordres.accueilTechnicien() : ''}`;
+      ${telephone ? '' : blocs}
+      ${carteMesHabilitations(aujourdhui)}`;
   }
 
   function accueilDemandeur() {

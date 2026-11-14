@@ -4,7 +4,8 @@
 //
 // Contrat (docs/ARCHITECTURE.md §23) :
 //   - App.rendre appelle AideEcrans.apresAffichage(ecran, conteneur) après l'affichage réussi d'un écran NOUVEAU ;
-//     l'encart (UI.bandeau('info')) est inséré en tête du contenu, après .entete-page s'il existe ; rien ne bloque.
+//     l'encart (UI.bandeau('info')) est inséré en tête du contenu, après .entete-page s'il existe (après le dernier
+//     bloc marqué data-aide-apres s'il y en a un, lot 2 L14) ; rien ne bloque.
 //   - un écran sans texte prend celui de son parent (formulaires) ; À propos n'en a pas ; les textes à variantes
 //     suivent App.profil.type ; dans la version web (App.versionWeb), la phrase « demo » est ajoutée.
 //   - mémoire du poste : prevo.aideVue (liste JSON d'identifiants, marqués vus à « Compris » seulement) et
@@ -98,7 +99,10 @@ const AideEcrans = (() => {
     encart.setAttribute('aria-labelledby', ID_ENCART + '-titre');
     encart.querySelector('.aide-ecran-titre').id = ID_ENCART + '-titre';
     encart.querySelector('.aide-ecran-compris').addEventListener('click', () => fermer(true));
-    const entete = conteneur.querySelector(':scope > .entete-page');
+    // Lot 2, L14 : un écran peut placer l'encart plus bas, après son dernier bloc marqué data-aide-apres (accueil du
+    // technicien sur téléphone : ses blocs d'OT d'abord).
+    const reperes = conteneur.querySelectorAll(':scope > [data-aide-apres]');
+    const entete = reperes.length ? reperes[reperes.length - 1] : conteneur.querySelector(':scope > .entete-page');
     if (entete) entete.after(encart); else conteneur.prepend(encart);
     return encart;
   }

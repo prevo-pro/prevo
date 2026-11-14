@@ -7,8 +7,10 @@
 // (format 5 : « date_heure|technicien_id|technicien_precedent_id », le dernier vide pour une première prise) ; la
 // ligne du journal (profil posé par le serveur) reste la trace d'autorité. RG8 (D191) : la règle de l'affectation,
 // inchangée (Ordres.controlerAffectation ; la dérogation reste au responsable, Ordres.avecDerogation).
-// Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, la carte
-// « À prendre » et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises récentes ».
+// Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, les cartes
+// « À prendre » (nombre dans le titre) et « En attente dans l'équipe » (lot 2, L14 : les OT des collègues mis en
+// attente, avec le motif ; hors mode Solo) et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises
+// récentes ».
 // Carte Actions de la fiche (lot 2, L18) : un seul bouton mis en avant, celui de la prochaine étape utile pour la
 // personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ». Sur un OT en
 // attente ou en cours au nom d'un collègue, « Prendre la suite » : à mon nom (prendre, trace de prise) puis en cours.
@@ -84,11 +86,22 @@ Object.assign(Ordres, (() => {
     return resultat.sort((a, b) => b.date.localeCompare(a.date) || b.ot.id.localeCompare(a.ot.id));
   }
 
+  /** Ordre des OT d'une carte de l'accueil : priorité puis date prévue (puis n°). */
+  function parPriorite(a, b) {
+    return (RANG_PRIORITE[a.priorite] || 9) - (RANG_PRIORITE[b.priorite] || 9)
+      || texte(a.date_prevue || '9999').localeCompare(texte(b.date_prevue || '9999')) || a.id.localeCompare(b.id);
+  }
+
   /** OT ouverts sans technicien, priorité puis date prévue (puis n°). */
   function otsAPrendre(ordres) {
-    return ordres.filter((ot) => estOuvert(ot) && !texte(ot.technicien_id))
-      .sort((a, b) => (RANG_PRIORITE[a.priorite] || 9) - (RANG_PRIORITE[b.priorite] || 9)
-        || texte(a.date_prevue || '9999').localeCompare(texte(b.date_prevue || '9999')) || a.id.localeCompare(b.id));
+    return ordres.filter((ot) => estOuvert(ot) && !texte(ot.technicien_id)).sort(parPriorite);
+  }
+
+  /** L14 : OT « En attente » au nom d'un collègue (un technicien autre que `moi`), priorité puis date prévue. */
+  function otsEnAttenteEquipe(ordres, moi) {
+    const id = texte(moi);
+    return ordres.filter((ot) => texte(ot.statut) === 'En attente' && texte(ot.technicien_id) && texte(ot.technicien_id) !== id)
+      .sort(parPriorite);
   }
 
   // ===========================================================================================
@@ -339,23 +352,45 @@ Object.assign(Ordres, (() => {
 
   // --- Accueils ------------------------------------------------------------------------------
 
+  function libelleEquipementCourt(equipementId) {
+    const equipement = Donnees.trouver('equipements', equipementId);
+    return equipement ? (equipement.repere || equipement.id) : texte(equipementId);
+  }
+
   function ligneOtAccueil(ot) {
-    const equipement = Donnees.trouver('equipements', ot.equipement_id);
     return UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}" class="${ot.priorite === 'P1' ? 'accent-p1' : (ot.priorite === 'P2' ? 'accent-p2' : '')}">
       <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</div>
       <div class="carte-titre">${ot.titre}</div>
-      <div class="carte-meta"><span>${equipement ? (equipement.repere || equipement.id) : texte(ot.equipement_id)}</span>${ot.date_prevue ? UI.html`<span>${UI.dateFr(ot.date_prevue)}</span>` : ''}</div>
+      <div class="carte-meta"><span>${libelleEquipementCourt(ot.equipement_id)}</span>${ot.date_prevue ? UI.html`<span>${UI.dateFr(ot.date_prevue)}</span>` : ''}</div>
     </a></li>`;
   }
 
-  /** Accueil du technicien : carte « À prendre » (nombre d'OT ouverts sans technicien, les 5 premiers, lien filtré). */
-  function carteAPrendre() {
-    const ots = otsAPrendre(Donnees.lignes('ordres_travail'));
-    return UI.html`<article class="carte accueil-a-prendre">
-      <div class="entete-carte"><h2>${I18n.t('ordres.prise.a_prendre')}</h2><span class="badge ${ots.length ? 'info' : 'neutre'}">${ots.length}</span></div>
-      ${ots.length ? UI.html`<ul class="liste-cartes">${ots.slice(0, NOMBRE_A_PRENDRE).map(ligneOtAccueil)}</ul>`
+  /** Accueil du technicien : carte « À prendre » (nombre d'OT ouverts sans technicien dans le titre, les 5 premiers,
+   *  lien filtré). repere : marque data-aide-apres (téléphone, L14). */
+  function carteAPrendre(ots, repere) {
+    return UI.html`<article class="carte accueil-a-prendre" ${repere ? UI.brut('data-aide-apres') : ''}>
+      <div class="entete-carte"><h2>${I18n.t('ordres.prise.a_prendre_n', { n: ots.length })}</h2></div>
+      ${ots.length ? UI.html`<ul class="liste-cartes">${ots.slice(0, NOMBRE_A_PRENDRE).map((ot) => ligneOtAccueil(ot))}</ul>`
         : UI.html`<p class="muted">${I18n.t('ordres.prise.rien_a_prendre')}</p>`}
       ${ots.length ? UI.html`<p class="accueil-voir-tout"><a href="#/ot?technicien=__aucun">${I18n.t('ordres.prise.voir_non_affectes')}</a></p>` : ''}
+    </article>`;
+  }
+
+  /** L14 : carte « En attente dans l'équipe » : les OT des collègues mis en attente, le collègue et le motif d'attente
+   *  (un mot de relève, seconde livraison, viendra sous le motif) ; chaque ligne mène à la fiche, où « Prendre la
+   *  suite » (L18) existe. Montrée hors Solo, même vide (une phrase courte, jamais « aucun OT ouvert »). */
+  function carteEnAttenteEquipe(ots, repere) {
+    const ligne = (ot) => UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}" class="${ot.priorite === 'P1' ? 'accent-p1' : (ot.priorite === 'P2' ? 'accent-p2' : '')}">
+      <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}<span class="accueil-collegue">${prenom(ot.technicien_id)}</span></div>
+      <div class="carte-titre">${ot.titre}</div>
+      <div class="carte-meta"><span>${libelleEquipementCourt(ot.equipement_id)}</span></div>
+      ${texte(ot.motif_attente) ? UI.html`<p class="accueil-motif-attente"><b>${I18n.t('ordres.prise.motif_attente')}</b> ${ot.motif_attente}</p>` : ''}
+    </a></li>`;
+    return UI.html`<article class="carte accueil-en-attente-equipe" ${repere ? UI.brut('data-aide-apres') : ''}>
+      <div class="entete-carte"><h2>${I18n.t('ordres.prise.en_attente_equipe_n', { n: ots.length })}</h2></div>
+      ${ots.length ? UI.html`<ul class="liste-cartes">${ots.slice(0, NOMBRE_A_PRENDRE).map(ligne)}</ul>`
+        : UI.html`<p class="muted">${I18n.t('ordres.prise.rien_en_attente_equipe')}</p>`}
+      ${ots.length > NOMBRE_A_PRENDRE ? UI.html`<p class="accueil-voir-tout"><a href="#/ot">${I18n.t('ordres.prise.voir_tous_en_attente', { reste: ots.length - NOMBRE_A_PRENDRE })}</a></p>` : ''}
     </article>`;
   }
 
@@ -389,10 +424,15 @@ Object.assign(Ordres, (() => {
       ${listeReprises(reprises.slice(0, NOMBRE_A_PRENDRE), false)}</article>`;
   }
 
-  /** Accueil du technicien, après ses habilitations (D199 : elles suivent ses OT) : la carte « À prendre ». Ses OT repris
-   * par un collègue (repriseDeMesOt) viennent, eux, en tête de l'accueil, avant ses OT (T528). */
-  function accueilTechnicien() {
-    return carteAPrendre();
+  /** Accueil du technicien (L14), juste après « Mes ordres de travail » : « À prendre » puis, hors mode Solo, « En
+   *  attente dans l'équipe ». telephone : blocs marqués data-aide-apres (l'aide à l'écran vient après eux). Rend
+   *  { html, nombreAPrendre } (le nombre est redit par « Mes ordres de travail » quand elle est vide). */
+  function blocsAccueilTechnicien(telephone) {
+    const ordres = Donnees.lignes('ordres_travail');
+    const aPrendre = otsAPrendre(ordres);
+    const solo = typeof App !== 'undefined' && App.modeSolo && App.modeSolo();
+    const html = UI.html`${carteAPrendre(aPrendre, telephone)}${solo ? '' : carteEnAttenteEquipe(otsEnAttenteEquipe(ordres, monTechnicien()), telephone)}`;
+    return { html, nombreAPrendre: aPrendre.length };
   }
 
   Object.assign(Ordres.interne, {
@@ -402,10 +442,10 @@ Object.assign(Ordres, (() => {
 
   return {
     // règles pures (prises en charge, format 5)
-    lirePrises, ajouterPrise, priseProposee, reprisesRecentes, otsAPrendre, joursAvant,
+    lirePrises, ajouterPrise, priseProposee, reprisesRecentes, otsAPrendre, otsEnAttenteEquipe, joursAvant,
     // écriture
     prendre, monTechnicien,
     // accueils (accueil.js, accueil-bento.js : cherchés au moment de l'affichage)
-    accueilTechnicien, repriseDeMesOt, reprisesResponsable,
+    blocsAccueilTechnicien, repriseDeMesOt, reprisesResponsable,
   };
 })());

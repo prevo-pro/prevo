@@ -11,10 +11,11 @@
 .instruments.accueil-instruments-technicien { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 960px; }
 .instruments.accueil-instruments .lib { overflow-wrap: anywhere; }
 
-/* Technicien : ses préventifs de la semaine, puis ses autres OT, dans la même carte */
-.accueil-sous-titre { display: flex; align-items: center; gap: .5rem; font-size: 1rem; margin: 1rem 0 .6rem; color: var(--texte); }
-.accueil-mes-ordres .entete-carte + .accueil-sous-titre { margin-top: .2rem; }
-.accueil-preventifs-vide { margin: 0 0 .4rem; }
+/* Technicien (lot 2, L14) : « Mes ordres de travail » en une liste (préventifs marqués), « À prendre », « En attente
+   dans l'équipe » (le collègue et le motif d'attente) */
+.accueil-mes-ordres-vide { margin: 0; }
+.accueil-collegue { font-weight: 600; color: var(--texte); }
+.accueil-motif-attente { margin: .4rem 0 0; font-size: .9375rem; color: var(--texte); overflow-wrap: anywhere; }
 
 /* Technicien : « Mes habilitations » (D199, T480 ; liste et statuts : styles d'equipe.css) */
 .accueil-habilitations-aide { margin: 0 0 .9rem; }
