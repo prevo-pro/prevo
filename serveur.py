@@ -2831,6 +2831,11 @@ REPERE_DEBUT_CODES_DE_DEPART, REPERE_FIN_CODES_DE_DEPART = '\n// <json>\n', '\n/
 FICHIER_LANGUES = os.path.join(DOSSIER_APPLICATION, 'js', 'i18n', 'langues.js')
 MOTIF_LANGUE_DECLAREE = re.compile(r"^I18n\.declarer\(\{\s*code:\s*'([^'\\]+)'", re.MULTILINE)
 LANGUE_PAR_DEFAUT = 'fr'
+# Dictée vocale d'une base neuve (T540, L24) : « terminer » reçoit dictee_autorisee (« 1 » ou « 0 ») ; sans réponse, « 0 ».
+# Une base présente au départ n'est jamais touchée (sans la ligne, la dictée y est autorisée : Dictee.autorisee, js/).
+# Aucune règle serveur de plus : la voix ne passe que par le navigateur.
+PARAMETRE_DICTEE = 'dictee_autorisee'
+PARAMETRE_DICTEE_SANS_REPONSE = '0'
 PARAMETRE_LANGUE = 'langue_defaut'                                 # ligne de parametres.csv (D149, T295)
 MOTIF_CODE_LANGUE = re.compile(r'[a-z]{2,3}(-[A-Za-z0-9]{2,8})*')   # MOTIF_CODE de js/i18n.js (fr, en, pt-PT…)
 MESSAGE_JEU_DE_DEMO_ILLISIBLE = traduisible('installation.demo_illisible',
@@ -9206,6 +9211,11 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             raise ErreurHttp(400, traduisible('installation.langue_inconnue',
                                               'Langue de Prévo inconnue : une langue déclarée est attendue '
                                               '({langues}).', langues=declarees))
+        dictee = demande.get('dictee_autorisee', PARAMETRE_DICTEE_SANS_REPONSE)
+        if dictee not in ('0', '1'):
+            raise ErreurHttp(400, traduisible('installation.dictee_inconnue',
+                                              'Dictée vocale : « 1 » (autorisée) ou « 0 » (non autorisée) est '
+                                              'attendu.'))
         base_neuve = not brouillon.get('base_presente', True)
         if base == 'demo' and not base_neuve:
             raise ErreurHttp(400, traduisible('installation.demo_sur_donnees',
@@ -9252,6 +9262,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         a_poser = valeurs_du_mode_solo(brouillon.get('solo_technicien_id', '')) if brouillon.get('mode_solo') else {}
         if base_neuve:
             a_poser['langue_defaut'] = langue
+            a_poser[PARAMETRE_DICTEE] = dictee             # L24 : la réponse de l'assistant ; sans réponse, non autorisée
         if sans_wifi is not None:
             a_poser[PARAMETRE_ATELIER_SANS_WIFI] = sans_wifi
         if a_poser:

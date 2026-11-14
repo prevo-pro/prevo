@@ -374,7 +374,21 @@ class TestLangueInstallation(CasNavigateur):
             # parametres.csv : les lignes du jeu de démo telles quelles, puis la langue choisie.
             _, demo = lire_csv(RACINE / "donnees" / "demo" / "parametres.csv")
             _, lignes = lire_csv(serveur.dossier / "parametres.csv")
-            self.assertEqual(lignes, demo + [{"cle": "langue_defaut", "valeur": "en"}])
+            # T540 (L24) : et la dictée, « non autorisée » sans réponse sur l'écran.
+            self.assertEqual(lignes, demo + [{"cle": "langue_defaut", "valeur": "en"}, {"cle": "dictee_autorisee", "valeur": "'0"}])
+
+    def test_base_vide_serveur_dictee_autorisee_quand_on_repond_oui(self):
+        """T540 (L24) : l'écran de la base vide pose la question de la dictée (aucune réponse d'avance) ; « Oui » l'écrit."""
+        self.autoriser_erreur(ERREUR_CSV_ABSENT)
+        with ServeurPrevo(source=None) as serveur:
+            self.page.goto(serveur.url + "/")
+            self.liste_base_vide()
+            self.assertIn("Dictée vocale", self.page.inner_text("#base-vide-dictee"))
+            self.assertEqual(self.page.locator("#base-vide-dictee input:checked").count(), 0)
+            self.page.check('#base-vide-dictee input[value="1"]')
+            self.page.click("#btn-base-vide")
+            self.attendre_chargements(1)
+            self.assertEqual(parametre_sur_le_disque(serveur.dossier, "dictee_autorisee"), "1")
 
     def test_base_vide_dossier_navigateur_anglais_english_propose(self):
         self.autoriser_erreur(ERREUR_PING_ABSENT)
@@ -393,7 +407,7 @@ class TestLangueInstallation(CasNavigateur):
             self.assertEqual(self.etat(), {"langue": "en", "lang": "en", "installation": "en", "donnees": "en",
                                            "poste": None, "retenue": "en", "raison": None})
             texte = self.page.evaluate(LIRE_OPFS_JS, [NOM_DOSSIER_SIMULE, "parametres.csv"])
-            self.assertEqual(texte.lstrip(BOM).split("\r\n"), ["cle;valeur", "version_schema;'%d" % FORMAT_COURANT, "langue_defaut;en", ""])
+            self.assertEqual(texte.lstrip(BOM).split("\r\n"), ["cle;valeur", "version_schema;'%d" % FORMAT_COURANT, "langue_defaut;en", "dictee_autorisee;'0", ""])
 
 
 if __name__ == "__main__":

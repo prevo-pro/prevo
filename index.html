@@ -118,6 +118,14 @@
       <select id="base-vide-langue"></select>
       <p class="aide" data-i18n="socle.ecran_base_vide.langue_prevo_aide">Proposée d'après ce navigateur. Prévo s'ouvrira dans cette langue sur les postes qui n'ont pas choisi la leur ; c'est aussi celle des textes qu'il écrit dans les données. Elle se change ensuite dans Paramètres.</p>
     </div>
+    <!-- L24 (lot 2) : dictée vocale de la base neuve, oui ou non ; sans réponse, non (js/app.js, remplirBaseVide) -->
+    <fieldset class="champ" id="base-vide-dictee">
+      <legend class="libelle" data-i18n="installation.formulaire_recapitulatif.dictee_titre">Dictée vocale : l'autorisez-vous ?</legend>
+      <p class="aide" data-i18n="installation.formulaire_recapitulatif.dictee_voix">Avec la dictée, la voix est transcrite par le navigateur : dans Chrome et Edge, elle part chez Google ou Microsoft ; sur certains PC, elle reste sur le PC.</p>
+      <label class="case"><input type="radio" name="base-vide-dictee" value="1"><span data-i18n="installation.formulaire_recapitulatif.dictee_oui">Oui, autoriser la dictée</span></label>
+      <label class="case"><input type="radio" name="base-vide-dictee" value="0"><span data-i18n="installation.formulaire_recapitulatif.dictee_non">Non, ne pas l'autoriser</span></label>
+      <p class="aide"><span data-i18n="installation.formulaire_recapitulatif.dictee_non_detail">Le micro reste affiché ; un appui dit que la dictée n'a pas été activée. Sans réponse de votre part, c'est ce qui est retenu.</span> <span data-i18n="installation.formulaire_recapitulatif.dictee_aide">Se change ensuite dans Paramètres.</span></p>
+    </fieldset>
     <!-- L01 (lot 2) : sur le PC serveur, installation à faire, « Installer Prévo » (l'assistant) d'abord, la démo
          ensuite, « Créer une base vide » en petit lien ; ailleurs (dossier, autre poste), la démo et la base vide
          (js/app.js, presenterChoixBaseVide) -->

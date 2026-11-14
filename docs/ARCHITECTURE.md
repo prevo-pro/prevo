@@ -2501,6 +2501,13 @@ plus de `parametres.csv`. Le texte ci-dessous est celui du lot 4.
 - `lang` = `fr-FR`, `interimResults` ; le texte reconnu **s'ajoute** à la fin du champ (une espace
   avant), jamais d'écrasement ; un second clic arrête ; erreur → message (« micro refusé », « pas de
   réseau »…).
+- **Réglage du responsable (lot 2, T540, L24)** : `parametres.csv`, clé `dictee_autorisee` (« 1 » / « 0 », Paramètres ›
+  « Dictée vocale »), lue par `Dictee.autorisee()` seul. Clé absente : autorisée (les bases d'avant gardent leur
+  dictée) ; l'assistant d'installation (étape récapitulatif) et l'écran de la base vide (dossier, premier démarrage)
+  posent la réponse d'une base **neuve**, « 0 » sans réponse. Non autorisée : le micro reste affiché
+  (`Dictee.microVisible`), un appui n'ouvre ni la fenêtre ni la reconnaissance et dit « La dictée n'a pas été activée
+  par votre responsable » (au responsable, et sans comptes : où l'activer). Autorisée : fenêtre d'information et
+  coupure par poste inchangées. Aucune règle serveur : la voix ne passe que par le navigateur.
 - Page non sécurisée sur un appareil tactile (téléphone en `http://192.168…`) : pas de bouton, une aide
   discrète « Dictée : utilisez le micro du clavier de votre téléphone. » sous le premier champ dicté.
 

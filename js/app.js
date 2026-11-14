@@ -73,6 +73,7 @@ const App = (() => {
   const CLE_LANGUE_INSTALLATION = 'prevo.langue.installation';
   const CLE_RECHARGEMENT_LANGUE = 'prevo.langue.rechargement';
   const PARAMETRE_LANGUE = 'langue_defaut';
+  const PARAMETRE_DICTEE = 'dictee_autorisee';           // L24 (T540) : lu par Dictee.autorisee ; posé ici sur une base neuve
   const ROUTE_ACCUEIL = '#/accueil';
   const ROUTE_SIGNALER = '#/di/nouvelle';     // T536 (L11) : seul écran d'un poste de déclaration
   // « direction » (T520, A7) : lecture seule — accueil, Indicateurs et rapports, Parc et OT ; aucun bouton d'écriture.
@@ -858,18 +859,22 @@ const App = (() => {
     const contenus = {};
     const choisie = UI.$('#base-vide-langue').value;
     const langue = I18n.langues.some((declaree) => declaree.code === choisie) ? choisie : 'fr';
+    // L24 : la réponse à « Dictée vocale : l'autorisez-vous ? » (écran de la base vide) ; sans réponse, non autorisée.
+    const reponseDictee = document.querySelector('input[name="base-vide-dictee"]:checked');
+    const dictee = reponseDictee && reponseDictee.value === '1' ? '1' : '0';
     if (choix === 'demo') {
       await chargerScriptDemo();
       // La ligne de la langue ajoutée au texte du jeu de démo (un code déclaré : rien à protéger), le reste tel quel.
       const tables = Object.assign({}, DEMO_DONNEES.tables, { parametres:
-        DEMO_DONNEES.tables.parametres.replace(/(\r?\n)?$/, '\r\n') + PARAMETRE_LANGUE + ';' + langue + '\r\n' });
+        DEMO_DONNEES.tables.parametres.replace(/(\r?\n)?$/, '\r\n') + PARAMETRE_LANGUE + ';' + langue + '\r\n'
+          + PARAMETRE_DICTEE + ";'" + dictee + '\r\n' });
       Object.assign(contenus, StockageDemo.decalerDates(tables, DEMO_DONNEES.dateReference));
     } else {
       Schema.nomsTables().forEach((nomTable) => { contenus[nomTable] = Donnees.csv.serialiser(nomTable, []); });
       // Une base neuve est écrite au format courant : pas de sauvegarde « avant-format-v2 » inutile
       // au premier démarrage (ARCHITECTURE.md §14.1).
       contenus.parametres = Donnees.csv.serialiser('parametres', [{ cle: 'version_schema', valeur: String(Schema.version) },
-        { cle: PARAMETRE_LANGUE, valeur: langue }]);
+        { cle: PARAMETRE_LANGUE, valeur: langue }, { cle: PARAMETRE_DICTEE, valeur: dictee }]);
       // T515 : codes de défaillance de départ (js/catalogue/codes-depart.js), dans la langue choisie, modifiables ensuite.
       if (typeof CodesDeDepart !== 'undefined') {
         contenus.codes_defaillance = Donnees.csv.serialiser('codes_defaillance', CodesDeDepart.lignes(langue)

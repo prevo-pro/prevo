@@ -3,8 +3,11 @@
 // brief §11) : bouton micro, avertissement à la première utilisation sur le poste (la voix part chez
 // Google ou Microsoft, sauf reconnaissance sur l'appareil), texte ajouté à la fin du champ sans rien
 // effacer, désactivable dans « Ce poste ». Sur un téléphone sans page sécurisée : une aide rappelle la
-// dictée du clavier.
-//    1. Réglages du poste (localStorage « prevo.dictee »)
+// dictée du clavier. Lot 2 ergonomie (T540, L24) : le responsable autorise ou non la dictée (parametres.csv, clé
+// dictee_autorisee, lue par Dictee.autorisee seul ; absente : autorisée, pour ne rien retirer aux bases d'avant ;
+// l'assistant d'installation la pose sur une base neuve) ; le micro reste visible, un appui dit pourquoi il ne
+// démarre rien. Aucune règle serveur : la voix ne passe que par le navigateur.
+//    1. Réglages du poste (localStorage « prevo.dictee ») et réglage du responsable (L24)
 //    2. Disponibilité (reconnaissance du navigateur, page sécurisée, reconnaissance sur l'appareil)
 //    3. Boutons micro et aide « micro du clavier » (equiper)
 //    4. Écoute : avertissement, démarrage, résultats, erreurs, arrêt
@@ -14,6 +17,9 @@ const Dictee = (() => {
   // Langue de reconnaissance = locale de la langue active (fr-FR, en-GB, tr-TR…), lue à chaque écoute (D161).
   const langueDictee = () => I18n.locale;
   const CLE_REGLAGES = 'prevo.dictee';
+
+  // Réglage du responsable (L24) : « 1 » autorisée, « 0 » non autorisée ; clé absente ou vide : autorisée.
+  const PARAMETRE_AUTORISEE = 'dictee_autorisee';
 
   let ecoute = null;       // { reconnaissance, champ, bouton } : une seule dictée à la fois
 
@@ -87,9 +93,27 @@ const Dictee = (() => {
     return Boolean(classeReconnaissance()) && window.isSecureContext === true;
   }
 
-  /** Vrai si un bouton micro doit être proposé : pris en charge et active sur le poste. */
+  /** Vrai si le responsable autorise la dictée (parametres.csv) ; sans ligne, oui (bases d'avant L24). */
+  function autorisee() {
+    if (typeof Donnees === 'undefined') return true;
+    try { return String(Donnees.parametre(PARAMETRE_AUTORISEE, '1')).trim() !== '0'; } catch (erreur) { return true; }
+  }
+
+  /** Vrai si la dictée peut démarrer : autorisée par le responsable, prise en charge et active sur le poste. */
   function disponible() {
-    return prisEnCharge() && reglages().active;
+    return autorisee() && prisEnCharge() && reglages().active;
+  }
+
+  /** Vrai si le micro est montré : la dictée disponible, ou non autorisée (le micro reste, un appui dit pourquoi). */
+  function microVisible() {
+    return prisEnCharge() && (!autorisee() || reglages().active);
+  }
+
+  /** Message d'un appui sur le micro quand la dictée n'est pas autorisée : pour le responsable (ou sans comptes :
+   *  la personne devant le PC), où l'activer ; pour les autres, que le responsable ne l'a pas activée. */
+  function messageNonAutorisee() {
+    const reglant = typeof App === 'undefined' || !App.comptesExiges() || App.estResponsable();
+    return I18n.t(reglant ? 'dictee.non_autorisee.responsable' : 'dictee.non_autorisee.autres');
   }
 
   function appareilTactile() {
@@ -133,7 +157,7 @@ const Dictee = (() => {
     if (ecoute && !document.contains(ecoute.champ)) arreter();     // l'écran a changé pendant une dictée
     const champs = Array.from(zone.querySelectorAll('[data-dictee]'));
     if (!champs.length) return;
-    if (!disponible()) {
+    if (!microVisible()) {
       const aideUtile = reglages().active && appareilTactile() && !prisEnCharge();
       if (aideUtile && !zone.querySelector('.dictee-aide')) {
         champs[0].insertAdjacentElement('afterend', UI.element(UI.html`<p class="aide dictee-aide">${aideClavier()}</p>`));
@@ -264,6 +288,11 @@ const Dictee = (() => {
 
   /** Clic sur un micro : arrête la dictée de ce champ, ou en démarre une (après l'avertissement). */
   async function basculer(champ, bouton) {
+    if (!autorisee()) {                                // L24 : rien ne démarre, l'appui dit pourquoi
+      arreter();
+      UI.toast(messageNonAutorisee(), 'attention');
+      return;
+    }
     if (ecoute && ecoute.champ === champ) {
       ecoute.reconnaissance.stop();
       return;
@@ -292,7 +321,7 @@ const Dictee = (() => {
     get AVERTISSEMENT_NUAGE() { return avertissementNuage(); },
     get AVERTISSEMENT_LOCAL() { return avertissementLocal(); },
     get AIDE_CLAVIER() { return aideClavier(); },
-    reglages, enregistrerReglages, prisEnCharge, disponible, transcriptionLocale, equiper, surveiller, retirerBoutons,
+    PARAMETRE_AUTORISEE, autorisee, reglages, enregistrerReglages, prisEnCharge, disponible, transcriptionLocale, equiper, surveiller, retirerBoutons,
     arreter, arreterDans,
   };
 })();

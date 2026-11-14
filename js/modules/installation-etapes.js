@@ -7,7 +7,8 @@
 // Paramètres › Accès et installation. Migration depuis 1.2 (T171) : les CSV présents sont annoncés dès l'étape 1 et
 // gardés ; sans CSV au départ (brouillon.base_presente faux), l'étape 8 demande par quoi commencer (vide ou démo) et
 // la langue de Prévo (langue_defaut de la base neuve, proposée d'après le navigateur : UI.langueDuNavigateur, T296 ;
-// appliquée à la fin, quand Prévo s'ouvre sur la base créée) ;
+// appliquée à la fin, quand Prévo s'ouvre sur la base créée) et la dictée vocale (L24 : oui / non, dictee_autorisee ; sans
+// réponse, « non autorisée » côté serveur) ;
 // dossier conseillé C:\Prevo proposé à l'étape 8 tant que le brouillon n'a pas deplacement_refuse (« Rester ici »).
 // Dépendances : UI, AccesTextes. Chargé avant installation-ecrans.js.
 
@@ -432,6 +433,15 @@ const InstallationEtapes = (() => {
             <select id="inst-langue_defaut" name="langue_defaut">${UI.optionsLangues(UI.langueDuNavigateur())}</select>
             <p class="aide">${I18n.t('installation.formulaire_recapitulatif.langue_prevo_aide')}</p>
           </div>
+          <div class="champ installation-dictee" id="inst-dictee">
+            <h3>${I18n.t('installation.formulaire_recapitulatif.dictee_titre')}</h3>
+            <p>${I18n.t('installation.formulaire_recapitulatif.dictee_voix')}</p>
+            <div class="installation-choix-liste">
+              ${choixRadio('dictee', '1', false, I18n.t('installation.formulaire_recapitulatif.dictee_oui'), I18n.t('installation.formulaire_recapitulatif.dictee_oui_detail'))}
+              ${choixRadio('dictee', '0', false, I18n.t('installation.formulaire_recapitulatif.dictee_non'), I18n.t('installation.formulaire_recapitulatif.dictee_non_detail'))}
+            </div>
+            <p class="aide">${I18n.t('installation.formulaire_recapitulatif.dictee_aide')}</p>
+          </div>
         </div>` : ''}
         ${deplacer ? UI.html`<div class="carte installation-dossier" id="inst-dossier">
           <h3>${I18n.t('installation.formulaire_recapitulatif.dossier_prevo')}</h3>
@@ -451,7 +461,10 @@ const InstallationEtapes = (() => {
         const coche = UI.$('input[name="base"]:checked', section);
         const langue = UI.$('#inst-langue_defaut', section);
         if (!coche) return {};
-        return langue ? { base: coche.value, langue_defaut: langue.value } : { base: coche.value };
+        const dictee = UI.$('input[name="dictee"]:checked', section);      // L24 : sans réponse, rien n'est envoyé (non autorisée)
+        const corps = langue ? { base: coche.value, langue_defaut: langue.value } : { base: coche.value };
+        if (dictee) corps.dictee_autorisee = dictee.value;
+        return corps;
       },
     };
   }

@@ -256,9 +256,9 @@ class TestBaseDeDepart(CasAssistant):
         donnees = Path(instance.config.dossier_donnees)
         self.assertEqual(sorted(p.stem for p in donnees.glob("*.csv")), sorted(serveur.TABLES))
         attendus = jeu_de_demo_decale(6 * 7)
-        # parametres.csv : les lignes de la démo, puis la langue choisie (T296).
+        # parametres.csv : les lignes de la démo, puis la langue choisie (T296) et la dictée (T540 : sans réponse, non).
         entete, lignes = attendus["parametres"]
-        attendus["parametres"] = (entete, lignes + [["langue_defaut", "en"]])
+        attendus["parametres"] = (entete, lignes + [["langue_defaut", "en"], ["dictee_autorisee", "0"]])
         # L06 (lot 2) : la fiche du responsable, créée à l'étape « compte », est recréée après les quatre de la démo.
         entete, lignes = attendus["techniciens"]
         self.assertEqual(lignes_csv((donnees / "techniciens.csv").read_bytes())[1][:4], lignes)
@@ -306,7 +306,35 @@ class TestBaseDeDepart(CasAssistant):
                          [["TEC-0001", "Briand", "Nicolas"]])
         self.assertEqual(lire_csv(donnees / "codes_defaillance.csv")[1], serveur.codes_de_depart("en"))
         self.assertEqual(lire_csv(donnees / "parametres.csv"), (["cle", "valeur"], [["version_schema", "%d" % commun.FORMAT_COURANT],
-                                                                                     ["langue_defaut", "en"]]))
+                                                                                     ["langue_defaut", "en"],
+                                                                                     ["dictee_autorisee", "0"]]))   # T540 (L24) : sans réponse, non
+
+    def test_dictee_reponse_de_l_assistant_sur_une_base_neuve(self):
+        """T540 (L24) : « terminer » écrit dictee_autorisee dans parametres.csv d'une base neuve : la réponse (« 1 » ou
+        « 0 »), « 0 » sans réponse ; autre valeur : 400 sans rien écrire ; aucune règle serveur de plus."""
+        client, instance = self.lancer()
+        self.solo_ce_pc_jusqu_au_recapitulatif(client, "Nicolas", "Briand")
+        donnees = Path(instance.config.dossier_donnees)
+        for valeur in ("oui", "", None, 1, True):
+            with self.subTest(valeur=valeur):
+                reponse = client.post("terminer", {"base": "vide", "dictee_autorisee": valeur})
+                self.assertEqual(reponse.statut, 400, reponse.octets)
+                self.assertEqual(reponse.json()["erreur_code"], "installation.dictee_inconnue")
+        self.assertFalse(Path(instance.config.reglages["_fichier"]).exists())
+        self.assertFalse((donnees / "parametres.csv").exists())
+        self.ok(client.post("terminer", {"base": "vide", "dictee_autorisee": "1"}))
+        self.assertEqual(parametres_de(donnees)["dictee_autorisee"], "1")
+
+    def test_dictee_sur_une_base_presente_rien_n_est_pose(self):
+        """T540 (L24) : une base présente au départ garde sa dictée (sans ligne : autorisée) ; la réponse est ignorée."""
+        client, instance = self.lancer(source=commun.DOSSIER_DEMO)
+        self.ok(client.post("situation", {"situation": "seul"}))
+        self.ok(client.post("portee", {"portee": "ce-pc"}))
+        self.ok(client.post("compte", {"prenom": "Julien", "nom": "Moreau"}))
+        self.ok(client.post("demarrage", {"demarrage": "aucun", "veille_desactivee": False}))
+        self.ok(client.post("sauvegardes", {"dossier": ""}))
+        self.ok(client.post("terminer", {"dictee_autorisee": "0"}))
+        self.assertNotIn("dictee_autorisee", parametres_de(Path(instance.config.dossier_donnees)))
 
     def test_langue_non_declaree_400_et_rien_d_ecrit(self):
         # T296 : langue_defaut n'est acceptée que si js/i18n/langues.js la déclare ; message par code (T246).
@@ -573,6 +601,12 @@ class TestEcran(CasInstallation):
         self.assertIn("Par quoi commencer", page.inner_text("#inst-base"))
         self.assertTrue(page.is_checked('#inst-base input[name="base"][value="vide"]'))
         self.cocher("base", "demo")
+        # T540 (L24) : la question de la dictée, sans réponse d'avance ; « Oui » est envoyé et écrit.
+        self.assertIn("Dictée vocale", page.inner_text("#inst-dictee"))
+        self.assertIn("Google ou Microsoft", page.inner_text("#inst-dictee"))
+        self.assertEqual(page.locator('#inst-dictee input[name="dictee"]').count(), 2)
+        self.assertEqual(page.locator('#inst-dictee input[name="dictee"]:checked').count(), 0)
+        self.cocher("dictee", "1")
         page.click("#inst-dossier-garder")
         page.wait_for_selector("#inst-dossier", state="hidden")
         page.click("#inst-terminer")
@@ -583,6 +617,7 @@ class TestEcran(CasInstallation):
         entete, lignes = lire_csv(donnees / "techniciens.csv")
         self.assertEqual(lignes[4][:3], ["TEC-0005", "Briand", "Nicolas"])
         self.assertEqual(parametres_de(donnees)["solo_technicien_id"], "TEC-0005")
+        self.assertEqual(parametres_de(donnees)["dictee_autorisee"], "1")
         self.assertEqual(self.enregistreur.relances, [None])
         instance.config.reglages["_present"] = True                         # « le serveur relancé » : installation faite
         page.wait_for_function("location.hash === '#/accueil' && document.documentElement.dataset.etat === 'profil'")

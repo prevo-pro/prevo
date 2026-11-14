@@ -254,5 +254,95 @@ class TestDictee(CasNavigateur):
             self.assertTrue(page.evaluate("Dictee.prisEnCharge()"))
 
 
+class TestDicteeAutorisee(CasNavigateur):
+    """T540 (L24) : réglage du responsable « Dictée vocale » (parametres.csv, dictee_autorisee). Absent : autorisée
+    (bases d'avant). « 0 » : le micro reste affiché, un appui dit pourquoi et ne démarre rien. « 1 » : la fenêtre
+    d'information au premier micro et la coupure par poste restent telles quelles."""
+
+    def ouvrir(self, serveur, valeur=None, profil="responsable", route="#/di/nouvelle", micro=True):
+        if valeur is not None:
+            chemin = serveur.dossier / "parametres.csv"
+            chemin.write_bytes(chemin.read_bytes().rstrip(b"\r\n") + b"\r\ndictee_autorisee;'" + valeur.encode() + b"\r\n")
+        self.contexte.add_init_script(RECONNAISSANCE_SIMULEE_JS)
+        self.contexte.add_init_script(NOTER_TOASTS_JS)
+        preregler_profil(self.contexte, profil, "Essai")
+        self.page.goto(serveur.url + "/" + route)
+        attendre_pret(self.page)
+        if micro:
+            self.page.wait_for_selector(BOUTON_DESCRIPTION)
+        return self.page
+
+    def toast(self, motif):
+        return self.page.wait_for_function(
+            "motif => (window.__toasts || []).find((t) => t.includes(motif)) || null", arg=motif).json_value()
+
+    def test_sans_ligne_la_dictee_est_autorisee(self):
+        with ServeurPrevo() as serveur:
+            page = self.ouvrir(serveur)
+            self.assertTrue(page.evaluate("Dictee.autorisee()"))
+            self.assertTrue(page.evaluate("Dictee.disponible()"))
+            page.click(BOUTON_DESCRIPTION)
+            page.wait_for_selector("dialog[open] .dictee-avertissement")           # la fenêtre d'information, inchangée
+            self.assertIn("Google ou Microsoft", page.inner_text("dialog[open]"))
+
+    def test_non_autorisee_le_micro_reste_et_un_appui_dit_ou_l_activer(self):
+        with ServeurPrevo() as serveur:
+            page = self.ouvrir(serveur, "0")
+            self.assertFalse(page.evaluate("Dictee.autorisee()"))
+            self.assertEqual(page.locator(BOUTON_DESCRIPTION).count(), 1)         # toujours visible
+            page.click(BOUTON_DESCRIPTION)
+            message = self.toast("Paramètres")
+            self.assertIn("pas autorisée", message)                                 # sans comptes : la personne règle elle-même
+            self.assertEqual(page.locator("dialog[open]").count(), 0)              # ni fenêtre d'information
+            self.assertEqual(page.evaluate("window.__dictee.instances.length"), 0)  # ni reconnaissance démarrée
+            self.assertEqual(page.get_attribute(BOUTON_DESCRIPTION, "aria-pressed"), "false")
+            self.assertIsNone(page.evaluate("localStorage.getItem('prevo.dictee')"))  # rien retenu sur le poste
+
+    def appuyer_avec_comptes(self, profil):
+        """Serveur avec comptes, dictée « 0 », connecté en `profil` : appui sur le micro ; rend le toast lu."""
+        with ServeurPrevo(comptes=True) as serveur:
+            chemin = serveur.dossier / "parametres.csv"
+            chemin.write_bytes(chemin.read_bytes().rstrip(b"\r\n") + b"\r\ndictee_autorisee;'0\r\n")
+            self.contexte.add_init_script(RECONNAISSANCE_SIMULEE_JS)
+            self.contexte.add_init_script(NOTER_TOASTS_JS)
+            serveur.poser_session(self.contexte, profil)
+            self.page.goto(serveur.url + "/#/di/nouvelle")
+            attendre_pret(self.page)
+            self.page.wait_for_selector(BOUTON_DESCRIPTION)
+            self.page.click(BOUTON_DESCRIPTION)
+            message = self.toast("dictée")
+            self.assertEqual(self.page.evaluate("window.__dictee.instances.length"), 0)
+            return message
+
+    def test_non_autorisee_avec_comptes_le_technicien_est_renvoye_a_son_responsable(self):
+        self.assertEqual(self.appuyer_avec_comptes("technicien"), "La dictée n'a pas été activée par votre responsable")
+
+    def test_non_autorisee_avec_comptes_le_responsable_sait_ou_l_activer(self):
+        self.assertIn("Paramètres", self.appuyer_avec_comptes("responsable"))
+
+    def test_autorisee_explicite_fenetre_et_coupure_par_poste_inchangees(self):
+        with ServeurPrevo() as serveur:
+            page = self.ouvrir(serveur, "1")
+            self.assertTrue(page.evaluate("Dictee.autorisee()"))
+            page.click(BOUTON_DESCRIPTION)
+            page.wait_for_selector("dialog[open] .dictee-avertissement")
+            page.click("dialog[open] .fenetre-actions .btn-fantome")               # « Désactiver la dictée » (ce poste)
+            self.toast("Dictée désactivée")
+            self.assertEqual(page.locator(".dictee-bouton").count(), 0)
+            self.assertFalse(page.evaluate("JSON.parse(localStorage.getItem('prevo.dictee')).active"))
+
+    def test_reglage_dans_parametres(self):
+        """Le réglage se change dans Paramètres (case « Dictée vocale autorisée », cochée sans ligne) et se relit."""
+        with ServeurPrevo() as serveur:
+            page = self.ouvrir(serveur, route="#/parametres", micro=False)
+            case = "#form-parametres [data-champ='dictee_autorisee'] input[type=checkbox]"
+            page.wait_for_selector(case)
+            self.assertTrue(page.is_checked(case))
+            page.uncheck(case)
+            page.click("#form-parametres button[type=submit]")
+            page.wait_for_function("Donnees.parametre('dictee_autorisee', '1') === '0'")
+            self.assertFalse(page.evaluate("Dictee.autorisee()"))
+
+
 if __name__ == "__main__":
     unittest.main()

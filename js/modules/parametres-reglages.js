@@ -101,6 +101,12 @@ const ParametresReglages = (() => {
     { cle: 'techniciens_creent_articles', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },
       get libelle() { return I18n.t('parametres.libelle.techniciens_creent_articles'); },
       get aide() { return I18n.t('parametres.aide.techniciens_creent_articles'); } },
+    // Lot 2 ergonomie (T540, L24) : dictée vocale autorisée ou non ; lu par Dictee.autorisee seul. Absent : autorisée (les
+    // bases d'avant gardent leur dictée) ; l'assistant d'installation pose la réponse d'une base neuve (non sans réponse).
+    // Pas de règle serveur : la voix ne passe que par le navigateur.
+    { cle: 'dictee_autorisee', type: 'booleen', valeurs: ['0', '1'], defaut: '1', large: true, get section() { return I18n.t('parametres.section.dictee_vocale'); },
+      get libelle() { return I18n.t('parametres.libelle.dictee_autorisee'); },
+      get aide() { return I18n.t('parametres.aide.dictee_autorisee'); } },
     { cle: 'rafraichissement_s', type: 'entier', get libelle() { return I18n.t('parametres.libelle.rafraichissement_secondes'); }, defaut: '20', min: 2, max: 3600,
       get section() { return I18n.t('parametres.section.echanges_entre_postes'); }, get aide() { return I18n.t('parametres.aide.frequence_lecture_changements_faits'); } },
     // Lot 2 ergonomie (T536, L11) : réponse de l'assistant à « Y a-t-il du Wi-Fi dans l'atelier ? » (1 : non) ; lu par
