@@ -25,6 +25,9 @@ const Connexion = (() => {
   // T527 : #/document/<nom>, où le serveur renvoie un lien de document ouvert sans session ; le nom suit les règles
   // du serveur (MOTIF_NOM_DOCUMENT_ENREGISTRE) : rien d'autre ne peut servir d'adresse de retour.
   const MOTIF_ROUTE_DOCUMENT = /^#\/document\/((?:[0-9]{8}-[0-9]{6}-)?[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/;
+  // L03 (lot 2) : identifiant du responsable laissé par l'assistant à « Terminer » (sessionStorage, jamais de mot de
+  // passe) : la connexion qui suit l'a déjà rempli, le curseur dans le mot de passe ; oublié une fois connecté.
+  const CLE_IDENTIFIANT_INSTALLATION = 'prevo.identifiant.installation';
   const PANNEAUX = {
     connexion: 'connexion-formulaire',
     enrolement: 'connexion-enrolement',
@@ -293,7 +296,12 @@ const Connexion = (() => {
     terminer(session);
   }
 
+  function identifiantDeLInstallation() {
+    try { return window.sessionStorage.getItem(CLE_IDENTIFIANT_INSTALLATION) || ''; } catch (erreur) { return ''; }
+  }
+
   function terminer(session) {
+    try { window.sessionStorage.removeItem(CLE_IDENTIFIANT_INSTALLATION); } catch (erreur) { /* sans mémoire d'onglet */ }
     arreterBlocage();
     viderMotsDePasse();
     viderErreurs();
@@ -391,6 +399,11 @@ const Connexion = (() => {
     } else {
       jetonInvitation = jetonDeLaRoute(location.hash);
       montrerPanneau(jetonInvitation ? 'enrolement' : 'connexion');
+      const identifiant = jetonInvitation ? '' : identifiantDeLInstallation();
+      if (identifiant && !$('connexion-identifiant').value) {
+        $('connexion-identifiant').value = identifiant;
+        $('connexion-mot-de-passe').focus();
+      }
     }
     return new Promise((fin) => { resoudre = fin; });
   }

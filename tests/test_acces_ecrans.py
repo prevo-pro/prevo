@@ -168,6 +168,22 @@ class TestConnexion(CasConnexion):
         self.connecter("nicolas.briand", "pas le bon mot de passe")
         page.wait_for_function("document.getElementById('connexion-erreur').textContent.includes('Identifiant ou mot de passe incorrect.')")
 
+    def test_identifiant_laisse_par_l_assistant_deja_rempli(self):
+        """L03 (lot 2) : après « Terminer » (session perdue à la relance), l'identifiant laissé par l'assistant
+        (sessionStorage, jamais de mot de passe) remplit la connexion, le curseur dans le mot de passe ; oublié une
+        fois connecté."""
+        page = self.page
+        page.add_init_script("if (!sessionStorage.getItem('essai.l03')) { sessionStorage.setItem('essai.l03', '1'); "
+                             "sessionStorage.setItem('prevo.identifiant.installation', 'nicolas.briand'); }")
+        page.goto(self.serveur.url + "/")
+        self.attendre_etat("connexion")
+        self.assertEqual(page.input_value("#connexion-identifiant"), "nicolas.briand")
+        self.assertEqual(page.evaluate("document.activeElement.id"), "connexion-mot-de-passe")
+        page.fill("#connexion-mot-de-passe", MOTS_DE_PASSE["nicolas.briand"])
+        page.click("#connexion-valider")
+        self.attendre_etat("pret")
+        self.assertIsNone(page.evaluate("sessionStorage.getItem('prevo.identifiant.installation')"))
+
     def choisir_langue(self, code):
         with self.page.expect_navigation():
             self.page.select_option("#connexion-langue-liste", code)

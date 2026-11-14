@@ -214,6 +214,7 @@ const InstallationEtapes = (() => {
             <input type="text" id="inst-prenom" name="prenom" autocomplete="given-name" maxlength="80"></div>
           <div class="champ"><label class="libelle" for="inst-nom">${I18n.t('installation.formulaire_compte.nom')}</label>
             <input type="text" id="inst-nom" name="nom" autocomplete="family-name" maxlength="80"></div>
+          ${sansMotDePasse || existant ? '' : UI.html`<div class="alerte info installation-identifiant" id="inst-identifiant" role="status" aria-live="polite" hidden></div>`}
           ${sansMotDePasse ? '' : UI.html`
           <p class="note">${I18n.t('installation.formulaire_compte.12_caracteres_moins_256')}</p>
           <div class="champ"><label class="libelle" for="inst-mot-de-passe">${I18n.t('installation.formulaire_compte.mot_passe')}</label>
@@ -377,6 +378,8 @@ const InstallationEtapes = (() => {
       [I18n.t('installation.formulaire_recapitulatif.utilise'), AccesTextes.situations[c.situation()] || c.situation()],
       [I18n.t('installation.formulaire_recapitulatif.depuis_ou'), LIBELLES_PORTEE[b.portee] || b.portee],
       [I18n.t('installation.formulaire_recapitulatif.comptes'), b.comptes ? I18n.t('installation.formulaire_recapitulatif.connexion_obligatoire_compte_responsable') : I18n.t('installation.formulaire_recapitulatif.aucun_prevo_joignable_pc')],
+      // L03 (lot 2) : l'identifiant du responsable, rappelé (celui qui servira à la connexion après « Terminer »).
+      ...(b.comptes && c.etat.responsable_identifiant ? [[I18n.t('installation.formulaire_recapitulatif.identifiant'), UI.html`<b id="inst-recap-identifiant">${c.etat.responsable_identifiant}</b>`]] : []),
       [I18n.t('installation.formulaire_recapitulatif.certificat'), b.portee === 'ce-pc' ? I18n.t('installation.formulaire_recapitulatif.sans_objet_http_pc') : b.certificat_auto ? I18n.t('installation.formulaire_recapitulatif.automatique_mkcert') : b.certificat ? I18n.t('installation.formulaire_recapitulatif.fichiers_pem') : b.mandataire ? I18n.t('installation.formulaire_recapitulatif.derriere_mandataire_tailscale_celui') : I18n.t('installation.formulaire_recapitulatif.regler')],
       [I18n.t('installation.formulaire_recapitulatif.demarrage'), LIBELLES_DEMARRAGE[b.demarrage] || b.demarrage],
       [I18n.t('installation.formulaire_recapitulatif.veille'), b.veille_desactivee ? I18n.t('installation.formulaire_recapitulatif.empechee_secteur') : I18n.t('installation.formulaire_recapitulatif.inchangee')],

@@ -4415,7 +4415,8 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   base que cette version vient de créer vide), "nombre_csv", "derniere_modification"
   (`AAAA-MM-JJTHH:MM:SS` du CSV le plus récent, null sans CSV), "dossier" (celui de Prévo),
   "dossier_conseille" (`C:\Prevo` sous Windows, null ailleurs), "dans_dossier_conseille", "python_embarque"
-  (`python/python.exe` présent), "responsable_existe", "tailscale" `{present, connecte, nom, jours_avant_expiration,
+  (`python/python.exe` présent), "responsable_existe", "responsable_identifiant" (L03 : identifiant du responsable
+  actif, null sans lui ; rappelé au récapitulatif), "tailscale" `{present, connecte, nom, jours_avant_expiration,
   raison}` (`detecter_tailscale` à chaque appel, jamais gardée dans `config.tailscale` : `/api/info` ne change pas),
   "mkcert_present", "systeme" (`windows` | `linux` | `macos`), "version"}`.
 - `POST situation` `{"situation": "seul" | "equipe" | "informaticien", "autres"?}` → brouillon réinitialisé aux défauts de
@@ -4439,6 +4440,11 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   et lié au compte (`technicien_id`), identifiant gardé dans le brouillon (`solo_technicien_id`). Sur « ce PC » en
   Solo : le technicien seul, sans compte ni mot de passe (`compte` null) ; 400 ailleurs. Rend `{"compte"
   (compte_public, jamais le mot de passe), "technicien_id", …}`.
+- `POST identifiant` `{"prenom", "nom"}` (L03, lot 2 ; sans brouillon, rien n'est écrit) → `{"identifiant"}` que
+  `POST compte` donnerait (`identifiant_depuis`, identifiants déjà pris compris ; '' sans prénom) : l'étape « compte »
+  l'annonce dès que prénom et nom sont saisis (« Votre identifiant sera : … »). À « Terminer » avec comptes,
+  l'assistant laisse l'identifiant (jamais le mot de passe) dans `sessionStorage` (`prevo.identifiant.installation`) :
+  l'écran de connexion qui suit la relance l'a déjà rempli, le curseur dans le mot de passe ; oublié une fois connecté.
 - `POST certificat` `{"mode": "automatique" | "reseau_prive" | "fichiers" | "mandataire", "certificat"?, "cle"?,
   "noms"?}` (400 sur « ce PC ») : automatique ⇒ `preparer_certificat_local` tout de suite avec
   `executable_mkcert()` (variable d'environnement `PREVO_MKCERT`, documentée comme `PREVO_TAILSCALE` : tests ;

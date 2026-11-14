@@ -280,7 +280,10 @@ class TestParcours(CasInstallation):
         self.assertGreaterEqual(page.evaluate(ZONES_TACTILES_JS), 48)
         self.assertEqual(page.locator("#installation-contenu input[type=password]").count(), 2)
         page.fill("#inst-prenom", "Nicolas")
+        self.assertTrue(page.is_hidden("#inst-identifiant"))          # L03 : dès que prénom ET nom sont saisis
         page.fill("#inst-nom", "Briand")
+        page.wait_for_selector("#inst-identifiant", state="visible")
+        self.assertIn("Votre identifiant sera : nicolas.briand", page.inner_text("#inst-identifiant"))
         page.fill("#inst-mot-de-passe", "court123")
         self.assertIn("trop court", page.inner_text("#inst-force"))
         page.fill("#inst-confirmation", "court123")
@@ -364,6 +367,12 @@ class TestParcours(CasInstallation):
         page.evaluate("InstallationFiche.terminerImpression()")
         self.assertEqual(page.evaluate("document.getElementById('impression').childElementCount"), 0)
         self.assertEqual(self.enregistreur.relances, [])
+        # L03 : l'identifiant rappelé au récapitulatif ; « Terminer » le laisse à l'écran de connexion (onglet seul).
+        self.assertEqual(page.inner_text("#inst-recap-identifiant"), "nicolas.briand")
+        page.click("#inst-terminer")
+        page.wait_for_selector("#inst-attente", state="visible")
+        self.assertEqual(page.evaluate("sessionStorage.getItem('prevo.identifiant.installation')"), "nicolas.briand")
+        self.assertNotIn(MOT_DE_PASSE, json.dumps(page.evaluate("Object.assign({}, sessionStorage, localStorage)")))
 
     def test_solo_dehors_tailscale_applique_d_un_clic(self):
         page = self.page

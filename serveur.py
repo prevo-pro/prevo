@@ -1337,6 +1337,16 @@ def responsable_actif_existe(config):
         return False
 
 
+def identifiant_du_responsable(config):
+    """L03 (lot 2) : identifiant du premier compte responsable actif (rappelé au récapitulatif de l'assistant), None
+    sans lui ou si comptes.json est illisible."""
+    try:
+        return next((c['identifiant'] for c in lire_comptes(config) if c.get('role') == 'responsable' and c.get('actif')),
+                    None)
+    except (OSError, ValueError, KeyError):
+        return None
+
+
 def aucun_responsable_sur(config):
     """Vrai seulement quand on SAIT qu'aucun compte responsable actif n'existe (§22.10) : comptes.json absent, ou
     lisible sans responsable actif. Illisible ou de forme inattendue : faux — rien ne s'ouvre sans session (un
@@ -2742,8 +2752,9 @@ ETAPES_DE_LECTURE = ('etat', 'fiche', 'journal')
 # Paramètres › Accès et installation (T170, D131 dernier point) : « reprendre » (brouillon repris de la configuration
 # en cours), « reglages » (clés simples), « ia » (fournisseur, adresse, IA en ligne ; jamais la clé) et « annuler »
 # (brouillon jeté) s'ajoutent aux étapes de l'assistant ; mêmes routes, même garde (PC serveur, responsable).
-ETAPES_D_ECRITURE = ETAPES_INSTALLATION + ('terminer', 'reprendre', 'reglages', 'ia', 'annuler')
-ETAPES_SANS_BROUILLON = ('situation', 'reprendre', 'annuler')       # jouables quand le brouillon n'existe pas
+# L03 (lot 2) : « identifiant » ne fait que calculer l'identifiant que l'étape « compte » donnerait (rien n'est écrit).
+ETAPES_D_ECRITURE = ETAPES_INSTALLATION + ('terminer', 'reprendre', 'reglages', 'ia', 'annuler', 'identifiant')
+ETAPES_SANS_BROUILLON = ('situation', 'reprendre', 'annuler', 'identifiant')   # jouables sans brouillon
 CLES_REGLAGES_SIMPLES = ('demandeurs_avec_compte', 'session_heures', 'session_longue_jours', 'invitation_heures',
                          'quota_documents_mo')
 CLES_IA_DU_CORPS = {'fournisseur': 'ia_fournisseur', 'url': 'ia_url', 'en_ligne': 'ia_en_ligne'}
@@ -3193,6 +3204,7 @@ def etat_installation(config):
             'dans_dossier_conseille': dans_dossier_conseille(config),
             'python_embarque': os.path.isfile(os.path.join(config.dossier_application, 'python', 'python.exe')),
             'responsable_existe': responsable_actif_existe(config),
+            'responsable_identifiant': identifiant_du_responsable(config),            # L03 (lot 2)
             'tailscale': detection_tailscale_publique(detecter_tailscale(maintenant=maintenant_s(config))),
             'mkcert_present': mkcert_disponible(),
             'systeme': 'windows' if windows else ('macos' if config.systeme == 'darwin' else 'linux'),
@@ -8543,6 +8555,17 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             except ErreurCompte as erreur:
                 reponse['direction'] = {'erreur': traduisible_de(erreur)}
         return reponse
+
+    def installation_identifiant(self, brouillon, demande):
+        """L03 (lot 2) : {"prenom", "nom"} → {"identifiant"} que l'étape « compte » donnerait (identifiant_depuis, la
+        seule règle, avec les identifiants déjà pris), montré dès la saisie ; '' sans prénom. Rien n'est écrit."""
+        prenom = demande.get('prenom') if isinstance(demande.get('prenom'), str) else ''
+        nom = demande.get('nom') if isinstance(demande.get('nom'), str) else ''
+        prenom, nom = prenom.strip(), nom.strip()
+        if not prenom:
+            return {'identifiant': ''}
+        pris = {compte['identifiant'] for compte in comptes_du_serveur(self.config)}
+        return {'identifiant': identifiant_depuis(prenom, nom, pris)}
 
     @staticmethod
     def direction_de_l_installation(demande, prenom, nom):

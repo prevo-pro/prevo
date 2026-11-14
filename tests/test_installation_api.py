@@ -709,6 +709,27 @@ class TestDeplacerEtBrouillon(CasAssistant):
         self.assertIsNone(self.ok(client.get("etat"))["brouillon"])
         self.assertEqual(client.post("portee", {"portee": "ce-pc"}).statut, 400)
 
+    def test_identifiant_annonce_par_la_regle_du_serveur(self):
+        """L03 (lot 2) : POST identifiant rend l'identifiant que l'étape « compte » donnera (identifiant_depuis, déjà
+        pris compris), sans brouillon et sans rien écrire ; puis GET etat le rappelle (responsable_identifiant)."""
+        client, instance = self.lancer()
+        self.assertEqual(self.ok(client.post("identifiant", {"prenom": " Élodie ", "nom": "Le Gall"})),
+                         {"identifiant": "elodie.le-gall"})
+        self.assertEqual(self.ok(client.post("identifiant", {"prenom": "Ayşe", "nom": "Işık"}))["identifiant"], "ayse.isik")
+        self.assertEqual(self.ok(client.post("identifiant", {"prenom": "", "nom": "Briand"})), {"identifiant": ""})
+        self.assertEqual(self.ok(client.post("identifiant", {"prenom": 3})), {"identifiant": ""})
+        self.assertFalse(Path(instance.config.dossier_donnees, "installation.json").exists())
+        self.assertIsNone(self.ok(client.get("etat"))["responsable_identifiant"])
+        self.ok(client.post("situation", {"situation": "equipe"}))
+        self.ok(client.post("portee", {"portee": "atelier"}))
+        annonce = self.ok(client.post("identifiant", {"prenom": "Nicolas", "nom": "Briand"}))["identifiant"]
+        compte = self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand", "mot_de_passe": MOT_DE_PASSE}))["compte"]
+        self.assertEqual((annonce, compte["identifiant"]), ("nicolas.briand", "nicolas.briand"))
+        self.assertEqual(self.ok(client.get("etat"))["responsable_identifiant"], "nicolas.briand")
+        # Déjà pris : la même règle que creer_compte (« .2 »).
+        self.assertEqual(self.ok(client.post("identifiant", {"prenom": "Nicolas", "nom": "Briand"}))["identifiant"],
+                         "nicolas.briand.2")
+
     def test_commande_d_elevation_et_adresse_de_demarrage(self):
         script = r"C:\Prevo\Installer_demarrage.ps1"
         commande = serveur.commande_powershell(script, True)
@@ -730,7 +751,8 @@ class TestDeplacerEtBrouillon(CasAssistant):
 # ---------------------------------------------------------------------------
 
 ROUTES_DE_L_ASSISTANT = [("GET", "etat"), ("GET", "fiche")] + [("POST", etape) for etape in (
-    "situation", "portee", "compte", "certificat", "tailscale", "demarrage", "sauvegardes", "deplacer", "terminer")]
+    "situation", "portee", "compte", "certificat", "tailscale", "demarrage", "sauvegardes", "deplacer", "terminer",
+    "identifiant")]
 
 
 class TestVuDuReseau(CasAssistant):

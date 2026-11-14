@@ -26,6 +26,7 @@ const Installation = (() => {
   const MOTIF_ROUTE_FICHE = /^#\/installation\/fiche(\?.*)?$/;
   const INTERVALLE_RELANCE_MS = 2000;           // ping du serveur relancé
   const DELAI_RELANCE_MS = 60000;               // au-delà : message, le serveur ne revient pas
+  const CLE_IDENTIFIANT_INSTALLATION = 'prevo.identifiant.installation';   // L03 : lue par Connexion (même clé)
   const messageServeurInjoignable = () => I18n.t('installation.message_serveur_injoignable.serveur_prevo_repond_pas');
 
   /** Pourquoi une étape est sans objet (compte, certificat, tailscale) ; '' pour une autre étape. Lu à l'affichage. */
@@ -103,6 +104,7 @@ const Installation = (() => {
     if (donnees.etapes) etat.etapes = donnees.etapes;
     if (etat.brouillon && etat.brouillon.situation) etat.situation = etat.brouillon.situation;
     if (donnees.compte || donnees.technicien_id) etat.responsable_existe = etat.responsable_existe || Boolean(donnees.compte);
+    if (donnees.compte && donnees.compte.role === 'responsable') etat.responsable_identifiant = donnees.compte.identifiant;
     if (donnees.direction) accesDirection = donnees.direction;
   }
 
@@ -274,6 +276,9 @@ const Installation = (() => {
     const force = UI.$('#inst-mot-de-passe', section);
     if (force) force.addEventListener('input', () => { UI.$('#inst-force', section).textContent = InstallationEtapes.indicationForce(force.value); });
     section.addEventListener('input', () => montrerErreur(etape.cle, ''));
+    if (UI.$('#inst-identifiant', section)) {
+      ['#inst-prenom', '#inst-nom'].forEach((champ) => UI.$(champ, section).addEventListener('input', () => annoncerIdentifiant(section)));
+    }
     const continuer = UI.$('#inst-continuer', section) || UI.$('[data-enregistrer]', section);
     if (continuer) continuer.addEventListener('click', () => pendant(continuer, () => envoyer(etape, lire(), section, unePage)));
     const precedent = UI.$('#inst-precedent', section);
@@ -290,6 +295,26 @@ const Installation = (() => {
     if (garder) garder.addEventListener('click', () => pendant(garder, () => resterIci(section)));
     const terminer = UI.$('#inst-terminer', section);
     if (terminer) terminer.addEventListener('click', () => pendant(terminer, () => terminerInstallation(section, lire())));
+  }
+
+  // L03 (lot 2) : dès que prénom et nom sont saisis, « Votre identifiant sera : prénom.nom », calculé par le serveur
+  // (POST identifiant : la règle de l'étape « compte », identifiants déjà pris compris) ; seule la dernière réponse compte.
+  let minuteurIdentifiant = null;
+  let demandeIdentifiant = 0;
+  function annoncerIdentifiant(section) {
+    clearTimeout(minuteurIdentifiant);
+    const zone = UI.$('#inst-identifiant', section);
+    const prenom = UI.$('#inst-prenom', section).value.trim();
+    const nom = UI.$('#inst-nom', section).value.trim();
+    const numero = ++demandeIdentifiant;
+    if (!prenom || !nom) { zone.hidden = true; return; }
+    minuteurIdentifiant = setTimeout(async () => {
+      const reponse = await appeler('identifiant', { prenom, nom });
+      if (numero !== demandeIdentifiant || !zone.isConnected) return;
+      const identifiant = reponse.statut === 200 && reponse.donnees ? reponse.donnees.identifiant : '';
+      zone.hidden = !identifiant;
+      if (identifiant) UI.remplir(zone, UI.html`<div class="alerte-texte"><p>${I18n.html('installation.formulaire_compte.identifiant_sera', { identifiant })}</p><p>${I18n.t('installation.formulaire_compte.identifiant_noter')}</p></div>`);
+    }, 300);
   }
 
   // Lecture du formulaire puis POST de l'étape ; « passer » (compte déjà fait) avance sans appel.
@@ -430,6 +455,11 @@ const Installation = (() => {
     const corps = formulaire && formulaire.lire ? formulaire.lire(section) : {};
     const reponse = await appeler('terminer', corps);
     if (!reponse.statut || reponse.statut >= 400) { montrerErreur('recapitulatif', reponse.message); return; }
+    // L03 (lot 2) : la session est perdue à la relance ; l'identifiant (jamais le mot de passe) attend l'écran de
+    // connexion le temps de l'onglet (Connexion le reprend, puis l'oublie une fois connecté).
+    if (brouillon().comptes && etat.responsable_identifiant) {
+      try { window.sessionStorage.setItem(CLE_IDENTIFIANT_INSTALLATION, etat.responsable_identifiant); } catch (erreur) { /* sans mémoire d'onglet */ }
+    }
     await attendreRelance(section, reponse.donnees.relance, I18n.t('installation.terminer_installation.configuration_ecrite', { fichier: reponse.donnees.fichier }), '#/accueil', serveurConfigure);
   }
 
