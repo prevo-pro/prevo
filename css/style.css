@@ -823,6 +823,7 @@ a.vignette img, button.vignette img { width: 100%; height: 100%; object-fit: cov
   input, select, textarea { min-height: 48px; font-size: 1rem; }
   .table input, .table select { min-height: 48px; }
   .check-liste .mesure { min-height: 48px; }
+  .autres-adresses summary { min-height: 48px; padding: 12px 0; box-sizing: border-box; }   /* L04 : zone tactile */
   input[type=checkbox], input[type=radio] { width: 26px; height: 26px; }
   .form-grille { grid-template-columns: minmax(0, 1fr); }
   .valeurs { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
