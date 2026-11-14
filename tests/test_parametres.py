@@ -182,7 +182,7 @@ class TestAccueil(CasParametres):
             premiere_di = cartes_di.first.locator(".bento-id").inner_text()
             self.assertEqual(premiere_di, securite[0]["id"])
             self.assertEqual(cartes_di.first.locator("a").get_attribute("href"), "#/di/" + securite[0]["id"])
-            cartes_ot = page.locator('#bento-retards:has(h2:text("OT en retard")) li')
+            cartes_ot = page.locator('#bento-retards:has(h2:text("Ordres en retard")) li')
             self.assertEqual(cartes_ot.count(), min(5, len(en_retard)))
             plus_ancien = sorted(en_retard, key=lambda o: o["date_prevue"])[0]["id"]
             self.assertEqual(cartes_ot.first.locator(".bento-id").inner_text(), plus_ancien)

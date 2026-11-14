@@ -12,7 +12,7 @@ pour les tests des mouvements. Familles (le nom du test le dit) :
                 retard, sinon le prochain préventif (choix recalculé en Python), libellé du bouton selon
                 le type ; rien → tuile masquée, la synthèse prend toute la largeur ;
     chiffres    chaque chiffre = la liste correspondante (Accueil.calculerCompteurs, Suggestions), listes
-                « Demandes à traiter » et « OT en retard », liens vers les listes filtrées ;
+                « Demandes à traiter » et « Ordres en retard », liens vers les listes filtrées ;
     reserves    2.2 (T421, CS170) : troisième lien de « Contrôles et habilitations », réserves en retard (la
                 réserve de RA-01, échéance par défaut passée) vers #/controles?filtre=reserves-en-retard, détail
                 selon l'échéance (saisie, par défaut, mêlées, aucune) ; indicateur du technicien ;
@@ -287,9 +287,9 @@ def phrase_attendue(di, securite, moment):
 def ligne_attendue(retard, p1, preventifs):
     segments = []
     if retard:
-        segments.append("%d OT en retard" % retard)
+        segments.append(accord(retard, "ordre en retard", "ordres en retard"))
     if p1:
-        segments.append(accord(p1, "P1 ouvert", "P1 ouverts"))
+        segments.append(accord(p1, "urgence ouverte", "urgences ouvertes"))
     if preventifs:
         segments.append(accord(preventifs, "préventif") + " cette semaine")
     return " · ".join(segments)
@@ -386,7 +386,7 @@ class TestPhrase(CasBento):
         self.assertEqual((len(d["di"]), sum(1 for x in d["di"] if x["impact"] == "sécurité")), (5, 1))
         self.assertEqual((len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (3, 1, 3))
         self.assertEqual(self.texte(page, "#bento-phrase"), "5 demandes à traiter, dont 1 sécurité")
-        self.assertEqual(self.texte(page, "#bento-ligne"), "3 OT en retard · 1 P1 ouvert · 3 préventifs cette semaine")
+        self.assertEqual(self.texte(page, "#bento-ligne"), "3 ordres en retard · 1 urgence ouverte · 3 préventifs cette semaine")
         # Boutons de la synthèse
         self.assertEqual(self.texte(page, "#bento-synthese a[href='%s']" % LIEN_DI), "Voir les demandes →")
         self.assertEqual(self.texte(page, "#bento-synthese a[href='%s']" % LIEN_PLANNING), "Ouvrir le planning")
@@ -414,7 +414,7 @@ class TestPhrase(CasBento):
         d = self.verifier_phrase(page, "matin")
         self.assertEqual((len(d["di"]), len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (1, 0, 2, 1))
         self.assertEqual(self.texte(page, "#bento-phrase"), "1 demande à traiter")
-        self.assertEqual(self.texte(page, "#bento-ligne"), "2 P1 ouverts · 1 préventif cette semaine")
+        self.assertEqual(self.texte(page, "#bento-ligne"), "2 urgences ouvertes · 1 préventif cette semaine")
 
         # Deux DI de sécurité, un OT en retard, aucun P1, deux préventifs de la semaine
         page = self.ouvrir()
@@ -437,7 +437,7 @@ class TestPhrase(CasBento):
         d = self.verifier_phrase(page, "matin")
         self.assertEqual((len(d["di"]), len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (2, 1, 0, 2))
         self.assertEqual(self.texte(page, "#bento-phrase"), "2 demandes à traiter, dont 2 sécurité")
-        self.assertEqual(self.texte(page, "#bento-ligne"), "1 OT en retard · 2 préventifs cette semaine")
+        self.assertEqual(self.texte(page, "#bento-ligne"), "1 ordre en retard · 2 préventifs cette semaine")
 
     def test_phrase_cet_apres_midi_ce_soir_et_rien_d_urgent(self):
         vider = """async () => { await Donnees.modifier('demandes', (l) => { l.splice(0, l.length); }); }"""

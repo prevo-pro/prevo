@@ -66,7 +66,7 @@ ECRANS = {
                     "retard et trois tuiles à surveiller (articles à commander, contrôles et habilitations, "
                     "suggestions de préventif). Chaque chiffre mène à sa liste."
                 ),
-                "essayez": "cliquez sur le compteur « DI à traiter ».",
+                "essayez": "cliquez sur le compteur « Demandes à traiter ».",
             },
             "technicien": {
                 "texte": (

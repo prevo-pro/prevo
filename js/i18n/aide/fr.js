@@ -105,7 +105,7 @@ I18n.ajouter('fr', {
   'aide.ecran.accueil.demandeur.essayez': '« Signaler un problème » pour créer une demande en cinq questions.',
   'aide.ecran.accueil.demandeur.texte': 'Vos demandes d\'intervention et ce qu\'elles sont devenues : acceptée, différée ou refusée, avec le motif.',
   'aide.ecran.accueil.demo': 'Vous êtes dans la démo : essayez tout, rien n\'est enregistré ailleurs que dans ce navigateur.',
-  'aide.ecran.accueil.responsable.essayez': 'cliquez sur le compteur « DI à traiter ».',
+  'aide.ecran.accueil.responsable.essayez': 'cliquez sur le compteur « Demandes à traiter ».',
   'aide.ecran.accueil.responsable.texte': 'Votre tableau de bord : ce qui demande une décision aujourd\'hui. En haut, la synthèse et « À traiter en premier » ; dessous, les demandes à traiter, les ordres de travail en retard et trois tuiles à surveiller (articles à commander, contrôles et habilitations, suggestions de préventif). Chaque chiffre mène à sa liste.',
   'aide.ecran.accueil.technicien.essayez': 'ouvrez le premier ordre et regardez l\'onglet Exécution.',
   'aide.ecran.accueil.technicien.texte': 'Vos ordres de travail ouverts, du plus urgent au moins urgent. Un clic ouvre l\'ordre, avec sa check-list, ses temps et ses pièces.',
