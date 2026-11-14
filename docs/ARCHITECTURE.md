@@ -4483,6 +4483,8 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   l'annonce dès que prénom et nom sont saisis (« Votre identifiant sera : … »). À « Terminer » avec comptes,
   l'assistant laisse l'identifiant (jamais le mot de passe) dans `sessionStorage` (`prevo.identifiant.installation`) :
   l'écran de connexion qui suit la relance l'a déjà rempli, le curseur dans le mot de passe ; oublié une fois connecté.
+  R3 (lot 2) : `POST compte` réussi, l'assistant ouvre aussi une fenêtre de Prévo (`UI.fenetre`, bouton « OK » seul, focus
+  dessus) « Votre identifiant sera : … », l'identifiant rendu par le serveur ; l'étape suivante attend son « OK ».
 - `POST certificat` `{"mode": "automatique" | "reseau_prive" | "fichiers" | "mandataire", "certificat"?, "cle"?,
   "noms"?}` (400 sur « ce PC ») : automatique ⇒ `preparer_certificat_local` tout de suite avec
   `executable_mkcert()` (variable d'environnement `PREVO_MKCERT`, documentée comme `PREVO_TAILSCALE` : tests ;

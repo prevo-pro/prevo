@@ -349,7 +349,20 @@ const Installation = (() => {
     if (echec) { montrerErreur(etape.cle, echec); rendreApres(unePage, etape, echec); return; }
     const texte = formulaire && formulaire.reussite ? formulaire.reussite(reponse.donnees) : '';
     if (texte) UI.toast(texte, 'succes');
+    if (etape.cle === 'compte') await confirmerIdentifiant(reponse.donnees);
     if (unePage) rendreApres(true, etape); else avancer(false);
+  }
+
+  // R3 (lot 2) : compte créé, une fenêtre redit l'identifiant réellement créé (rendu par le serveur) ; un seul bouton
+  // « OK », focus dessus (Entrée valide), à valider avant l'étape suivante. Rien sans compte (Solo : une fiche seule).
+  async function confirmerIdentifiant(donnees) {
+    const identifiant = donnees && donnees.compte && donnees.compte.identifiant;
+    if (!identifiant) return;
+    await UI.fenetre({
+      titre: I18n.t('installation.formulaire_compte.identifiant_cree_titre'),
+      contenu: UI.html`<p id="inst-identifiant-fenetre">${I18n.html('installation.formulaire_compte.identifiant_sera', { identifiant })}</p><p>${I18n.t('installation.formulaire_compte.identifiant_noter')}</p>`,
+      boutons: [{ libelle: I18n.t('installation.formulaire_compte.identifiant_ok'), valeur: true, classe: 'btn-primaire', defaut: true }],
+    });
   }
 
   // Page unique : la section rejouée (les étapes suivantes peuvent changer d'objet) ; pas à pas : la même étape.

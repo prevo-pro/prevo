@@ -296,7 +296,17 @@ class TestParcours(CasInstallation):
         self.assertIn("solide", page.inner_text("#inst-force"))
         page.fill("#inst-confirmation", MOT_DE_PASSE)
         self.continuer()
+        # R3 (lot 2) : compte créé, une fenêtre redit l'identifiant réel, un seul bouton « OK » (focus dessus) ;
+        # tant qu'elle n'est pas validée, l'étape ne change pas ; Entrée valide.
+        page.wait_for_selector("dialog[open] #inst-identifiant-fenetre")
+        self.assertIn("Votre identifiant sera : nicolas.briand", page.inner_text("dialog[open] #inst-identifiant-fenetre"))
+        self.assertEqual(page.locator("dialog[open] .fenetre-actions .btn").count(), 1)
+        self.assertEqual(page.inner_text("dialog[open] .fenetre-actions .btn"), "OK")
+        self.assertTrue(page.evaluate("document.activeElement.closest('.fenetre-actions') !== null"))
+        self.assertEqual(page.locator('#installation-contenu section[data-etape="compte"]').count(), 1)
+        page.keyboard.press("Enter")
         self.attendre_etape("certificat")
+        self.assertEqual(page.locator("dialog[open]").count(), 0)
         self.assertTrue((self.dossier / "donnees" / "acces" / "comptes.json").is_file())
         self.assertNotIn(MOT_DE_PASSE, page.content())
         self.sans_defilement_horizontal("étape 4")
@@ -406,6 +416,7 @@ class TestParcours(CasInstallation):
         page.fill("#inst-mot-de-passe", MOT_DE_PASSE)
         page.fill("#inst-confirmation", MOT_DE_PASSE)
         self.continuer()
+        page.click("dialog[open] .fenetre-actions .btn")
         self.attendre_etape("certificat")
         self.assertTrue(page.is_checked('#installation-contenu input[name="mode"][value="reseau_prive"]'))   # Solo dehors, Tailscale présent
         self.continuer()

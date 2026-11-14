@@ -883,6 +883,7 @@ class TestParcoursTailscale(CasRecetteAssistant):
         page.fill("#inst-mot-de-passe", MOT_DE_PASSE_ASSISTANT)
         page.fill("#inst-confirmation", MOT_DE_PASSE_ASSISTANT)
         self.continuer()
+        page.click("dialog[open] .fenetre-actions .btn")   # R3 : l'identifiant créé, à valider
         self.attendre_etape("certificat")
         self.assertTrue(page.is_checked('#installation-contenu input[name="mode"][value="reseau_prive"]'))
         self.continuer()
