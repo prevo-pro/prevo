@@ -4729,6 +4729,7 @@ I18n.ajouter('pt-PT', {
   'connexion.message_serveur_injoignable.serveur_prevo_repond_pas': 'O servidor do Prévo não responde. Verifique se a janela do servidor está aberta no PC.',
   'connexion.montrer_alertes.appareil_plus_autorise_demandez': '<b>Este dispositivo já não está autorizado.</b> Peça um novo convite ao responsável: o QR ou a ligação do convite voltará a abrir o Prévo neste dispositivo.',
   'connexion.montrer_alertes.connectez_vous_ouvrir_document': 'Inicie sessão para abrir este documento: depois, abre-se sozinho.',
+  'connexion.montrer_alertes.signaler_panne_telephone_non_autorise': 'Quer comunicar uma avaria? Este telemóvel ainda não está autorizado: peça à manutenção o QR de convite, ou avise um técnico, que pode declarar a avaria no local.',
   'connexion.nouveau_mot_de_passe.trop_court': { one: 'A nova palavra-passe deve ter pelo menos {n} carácter (tem {longueur}).', other: 'A nova palavra-passe deve ter pelo menos {n} carateres (tem {longueur}).' },
   'connexion.nouveau_mot_de_passe.trop_long': { one: 'A nova palavra-passe deve ter no máximo {n} carácter.', other: 'A nova palavra-passe deve ter no máximo {n} carateres.' },
   'connexion.titres.appareil_va_etre_reconnu': 'Este dispositivo vai ser reconhecido como requerente: poderá assinalar um problema e acompanhar os seus pedidos.',

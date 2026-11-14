@@ -297,6 +297,44 @@ class TestConnexion(CasConnexion):
         self.assertEqual(page.evaluate("App.profil.type"), "responsable")
         self.assertEqual(page.evaluate("location.hash"), "#/apropos")
 
+    def test_qr_de_machine_flashe_sans_session_dit_quoi_faire_sans_rien_montrer_de_la_machine(self):
+        """L12 (T535) : le QR d'une machine (#/equipement/<id>) flashé par un téléphone sans session : l'écran de
+        connexion ajoute la phrase « Ce téléphone n'est pas encore autorisé… » ; rien de la machine n'est demandé ni
+        affiché avant la connexion (pas même son nom) ; autre route : pas de phrase ; connecté, la fiche s'ouvre."""
+        page = self.page
+        page.set_viewport_size({"width": 375, "height": 812})
+        requetes = []
+        page.on("request", lambda r: requetes.append(r.url))
+        page.goto(self.serveur.url + "/#/equipement/EQ-0001")
+        self.attendre_etat("connexion")
+        page.wait_for_selector("#connexion-equipement", state="visible")
+        texte = page.inner_text("#connexion-alertes")
+        self.assertIn("Vous voulez signaler une panne", texte)
+        self.assertIn("Ce téléphone n'est pas encore autorisé", texte)
+        self.assertIn("demandez le QR d'invitation à la maintenance", texte)
+        self.assertIn("il peut déclarer la panne sur place", texte)
+        self.sans_defilement_horizontal("connexion par le QR d'une machine")
+        # Aucune donnée de la machine : ni nom à l'écran, ni table lue.
+        self.assertNotIn("Compresseur", page.inner_text("body"))
+        self.assertNotIn("CP-01", page.inner_text("body"))
+        self.assertEqual([u for u in requetes if "/api/csv/" in u], [])
+        # Seule la route d'une machine déclenche la phrase.
+        self.assertEqual(page.evaluate("""() => ['#/equipement/EQ-0001', '#/equipement/nouveau', '#/equipement/EQ-0001/modifier',
+            '#/equipement/', '#/equipements/EQ-1', '#/accueil', '#/document/r.html'].map((h) => Connexion.estRouteEquipement(h))"""),
+                         [True, False, False, False, False, False, False])
+        # Ailleurs que sur une machine : pas de phrase.
+        page.goto(self.serveur.url + "/#/accueil")
+        page.reload()
+        self.attendre_etat("connexion")
+        self.assertEqual(page.locator("#connexion-equipement").count(), 0)
+        # Connecté (compte), la personne arrive sur la machine flashée.
+        page.goto(self.serveur.url + "/#/equipement/EQ-0001")
+        self.attendre_etat("connexion")
+        self.connecter("nicolas.briand")
+        attendre_pret(page)
+        self.assertEqual(page.evaluate("location.hash"), "#/equipement/EQ-0001")
+        page.wait_for_selector("#contenu >> text=CP-01")
+
     def test_telephone_375_px_technicien_sans_equipe_acces(self):
         page = self.page
         page.set_viewport_size({"width": 375, "height": 812})

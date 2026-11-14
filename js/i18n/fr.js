@@ -4725,6 +4725,7 @@ I18n.ajouter('fr', {
   'connexion.message_serveur_injoignable.serveur_prevo_repond_pas': 'Le serveur Prévo ne répond pas. Vérifiez que la fenêtre du serveur est ouverte sur le PC.',
   'connexion.montrer_alertes.appareil_plus_autorise_demandez': '<b>Cet appareil n\'est plus autorisé.</b> Demandez une nouvelle invitation au responsable : son QR ou son lien ouvrira à nouveau Prévo sur cet appareil.',
   'connexion.montrer_alertes.connectez_vous_ouvrir_document': 'Connectez-vous pour ouvrir ce document : il s\'ouvrira ensuite tout seul.',
+  'connexion.montrer_alertes.signaler_panne_telephone_non_autorise': 'Vous voulez signaler une panne\u00a0? Ce téléphone n\'est pas encore autorisé\u00a0: demandez le QR d\'invitation à la maintenance, ou prévenez un technicien, il peut déclarer la panne sur place.',
   'connexion.nouveau_mot_de_passe.trop_court': { one: 'Le nouveau mot de passe doit faire {n} caractère au moins (il en a {longueur}).', other: 'Le nouveau mot de passe doit faire {n} caractères au moins (il en a {longueur}).' },
   'connexion.nouveau_mot_de_passe.trop_long': { one: 'Le nouveau mot de passe doit faire {n} caractère au plus.', other: 'Le nouveau mot de passe doit faire {n} caractères au plus.' },
   'connexion.titres.appareil_va_etre_reconnu': 'Cet appareil va être reconnu comme demandeur : vous pourrez signaler un problème et suivre vos demandes.',

@@ -28,6 +28,9 @@ const Connexion = (() => {
   // L03 (lot 2) : identifiant du responsable laissé par l'assistant à « Terminer » (sessionStorage, jamais de mot de
   // passe) : la connexion qui suit l'a déjà rempli, le curseur dans le mot de passe ; oublié une fois connecté.
   const CLE_IDENTIFIANT_INSTALLATION = 'prevo.identifiant.installation';
+  // L12 (T535) : #/equipement/<id>, l'adresse que porte le QR d'une machine ; seule la FORME de la route compte ici
+  // (rien de la machine n'est lu ni affiché avant connexion, pas même son nom).
+  const MOTIF_ROUTE_EQUIPEMENT = /^#\/equipement\/(?!nouveau$)[^/?#]+$/;
   const PANNEAUX = {
     connexion: 'connexion-formulaire',
     enrolement: 'connexion-enrolement',
@@ -142,6 +145,12 @@ const Connexion = (() => {
       // T527 : un lien de document ouvert sans session ; il s'ouvre une fois la personne connectée.
       const bandeau = UI.bandeau('info', I18n.t('connexion.montrer_alertes.connectez_vous_ouvrir_document'));
       bandeau.id = 'connexion-document';
+      zone.appendChild(bandeau);
+    } else if (estRouteEquipement(location.hash)) {
+      // L12 (T535) : un QR de machine flashé par un téléphone jamais invité ; l'accès n'est pas élargi, la phrase dit
+      // quoi faire. Après connexion, la route reste : la fiche de la machine s'ouvre.
+      const bandeau = UI.bandeau('info', I18n.t('connexion.montrer_alertes.signaler_panne_telephone_non_autorise'));
+      bandeau.id = 'connexion-equipement';
       zone.appendChild(bandeau);
     }
     zone.hidden = zone.children.length === 0;
@@ -365,6 +374,11 @@ const Connexion = (() => {
     return jetonDeLaRoute(hash) !== '';
   }
 
+  /** L12 : la route est celle d'une machine (#/equipement/<id>, le lien d'un QR) ? Ne lit ni n'expose l'identifiant. */
+  function estRouteEquipement(hash) {
+    return MOTIF_ROUTE_EQUIPEMENT.test(hash || '');
+  }
+
   /** T527 : nom du document de la route #/document/<nom> (nom valide pour le serveur), sinon ''. */
   function documentDeLaRoute(hash) {
     const trouve = MOTIF_ROUTE_DOCUMENT.exec(hash || '');
@@ -429,6 +443,7 @@ const Connexion = (() => {
     jetonDeLaRoute,
     estRouteEnrolement,
     documentDeLaRoute,
+    estRouteEquipement,
     sessionLue,
     LONGUEUR_MIN_MOT_DE_PASSE,
     LONGUEUR_MAX_MOT_DE_PASSE,

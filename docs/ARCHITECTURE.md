@@ -4082,6 +4082,10 @@ son 403. Sans session (T527), le même lien ouvert comme une page devient une re
 jamais une autre adresse) : l'écran de connexion dit « Connectez-vous pour ouvrir ce document », puis l'écran
 `document-a-ouvrir` (js/app.js) rouvre `/api/documents/<nom>` avec les droits du compte connecté (refusé : la page
 « document fermé ») ; un appel de l'application et un appareil refusé gardent leur 401 JSON.
+L12 (lot 2) : le QR d'une machine (`#/equipement/<id>`) flashé sans session arrive sur l'écran de connexion, qui ajoute
+« Vous voulez signaler une panne ? Ce téléphone n'est pas encore autorisé… » (`Connexion.estRouteEquipement`, la forme de
+la route seule : l'identifiant n'est ni lu ni affiché, aucune table demandée). Aucun accès élargi ; la route est gardée,
+la fiche de la machine s'ouvre après connexion.
 
 Précisions de T152 :
 
