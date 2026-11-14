@@ -18,6 +18,18 @@
 .indicateurs-instruments .comp + .comp { margin-top: 2px; }
 .indicateurs-attente { color: var(--texte-2); }
 
+/* L30 : les quatre chiffres du bilan en tête (tableau de bord, accueil de la direction), puis les familles repliées */
+.indicateurs-tete { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.indicateurs-tete .chiffre, .indicateurs-tete .comp { overflow-wrap: anywhere; }
+.indicateurs-famille > summary {
+  cursor: pointer; font-weight: 600; color: var(--texte); min-height: var(--tactile);
+  display: flex; align-items: center;
+}
+.indicateurs-famille[open] > summary { margin-bottom: .6rem; }
+.indicateurs-famille .indicateurs-instruments { margin-bottom: 12px; }
+.accueil-direction-tete { margin: 0 0 18px; }
+.accueil-direction-tete h2 { margin-bottom: 6px; }
+
 /* Encadré « Comprendre » (replié par défaut) */
 .indicateurs-comprendre summary {
   cursor: pointer; font-weight: 600; color: var(--texte); min-height: var(--tactile);
@@ -44,14 +56,14 @@
 
 /* Tablette : instruments sur 2 colonnes (comme la charte) */
 @media (max-width: 1099.98px) {
-  .indicateurs-instruments { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .indicateurs-instruments, .indicateurs-tete { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Téléphone : zones tactiles de 48 px, filtres en colonne */
 @media (max-width: 640px) {
   .indicateurs-filtres .champ { flex-basis: 100%; }
   .indicateurs-exports .btn { min-height: 48px; }
-  .indicateurs-instruments .chiffre { font-size: 1.35rem; }
+  .indicateurs-instruments .chiffre, .indicateurs-tete .chiffre { font-size: 1.35rem; }
   .indicateurs-graphique .entete-carte { flex-direction: column; }
   /* Tableau par équipement : le repère suffit (lignes courtes) ; la désignation reste sur la fiche */
   .indicateurs-designation { display: none; }

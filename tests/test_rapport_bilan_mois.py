@@ -25,7 +25,19 @@ Lancer depuis la racine du projet (navigateur : au travers du verrou) :
 import html
 import unittest
 
-from commun import CasNavigateur, attendre_pret, preregler_profil, url_fichier
+from commun import CasNavigateur, attendre_pret, url_fichier
+from commun import preregler_profil as _preregler_profil
+
+# L30 (T544) : le tableau de bord replie ses familles d'office (état gardé sur le poste) ; ces tests lisent tous les
+# chiffres et graphiques : familles dépliées sur ce poste, avant tout chargement.
+DEPLIER_FAMILLES_JS = ("try { localStorage.setItem('prevo.indicateurs.familles', JSON.stringify(['fiabilite', 'preventif',"
+                       " 'retards', 'couts', 'heures', 'equipements'])); } catch (e) { /* stockage refusé */ }")
+
+
+def preregler_profil(contexte, *arguments, **options):
+    _preregler_profil(contexte, *arguments, **options)
+    contexte.add_init_script(DEPLIER_FAMILLES_JS)
+
 
 CLOS = "Clôturé techniquement"
 
@@ -133,8 +145,8 @@ class TestTableauDeBord(CasBilan):
 
     def test_duree_d_arret_et_cout_partiel_au_tableau_de_bord(self):
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
-        bandeau = self.page.locator("#contenu .indicateurs-instruments")
-        bandeau.wait_for()
+        bandeau = self.page.locator("#contenu .indicateurs-resultats")         # L30 : instruments rangés par famille
+        bandeau.locator('[data-indicateur="cout"]').wait_for()
         arret = blancs(bandeau.locator('[data-indicateur="duree-arret"]').inner_text())
         self.assertIn("1,5 h", arret)                                    # avant T519 : « 0,0 h », « 0 panne avec une durée »
         self.assertIn("1 panne avec une durée", arret)

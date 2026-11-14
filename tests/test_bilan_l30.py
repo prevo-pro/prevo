@@ -20,10 +20,13 @@ blancs = base.blancs
 class CasL30(base.CasBilan):
 
     PROFIL = ("responsable", "Responsable")
+    DEPLIER = True                  # familles du tableau de bord dépliées sur ce poste (repliées d'office, L30)
 
     def ouvrir(self, tables=None):
         self.contexte.clock.set_fixed_time(self.HORLOGE)
         preregler_profil(self.contexte, *self.PROFIL)
+        if self.DEPLIER:
+            self.contexte.add_init_script(base.DEPLIER_FAMILLES_JS)
         self.page.goto(url_fichier("index.html"))
         self.page.click("#btn-demo")
         attendre_pret(self.page)
@@ -206,6 +209,69 @@ class TestTousLesMoisEtEnregistrer(CasL30):
         bandeau.wait_for()
         self.assertIn("Bilan de décembre 2026 enregistré", blancs(bandeau.inner_text()))
         self.assertIn("Bilans enregistrés", blancs(self.page.inner_text(".rapports-liste")))
+
+
+class TestTeteDuTableauDeBord(CasL30):
+    """Défaut 37 : tableau de bord de 10 à 13 écrans ; en tête les quatre chiffres du bilan, le reste replié par famille."""
+
+    DEPLIER = False
+    FAMILLES = ["fiabilite", "preventif", "retards", "couts", "heures", "equipements"]
+
+    def tete(self):
+        tete = self.page.locator("#contenu .indicateurs-tete")
+        tete.wait_for()
+        return {cle: blancs(tete.locator('[data-tete="%s"]' % cle).inner_text()) for cle in
+                ("disponibilite", "heures-cout", "pannes", "preventif")}
+
+    def test_quatre_chiffres_en_tete_le_reste_replie(self):
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        tete = self.tete()
+        self.assertIn("à compléter", tete["disponibilite"])                       # D35 : rien de supposé
+        self.assertIn("5,5 h", tete["heures-cout"])
+        self.assertIn("coût : 173,50 € · Partiel : 2,5 h sans taux horaire", tete["heures-cout"])
+        self.assertIn("1,5 h d'arrêt", tete["pannes"])
+        self.assertTrue(tete["pannes"].split("\n")[1].strip() == "1" or "\n1\n" in tete["pannes"], tete["pannes"])
+        self.assertIn("18,2 %", tete["preventif"])
+        familles = self.page.eval_on_selector_all("#contenu details.indicateurs-famille", "ds => ds.map((d) => [d.dataset.famille, d.open])")
+        self.assertEqual(familles, [[f, False] for f in self.FAMILLES])
+        self.assertFalse(self.page.is_visible('#contenu [data-indicateur="mtbf"]'))
+        self.assertFalse(self.page.is_visible("#contenu .indicateurs-delais"))
+
+    def test_non_chiffre_en_tete(self):
+        self.sans_taux_ni_prix()
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        self.assertIn("coût non chiffré (5,5 h sans taux horaire", self.tete()["heures-cout"])
+
+    def test_famille_ouverte_gardee_sur_ce_poste(self):
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        self.tete()
+        self.page.click('#contenu details[data-famille="retards"] > summary')
+        self.page.locator("#contenu .indicateurs-delais").wait_for()
+        self.assertEqual(self.page.evaluate("() => JSON.parse(localStorage.getItem('prevo.indicateurs.familles'))"), ["retards"])
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=3-mois'; }")    # autre période : réaffiché
+        self.page.wait_for_function("() => document.querySelector('#contenu .indicateurs-resultats').dataset.periode === '3-mois'")
+        ouvertes = self.page.eval_on_selector_all("#contenu details.indicateurs-famille[open]", "ds => ds.map((d) => d.dataset.famille)")
+        self.assertEqual(ouvertes, ["retards"])
+        self.page.click('#contenu details[data-famille="retards"] > summary')
+        self.page.wait_for_function("() => JSON.parse(localStorage.getItem('prevo.indicateurs.familles')).length === 0")
+
+
+class TestDirectionArriveSurLesQuatreChiffres(CasL30):
+
+    PROFIL = ("direction", "")
+    DEPLIER = False
+
+    def test_accueil_de_la_direction(self):
+        self.page.evaluate("() => { location.hash = '#/parc'; }")                     # accueil réaffiché sur le mois d'essai
+        self.page.wait_for_function("() => !document.querySelector('#contenu .accueil-direction-tete')")
+        self.page.evaluate("() => { location.hash = '#/accueil'; }")
+        tete = self.page.locator("#contenu .accueil-direction-tete")
+        tete.wait_for()
+        texte = blancs(tete.inner_text())
+        self.assertIn("Ce mois-ci : ", texte)
+        for attendu in ("Disponibilité", "à compléter", "Heures et coût", "5,5 h", "Pannes", "1,5 h d'arrêt", "Part du préventif", "18,2 %"):
+            self.assertIn(attendu, texte)
+        self.assertTrue(self.page.is_visible('#contenu a[href="#/indicateurs"]'))      # le tableau de bord reste à un clic
 
 
 if __name__ == "__main__":

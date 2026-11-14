@@ -160,19 +160,87 @@ Object.assign(Indicateurs, (() => {
       periode: periode.code, du: periode.code === 'du-au' ? reglages.du : '', au: periode.code === 'du-au' ? reglages.au : '',
       debut: periode.debut, fin: periode.fin, criticite: filtres.criticite, atelier: filtres.atelier,
     });
+    // L30 (T544) : en tête, les quatre chiffres du bilan ; le reste replié par famille (état gardé sur ce poste).
+    const liste = instruments(global, jour);           // disponibilité, MTBF, MTTR, arrêt | préventif ×2 | retard | coût, stock
+    const ouvertes = famillesOuvertes();
+    const graphiques = (cle) => UI.html`<div class="grille indicateurs-graphiques" data-graphiques="${cle}"></div>`;
+    const bandeau = (morceau) => UI.html`<div class="instruments indicateurs-instruments">${morceau}</div>`;
     UI.remplir(zone, UI.html`
       <p class="indicateurs-resume" aria-live="polite">${periode.libelle}${resumeFiltres(filtres)}</p>
-      <div class="instruments indicateurs-instruments">${instruments(global, jour)}</div>
-      ${comprendre(global, coutArret !== null)}
-      <div class="grille indicateurs-graphiques"></div>
-      <div class="grille">
-        <article class="carte c12 indicateurs-delais"><h2>${I18n.t('indicateurs.resultats.delais_prise_charge')}</h2>${delais(global.delais)}</article>
-        <article class="carte c12 indicateurs-equipements-carte"><div class="entete-carte"><h2>${I18n.t('indicateurs.resultats.equipement')}</h2></div>
+      <div class="instruments indicateurs-tete" role="group" aria-label="${I18n.t('indicateurs.tete.titre')}">${tete(global)}</div>
+      ${famille('fiabilite', ouvertes, UI.html`${bandeau(liste.slice(0, 4))}${graphiques('fiabilite')}`)}
+      ${famille('preventif', ouvertes, bandeau(liste.slice(4, 6)))}
+      ${famille('retards', ouvertes, UI.html`${bandeau(liste.slice(6, 7))}
+        <article class="carte c12 indicateurs-delais"><h2>${I18n.t('indicateurs.resultats.delais_prise_charge')}</h2>${delais(global.delais)}</article>`)}
+      ${famille('couts', ouvertes, UI.html`${bandeau(liste.slice(7))}${graphiques('couts')}`)}
+      ${famille('heures', ouvertes, graphiques('heures'))}
+      ${famille('equipements', ouvertes, UI.html`<article class="carte c12 indicateurs-equipements-carte"><div class="entete-carte"><h2>${I18n.t('indicateurs.resultats.equipement')}</h2></div>
           <p class="note">${I18n.t('indicateurs.resultats.equipements_suivis_cliquez_tete', { resumeFiltres: resumeFiltres(filtres) })}</p>
-          <div class="indicateurs-equipements"></div></article>
-      </div>`);
+          <div class="indicateurs-equipements"></div></article>`)}
+      ${comprendre(global, coutArret !== null)}`);
+    UI.$$('.indicateurs-famille', zone).forEach((details) => details.addEventListener('toggle', () => noterFamille(details.dataset.famille, details.open)));
     UI.$('.indicateurs-equipements', zone).appendChild(tableauEquipements(periode, filtres, global.manquesCout));
-    dessinerGraphiques(UI.$('.indicateurs-graphiques', zone), periode, filtres, jour, coutArret);
+    const conteneur = (cle) => UI.$('[data-graphiques="' + cle + '"]', zone);
+    dessinerGraphiques({ fiabilite: conteneur('fiabilite'), couts: conteneur('couts'), heures: conteneur('heures') }, periode, filtres, jour, coutArret);
+  }
+
+  // L30 : familles repliables, toutes repliées d'office ; celles qu'on ouvre restent ouvertes sur ce poste (localStorage).
+  const CLE_FAMILLES = 'prevo.indicateurs.familles';
+  const TITRES_FAMILLES = {
+    get fiabilite() { return I18n.t('indicateurs.familles.fiabilite'); }, get preventif() { return I18n.t('indicateurs.familles.preventif'); },
+    get retards() { return I18n.t('indicateurs.familles.retards'); }, get couts() { return I18n.t('indicateurs.familles.couts'); },
+    get heures() { return I18n.t('indicateurs.familles.heures'); }, get equipements() { return I18n.t('indicateurs.familles.equipements'); },
+  };
+
+  function famillesOuvertes() {
+    try {
+      const lues = JSON.parse(localStorage.getItem(CLE_FAMILLES) || '[]');
+      return new Set(Array.isArray(lues) ? lues : []);
+    } catch (erreur) { return new Set(); }
+  }
+
+  function noterFamille(cle, ouverte) {
+    const ouvertes = famillesOuvertes();
+    if (ouverte) ouvertes.add(cle); else ouvertes.delete(cle);
+    try { localStorage.setItem(CLE_FAMILLES, JSON.stringify(Array.from(ouvertes))); } catch (erreur) { /* stockage refusé : ouverte pour cet affichage */ }
+  }
+
+  function famille(cle, ouvertes, contenu) {
+    return UI.html`<details class="encadre indicateurs-famille" data-famille="${cle}"${ouvertes.has(cle) ? UI.brut(' open') : ''}>
+      <summary>${TITRES_FAMILLES[cle]}</summary>${contenu}</details>`;
+  }
+
+  /** L30 : les quatre chiffres du bilan (disponibilité, heures et coût, pannes, préventif), en tête du tableau de bord et
+   *  à l'accueil de la direction ; mêmes règles que le bilan (« à compléter », « non chiffré », jamais de valeur supposée). */
+  function tete(global) {
+    const tuile = (cle, libelle, chiffre, complements) => UI.html`<div data-tete="${cle}"><div class="lib">${libelle}</div>
+      <div class="chiffre">${chiffre}</div>${complements.filter(Boolean).map((ligne) => UI.html`<div class="comp">${ligne}</div>`)}</div>`;
+    const dispo = global.disponibilite;
+    const aCompleter = dispo.valeur === null && global.tempsRequis.valeur === null && global.tempsRequis.exclus.length > 0;
+    const part = global.partPreventif;
+    const cout = estNonChiffre(global) ? I18n.t('indicateurs.tete.cout_non_chiffre', { manque: manqueDuCout(global.manquesCout) })
+      : [I18n.t('indicateurs.tete.cout', { montant: formats.euros(global.cout.valeur || 0) }), coutPartiel(global.manquesCout)].filter(Boolean).join(' · ');
+    return [
+      tuile('disponibilite', I18n.t('indicateurs.instruments.disponibilite'),
+        dispo.valeur !== null ? formats.pourcentage(dispo.valeur) : (aCompleter ? I18n.t('rapport.manque.a_completer') : '–'),
+        [dispo.valeur !== null ? '' : (aCompleter ? I18n.t('rapport.manque.disponibilite_heures') : phrase(dispo.raison))]),
+      tuile('heures-cout', I18n.t('indicateurs.tete.heures_cout'), formats.heures(global.cout.heures || 0), [cout]),
+      tuile('pannes', I18n.t('indicateurs.graphe_paretos.pannes'), String(global.pannes.valeur),
+        [I18n.t('indicateurs.tete.arret', { duree: formats.heures(global.dureeArret.valeur || 0) })]),
+      tuile('preventif', I18n.t('indicateurs.instruments.part_preventif'), part.valeur === null ? '–' : formats.pourcentage(part.valeur),
+        [part.valeur === null ? phrase(part.raison) : I18n.t('indicateurs.instruments.note_periode', { note: part.note })]),
+    ];
+  }
+
+  /** L30 : les quatre chiffres du mois en cours, pour l'accueil de la direction (tout le parc, sans filtre). */
+  function teteDuMois() {
+    const jour = Donnees.aujourdhui();
+    const periode = Indicateurs.periode('mois', jour);
+    const global = Indicateurs.global(periode, {}, jour);
+    global.manquesCout = Indicateurs.manquesCout(periode, {});
+    return UI.html`<section class="accueil-direction-tete" aria-labelledby="accueil-direction-tete-titre">
+      <h2 id="accueil-direction-tete-titre">${I18n.t('indicateurs.tete.ce_mois_ci', { periode: periode.libelle })}</h2>
+      <div class="instruments indicateurs-tete">${tete(global)}</div></section>`;
   }
 
   function resumeFiltres(filtres) {
@@ -531,19 +599,20 @@ Object.assign(Indicateurs, (() => {
   /** Les graphiques, lancés ensemble (ECharts est chargé une seule fois pour tous) ; `coutArret` (null : profil sans
    *  les coûts) ajoute le Pareto du coût de l'arrêt et, à côté, la carte « Non chiffré ». Indicateurs.graphique pose
    *  sa carte avant tout chargement : l'ordre des cartes est celui des appels. */
-  function dessinerGraphiques(conteneur, periode, filtres, jour, coutArret) {
+  function dessinerGraphiques(conteneurs, periode, filtres, jour, coutArret) {
     const suffixe = '-' + periode.debut + '-au-' + periode.fin;
     const listeA = equipementsA(periode, filtres);
-    const dessiner = (definition) => {
+    const dans = (conteneur) => (definition) => {
       Indicateurs.graphique(conteneur, Object.assign({ classe: 'c6', nomFichier: 'indicateurs-' + definition.id + suffixe }, definition));
     };
-    grapheParetos(periode, filtres).forEach(dessiner);
+    // L30 : chaque graphique dans sa famille (fiabilité ; coûts ; heures et charge).
+    grapheParetos(periode, filtres).concat([grapheCriticiteA(listeA, filtres, 'mtbf', 'MTBF'), grapheCriticiteA(listeA, filtres, 'mttr', 'MTTR'),
+      grapheCauses(periode, filtres)]).forEach(dans(conteneurs.fiabilite));
     if (coutArret) {
-      dessiner(grapheCoutArret(periode, filtres, coutArret));
-      conteneur.appendChild(carteNonChiffre(coutArret));
+      dans(conteneurs.couts)(grapheCoutArret(periode, filtres, coutArret));
+      conteneurs.couts.appendChild(carteNonChiffre(coutArret));
     }
-    [grapheHeures(periode, filtres), grapheCriticiteA(listeA, filtres, 'mtbf', 'MTBF'), grapheCriticiteA(listeA, filtres, 'mttr', 'MTTR'),
-      grapheCauses(periode, filtres), grapheCharge(jour)].forEach(dessiner);
+    [grapheHeures(periode, filtres), grapheCharge(jour)].forEach(dans(conteneurs.heures));
   }
 
   // ===========================================================================================
@@ -604,5 +673,5 @@ Object.assign(Indicateurs, (() => {
     });
   });
 
-  return {};
+  return { teteDuMois };
 })());

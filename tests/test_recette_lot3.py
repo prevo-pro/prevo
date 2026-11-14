@@ -32,7 +32,8 @@ import time
 import unittest
 from pathlib import Path
 
-from commun import RACINE, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import RACINE, CasNavigateur, ServeurPrevo, attendre_pret, scenarios_demo, url_fichier
+from test_rapport_bilan_mois import preregler_profil       # L30 (T544) : familles du tableau de bord dépliées
 from test_regles_indicateurs import CalculPython, date_reference
 
 DOSSIER_CAPTURES = RACINE / "tests" / "resultats" / "recette-lot3"

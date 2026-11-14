@@ -40,7 +40,19 @@ import struct
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, url_fichier
+from commun import CasNavigateur, ServeurPrevo, attendre_pret, url_fichier
+from commun import preregler_profil as _preregler_profil
+
+# L30 (T544) : le tableau de bord replie ses familles d'office (état gardé sur le poste) ; ces tests lisent tous les
+# chiffres et graphiques : familles dépliées sur ce poste, avant tout chargement.
+DEPLIER_FAMILLES_JS = ("try { localStorage.setItem('prevo.indicateurs.familles', JSON.stringify(['fiabilite', 'preventif',"
+                       " 'retards', 'couts', 'heures', 'equipements'])); } catch (e) { /* stockage refusé */ }")
+
+
+def preregler_profil(contexte, *arguments, **options):
+    _preregler_profil(contexte, *arguments, **options)
+    contexte.add_init_script(DEPLIER_FAMILLES_JS)
+
 
 # « pareto-cout » : Pareto du coût de l'arrêt (2.2, T474 ; détaillé par tests/test_indicateurs_cout_arret.py).
 GRAPHIQUES = ["pareto-pannes", "pareto-arrets", "pareto-cout", "heures-mois", "mtbf-a", "mttr-a", "causes", "charge"]

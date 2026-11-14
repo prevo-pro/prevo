@@ -66,7 +66,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 from commun import (ADRESSE_VERSION_JSON, COMPTES_DE_TEST, DOSSIER_DEMO, CasNavigateur, ServeurPrevo, attendre_pret,
-                    preregler_profil, scenarios_demo, url_fichier)
+                    scenarios_demo, url_fichier)
+from test_rapport_bilan_mois import DEPLIER_FAMILLES_JS, preregler_profil       # L30 (T544) : familles du tableau de bord dépliées
 from test_droits_format4 import BOM, REFUS_DOCUMENT, requete
 from test_indicateurs_cout_arret import (ATTENDRE_GRAPHIQUES_JS, LIRE_CARTE_JS, LIRE_PARETO_JS, NOMBRE_GRAPHIQUES,
                                          blancs, decimal_fr)
@@ -560,6 +561,7 @@ class CasParcoursServeur(CasRecette):
             self.serveur, self.dossier = serveur, Path(serveur.dossier)
             if self.COMPTES:
                 serveur.poser_session(self.contexte, "responsable")
+                self.contexte.add_init_script(DEPLIER_FAMILLES_JS)
             else:
                 preregler_profil(self.contexte, "responsable", "Nicolas Briand")
             self.contexte.clock.set_fixed_time(HORLOGE)

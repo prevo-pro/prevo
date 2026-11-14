@@ -42,13 +42,25 @@ import math
 import re
 import unittest
 
-from commun import ServeurPrevo, attendre_pret, preregler_profil
+from commun import ServeurPrevo, attendre_pret
+from commun import preregler_profil as _preregler_profil
 from serveur import codes_de_depart
 from test_app import ERREUR_CSV_ABSENT
 from test_controles import date_reference
 from test_fixtures_import import lire_xlsx
 from test_import_ecrans import (COLONNES_EQUIPEMENTS, FIXTURES, INSTANTANE_JS, JOURNAL_JS, LARGEUR_JS, MOTIF_AVANT_IMPORT,
                                 CasImport)
+
+# L30 (T544) : le tableau de bord replie ses familles d'office (état gardé sur le poste) ; ces tests lisent tous les
+# chiffres et graphiques : familles dépliées sur ce poste, avant tout chargement.
+DEPLIER_FAMILLES_JS = ("try { localStorage.setItem('prevo.indicateurs.familles', JSON.stringify(['fiabilite', 'preventif',"
+                       " 'retards', 'couts', 'heures', 'equipements'])); } catch (e) { /* stockage refusé */ }")
+
+
+def preregler_profil(contexte, *arguments, **options):
+    _preregler_profil(contexte, *arguments, **options)
+    contexte.add_init_script(DEPLIER_FAMILLES_JS)
+
 
 REFERENCE = date_reference()
 HEURE_FIXE = REFERENCE.isoformat() + "T09:30:00"

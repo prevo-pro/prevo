@@ -28,8 +28,20 @@ from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from commun import CasNavigateur, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import CasNavigateur, attendre_pret, scenarios_demo, url_fichier
+from commun import preregler_profil as _preregler_profil
 from test_cout_arret_regles import DEMANDES, EQUIPEMENTS, LOCALISATIONS, ORDRES, centimes_decimal
+
+# L30 (T544) : le tableau de bord replie ses familles d'office (état gardé sur le poste) ; ces tests lisent tous les
+# chiffres et graphiques : familles dépliées sur ce poste, avant tout chargement.
+DEPLIER_FAMILLES_JS = ("try { localStorage.setItem('prevo.indicateurs.familles', JSON.stringify(['fiabilite', 'preventif',"
+                       " 'retards', 'couts', 'heures', 'equipements'])); } catch (e) { /* stockage refusé */ }")
+
+
+def preregler_profil(contexte, *arguments, **options):
+    _preregler_profil(contexte, *arguments, **options)
+    contexte.add_init_script(DEPLIER_FAMILLES_JS)
+
 
 NOMBRE_GRAPHIQUES = 8              # dont pareto-cout
 TYPES_PANNE = ("correctif immédiat", "correctif différé")
@@ -69,7 +81,7 @@ LIRE_CARTE_JS = """() => {
     cellules: Array.from(tr.cells).map((td) => texte(td.querySelector('a:not(.indicateurs-saisir-cout)') || td)),
     liens: Array.from(tr.querySelectorAll('a')).map((a) => a.getAttribute('href')),
     saisir: texte(tr.querySelector('a.indicateurs-saisir-cout')), raison: texte(tr.querySelector('.indicateurs-raison')),
-    replie: Boolean(tr.closest('details')) }));
+    replie: Boolean(tr.closest('details.indicateurs-suite')) }));    // L30 : pas la famille repliable
   return { complet: carte.dataset.complet, titre: texte(carte.querySelector('h2')), resume: texte(carte.querySelector('p.note')),
            suites: Array.from(carte.querySelectorAll('details.indicateurs-suite > summary')).map(texte),
            equipements: lignes('.indicateurs-non-chiffres'), ots: lignes('.indicateurs-sans-duree'),

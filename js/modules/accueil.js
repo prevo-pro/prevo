@@ -386,6 +386,7 @@ const Accueil = (() => {
         <h1>${I18n.t('accueil.accueil_technicien.accueil')}</h1>
         <p>${nom ? I18n.t('accueil.accueil_direction.bonjour_nom', { profilNom: nom }) : I18n.t('accueil.accueil_direction.bonjour')}</p>
       </div></div>
+      ${typeof Indicateurs !== 'undefined' && Indicateurs.teteDuMois ? Indicateurs.teteDuMois() : ''}
       <p class="note">${I18n.t('accueil.accueil_direction.lecture_seule')}</p>
       <div class="pile-gros accueil-direction">
         ${porte('#/indicateurs', 'indicateurs', I18n.t('accueil.accueil_direction.tableau_de_bord'), I18n.t('accueil.accueil_direction.tableau_de_bord_detail'))}
