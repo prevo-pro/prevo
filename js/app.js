@@ -82,6 +82,10 @@ const App = (() => {
   // ergonomie, B), ces écrans d'équipe n'apparaissent plus dans le menu en Solo ; leurs routes restent (« Ma fiche »,
   // Paramètres › Organisation).
   const ECRANS_MASQUES_SOLO = ['equipe', 'planning'];
+  // L32 (T545) : écrans tenus à jour de près en mode serveur (accueil de chacun, « Mes demandes », fiche d'une demande) :
+  // relève à chaque arrivée sur l'écran et relève rapide (conditionnelle) tant qu'il est affiché.
+  const ECRANS_SUIVIS = ['accueil', 'liste-di', 'fiche-di'];
+  const RELEVE_RAPIDE_MS = 5000;
   const ECRANS_PLEINS = ['ecran-chargement', 'ecran-demarrage', 'ecran-base-vide', 'ecran-profil', 'ecran-connexion', 'ecran-installation', 'app'];
   const ROUTE_INSTALLATION = '#/installation';
   const HOTES_DU_PC_SERVEUR = ['127.0.0.1', 'localhost', '[::1]', '::1'];
@@ -1602,6 +1606,9 @@ const App = (() => {
       signalerErreur(erreur, 'affichage de « ' + ecranAAfficher.titre + ' »');
     }
     if (numero !== numeroAffichage) return;
+    // L32 (T545) : arrivée sur un écran suivi (pas un réaffichage) → relève tout de suite ; ce qui a changé ailleurs
+    // le réaffiche (surChangement), jamais pendant une saisie (bandeau).
+    if (!garderDefilement && ecranSuiviAffiche()) Donnees.releverMaintenant();
     // Aide à l'écran (§23) : encart de la première visite, après un affichage réussi d'un écran nouveau.
     // Direction (T520) : pas d'encart (ses gestes « Essayez » invitent à écrire).
     if (nouvelEcran && !estDirection() && typeof AideEcrans !== 'undefined' && conteneur.childElementCount
@@ -1628,6 +1635,12 @@ const App = (() => {
    */
   function definirTitreMobile(titre, detail) {
     UI.remplir(UI.$('#titre-mobile'), UI.html`<span>${titre}</span>${detail ? UI.html`<small>${detail}</small>` : ''}`);
+  }
+
+  /** L32 (T545) : mode serveur, coque affichée, onglet visible et écran courant suivi (ECRANS_SUIVIS). */
+  function ecranSuiviAffiche() {
+    return mode === 'serveur' && Boolean(ecranCourant) && ECRANS_SUIVIS.includes(ecranCourant.id) && coqueVisible()
+      && document.visibilityState !== 'hidden';
   }
 
   /** Réaffiche l'écran courant (défilement conservé). */
@@ -1660,7 +1673,8 @@ const App = (() => {
     if (detail.origine !== 'distant' || !ecranCourant || !coqueVisible()) return;
     const tablesEcran = ecranCourant.tables || [];
     if (!tables.some((nomTable) => tablesEcran.includes(nomTable))) return;
-    if (saisieEnCours) {
+    // L32 (T545) : une fenêtre ouverte (<dialog>, hors de #contenu) est une saisie en cours : bandeau, rien redessiné.
+    if (saisieEnCours || document.querySelector('dialog[open]')) {
       UI.$('#bandeau-changement').hidden = false;
       return;
     }
@@ -1786,6 +1800,7 @@ const App = (() => {
     UI.$('#contenu').addEventListener('change', surSaisie);
     window.addEventListener('hashchange', () => { afficherRoute(false); });
     Donnees.evenements.addEventListener('changement', surChangement);
+    Donnees.releveRapide(ecranSuiviAffiche, RELEVE_RAPIDE_MS);          // L32 : avant tout demarrerSurveillance
     // Lecture seule découverte pendant l'usage (parametres relu : un autre poste a ouvert la base avec une version
     // plus récente de Prévo) : le bandeau permanent apparaît sur l'écran en cours.
     Donnees.evenements.addEventListener('lectureSeule', () => { if (coqueVisible()) afficherLectureSeule(); });

@@ -314,6 +314,10 @@ NOMS_RESERVES_WINDOWS = (
 # rendue corresponde toujours au contenu rendu). Deux postes qui écrivent en même temps
 # sont donc traités l'un après l'autre.
 VERROU_ECRITURE = threading.Lock()
+# L32 (T545) : écritures faites par ce processus (ecrire_atomique), comptées par fichier pour le jeton des versions.
+ECRITURES_PAR_FICHIER = {}
+# L32 : tirage propre à ce démarrage : un jeton des versions ne survit jamais à une relance du serveur.
+GRAIN_DU_DEMARRAGE = secrets.token_hex(8)
 # Audit F2 : au plus CONNEXIONS_MAX requêtes en cours en même temps, pour tout le processus (la porte et l'application
 # partagent la limite, §22.6) ; une place est prise au premier octet d'une requête et rendue avec sa réponse
 # (GestionnaireRequetes.handle_one_request) : une connexion keep-alive inactive n'en tient aucune. La 33e requête
@@ -4469,6 +4473,7 @@ def ecrire_atomique(chemin, octets):
             fichier.flush()
             os.fsync(fichier.fileno())
         remplacer_avec_essais(chemin_temporaire, chemin)
+        ECRITURES_PAR_FICHIER[chemin] = ECRITURES_PAR_FICHIER.get(chemin, 0) + 1    # L32 : jeton_des_versions
     finally:
         if os.path.exists(chemin_temporaire):
             os.remove(chemin_temporaire)
@@ -6531,6 +6536,28 @@ def versions_des_tables(config):
     return resultat
 
 
+def jeton_des_versions(config, identite):
+    """L32 (T545) : jeton bon marché de l'état des CSV que la session lit (tables_lisibles : le demandeur n'apprend
+    rien des autres), sans les lire : numéro, date (ns) et taille de chaque fichier, nombre d'écritures que ce
+    processus y a faites, tirage du démarrage et rôle de la session (versions voilées). Il change dès qu'un de ces
+    fichiers change (écriture de Prévo, Excel, restauration) ; GET /api/versions avec X-Jeton-Versions égal au jeton
+    courant répond {"inchange": true} sans lire ni hacher aucun fichier (relève rapide des écrans d'accueil et des
+    demandes, js/donnees.js). À appeler en tenant VERROU_ECRITURE."""
+    lisibles = tables_lisibles(identite)
+    morceaux = [GRAIN_DU_DEMARRAGE, role_effectif(identite) if identite else '']
+    for table in TABLES:
+        if lisibles is not None and table not in lisibles:
+            continue
+        chemin = chemin_table(config, table)
+        try:
+            etat = os.stat(chemin)
+            morceaux.append('%s:%d.%d.%d.%d' % (table, etat.st_ino, etat.st_mtime_ns, etat.st_size,
+                                                ECRITURES_PAR_FICHIER.get(chemin, 0)))
+        except OSError:
+            morceaux.append(table + ':-')
+    return hashlib.sha256('|'.join(morceaux).encode('utf-8')).hexdigest()[:16]
+
+
 # Cellule qu'Excel exécuterait à l'ouverture d'un CSV (audit E2) : =, +, @, tabulation, retour chariot, ou un tiret,
 # comme MOTIF_DEBUT_DANGEREUX de js/donnees.js. Prévo protège ces valeurs par une apostrophe à l'écriture (§3.2) ; le
 # serveur refuse ce qu'un autre client enverrait sans elle. Un texte qui commence par une espace n'est pas une formule
@@ -8380,16 +8407,23 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         self.envoyer_json(200, reglages_ia_publics(self.config))
 
     def api_versions(self, segment, corps):
-        """GET /api/versions : version de chaque table ; pour le demandeur, seulement celles qu'il lit (§22.5)."""
+        """GET /api/versions : version de chaque table ; pour le demandeur, seulement celles qu'il lit (§22.5).
+        L32 (T545) : « jeton » joint ; avec l'en-tête X-Jeton-Versions égal au jeton courant, {"inchange": true} sans
+        lire aucun fichier (relève rapide, jeton_des_versions)."""
         with VERROU_ECRITURE:
-            tables = versions_des_tables(self.config)
+            jeton = jeton_des_versions(self.config, self.session)
+            inchange = self.headers.get('X-Jeton-Versions') == jeton
+            tables = {} if inchange else versions_des_tables(self.config)
             for table, detail in tables.items():            # T506 : version voilée si le rôle a des colonnes cachées
                 if detail is not None:
                     detail['version'] = voile_des_versions(self.config, self.session, table)(detail['version'])
+        if inchange:
+            self.envoyer_json(200, {'inchange': True, 'jeton': jeton})
+            return
         lisibles = tables_lisibles(self.session)
         if lisibles is not None:
             tables = {table: version for table, version in tables.items() if table in lisibles}
-        self.envoyer_json(200, {'tables': tables})
+        self.envoyer_json(200, {'tables': tables, 'jeton': jeton})
 
     def api_csv_lire(self, table, corps):
         """GET /api/csv/<table> : le fichier, sans les colonnes ni les lignes que le rôle de la session ne reçoit pas

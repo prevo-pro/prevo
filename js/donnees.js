@@ -799,6 +799,9 @@ const Donnees = (() => {
   let minuteurSurveillance = null;
   let surRetourOnglet = null;
   let rafraichissementEnCours = null;
+  // L32 (T545) : relève rapide (voir releveRapide) : fonction « faut-il relever vite ? » et sa période.
+  let releveRapideVoulue = null;
+  let releveRapideMs = 0;
 
   // Format des fichiers (§4.11) : format de la base quand il dépasse Schema.version (lecture seule, D169), sinon
   // null ; une fois vu pendant une session, il le reste jusqu'au prochain initialiser(). problemesFormat : tables à
@@ -1555,9 +1558,10 @@ const Donnees = (() => {
   // complet : vrai → toute table périmée est relue ; faux (surveillance) → une table périmée
   // seulement par nos propres ajouts (même version qu'après notre dernier ajout) n'est pas
   // relue et reste périmée (modifier la relira avant toute réécriture).
-  async function rafraichirMaintenant(complet) {
+  // conditionnel (L32) : l'adaptateur peut rendre sa dernière liste si rien n'a changé (serveur : jeton des versions).
+  async function rafraichirMaintenant(complet, conditionnel) {
     verifierInitialise();
-    const versions = await adaptateurActif.listerVersions();
+    const versions = await adaptateurActif.listerVersions(conditionnel ? { conditionnel: true } : undefined);
     const aRelireMaintenant = (nomTable) => {
       const entree = cache.get(nomTable);
       const connue = Object.prototype.hasOwnProperty.call(versions, nomTable);
@@ -1589,12 +1593,12 @@ const Donnees = (() => {
 
   // Un seul rafraîchissement à la fois. Une demande complète arrivant pendant un rafraîchissement
   // léger (surveillance) est enchaînée après lui ; toute autre demande partage celui en cours.
-  function lancerRafraichissement(complet) {
+  function lancerRafraichissement(complet, conditionnel) {
     const enCours = rafraichissementEnCours;
     if (enCours && (enCours.complet || !complet)) { return enCours.promesse; }
     const avant = enCours ? enCours.promesse.catch(() => undefined) : Promise.resolve();
     const etat = { complet: complet, promesse: null };
-    etat.promesse = avant.then(() => rafraichirMaintenant(complet)).finally(() => {
+    etat.promesse = avant.then(() => rafraichirMaintenant(complet, conditionnel)).finally(() => {
       if (rafraichissementEnCours === etat) { rafraichissementEnCours = null; }
     });
     rafraichissementEnCours = etat;
@@ -1609,10 +1613,10 @@ const Donnees = (() => {
     return lancerRafraichissement(true);
   }
 
-  // Rafraîchissement de la surveillance : léger (voir rafraichirMaintenant).
-  async function rafraichirSansErreur() {
+  // Rafraîchissement de la surveillance : léger (voir rafraichirMaintenant) ; conditionnel : voir releveRapide.
+  async function rafraichirSansErreur(conditionnel) {
     try {
-      await lancerRafraichissement(false);
+      await lancerRafraichissement(false, conditionnel === true);
     } catch (erreur) {
       console.warn('Prévo : rafraîchissement impossible (' + (erreur && erreur.message) + ').', erreur);
     }
@@ -1622,8 +1626,23 @@ const Donnees = (() => {
     return typeof document === 'undefined' || document.visibilityState !== 'hidden';
   }
 
+  // L32 (T545) : relève rapide. voulue() (appelée à chaque pas) dit si l'écran affiché la demande (App : accueil et
+  // demandes, en mode serveur) ; tant qu'elle répond oui, la surveillance relève toutes les periodeMs (plus courte
+  // que la période normale), de façon conditionnelle (le serveur répond « inchangé » sans lire les fichiers). La
+  // relève normale (complète) garde sa période. Prise en compte au prochain demarrerSurveillance. null : aucune.
+  function releveRapide(voulue, periodeMs) {
+    releveRapideVoulue = typeof voulue === 'function' ? voulue : null;
+    releveRapideMs = Number(periodeMs) > 0 ? Number(periodeMs) : 0;
+  }
+
+  // L32 : relève conditionnelle tout de suite, sans erreur (retour sur un écran suivi) ; rien si non initialisé.
+  function releverMaintenant() {
+    if (!adaptateurActif) { return Promise.resolve(); }
+    return rafraichirSansErreur(true);
+  }
+
   // Rafraîchit toutes les periodeMs (défaut : paramètre rafraichissement_s, 20 s) tant que
-  // l'onglet est visible, et à chaque retour sur l'onglet.
+  // l'onglet est visible, et à chaque retour sur l'onglet. L32 : entre deux, relève rapide (releveRapide).
   function demarrerSurveillance(periodeMs) {
     verifierInitialise();
     arreterSurveillance();
@@ -1632,9 +1651,18 @@ const Donnees = (() => {
       const secondes = nombre(parametre('rafraichissement_s', String(RAFRAICHISSEMENT_PAR_DEFAUT_S)));
       periode = (secondes && secondes > 0 ? secondes : RAFRAICHISSEMENT_PAR_DEFAUT_S) * 1000;
     }
+    const voulue = releveRapideVoulue;
+    const pas = voulue && releveRapideMs ? Math.min(releveRapideMs, periode) : periode;
+    const pasParPeriode = Math.max(1, Math.round(periode / pas));
+    let numeroPas = 0;
     minuteurSurveillance = setInterval(() => {
-      if (ongletVisible()) { rafraichirSansErreur(); }
-    }, periode);
+      if (!ongletVisible()) { return; }
+      numeroPas += 1;
+      if (numeroPas % pasParPeriode === 0) { rafraichirSansErreur(); return; }
+      let rapide = false;
+      try { rapide = Boolean(voulue && voulue()); } catch (erreur) { rapide = false; }
+      if (rapide) { rafraichirSansErreur(true); }
+    }, pas);
     if (typeof document !== 'undefined') {
       surRetourOnglet = () => { if (ongletVisible()) { rafraichirSansErreur(); } };
       document.addEventListener('visibilitychange', surRetourOnglet);
@@ -2097,6 +2125,8 @@ const Donnees = (() => {
     rafraichir: rafraichir,
     demarrerSurveillance: demarrerSurveillance,
     arreterSurveillance: arreterSurveillance,
+    releveRapide: releveRapide,
+    releverMaintenant: releverMaintenant,
     instantane: instantane,
     // 4.11 Format des fichiers : passage au format courant, lecture seule
     etatDuFormat: etatDuFormat,

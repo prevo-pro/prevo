@@ -301,6 +301,7 @@ Donnees.etatDuFormat() / Donnees.lectureSeule()   // format de départ et couran
 await Donnees.migrerAuFormatCourant()   // mode dossier : passage au format courant, sauvegarde d'abord ; mode serveur :
                                         // rien, le serveur l'a fait à son démarrage (§5.6, FORMAT.md §6)
 Donnees.demarrerSurveillance() / Donnees.arreterSurveillance()   // §5.5
+Donnees.releveRapide(voulue, periodeMs) / Donnees.releverMaintenant()   // §5.5 (L32)
 Donnees.csv.analyser(table, entree)  // → { lignes, colonnesInconnues, problemes, encodage }
 Donnees.csv.serialiser(table, lignes, colonnesInconnues) // → Uint8Array
 Donnees.csv.ecrireValeur(champ, v) / Donnees.csv.relireValeur(champ, s)   // §3.2
@@ -363,6 +364,17 @@ dont la version diffère est relue ; événement `changement` (`origine: 'distan
 écrit par ajout, n'est signalé que s'il a changé sur un autre poste (pas pour nos propres ajouts,
 qui ne le font pas relire) : depuis le lot 4, les onglets Suggestions et Décisions en dépendent.
 
+L32 (T545) — écrans tenus à jour sans recharger, **en mode serveur seulement** (rien de plus en mode dossier ni en
+démo) : `App` déclare l'accueil (chaque profil), « Mes demandes » (`liste-di`) et la fiche d'une demande (`fiche-di`)
+comme écrans suivis (`ECRANS_SUIVIS`). À l'arrivée sur l'un d'eux (navigation, pas un réaffichage),
+`Donnees.releverMaintenant()` relève tout de suite ; tant qu'il est affiché (onglet visible),
+`Donnees.releveRapide(voulue, 5000)` fait relever toutes les 5 s, de façon **conditionnelle** :
+`listerVersions({ conditionnel: true })` envoie le jeton de la dernière liste (`X-Jeton-Versions`) et le serveur
+répond `{"inchange": true}` sans lire aucun fichier (`jeton_des_versions` : numéro, date et taille des fichiers que
+la session lit, écritures du processus, rôle). La relève des `rafraichissement_s` secondes reste complète. Ce qui a
+changé ailleurs réaffiche l'écran (`changement`) ; jamais pendant une saisie ni avec une fenêtre (`<dialog>`)
+ouverte : bandeau « données changées ».
+
 ### 5.6 Passage au format courant : `migrerAuFormatCourant` (socle de données, D167-D169)
 Vocabulaire, historique des formats, sauvegardes et ZIP : **[FORMAT.md](FORMAT.md)** (référence). Ici, seulement le
 contrat de `Donnees`. Le registre d'étapes (1→2, 2→3, 3→4 ; pures, idempotentes, additives) est `Formats.ETAPES`
@@ -404,7 +416,7 @@ await enregistrer(table, octets, versionAttendue, options?)   → { version }
                                       (import ZIP seulement, T200 ; FORMAT.md §3)
 await ajouter(table, octets)          → { version }  (ErreurConflit si en-tête/encodage différent ;
                                       ErreurFichierAbime si le fichier finit dans un guillemet ouvert)
-await listerVersions()                → { nomTable: version|null, … }
+await listerVersions(options)         → { nomTable: version|null, … } (options.conditionnel, L32 : serveur, §5.5)
 await ecrireDocument(nom, blob)       → nom   (refuse d'écraser un document existant)
 await lireDocument(nom)               → Blob|null
 await urlDocument(nom)                → URL affichable (serveur : /api/documents/nom ; sinon URL d'objet)
@@ -480,7 +492,7 @@ par `--hote` — sinon 403 (un suffixe quelconque permettrait le « DNS rebindin
 | --- | --- |
 | `GET /api/ping` | `{"application": "Prévo", "version": "…", "api": 1}` |
 | `GET /api/info` | `{"port": 8080, "adresse_locale": "http://localhost:8080/", "adresses_reseau": ["http://192.168.1.10:8080/"]}` |
-| `GET /api/versions` | `{"tables": {"equipements": {"version": "…", "modifie": "AAAA-MM-JJ HH:MM:SS"} ou null, …}}` (les 22 tables) |
+| `GET /api/versions` | `{"tables": {"equipements": {"version": "…", "modifie": "AAAA-MM-JJ HH:MM:SS"} ou null, …}, "jeton": "…"}` (les 22 tables) ; L32 : avec l'en-tête `X-Jeton-Versions` égal au jeton courant, `{"inchange": true, "jeton": "…"}` sans lire les fichiers (§5.5) |
 | `GET /api/csv/<table>` | octets du fichier, en-tête `X-Version` ; 404 si absent |
 | `PUT /api/csv/<table>` | en-tête `X-Version-Attendue: <version>` ou `aucune` ; 200 `{"version"}` · 409 `{"erreur", "version_actuelle"}` · 409 `{"erreur", "code": "fichier_abime", "table"}` si le fichier en place est abîmé (T200 ; en-tête `X-Prevo-Remplacer-Abime: 1` pour le remplacer quand même : import ZIP seulement ; avec les comptes, 403 si la session n'est pas celle d'un responsable) · 423 si le fichier est verrouillé (Excel ouvert) |
 | `POST /api/csv/<table>/ajout` | corps = en-tête + lignes (UTF-8 sans BOM) ; ajoute en fin de fichier (crée le fichier avec BOM s'il n'existe pas) ; 409 si l'en-tête ou l'encodage du fichier existant diffère · 409 `{"erreur", "code": "fichier_abime", "table"}` si le fichier en place finit dans un guillemet ouvert (T200) |

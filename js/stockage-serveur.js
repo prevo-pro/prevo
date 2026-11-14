@@ -350,9 +350,17 @@ const StockageServeur = (() => {
     }
 
     // → { nomTable: version | null, … }
-    async function listerVersions() {
-      const reponse = await appelerOuErreur(base + '/api/versions', { method: 'GET' });
+    // L32 (T545) : options.conditionnel → le jeton de la dernière liste est envoyé (X-Jeton-Versions) ; si rien n'a
+    // changé, le serveur répond { inchange: true } sans lire les fichiers et la dernière liste est rendue (copie).
+    let derniereListe = null;            // { jeton, versions }
+    async function listerVersions(options) {
+      const conditionnel = Boolean(options && options.conditionnel) && derniereListe !== null;
+      const entetes = conditionnel ? { 'X-Jeton-Versions': derniereListe.jeton } : {};
+      const reponse = await appelerOuErreur(base + '/api/versions', { method: 'GET', headers: entetes });
       const donnees = await lireJson(reponse);
+      if (conditionnel && donnees.inchange === true && donnees.jeton === derniereListe.jeton) {
+        return Object.assign({}, derniereListe.versions);
+      }
       if (!donnees.tables || typeof donnees.tables !== 'object' || Array.isArray(donnees.tables)) {
         throw new Donnees.ErreurStockage(messageReponseInattendue());
       }
@@ -361,6 +369,8 @@ const StockageServeur = (() => {
         const detail = donnees.tables[table];
         versions[table] = detail ? detail.version : null;
       });
+      derniereListe = typeof donnees.jeton === 'string' && donnees.jeton
+        ? { jeton: donnees.jeton, versions: Object.assign({}, versions) } : null;
       return versions;
     }
 
