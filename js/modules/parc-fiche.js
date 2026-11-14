@@ -2,7 +2,7 @@
 // Parc (5/5) — fiche d'un équipement (#/equipement/<id>) : consignation, fiche technique (dont la
 // valeur de remplacement), QR code, compteurs et leurs relevés, gammes préventives et leur état,
 // encart des suggestions de préventif (responsable, §16.6), contrôles réglementaires et leur statut
-// (§15.7), sous-équipements, pièces liées, historiques OT et DI, désactivation et réactivation ; puis
+// (§15.7), sous-équipements, pièces liées, historiques OT (filtre, technicien, temps passé, cause et remède : L28) et DI, désactivation et réactivation ; puis
 // l'enregistrement des écrans du module auprès d'App (ARCHITECTURE.md §8, §14.2 et §14.6).
 // Dernier fichier du module : les écrans des fichiers précédents existent déjà.
 
@@ -278,10 +278,14 @@ Object.assign(Parc, (() => {
     return carte;
   }
 
-  // Carte « historique » : les plus récentes d'abord, « Voir les autres » au-delà de LIMITE_HISTORIQUE.
-  function carteHistorique(titre, lignes, construire) {
+  // Carte « historique » : les plus récentes d'abord, « Voir les autres » au-delà de LIMITE_HISTORIQUE. `filtres` (L28,
+  // facultatif) : [{ cle, libelle(n), garder(ligne), choisi }], boutons sous le titre ; « choisi » : celui de départ.
+  function carteHistorique(titre, toutes, construire, filtres) {
     const carte = UI.element(UI.html`<article class="carte">
-      <div class="entete-carte"><h2>${titre} <span class="badge">${lignes.length}</span></h2></div>
+      <div class="entete-carte"><h2>${titre} <span class="badge parc-total-historique"></span></h2></div>
+      ${filtres ? UI.html`<div class="parc-filtres-historique" role="group" aria-label="${I18n.t('parc.historique.filtrer')}">
+        ${filtres.map((f) => UI.html`<button type="button" class="btn btn-secondaire parc-filtre-historique" data-filtre="${f.cle}"
+          aria-pressed="${f.choisi ? 'true' : 'false'}">${f.libelle(toutes.filter(f.garder).length)}</button>`)}</div>` : ''}
       <div class="parc-liste"></div>
       <div class="actions" hidden><button type="button" class="btn btn-secondaire parc-voir-tout"></button></div>
     </article>`);
@@ -289,22 +293,83 @@ Object.assign(Parc, (() => {
     const zoneBouton = UI.$('.actions', carte);
     const bouton = UI.$('.parc-voir-tout', carte);
     let toutVoir = false;
+    let filtre = filtres ? filtres.find((f) => f.choisi) : null;
     function dessiner() {
-      UI.remplir(zone, construire(toutVoir ? lignes : lignes.slice(0, LIMITE_HISTORIQUE)));
+      const lignes = filtre ? toutes.filter(filtre.garder) : toutes;
+      UI.$('.parc-total-historique', carte).textContent = String(lignes.length);
+      UI.remplir(zone, construire(toutVoir ? lignes : lignes.slice(0, LIMITE_HISTORIQUE), filtre));
       zoneBouton.hidden = lignes.length <= LIMITE_HISTORIQUE;
       bouton.textContent = toutVoir ? I18n.t('parc.carte_historique.reduire_liste') : I18n.t('parc.carte_historique.voir_autres', { n: (lignes.length - LIMITE_HISTORIQUE) });
     }
     bouton.addEventListener('click', () => { toutVoir = !toutVoir; dessiner(); });
+    UI.$$('.parc-filtre-historique', carte).forEach((choix) => choix.addEventListener('click', () => {
+      filtre = filtres.find((f) => f.cle === choix.dataset.filtre);
+      UI.$$('.parc-filtre-historique', carte).forEach((b) => b.setAttribute('aria-pressed', b === choix ? 'true' : 'false'));
+      dessiner();
+    }));
     dessiner();
     return carte;
+  }
+
+  // L28 (lot 2 ergonomie) : historique de la machine. Chaque ligne dit qui est intervenu (technicien de l'OT), le temps
+  // passé (somme des temps saisis, jamais un coût) et, pour une panne, la cause et le remède en clair (libellé du code,
+  // ou « Autre : <précision> ») ; filtre « Pannes / Préventif / Tout ».
+  const TYPES_PANNES = ['correctif immédiat', 'correctif différé'];
+  const FILTRES_HISTORIQUE = {
+    tout: () => true,
+    pannes: (o) => TYPES_PANNES.includes(o.type),
+    preventif: (o) => Ordres.TYPES_PREVENTIFS.includes(o.type),
+  };
+
+  const LIBELLES_FILTRES = {
+    pannes: (n) => I18n.t('parc.historique.filtre_pannes', { n }),
+    preventif: (n) => I18n.t('parc.historique.filtre_preventif', { n }),
+    tout: (n) => I18n.t('parc.historique.filtre_tout', { n }),
+  };
+
+  /** Libellé d'un code de défaillance (« cause », « remède ») de l'OT, ou « Autre : <précision> », ou ''. */
+  function libelleCodeOt(famille, code, precision) {
+    const valeur = String(code || '').trim();
+    if (!valeur) return Ordres.libelleAutre(precision);
+    const ligne = Donnees.lignes('codes_defaillance').find((c) => c.famille === famille && c.code === valeur);
+    return ligne && String(ligne.libelle || '').trim() ? ligne.libelle : valeur;
+  }
+
+  /** Heures passées sur chaque OT (ot_temps), par identifiant d'OT. */
+  function heuresParOt() {
+    const total = new Map();
+    Donnees.lignes('ot_temps').forEach((ligne) => {
+      const heures = UI.enNombre(ligne.heures);
+      if (heures !== null) total.set(ligne.ot_id, (total.get(ligne.ot_id) || 0) + heures);
+    });
+    return total;
+  }
+
+  /** « Cause : … · Remède : … » d'une panne ('' pour un autre type, ou sans cause ni remède). */
+  function causeRemede(o) {
+    if (!TYPES_PANNES.includes(o.type)) return '';
+    const cause = libelleCodeOt('cause', o.cause_code, o.cause_precision);
+    const remede = libelleCodeOt('remède', o.remede_code, o.remede_precision);
+    if (!cause && !remede) return '';
+    return UI.html`<div class="parc-cause-remede">${cause ? UI.html`<span>${I18n.t('parc.historique.cause', { cause })}</span>` : ''}
+      ${remede ? UI.html`<span>${I18n.t('parc.historique.remede', { remede })}</span>` : ''}</div>`;
   }
 
   function carteHistoriqueOt(equipement) {
     const ordres = Donnees.lignes('ordres_travail').filter((o) => o.equipement_id === equipement.id)
       .sort((a, b) => comparerCodes(b.date_creation, a.date_creation) || comparerCodes(b.id, a.id));
-    return carteHistorique(I18n.t('parc.carte_historique_ot.historique_ordres_travail'), ordres, (lignes) => listeAdaptative({
+    const heures = heuresParOt();
+    const temps = (o) => (heures.has(o.id) ? UI.heures(heures.get(o.id)) : '–');
+    const technicien = (o) => Ordres.nomTechnicien(o.technicien_id) || '–';
+    // Le demandeur ne lit ni les techniciens ni les temps passés (D126, TABLES_DU_DEMANDEUR de serveur.py) : ni l'un ni
+    // l'autre ne lui sont montrés, même en mode « ce PC » où rien ne les lui cache.
+    const intervenants = !App.estDemandeur();
+    const filtres = ['pannes', 'preventif', 'tout'].map((cle) => ({
+      cle, garder: FILTRES_HISTORIQUE[cle], choisi: cle === 'tout', libelle: LIBELLES_FILTRES[cle],
+    }));
+    return carteHistorique(I18n.t('parc.carte_historique_ot.historique_ordres_travail'), ordres, (lignes, filtre) => listeAdaptative({
       lignes,
-      vide: I18n.t('parc.carte_historique_ot.aucun_ordre_travail_equipement'),
+      vide: filtre.cle === 'tout' ? I18n.t('parc.carte_historique_ot.aucun_ordre_travail_equipement') : I18n.t('parc.historique.aucun_filtre'),
       libelle: I18n.t('parc.carte_historique_ot.ordres_travail_equipement'),
       lien: (o) => '#/ot/' + encodeURIComponent(o.id),
       colonnes: [
@@ -313,13 +378,18 @@ Object.assign(Parc, (() => {
         { cle: 'type', libelle: I18n.t('parc.carte_historique_ot.type'), table: 'ordres_travail' },
         { cle: 'priorite', libelle: I18n.t('commun.champ.priorite'), rendu: (o) => UI.badgePriorite(o.priorite) },
         { cle: 'statut', libelle: I18n.t('commun.champ.statut'), rendu: (o) => UI.badgeValeur('ordres_travail', 'statut', o.statut) },
-        { cle: 'titre', libelle: I18n.t('parc.carte_historique_ot.titre') },
-      ],
+        { cle: 'titre', libelle: I18n.t('parc.carte_historique_ot.titre'), rendu: (o) => UI.html`${o.titre}${causeRemede(o)}` },
+      ].concat(intervenants ? [
+        { cle: 'technicien_id', libelle: I18n.t('commun.champ.technicien'), rendu: technicien },
+        { cle: 'temps', libelle: I18n.t('parc.historique.temps_passe'), rendu: temps, classe: 'sans-coupure' },
+      ] : []),
       carte: (o) => UI.html`<a href="#/ot/${encodeURIComponent(o.id)}">
         <div class="carte-tete"><b>${o.id}</b>${UI.badgePriorite(o.priorite)}${UI.badgeValeur('ordres_travail', 'statut', o.statut)}</div>
         <div class="carte-titre">${o.titre}</div>
-        <div class="carte-meta"><span>${UI.dateFr(o.date_creation)}</span><span>${Schema.libelleValeur('ordres_travail', 'type', o.type)}</span></div></a>`,
-    }));
+        <div class="carte-meta"><span>${UI.dateFr(o.date_creation)}</span><span>${Schema.libelleValeur('ordres_travail', 'type', o.type)}</span>
+          ${intervenants ? UI.html`<span>${technicien(o)}</span><span>${I18n.t('parc.historique.temps_court', { temps: temps(o) })}</span>` : ''}</div>
+        ${causeRemede(o)}</a>`,
+    }), filtres);
   }
 
   function carteHistoriqueDi(equipement) {
@@ -412,6 +482,7 @@ Object.assign(Parc, (() => {
               ${intervenant && typeof Garanties !== 'undefined' ? Garanties.badgeEquipement(equipement) : ''}
               ${actif ? '' : UI.html`<span class="badge neutre barre">${I18n.t('parc.fiche.inactif')}</span>`}</p>
             ${direction ? '' : UI.html`<p><a id="lien-wiki-equipement" href="#/wiki/${idUrl}">${UI.icone('wiki')}${I18n.t('parc.fiche.wiki_equipement')}</a></p>`}
+            ${UI.estTelephone() ? UI.html`<p><button type="button" class="btn btn-secondaire parc-aller-historique" id="parc-aller-historique">${UI.icone('horloge')}${I18n.t('parc.historique.bouton')}</button></p>` : ''}
           </div>
         </div>
 
@@ -466,8 +537,18 @@ Object.assign(Parc, (() => {
 
     const zone = UI.$('.parc-complements', conteneur);
     zone.appendChild(carteArticles(equipement));
-    zone.appendChild(carteHistoriqueOt(equipement));
-    zone.appendChild(carteHistoriqueDi(equipement));
+    // L28 : les deux historiques dans une zone que le bouton « Historique » du téléphone fait venir à l'écran.
+    const historique = UI.element(UI.html`<section class="parc-historique" id="parc-historique" tabindex="-1" aria-label="${I18n.t('parc.historique.bouton')}"></section>`);
+    historique.appendChild(carteHistoriqueOt(equipement));
+    historique.appendChild(carteHistoriqueDi(equipement));
+    zone.appendChild(historique);
+    const allerHistorique = UI.$('#parc-aller-historique', conteneur);
+    if (allerHistorique) {
+      allerHistorique.addEventListener('click', () => {
+        historique.scrollIntoView({ block: 'start' });
+        historique.focus({ preventScroll: true });
+      });
+    }
 
     const boutonActivite = UI.$('#parc-activite', conteneur);
     if (boutonActivite) boutonActivite.addEventListener('click', () => changerActivite(equipement, !actif));
@@ -518,7 +599,7 @@ Object.assign(Parc, (() => {
       profils: tous,
       tables: ['equipements', 'localisations', 'ordres_travail', 'demandes', 'compteurs', 'releves',
         'gammes', 'articles', 'article_equipement', 'mouvements_stock', 'controles_reglementaires',
-        'garanties', 'contrats_prestataires', 'fournisseurs'],
+        'garanties', 'contrats_prestataires', 'fournisseurs', 'ot_temps', 'techniciens', 'codes_defaillance'],
       afficher: afficherFiche,
     });
   });
