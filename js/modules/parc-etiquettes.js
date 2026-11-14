@@ -12,7 +12,7 @@
 //   Parc.porteeAdresse(adresse)       'ce-pc' | 'locale' | 'tailscale' | 'exterieur' | '' (pas une adresse http)
 //   Parc.estLocaleOuPrivee(adresse)   vrai pour 'ce-pc' et 'locale' (lot 1 ergonomie, T518)
 //   Parc.adresseDesQr()               début de l'adresse mise dans les QR (mode serveur), '' sinon
-//   Parc.consigneEtiquette(adresse, wifi)   ligne imprimée sous le QR ('' si l'adresse est joignable de partout)
+//   Parc.consigneEtiquette(adresse, wifi)   ligne imprimée au-dessus du QR ('' si l'adresse est joignable de partout)
 //   Parc.avertissementReseau(adresse, { lienPortee, lienEtiquettes })   encadré « le QR ne s'ouvrira pas en 4G »
 //
 // Impression : chaque planche est une page A4 dessinée en millimètres (positions absolues). La

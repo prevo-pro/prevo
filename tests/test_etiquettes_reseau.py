@@ -4,9 +4,9 @@ page d'erreur du navigateur, sans un mot de Prévo. Prévo ne peut pas l'empêch
     regles      Parc.porteeAdresse et Parc.estLocaleOuPrivee (127.0.0.0/8, localhost, ::1 → « ce-pc » ; 10/8,
                 172.16/12, 192.168/16, 169.254/16, noms sans point, .local/.lan/.home, fe80::/10, fc00::/7 → « locale » ;
                 100.64.0.0/10, *.ts.net → « tailscale » ; le reste → « exterieur » ; « GMAO:<id> » → '') et
-                Parc.consigneEtiquette (la ligne imprimée sous le QR, avec ou sans nom de Wi-Fi) ;
+                Parc.consigneEtiquette (la ligne imprimée au-dessus du QR, avec ou sans nom de Wi-Fi) ;
     etiquettes  adresse du réseau de l'atelier : chaque étiquette porte la consigne « Connectez-vous au Wi-Fi de
-                l'usine… », sous le QR et le repère, sans les rogner, dans l'aperçu et à l'impression, formats 24 et 8 ;
+                l'usine… », au-dessus du QR et du repère, sans les rogner, dans l'aperçu et à l'impression, formats 24 et 8 ;
                 l'avertissement (conséquence en 4G, deux solutions, lien vers la portée) et le rappel en tête de
                 l'aperçu ; le nom du Wi-Fi enregistré (parametres.csv, wifi_nom) passe dans la consigne ;
     tailscale   adresse Tailscale : consigne « Ouvrez l'application Tailscale… » et l'avertissement qui va avec ;
