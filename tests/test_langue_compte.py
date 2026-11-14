@@ -40,7 +40,7 @@ from pathlib import Path
 from unittest import mock
 
 from commun import COMPTES_DE_TEST, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil
-from jeux_formats import copier_jeu
+from jeux_formats import copier_jeu, retour_attendu
 from test_acces_sessions import CREATION_DES_COMPTES, Client, ServeurDansLeProcessus, lignes_du_journal, serveur
 from test_langue_installation import poser_langue, texte_du_dictionnaire
 
@@ -316,14 +316,20 @@ def verifier_migration_sans_perte(cas, avant, apres):
     l'octet près, et chaque ligne d'origine se retrouve avec les mêmes valeurs dans ses colonnes d'origine
     (seules des colonnes, des lignes de journal et des fichiers de réserves s'ajoutent ; version_schema monte)."""
     cas.assertEqual(apres["acces/comptes.json"], avant["acces/comptes.json"])
+    # T526 : au passage au format 5, une demande acceptée ou regroupée suit son OT (statut attendu : retour_attendu)
+    base = {nom[:-len(".csv")]: {"lignes": lignes_par_champ(avant[nom])}
+            for nom in ("ordres_travail.csv", "techniciens.csv") if nom in avant}
     for nom, octets in avant.items():
         if nom == "acces/comptes.json":
             continue
         with cas.subTest(fichier=nom):
             lignes_apres = lignes_par_champ(apres[nom])
+            passe_au_format_5 = nom == "demandes.csv" and "repare_par" not in octets.decode("utf-8-sig").splitlines()[0]
             for ligne in lignes_par_champ(octets):
                 if nom == "parametres.csv" and ligne["cle"] == "version_schema":
                     continue
+                if passe_au_format_5:
+                    ligne = dict(ligne, **{c: v for c, v in (retour_attendu(base, ligne) or {}).items() if c in ligne})
                 cas.assertTrue(any(all(a.get(c) == v for c, v in ligne.items()) for a in lignes_apres),
                                "ligne perdue de %s : %r" % (nom, ligne))
 

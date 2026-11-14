@@ -73,7 +73,7 @@ from unittest import mock
 
 from commun import (COMPTES_DE_TEST, FORMAT_COURANT, format_du_jeu, RACINE, CasNavigateur, ServeurPrevo, ServeurStatique, attendre_pret,
                     charger_scripts, comptes_json, installer_dossier_simule, preregler_profil)
-from jeux_formats import copier_jeu
+from jeux_formats import copier_jeu, retour_attendu
 
 
 def charger_serveur():
@@ -438,11 +438,14 @@ class CasRecetteSocle(CasNavigateur):
 
     # -- vérifications -----------------------------------------------------------------------
 
-    def verifier_cellules_gardees(self, nom, avant, apres, changees=()):
+    def verifier_cellules_gardees(self, nom, avant, apres, changees=(), base=None):
         """Aucune perte (CS138, CS140) : chaque colonne d'origine existe encore ; chaque cellule d'origine se retrouve
         sous le même nom de colonne, à la même ligne (aux réécritures documentées près : valeur_comparable) ; les
         colonnes ajoutées portent leur valeur par défaut ; les lignes ajoutées sont après les lignes d'origine.
-        changees : {(identifiant de la ligne, colonne)} que le parcours a lui-même modifiées."""
+        changees : {(identifiant de la ligne, colonne)} que le parcours a lui-même modifiées.
+        base : {table: {"lignes": [{colonne: cellule}]}} d'origine ; quand le passage ajoute les colonnes du format 5 à
+        demandes.csv, une demande acceptée ou regroupée suit son OT (T526) : statut et retour attendus par
+        retour_attendu (tests/jeux_formats.py)."""
         entete_avant, lignes_avant = lire_table(avant)
         entete_apres, lignes_apres = lire_table(apres)
         for colonne in entete_avant:
@@ -454,15 +457,18 @@ class CasRecetteSocle(CasNavigateur):
             self.assertLessEqual(len(ligne), len(entete_avant), "%s, ligne %d : valeurs au-delà de l'en-tête"
                                  % (nom, rang + 2))
             identifiant = cellule(ligne, 0)
+            retour = {}
+            if nom == "demandes.csv" and base is not None and "repare_par" in ajoutees:
+                retour = retour_attendu(base, {c: cellule(ligne, i) for i, c in enumerate(entete_avant)}) or {}
             for position, colonne in enumerate(entete_avant):
                 if (identifiant, colonne) in changees:
                     continue
                 self.assertEqual(valeur_comparable(cellule(nouvelle, entete_apres.index(colonne))),
-                                 valeur_comparable(cellule(ligne, position)),
+                                 valeur_comparable(retour.get(colonne, cellule(ligne, position))),
                                  "%s, ligne %d (%s), colonne %s" % (nom, rang + 2, identifiant, colonne))
             for colonne in ajoutees:
                 self.assertIn(colonne, DEFAUTS, "%s : colonne %s ajoutée" % (nom, colonne))
-                self.assertEqual(cellule(nouvelle, entete_apres.index(colonne)), DEFAUTS[colonne],
+                self.assertEqual(cellule(nouvelle, entete_apres.index(colonne)), retour.get(colonne, DEFAUTS[colonne]),
                                  "%s, ligne %d, colonne ajoutée %s" % (nom, rang + 2, colonne))
 
     def verifier_aucune_perte(self, origine, apres, changees=None):
@@ -470,9 +476,12 @@ class CasRecetteSocle(CasNavigateur):
         {fichier: {(identifiant, colonne)}}. Rend les fichiers changés."""
         changees = changees or {}
         modifies = sorted(chemin for chemin, octets in csv_de_la_racine(origine).items() if apres.get(chemin) != octets)
+        base = {chemin[:-len(".csv")]: {"lignes": lignes_en_dictionnaires(octets)}       # pour le rattrapage (T526)
+                for chemin, octets in csv_de_la_racine(origine).items()
+                if chemin in ("ordres_travail.csv", "techniciens.csv")}
         for chemin in modifies:
             self.assertIn(chemin, apres, chemin + " a disparu")
-            self.verifier_cellules_gardees(chemin, origine[chemin], apres[chemin], changees.get(chemin, ()))
+            self.verifier_cellules_gardees(chemin, origine[chemin], apres[chemin], changees.get(chemin, ()), base)
         return modifies
 
     def verifier_rien_sans_sauvegarde(self, origine, apres):

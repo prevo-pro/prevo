@@ -104,6 +104,10 @@ STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicie
 # reprises de ses OT n'y sont que s'il y en a eu (aucune dans la démo).
 STRUCTURE_AVANT["technicien"]["blocs"].append("article.carte.accueil-a-prendre")
 STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicien"]["classes"]) | {"accueil-a-prendre"})
+# Lot 1 ergonomie, A4 (T517, démo T525) : les demandes de Lucas Perrot suivent leur OT ; son accueil montre « En cours »
+# et « Réparée » (badges, phrase « Réparée le … par … » et mot du technicien) au lieu de « Acceptée » (violet).
+STRUCTURE_AVANT["demandeur"]["classes"] = sorted((set(STRUCTURE_AVANT["demandeur"]["classes"]) - {"violet"})
+                                                 | {"cyan", "di-mot", "di-retour", "di-retour-phrase"})
 
 NOTER_TOASTS_JS = """(() => {
   window.__toasts = [];
