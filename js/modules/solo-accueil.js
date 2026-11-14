@@ -129,6 +129,25 @@ const SoloAccueil = (() => {
       UI.html`<ul class="liste-cartes">${lignes}</ul>`, I18n.t('accueil.solo.aucune_panne'));
   }
 
+  // « Pannes récurrentes » (T546, reste de L29) : même calcul que la tuile du bento (PannesRecurrentes.machinesEnAlerte,
+  // seuils de Paramètres) ; carte quand une machine est en alerte, sinon une seule ligne discrète.
+  function carteRecurrentes(aujourdhui) {
+    if (typeof PannesRecurrentes === 'undefined') return '';
+    const alertes = PannesRecurrentes.machinesEnAlerte(aujourdhui);
+    const { seuil, jours } = PannesRecurrentes.reglages();
+    if (!alertes.length) {
+      return UI.html`<p class="note solo-recurrentes-calme" id="solo-recurrentes"><b>${I18n.t('accueil.tuile_recurrentes.titre')}</b> · ${I18n.t('accueil.tuile_recurrentes.aucune', { seuil, jours })}</p>`;
+    }
+    const lignes = alertes.slice(0, NOMBRE_LIGNES).map((a) => UI.html`<li class="solo-recurrente">
+      <a href="#/equipement/${encodeURIComponent(a.equipementId)}" id="solo-recurrente-${a.equipementId}">
+        <div class="carte-titre"><b>${I18n.t('accueil.tuile_recurrentes.machine', { repere: PannesRecurrentes.repere(a.equipementId), n: a.nombre, jours })}</b></div>
+        <div class="carte-meta">${a.memeCause ? UI.html`<span class="rouge">${I18n.t('accueil.tuile_recurrentes.meme_cause', { n: a.memeCause.nombre, cause: a.memeCause.libelle })}</span>`
+          : UI.html`<span>${I18n.t('accueil.tuile_recurrentes.causes_differentes')}</span>`}</div>
+      </a></li>`);
+    return carte('solo-recurrentes', I18n.t('accueil.tuile_recurrentes.titre'), alertes.length, UI.html`<ul class="liste-cartes">${lignes}</ul>
+      ${alertes.length > NOMBRE_LIGNES ? UI.html`<p class="muted">${I18n.t('accueil.tuile_recurrentes.et_autres', { n: alertes.length - NOMBRE_LIGNES })}</p>` : ''}`, '');
+  }
+
   function entete(aujourdhui) {
     return UI.html`<div class="entete-page solo-entete"><div class="solo-salut">
         <h1>${I18n.t('accueil.entete.bonjour')}</h1><p class="bento-date">${Accueil.dateEnLettres(aujourdhui, true)}</p>
@@ -161,6 +180,7 @@ const SoloAccueil = (() => {
     UI.remplir(conteneur, UI.html`<div class="solo-accueil accueil-instruments" id="solo-accueil">${entete(aujourdhui)}
       <div id="maj-zone"></div>${alerteControle()}<div id="copie-externe-zone"></div><div id="tailscale-zone"></div>${carteBaseVide()}
       ${cartePannes(r.pannes)}
+      ${carteRecurrentes(aujourdhui)}
       ${carte('solo-en-cours', I18n.t('accueil.solo.en_cours'), r.enCours.length, listeOt(r.enCours, badgeEtat), I18n.t('accueil.solo.rien_en_cours'))}
       ${carte('solo-preventif', I18n.t('accueil.solo.preventif_semaine'), r.preventifs.length + r.visites.length, listePreventifs(r.preventifs, r.visites),
     I18n.t('accueil.solo.aucun_preventif', { date: UI.dateFr(Accueil.dimancheDe(aujourdhui)) }))}

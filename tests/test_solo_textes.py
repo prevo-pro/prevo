@@ -6,6 +6,8 @@ Une personne seule est à la fois responsable et technicien, sans menu Équipe :
       responsable » ne change pas ;
     - relecture des textes affichés en Solo (T546) : plus de « votre responsable » ni d'« Équipe › » dans les textes Solo
       (bon de travail, codes de clôture, anomalie, signalement, rapport) ;
+    - l'accueil Solo porte la tuile « Pannes récurrentes » (même calcul que le bento) : une carte quand une machine est
+      en alerte, une ligne discrète sinon ;
     - l'assistant et la fiche d'accès renvoient à Paramètres › Accès (lien vers #/equipe/acces), pas à Équipe › Accès ;
 
 Lancer depuis la racine du projet :
@@ -97,6 +99,37 @@ class TestAffichageSolo(CasSolo):
             self.poser_mode(page, True)
             page.wait_for_selector(".di-nouvelle")
             self.assertIn("L'OT s'ouvre aussitôt à votre nom", page.inner_text(".di-nouvelle h1 + p"))
+
+    def test_tuile_pannes_recurrentes_a_l_accueil_solo(self):
+        page = self.page
+        preregler_profil(self.contexte, "responsable", nom="Thomas")
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/accueil")
+            # Seuil haut : aucune alerte, une ligne discrète (pas de carte)
+            page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+                lignes.push({ cle: 'pannes_recurrentes_seuil', valeur: '20' }); })""")
+            self.poser_mode(page, True)
+            page.wait_for_selector("#solo-accueil")
+            self.assertEqual(page.locator("#solo-recurrentes").count(), 1)
+            self.assertEqual(page.locator("#solo-recurrentes.carte").count(), 0)
+            self.assertIn("Pannes récurrentes", page.inner_text("#solo-recurrentes"))
+            # Seuil 2 et deux correctifs sur la même machine aujourd'hui : une carte, lien vers la machine
+            page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+                lignes.find((l) => l.cle === 'pannes_recurrentes_seuil').valeur = '2'; })""")
+            for _ in range(2):
+                page.evaluate("""() => Ordres.creer({ origine: 'manuel', equipement_id: 'EQ-0005', titre: 'Panne T546',
+                    type: 'correctif immédiat', priorite: 'P2', technicien_id: 'TEC-0004', date_prevue: Donnees.aujourdhui() })""")
+            page.reload()
+            page.wait_for_selector("#solo-accueil")
+            alertes = page.evaluate("() => PannesRecurrentes.machinesEnAlerte(Donnees.aujourdhui()).map((a) => a.equipementId)")
+            self.assertIn("EQ-0005", alertes)
+            self.assertEqual(page.locator("article#solo-recurrentes").count(), 1)
+            self.assertEqual(page.locator('#solo-recurrentes a[href="#/equipement/EQ-0005"]').count(), 1)
+            self.assertRegex(page.inner_text("#solo-recurrentes"), r"pannes en 30 jours")
+            # Équipe : ni carte ni ligne Solo
+            self.poser_mode(page, False)
+            page.wait_for_selector("#bento")
+            self.assertEqual(page.locator("#solo-recurrentes").count(), 0)
 
 
 if __name__ == "__main__":

@@ -34,3 +34,7 @@
   .solo-salut { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
   .solo-entete #btn-export-accueil { display: none; }
 }
+
+/* Accueil Solo : pannes récurrentes (T546) */
+.solo-recurrente .carte-meta .rouge { color: var(--texte-rouge); }
+.solo-recurrentes-calme { margin: 0 0 var(--esp-2, .5rem); }
