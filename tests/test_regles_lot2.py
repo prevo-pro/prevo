@@ -6,6 +6,7 @@ avec des dates fixes passées en argument (aujourd'hui = mardi 20/10/2026) :
       inactive, ot_ouvert, echue, bientot, a_jour, incomplete ; Preventif.dernierReleve ;
     - Preventif.calendrier : semaines du lundi au dimanche, placement des échéances et des OT ;
       Preventif.visitesDeLaSemaine (L27) : visites dues d'ici dimanche, OT créé ou non, sans double compte ;
+      visites suivantes « prévues » d'après la périodicité (L27) ;
     - Magasin.suggestionPointCommande (D23), Magasin.aCommander, Magasin.sortiesDeLOt ;
     - CausesFrequentes.calculer (portées équipement et modèle, cas ignorés, tri, limite à 3)
       et CausesFrequentes.encart (textes exacts, échappement d'un libellé piégé, 5 liens au plus
@@ -402,8 +403,9 @@ class TestCalendrier(CasRegles):
 
     def test_placement_des_echeances_et_des_ot(self):
         semaines = self.calendrier()
-        places = {rang: [(e["gammeId"], e["otId"], e["date"], e["estimee"]) for e in semaine["elements"]]
-                  for rang, semaine in enumerate(semaines) if semaine["elements"]}
+        # (les visites suivantes « prévues », L27, sont vérifiées par le test suivant)
+        places = {rang: [(e["gammeId"], e["otId"], e["date"], e["estimee"]) for e in semaine["elements"] if not e["prevue"]]
+                  for rang, semaine in enumerate(semaines) if any(not e["prevue"] for e in semaine["elements"])}
         self.assertEqual(places, {
             # échéance passée (en retard) : première semaine, avec sa vraie date
             0: [("GAM-0010", "", "2026-10-01", False), ("GAM-0001", "", "2026-10-20", False)],
@@ -417,6 +419,30 @@ class TestCalendrier(CasRegles):
         # 4 semaines : l'échéance du 29/11 n'est plus placée
         quatre = self.calendrier(AUJOURDHUI, 4)
         self.assertNotIn("GAM-0003", [e["gammeId"] for s in quatre for e in s["elements"]])
+
+    def test_visites_suivantes_prevues_d_apres_la_periodicite(self):
+        # L27 : après l'échéance (ou l'OT ouvert), les visites suivantes des gammes « date », jusqu'au dernier
+        # dimanche ; une échéance passée repart d'aujourd'hui ; rien pour un compteur ou un seuil
+        prevues = sorted((e["gammeId"], e["date"]) for s in self.calendrier() for e in s["elements"] if e["prevue"])
+        self.assertEqual(prevues, sorted([
+            ("GAM-0001", "2026-11-19"), ("GAM-0001", "2026-12-19"),       # 30 j après le 20/10
+            ("GAM-0002", "2026-11-26"), ("GAM-0002", "2026-12-26"),       # 30 j après le 27/10
+            ("GAM-0010", "2026-11-19"), ("GAM-0010", "2026-12-19"),       # en retard : repart du 20/10
+        ]))
+        for semaine in self.calendrier():
+            for e in semaine["elements"]:
+                if e["prevue"]:
+                    self.assertEqual((e["otId"], e["estimee"]), ("", False))
+        # GAM-0007 (90 j) part de la date prévue de son OT ouvert (28/10) : 26/01, après l'horizon
+        un_an = self.calendrier(AUJOURDHUI, 20)
+        self.assertIn(("GAM-0007", "2027-01-26"),
+                      [(e["gammeId"], e["date"]) for s in un_an for e in s["elements"] if e["prevue"]])
+        # hebdomadaire due demain : une visite par semaine sur les 12 semaines, la première sans « prévue »
+        hebdo = self.js("""(jour) => { Donnees.lignes('gammes').push({ id: 'GAM-0099', equipement_id: 'EQ-0001',
+            libelle: 'Hebdo', declencheur: 'date', periodicite_jours: '7', prochaine_echeance: '2026-10-21', actif: '1' });
+            const c = Preventif.calendrier(jour); Donnees.lignes('gammes').pop();
+            return c.map((s) => s.elements.filter((e) => e.gammeId === 'GAM-0099').map((e) => [e.date, e.prevue])); }""", AUJOURDHUI)
+        self.assertEqual(hebdo, [[[decaler("2026-10-21", 7 * rang), rang > 0]] for rang in range(12)])
 
     def test_visites_de_la_semaine_ot_cree_ou_non_sans_double_compte(self):
         # L27 : la semaine en cours du calendrier, retards compris, que l'OT soit déjà créé ou non

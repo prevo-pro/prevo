@@ -2,7 +2,8 @@
 // Preventif (4/4) — onglet « Calendrier 12 semaines » de l'écran #/preventif (ARCHITECTURE.md §14.3,
 // brief §9 E8) : une ligne par semaine (lundi → dimanche), lisible sur téléphone ; dans chaque
 // semaine, les échéances des gammes (« estimée » pour une gamme au compteur) et les OT préventifs
-// ouverts, avec leurs liens. Les calculs sont ceux de Preventif.calendrier (preventif-regles.js).
+// ouverts, avec leurs liens ; puis (L27) les visites suivantes des gammes « date », en plus clair,
+// marquées « prévue », sans lien (ce ne sont pas des OT). Les calculs sont ceux de Preventif.calendrier (preventif-regles.js).
 //   15. Outils (numéro de semaine, libellés)
 //   16. Dessin du calendrier (Preventif.interne.afficherCalendrier, appelé par preventif-ecrans.js)
 // Complète l'objet Preventif.
@@ -39,9 +40,19 @@ Object.assign(Preventif, (() => {
   // 16. Dessin du calendrier
   // ===========================================================================================
 
-  /** Une échéance de gamme ou un OT préventif ouvert, dans sa semaine. */
+  /** Visite suivante d'une gamme (L27) : en plus clair, « prévue », sans lien (ni OT ni échéance). */
+  function visitePrevueHtml(element, gamme) {
+    return UI.html`<li class="pv-element pv-prevue" data-gamme="${element.gammeId}" data-prevue="1">
+      <span class="pv-date sans-coupure">${UI.dateFr(element.date)}</span>
+      <span class="pv-quoi"><b>${repere(element.equipementId)}</b> ${texte(gamme && gamme.libelle) || element.gammeId}</span>
+      <span class="pv-marques"><span class="badge neutre" title="${I18n.t('preventif.element.prevue_titre')}">${I18n.t('preventif.element.prevue')}</span></span>
+    </li>`;
+  }
+
+  /** Une échéance de gamme ou un OT préventif ouvert, dans sa semaine (ou une visite prévue, L27). */
   function elementHtml(element, jour) {
     const gamme = element.gammeId ? Donnees.trouver('gammes', element.gammeId) : null;
+    if (element.prevue) return visitePrevueHtml(element, gamme);
     const ot = element.otId ? Donnees.trouver('ordres_travail', element.otId) : null;
     const enRetard = element.date < jour;
     const titre = gamme ? UI.html`<a href="#/preventif/gamme/${encodeURIComponent(gamme.id)}">${texte(gamme.libelle) || gamme.id}</a>`
@@ -79,7 +90,7 @@ Object.assign(Preventif, (() => {
     const semaines = Preventif.calendrier(jour);
     const enRetard = semaines.length ? semaines[0].elements.filter((e) => joursEntre(e.date, semaines[0].lundi) > 0).length : 0;
     UI.remplir(panneau, UI.html`
-      <p class="note pv-legende">${I18n.html('preventif.calendrier.echeances_gammes_ot_preventifs')}</p>
+      <p class="note pv-legende">${I18n.html('preventif.calendrier.echeances_gammes_ot_preventifs')} ${I18n.t('preventif.calendrier.visites_prevues')}</p>
       ${enRetard ? UI.html`<p class="note">${I18n.t('preventif.calendrier.element_retard_semaine_precedente', { n: enRetard })}</p>` : ''}
       <ol class="pv-calendrier" aria-label="${I18n.t('preventif.calendrier.calendrier_preventif_semaines', { n: semaines.length })}">
         ${semaines.map((semaine, rang) => semaineHtml(semaine, rang, jour))}

@@ -371,35 +371,60 @@ const Preventif = (() => {
   }
 
   /**
-   * Éléments à placer : échéance de chaque gamme active sans OT ouvert (estimée pour un compteur),
-   * et chaque OT préventif ouvert à sa date prévue. [{ gammeId, equipementId, date, estimee, otId }]
+   * Visites suivantes d'une gamme « date » (L27), calculées d'après sa périodicité jusqu'au jour `fin` : à partir de
+   * la date prévue de son OT ouvert, sinon de son échéance (ramenée à aujourd'hui si elle est passée), de
+   * periodicite_jours en periodicite_jours. Ce ne sont pas des OT. Gamme au compteur ou au seuil : aucune (l'échéance
+   * suivante dépend des relevés). → dates ISO.
    */
-  function elementsDuCalendrier(jour) {
+  function visitesSuivantes(gamme, etat, otOuvert, jour, fin) {
+    const periodicite = Math.round(nombre(gamme.periodicite_jours) || 0);
+    if ((texte(gamme.declencheur) || 'date') !== 'date' || periodicite <= 0 || !fin) return [];
+    const prevueOt = otOuvert ? texte(otOuvert.date_prevue).slice(0, 10) : '';
+    let date = estDateIso(prevueOt) ? prevueOt : etat.echeance;
+    if (!estDateIso(date)) return [];
+    if (date < jour) date = jour;
+    const dates = [];
+    for (date = ajouterJours(date, periodicite); date <= fin; date = ajouterJours(date, periodicite)) dates.push(date);
+    return dates;
+  }
+
+  /**
+   * Éléments à placer : échéance de chaque gamme active sans OT ouvert (estimée pour un compteur),
+   * chaque OT préventif ouvert à sa date prévue, et (L27) jusqu'au jour `fin` les visites suivantes
+   * des gammes « date » (prevue : vrai). [{ gammeId, equipementId, date, estimee, otId, prevue }]
+   */
+  function elementsDuCalendrier(jour, fin) {
     const contexte = contexteCalcul();
     const elements = [];
     Donnees.lignes('gammes').forEach((gamme) => {
       if (texte(gamme.actif) === '0') return;
       const etat = evaluerGamme(gamme, jour, contexte);
-      if (etat.statut === 'ot_ouvert' || !etat.echeance) return;   // l'OT ouvert est placé ci-dessous
-      elements.push({ gammeId: gamme.id, equipementId: gamme.equipement_id, date: etat.echeance,
-        estimee: texte(gamme.declencheur) === 'compteur', otId: '' });
+      if (etat.statut !== 'ot_ouvert' && etat.echeance) {           // l'OT ouvert est placé ci-dessous
+        elements.push({ gammeId: gamme.id, equipementId: gamme.equipement_id, date: etat.echeance,
+          estimee: texte(gamme.declencheur) === 'compteur', otId: '', prevue: false });
+      }
+      visitesSuivantes(gamme, etat, contexte.otsOuverts.get(gamme.id), jour, fin).forEach((date) => {
+        elements.push({ gammeId: gamme.id, equipementId: gamme.equipement_id, date, estimee: false, otId: '', prevue: true });
+      });
     });
     Donnees.lignes('ordres_travail').forEach((ot) => {
       const date = texte(ot.date_prevue).slice(0, 10);
       if (!estOuvert(ot) || !estOtPreventif(ot) || !estDateIso(date)) return;
-      elements.push({ gammeId: texte(ot.gamme_id), equipementId: ot.equipement_id, date, estimee: false, otId: ot.id });
+      elements.push({ gammeId: texte(ot.gamme_id), equipementId: ot.equipement_id, date, estimee: false, otId: ot.id, prevue: false });
     });
     return elements;
   }
 
   function comparerElements(a, b) {
     if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.prevue !== b.prevue) return a.prevue ? 1 : -1;
     return (a.otId + a.gammeId).localeCompare(b.otId + b.gammeId, 'fr', { numeric: true });
   }
 
   /**
    * Calendrier de `semaines` semaines (lundi → dimanche) à partir de la semaine d'aujourd'hui :
-   * [{ lundi, dimanche, elements: [{ gammeId, equipementId, date, estimee, otId }] }].
+   * [{ lundi, dimanche, elements: [{ gammeId, equipementId, date, estimee, otId, prevue }] }] ; prevue : visite suivante
+   * d'une gamme « date » calculée d'après sa périodicité (L27), qui n'est ni une échéance ni un OT.
    * Un élément en retard (date avant le premier lundi) est placé dans la première semaine avec
    * sa vraie date ; un élément après le dernier dimanche n'est pas placé.
    */
@@ -413,7 +438,7 @@ const Preventif = (() => {
       liste.push({ lundi, dimanche: ajouterJours(lundi, 6), elements: [] });
     }
     const dernierDimanche = liste[liste.length - 1].dimanche;
-    elementsDuCalendrier(jour).forEach((element) => {
+    elementsDuCalendrier(jour, dernierDimanche).forEach((element) => {
       if (element.date > dernierDimanche) return;
       const position = element.date < premierLundi ? 0 : Math.floor(joursEntre(premierLundi, element.date) / 7);
       liste[position].elements.push(element);
@@ -425,7 +450,8 @@ const Preventif = (() => {
   /**
    * Visites préventives dues d'ici dimanche (retards compris), d'après le calendrier (L27) : l'échéance
    * de chaque gamme sans OT ouvert et chaque OT préventif ouvert, sans double compte d'une visite et
-   * de son OT. → éléments de la semaine en cours de calendrier() : [{ gammeId, equipementId, date, estimee, otId }].
+   * de son OT ; une gamme « date » courte (moins de 7 jours) y compte aussi ses visites suivantes de la semaine.
+   * → éléments de la semaine en cours de calendrier() : [{ gammeId, equipementId, date, estimee, otId, prevue }].
    */
   function visitesDeLaSemaine(aujourdhui) {
     return calendrier(aujourdhui, 1)[0].elements;

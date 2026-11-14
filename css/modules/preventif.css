@@ -89,6 +89,9 @@
 .pv-marques { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .3rem .4rem; }
 .pv-lien-ot { font-weight: 700; white-space: nowrap; }
 .pv-en-retard .pv-date { color: var(--texte-rouge); font-weight: 700; }
+/* L27 : visite suivante calculée d'après la périodicité (« prévue ») : en plus clair, sans lien */
+.pv-prevue .pv-date, .pv-prevue .pv-quoi { color: var(--muted); }
+.pv-prevue .pv-quoi b { color: var(--texte-2); font-weight: 600; }
 
 /* =========================================================================================
    5. Téléphone et tablette : une colonne, cartes à la place du tableau, zones tactiles de 48 px

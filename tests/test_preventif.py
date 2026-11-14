@@ -569,6 +569,13 @@ class TestEcrans(CasPreventif):
                 e.querySelectorAll('.pv-element').length,
                 Array.from(e.querySelectorAll('.pv-element')).filter((l) => l.textContent.includes('estimée')).length])""")
             self.assertEqual(affiche, attendu)
+            # L27 : visites suivantes « prévue », en plus clair, sans lien ; légende qui les explique
+            prevues = page.evaluate("Preventif.calendrier(Donnees.aujourdhui()).reduce((n, s) => n + s.elements.filter((e) => e.prevue).length, 0)")
+            self.assertGreater(prevues, 0)
+            self.assertEqual(page.locator(".pv-element.pv-prevue").count(), prevues)
+            self.assertEqual(page.locator(".pv-element.pv-prevue a").count(), 0)
+            self.assertEqual(page.locator(".pv-element.pv-prevue .badge").first.inner_text().strip(), "prévue")
+            self.assertIn("marquées « prévue »", page.inner_text(".pv-legende"))
 
             page.click(".onglet[data-onglet='gammes']")
             page.wait_for_function("location.hash === '#/preventif?onglet=gammes'")
