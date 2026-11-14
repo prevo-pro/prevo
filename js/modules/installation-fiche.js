@@ -37,6 +37,14 @@ const InstallationFiche = (() => {
     return Parc.avertissementReseau(adresse, { lienPortee: true, lienEtiquettes: true });
   }
 
+  // L04 (lot 2) : une seule adresse pour les téléphones (la première : la carte qui porte la connexion du PC, choisie
+  // par le serveur), les autres repliées sous « Autres adresses de ce PC ».
+  function autresAdresses(autres) {
+    if (!autres.length) return '';
+    return UI.html`<details class="note autres-adresses" id="fiche-autres-adresses"><summary>${I18n.t('installation.rendre.autres_adresses_pc')}</summary>
+      <ul>${autres.map((adresse) => UI.html`<li class="fiche-adresse">${adresse}</li>`)}</ul></details>`;
+  }
+
   function texteDemarrage(fiche) {
     const lanceur = fiche.lanceur || 'Lancer_GMAO.bat';
     if (fiche.demarrage === 'systeme') {
@@ -76,7 +84,8 @@ const InstallationFiche = (() => {
         <h3>${I18n.t('installation.rendre.ouvrir_prevo')}</h3>
         <p>${I18n.html('installation.rendre.sur_ce_pc', { adresse: fiche.adresse_locale || '' })}</p>
         ${reseau.length ? UI.html`<p>${I18n.t('installation.rendre.depuis_postes_telephones_atelier')}</p>
-          <ul>${reseau.map((adresse) => UI.html`<li class="fiche-adresse">${adresse}</li>`)}</ul>` : ''}
+          <ul><li class="fiche-adresse" id="fiche-adresse-principale">${reseau[0]}</li></ul>
+          ${autresAdresses(reseau.slice(1))}` : ''}
         ${fiche.adresse_tailscale ? UI.html`<p>${I18n.html('installation.rendre.hors_atelier_tailscale_application', { adresse_tailscale: fiche.adresse_tailscale })}</p>` : ''}
         ${fiche.portee === 'ce-pc' ? UI.html`<p>${I18n.t('installation.rendre.prevo_joignable_pc_aucune')}</p>` : ''}
         <div class="fiche-qrs">

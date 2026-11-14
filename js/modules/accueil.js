@@ -283,7 +283,8 @@ const Accueil = (() => {
         <div class="accueil-connexion-texte">
           <p>${I18n.t('accueil.carte_connexion.scannez_qr_code_appareil')}</p>
           <p>${I18n.html('accueil.carte_connexion.saisissez_adresse', { adresse: adresses[0] })}</p>
-          ${autres.length ? UI.html`<p class="note">${I18n.t('accueil.carte_connexion.autres_adresses_pc', { join: autres.join(' · ') })}</p>` : ''}
+          ${autres.length ? UI.html`<details class="note autres-adresses" id="autres-adresses"><summary>${I18n.t('accueil.carte_connexion.autres_adresses_pc')}</summary>
+            <ul>${autres.map((adresse) => UI.html`<li>${adresse}</li>`)}</ul></details>` : ''}
           <ul class="accueil-rappels">
             <li>${I18n.html('accueil.carte_connexion.telephone_doit_etre_meme')}</li>
             <li>${I18n.html('accueil.carte_connexion.premier_lancement_windows_demande')}</li>

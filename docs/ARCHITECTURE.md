@@ -4225,7 +4225,13 @@ le fournisseur réglé sur le PC serveur et un fournisseur en ligne reste soumis
   le détail des pertes d'un fichier abîmé. Les lanceurs (`Lancer_GMAO.bat`, `Reinitialiser_mot_de_passe.bat`,
   `lancer.sh`) écrivent leurs lignes d'avant Python en français puis en anglais.
 - **Adresses données par Prévo** (QR d'accueil, étiquettes, fiche d'accès, guide, `/api/info`) : toujours la porte
-  (`http://<adresse>:<port_http>/`) ; l'adresse https n'est jamais affichée.
+  (`http://<adresse>:<port_http>/`) ; l'adresse https n'est jamais affichée. Lot 2 ergonomie (L04) : une seule adresse
+  pour les téléphones, celle de la carte qui porte la connexion du PC (adresse source de la route par défaut,
+  `ip_de_sortie` : connect() UDP vers 192.0.2.1, aucun paquet ; sans route, l'ordre des adresses du nom du PC) ;
+  `ordonner_adresses_ip` est le seul point de calcul (la principale en tête de `adresses_ip_reseau`, donc de
+  `adresses_reseau`, de `/api/info` et de la fiche). L'accueil et la fiche montrent la première (et le QR l'encode),
+  les autres repliées sous « Autres adresses de ce PC » ; la console les met sur une ligne « Autres adresses ». Le
+  certificat et les noms acceptés couvrent toujours toutes les adresses.
 - **Certificat local** : `outils-tiers/mkcert.exe` (ou `mkcert` sur Linux/macOS) dont l'empreinte SHA-256 est
   comparée à `outils/empreintes-tiers.json` avant toute exécution (écart ⇒ refus) ; `CAROOT` =
   `donnees/acces/autorite/` ; `mkcert -install` dans l'élévation (§22.9) ; certificat dans

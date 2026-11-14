@@ -569,6 +569,39 @@ class TestOuverture(CasInstallation):
             self.assertTrue(page.is_hidden("#ecran-connexion"))
 
 
+class TestFicheAdresses(CasInstallation):
+    """Lot 2 ergonomie : la fiche d'accès mise en page d'après une réponse imposée (le test ne dépend pas du réseau de
+    la machine). L04 : une seule adresse pour les téléphones (la première, choisie par le serveur), le QR sur elle, les
+    autres repliées sous « Autres adresses de ce PC »."""
+
+    WIFI, WSL = "http://192.168.1.59:8600/", "http://172.19.0.1:8600/"
+
+    def rendre(self, **fiche):
+        page = self.page
+        donnees = dict({"adresse_locale": "http://127.0.0.1:8600/", "portee": "atelier", "comptes": True,
+                        "adresses": [self.WIFI, self.WSL], "adresses_mandataire": [], "autorite_presente": True,
+                        "adresse_confiance": self.WIFI}, **fiche)
+        page.evaluate("""(fiche) => { const zone = document.createElement('div'); zone.id = 'essai-fiche';
+            document.body.prepend(zone); zone.appendChild(InstallationFiche.rendre(fiche)); }""", donnees)
+        return page.locator("#essai-fiche")
+
+    def test_une_seule_adresse_les_autres_repliees_le_qr_sur_la_premiere(self):
+        page = self.page
+        instance = self.lancer(source=commun.DOSSIER_DEMO)
+        page.goto(instance.url + "/")
+        page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
+        fiche = self.rendre()
+        self.assertEqual(fiche.locator("#fiche-adresse-principale").inner_text(), self.WIFI)
+        self.assertEqual(fiche.locator("#fiche-qr-ouvrir .fiche-adresse").inner_text(), self.WIFI)
+        self.assertNotIn(self.WSL, fiche.inner_text())
+        self.assertIn("Autres adresses de ce PC", fiche.inner_text())
+        fiche.locator("#fiche-autres-adresses summary").click()
+        self.assertIn(self.WSL, fiche.locator("#fiche-autres-adresses").inner_text())
+        page.evaluate("document.getElementById('essai-fiche').remove()")
+        fiche = self.rendre(adresses=[self.WIFI])                                   # une seule carte : rien de replié
+        self.assertEqual(fiche.locator("#fiche-autres-adresses").count(), 0)
+
+
 class TestDepuisLaCoque(CasInstallation):
     """T514 (A1, étude d'ergonomie) : « Créer une base vide » (ou « Essayer avec les données de démo »), profil Responsable,
     puis le lien de Paramètres vers #/installation ouvre l'assistant, sans rechargement de la page ; avant, la même

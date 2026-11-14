@@ -173,6 +173,9 @@ img, svg, video, canvas { max-width: 100%; }
 .muted { color: var(--muted); margin: 0 0 .6rem; }
 .erreur { color: var(--rouge); min-height: 1.2em; margin: .4rem 0 0; }
 .note { color: var(--texte-2); font-size: .9375rem; margin: .7rem 0 0; }
+/* L04 (lot 2) : « Autres adresses de ce PC », repliées sous l'adresse des téléphones (accueil, fiche d'accès). */
+.autres-adresses summary { cursor: pointer; }
+.autres-adresses ul { margin: .3rem 0 0; padding-left: 1.25rem; overflow-wrap: anywhere; }
 .num { text-align: right; white-space: nowrap; }
 .sans-coupure { white-space: nowrap; }
 .h { color: var(--vert); } .b { color: var(--rouge); }

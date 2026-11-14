@@ -219,19 +219,25 @@ class TestAccueil(CasParametres):
             self.assertNotIn("Faites confiance au PC atelier", texte)
 
     def test_accueil_qr_avec_adresse_reseau_imposee_puis_sans_adresse(self):
-        adresse = "http://192.168.7.20:8080/"
+        adresse, virtuelle = "http://192.168.7.20:8080/", "http://172.19.0.1:8080/"
         with ServeurPrevo() as serveur:
             # Réponse de /api/info imposée : le test ne dépend pas du réseau de la machine. « porte » vrai = serveur
             # hors de « ce PC » (lot 7, T161) : l'adresse est celle de la porte et la carte rappelle l'étape du
             # téléphone, « Faites confiance au PC atelier ».
             self.page.route("**/api/info", lambda route: route.fulfill(
                 status=200, content_type="application/json",
-                body=json.dumps({"port": 8080, "adresse_locale": "http://localhost:8080/", "adresses_reseau": [adresse],
-                                 "porte": True})))
+                body=json.dumps({"port": 8080, "adresse_locale": "http://localhost:8080/",
+                                 "adresses_reseau": [adresse, virtuelle], "porte": True})))
             page = self.ouvrir(serveur)
             self.assertEqual(page.evaluate(LIRE_QR_JS), adresse)
             self.assertEqual(self.texte("#adresse-reseau"), adresse)
             texte = self.texte("#carte-connexion")
+            # L04 (lot 2) : une seule adresse pour les téléphones ; la carte virtuelle repliée sous « Autres adresses ».
+            self.assertNotIn(virtuelle, texte)
+            self.assertIn("Autres adresses de ce PC", texte)
+            self.assertFalse(page.evaluate("document.getElementById('autres-adresses').open"))
+            page.click("#autres-adresses summary")
+            self.assertIn(virtuelle, self.texte("#autres-adresses"))
             self.assertIn("Faites confiance au PC atelier", texte)
             self.assertIn("suivez ses étapes une seule fois", texte)
             self.assertNotIn("8443", texte)

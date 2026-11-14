@@ -4004,19 +4004,29 @@ def creer_dossiers(config):
 # Adresses réseau
 # ---------------------------------------------------------------------------
 
-def ip_de_sortie():
-    """Adresse IP de la carte réseau qui sert à sortir du PC.
+# L04 (lot 2) : destinations des connect() UDP qui trouvent la carte de la route par défaut. 192.0.2.1 (TEST-NET-1,
+# RFC 5737) n'est sur aucun réseau privé ni virtuel : seule la route par défaut y mène ; 10.255.255.255 en repli (un
+# PC sans route par défaut mais relié à un réseau en 10.x). Aucun paquet n'est envoyé.
+DESTINATIONS_DE_SORTIE = ('192.0.2.1', '10.255.255.255')
 
-    Un connect() UDP ne fait que choisir l'interface : aucun paquet n'est envoyé.
+
+def ip_de_sortie():
+    """Adresse IP de la carte réseau qui porte la connexion du PC (adresse source de la route par défaut).
+
+    Un connect() UDP ne fait que choisir l'interface : aucun paquet n'est envoyé. None si le PC n'a pas de route.
     """
-    connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        connexion.connect(('10.255.255.255', 1))
-        return connexion.getsockname()[0]
-    except OSError:
-        return None
-    finally:
-        connexion.close()
+    for destination in DESTINATIONS_DE_SORTIE:
+        connexion = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            connexion.connect((destination, 1))
+            ip = connexion.getsockname()[0]
+        except OSError:
+            continue
+        finally:
+            connexion.close()
+        if ip and ip != '0.0.0.0':
+            return ip
+    return None
 
 
 def ips_du_nom_du_pc():
@@ -4027,20 +4037,31 @@ def ips_du_nom_du_pc():
         return []
 
 
-def adresses_ip_reseau():
-    """Adresses IPv4 du PC joignables par les téléphones (sans les adresses de bouclage)."""
+def ordonner_adresses_ip(ip_sortie, autres_ips):
+    """Adresses IPv4 joignables par les téléphones, la principale d'abord (L04, lot 2 ; seul point de calcul) : celle de
+    la carte qui porte la connexion du PC (ip_sortie), puis les autres dans leur ordre (cartes virtuelles WSL, Hyper-V,
+    VPN…) ; sans route (ip_sortie None), l'ordre des adresses du nom du PC, une adresse « lien local » (169.254.x.x,
+    carte sans réseau) en dernier. Bouclage, 0.0.0.0, doublons et textes qui ne sont pas des adresses IPv4 écartés.
+    Tous les écrans (accueil, fiche d'accès, console, étiquettes) montrent la première et replient les autres."""
     resultat = []
-    for ip in [ip_de_sortie()] + ips_du_nom_du_pc():
+    for ip in [ip_sortie] + list(autres_ips or []):
         if not ip or ip in resultat:
             continue
         try:
-            adresse = ipaddress.ip_address(ip)
+            adresse = ipaddress.IPv4Address(ip)
         except ValueError:
             continue
         if adresse.is_loopback or adresse.is_unspecified:
             continue
         resultat.append(ip)
+    if not ip_sortie or ip_sortie not in resultat:
+        resultat.sort(key=lambda ip: ipaddress.IPv4Address(ip).is_link_local)      # tri stable
     return resultat
+
+
+def adresses_ip_reseau():
+    """Adresses IPv4 du PC joignables par les téléphones (sans les adresses de bouclage), la principale d'abord."""
+    return ordonner_adresses_ip(ip_de_sortie(), ips_du_nom_du_pc())
 
 
 # ---------------------------------------------------------------------------
@@ -9086,9 +9107,12 @@ def afficher_accueil(config, port_demande, avertissements=()):
     afficher(traduisible('console.accueil.sur_ce_pc', '  Sur ce PC        : {adresse}', adresse=config.adresse_locale()))
     adresses = [] if config.ce_pc_seulement else config.adresses_reseau()
     if adresses:
-        for adresse in adresses:
-            afficher(traduisible('console.accueil.sur_le_reseau', '  Sur le réseau    : {adresse}   (téléphones, '
-                                 'tablettes)', adresse=adresse))
+        # L04 (lot 2) : une seule adresse pour les téléphones (la carte qui porte la connexion du PC), les autres à part.
+        afficher(traduisible('console.accueil.sur_le_reseau', '  Sur le réseau    : {adresse}   (téléphones, '
+                             'tablettes)', adresse=adresses[0]))
+        if len(adresses) > 1:
+            afficher(traduisible('console.accueil.autres_adresses', '  Autres adresses  : {adresses}   (autres '
+                                 'cartes réseau de ce PC)', adresses=' · '.join(adresses[1:])))
     elif not config.ce_pc_seulement:
         afficher(traduisible('console.accueil.sans_adresse_reseau',
                              '  Sur le réseau    : aucune adresse trouvée (PC non connecté ?)'))
