@@ -8244,13 +8244,16 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             raise ErreurHttp(400, traduisible('comptes.action_sans_champ',
                                               'L\'action « {action} » ne prend aucun autre champ.', action=action))
         champs = champs_de_compte(self.config, demande) if action == 'modifier' else {}
-        if champs.get('role') == 'direction' and 'technicien_id' not in champs:
-            champs['technicien_id'] = ''        # L06 : un responsable (lié d'office) devenu Direction quitte sa fiche
-        cible =trouver_compte(comptes_du_serveur(self.config), identifiant)
+        cible = trouver_compte(comptes_du_serveur(self.config), identifiant)
         if cible is None:
             raise ErreurHttp(404, traduisible('comptes.introuvable',
                                               'Compte introuvable : {identifiant}.',
                                               identifiant=identifiant[:LONGUEUR_MAX_IDENTIFIANT]))
+        if (champs.get('role') == 'direction' and 'technicien_id' not in champs
+                and cible.get('role') == 'responsable'):
+            # L06 : un responsable (fiche reçue d'office) devenu Direction quitte sa fiche ; un technicien passé en
+            # Direction en gardant la sienne reste refusé (comptes.direction_sans_technicien, T520).
+            champs['technicien_id'] = ''
         reponse = {}
         try:
             if action == 'reinitialiser':
