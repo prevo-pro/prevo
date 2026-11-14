@@ -3382,6 +3382,8 @@ I18n.ajouter('fr', {
   'import.etape_colonnes.quelles_colonnes_importer': 'Quelles colonnes importer ?',
   'import.etape_importer.derniere_etape_seulement_ici': 'Dernière étape : c\'est seulement ici que Prévo écrit.',
   'import.etape_importer.importer': 'Importer',
+  'import.heures_marche.aide': { one: '{n} machine importée n\'a pas d\'heures de marche par jour : ce nombre lui sera donné, modifiable ensuite sur sa fiche (Parc). Il sert à la disponibilité du bilan. Laissez vide pour passer : rien n\'est supposé.', other: '{n} machines importées n\'ont pas d\'heures de marche par jour : ce nombre leur sera donné, modifiable ensuite machine par machine (Parc). Il sert à la disponibilité du bilan. Laissez vide pour passer : rien n\'est supposé.' },
+  'import.heures_marche.question': 'Combien d\'heures par jour tournent vos machines ?',
   'import.etape_ou.choisir_fichier': 'Choisir un fichier',
   'import.etape_ou.collage_vide_copiez_cellules': 'Le collage est vide : copiez des cellules dans votre tableur, puis collez-les ici.',
   'import.etape_ou.collez_cellules_copiees_tableur': 'Ou collez les cellules copiées dans votre tableur',

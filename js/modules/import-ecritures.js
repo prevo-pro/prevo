@@ -15,6 +15,8 @@
 //       import <fichier> »…) et une ligne de bilan par table (« import <fichier> : n créé(s), m mis à jour ») ;
 //     - échec en cours d'écriture : l'erreur porte resultatPartiel (même forme), à passer à annuler.
 //     recalculer doit reprendre les mêmes options que l'aperçu validé (même « maintenant »).
+//     - heuresParJour (L30, facultatif) : heures de marche par jour données aux machines créées ou mises à jour par
+//       l'import qui n'en ont pas (jamais à une autre machine ; jamais à la place d'une valeur du fichier ou de la base).
 //   Import.annuler(resultat) → Promise<{ restaurees }> : rend les tables touchées dans leur état d'avant
 //     l'import (restauration de la sauvegarde, avec la copie de sécurité habituelle ; en démo, l'instantané).
 //   Import.ORDRE_ECRITURE : ordre des tables (les références avant ceux qui les citent ; garanties et contrats de
@@ -97,7 +99,8 @@ Object.assign(Import, (() => {
     try {
       for (const nomTable of tablesTouchees) {
         resultat.tablesTouchees.push(nomTable);
-        await ecrireTable(nomTable, ecrituresDe(apercu, nomTable), nomFichier, tables);
+        await ecrireTable(nomTable, ecrituresDe(apercu, nomTable), nomFichier, tables,
+          nomTable === 'equipements' ? completerHeures(reglages.heuresParJour) : null);
       }
     } catch (erreur) {
       if (erreur && typeof erreur === 'object') erreur.resultatPartiel = resultat;
@@ -108,7 +111,13 @@ Object.assign(Import, (() => {
 
   // Une table : créations (identifiant déjà pris entre-temps → erreur, jamais de doublon) puis mises à
   // jour ; le journal note chaque ligne (« création — import <fichier> »…) puis le bilan de la table.
-  async function ecrireTable(nomTable, ecritures, nomFichier, tables) {
+  /** L30 : complément d'une machine importée (heures de marche par jour si elle n'en a pas), ou null sans réponse. */
+  function completerHeures(heures) {
+    if (typeof heures !== 'number' || !Number.isFinite(heures)) return null;
+    return (ligne) => { if (!texte(ligne.heures_fonct_jour)) ligne.heures_fonct_jour = String(heures); };
+  }
+
+  async function ecrireTable(nomTable, ecritures, nomFichier, tables, completer) {
     const bilan = { crees: 0, misAJour: 0 };
     await Donnees.modifier(nomTable, (lignes) => {
       bilan.crees = 0;                                     // la fonction peut être rejouée après un conflit
@@ -125,6 +134,7 @@ Object.assign(Import, (() => {
           throw new Import.ErreurImport(I18n.t('import.ecrire_table.identifiant_vient_etre_pris', { nouvelleId: nouvelle.id }));
         }
         const copie = Object.assign({}, nouvelle);
+        if (completer) completer(copie);
         lignes.push(copie);
         parId.set(copie.id, copie);
         bilan.crees += 1;
@@ -133,6 +143,7 @@ Object.assign(Import, (() => {
         const ligne = parId.get(modification.id);
         if (!ligne) return;
         Object.assign(ligne, modification.changes);
+        if (completer) completer(ligne);
         bilan.misAJour += 1;
       });
     }, { action: 'import ' + nomFichier });

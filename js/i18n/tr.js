@@ -3386,6 +3386,8 @@ I18n.ajouter('tr', {
   'import.etape_colonnes.quelles_colonnes_importer': 'Hangi sütunlar içe aktarılsın?',
   'import.etape_importer.derniere_etape_seulement_ici': 'Son adım: Prévo yalnızca burada yazar.',
   'import.etape_importer.importer': 'İçe aktar',
+  'import.heures_marche.aide': { one: 'İçe aktarılan {n} makinenin günlük çalışma saati yok: bu sayı ona verilecek, sonra kartından değiştirilebilir (Ekipman). Özetteki kullanılabilirlik için kullanılır. Atlamak için boş bırakın: hiçbir şey varsayılmaz.', other: 'İçe aktarılan {n} makinenin günlük çalışma saati yok: bu sayı onlara verilecek, sonra makine makine değiştirilebilir (Ekipman). Özetteki kullanılabilirlik için kullanılır. Atlamak için boş bırakın: hiçbir şey varsayılmaz.' },
+  'import.heures_marche.question': 'Makineleriniz günde kaç saat çalışıyor?',
   'import.etape_ou.choisir_fichier': 'Dosya seç',
   'import.etape_ou.collage_vide_copiez_cellules': 'Yapıştırılan içerik boş: tablonuzdan hücreleri kopyalayın, sonra buraya yapıştırın.',
   'import.etape_ou.collez_cellules_copiees_tableur': 'Ya da tablonuzdan kopyaladığınız hücreleri yapıştırın',

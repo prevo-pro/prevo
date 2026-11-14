@@ -3386,6 +3386,8 @@ I18n.ajouter('it', {
   'import.etape_colonnes.quelles_colonnes_importer': 'Quali colonne importare?',
   'import.etape_importer.derniere_etape_seulement_ici': 'Ultima fase: Prévo scrive solo qui.',
   'import.etape_importer.importer': 'Importa',
+  'import.heures_marche.aide': { one: '{n} macchina importata non ha ore di funzionamento al giorno: le sarà dato questo numero, modificabile poi sulla sua scheda (Parco attrezzature). Serve alla disponibilità del bilancio. Lasciate vuoto per saltare: nulla viene supposto.', other: '{n} macchine importate non hanno ore di funzionamento al giorno: sarà dato loro questo numero, modificabile poi macchina per macchina (Parco attrezzature). Serve alla disponibilità del bilancio. Lasciate vuoto per saltare: nulla viene supposto.' },
+  'import.heures_marche.question': 'Quante ore al giorno funzionano le vostre macchine?',
   'import.etape_ou.choisir_fichier': 'Scegli un file',
   'import.etape_ou.collage_vide_copiez_cellules': 'Non c\'è nulla da incollare: copia alcune celle dal tuo foglio di calcolo, poi incollale qui.',
   'import.etape_ou.collez_cellules_copiees_tableur': 'Oppure incolla le celle copiate dal tuo foglio di calcolo',

@@ -3384,6 +3384,8 @@ I18n.ajouter('en', {
   'import.etape_colonnes.quelles_colonnes_importer': 'Which columns to import?',
   'import.etape_importer.derniere_etape_seulement_ici': 'Last step: this is the only place where Prévo writes.',
   'import.etape_importer.importer': 'Import',
+  'import.heures_marche.aide': { one: '{n} imported machine has no running hours per day: it will be given this number, which can be changed later on its record (Equipment). It is used for availability in the summary. Leave blank to skip: nothing is assumed.', other: '{n} imported machines have no running hours per day: they will be given this number, which can be changed later machine by machine (Equipment). It is used for availability in the summary. Leave blank to skip: nothing is assumed.' },
+  'import.heures_marche.question': 'How many hours a day do your machines run?',
   'import.etape_ou.choisir_fichier': 'Choose a file',
   'import.etape_ou.collage_vide_copiez_cellules': 'Nothing was pasted: copy some cells in your spreadsheet, then paste them here.',
   'import.etape_ou.collez_cellules_copiees_tableur': 'Or paste cells copied from your spreadsheet',

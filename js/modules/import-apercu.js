@@ -296,6 +296,8 @@ Object.assign(Import.assistant, (() => {
     const tables = tablesAEcrire(etat.apercu);
     const element = A.section(5, I18n.t('import.etape_importer.importer'), tables.length ? I18n.t('import.etape_importer.derniere_etape_seulement_ici') : '');
     element.appendChild(UI.element(UI.html`<div class="import-bilan" id="import-bilan">${bilan(etat.apercu, tables)}</div>`));
+    const sansHeures = machinesSansHeures(etat.apercu);
+    if (sansHeures && !etat.resultat) element.appendChild(questionHeures(sansHeures));
     element.appendChild(UI.element(UI.html`<div class="import-progression" id="import-progression" hidden></div>`));
     element.appendChild(UI.element(UI.html`<div class="import-resultat" id="import-resultat" aria-live="polite"></div>`));
     const bouton = UI.element(UI.html`<button type="button" class="btn btn-primaire" id="import-importer">${UI.icone('valider')}${I18n.t('import.etape_importer.importer')}</button>`);
@@ -304,6 +306,35 @@ Object.assign(Import.assistant, (() => {
     element.appendChild(A.navigation({ retour: 4, boutons: [bouton] }));
     zone.appendChild(element);
     if (etat.resultat) afficherResultat();
+  }
+
+  /** L30 : machines importées (créées ou mises à jour) qui resteront sans heures de marche par jour. */
+  function machinesSansHeures(apercu) {
+    const ecritures = apercu && apercu.ecritures && apercu.ecritures.equipements;
+    if (!ecritures) return 0;
+    const creees = (ecritures.creer || []).filter((ligne) => !texte(ligne.heures_fonct_jour)).length;
+    return creees + (ecritures.modifier || []).filter((modification) => !texte('heures_fonct_jour' in (modification.changes || {})
+      ? modification.changes.heures_fonct_jour : (Donnees.trouver('equipements', modification.id) || {}).heures_fonct_jour)).length;
+  }
+
+  /** L30 : « Combien d'heures par jour tournent vos machines ? », sans valeur proposée ; vide : question passée. */
+  function questionHeures(n) {
+    const bloc = UI.champ({ nom: 'import_heures_jour', type: 'decimal', libelle: I18n.t('import.heures_marche.question') }, '',
+      { aide: I18n.t('import.heures_marche.aide', { n }) });
+    bloc.classList.add('import-heures-marche');
+    return bloc;
+  }
+
+  /** Heures saisies (nombre de 0 à 24), null si la question est passée ; undefined si la saisie est fausse (dite). */
+  function heuresSaisies() {
+    const champ = zoneDe('[name="import_heures_jour"]');
+    if (!champ) return null;
+    const heures = UI.enNombre(champ.value);
+    const juste = !texte(champ.value) || (heures !== null && heures >= 0 && heures <= 24);
+    UI.erreurChamp(champ.closest('.champ').parentElement, 'import_heures_jour', juste ? '' : I18n.t('parc.verifier_equipement.saisissez_nombre_heures_entre'));
+    if (juste) return texte(champ.value) ? heures : null;
+    champ.focus();
+    return undefined;
   }
 
   function bilan(apercu, tables) {
@@ -362,6 +393,8 @@ Object.assign(Import.assistant, (() => {
     if (etat.enCours || !etat.calcul || !etat.apercu) return;
     const tables = tablesAEcrire(etat.apercu);
     if (!tables.length) return;
+    const heuresParJour = heuresSaisies();
+    if (heuresParJour === undefined) return;                       // saisie fausse : dite sous le champ, rien n'est écrit
     etat.enCours = true;
     const retour = zoneDe('#import-retour');
     bouton.disabled = true;
@@ -371,9 +404,11 @@ Object.assign(Import.assistant, (() => {
     const progression = suivreProgression(tables);
     const calcul = etat.calcul;
     try {
-      const resultat = await Import.importer(etat.apercu, { nomFichier: texte(etat.lecture && etat.lecture.nom),
+      const resultat = await Import.importer(etat.apercu, { nomFichier: texte(etat.lecture && etat.lecture.nom), heuresParJour,
         recalculer: () => Import.preparer(calcul.type, calcul.lignes, calcul.correspondance, calcul.options) });
       etat.resultat = resultat;
+      const question = zoneDe('.import-heures-marche');                  // L30 : réponse prise, la question part
+      if (question) question.remove();
       progression.finir({ complet: true, texte: I18n.t('import.importer.import_termine_tables', { n: resultat.tablesTouchees.length }) });
       await tracerIa(resultat);
       afficherResultat();
