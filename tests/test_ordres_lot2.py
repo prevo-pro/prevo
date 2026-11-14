@@ -504,14 +504,14 @@ class TestGamme(CasOrdresLot2):
     def premier_code(self, dossier, famille):
         return sorted(c["code"] for c in lire_csv(dossier, "codes_defaillance.csv") if c["famille"] == famille)[0]
 
-    def avec_toast(self, texte, action):
-        """Lance action() puis attend un NOUVEAU toast `texte` : il s'affiche après l'écriture et le
-        réaffichage de la fiche (App.reafficher), donc la saisie suivante n'est pas effacée."""
-        compte = "(t) => (window.__toasts || []).filter((x) => x === t).length"
-        avant = self.page.evaluate(compte, texte)
+    def avec_toast(self, texte, action, debut=False):
+        """Lance action() puis attend un NOUVEAU toast `texte` (debut : qui commence par `texte`) : il s'affiche après
+        l'écriture et le réaffichage de la fiche (App.reafficher), donc la saisie suivante n'est pas effacée."""
+        compte = "([t, d]) => (window.__toasts || []).filter((x) => (d ? x.startsWith(t) : x === t)).length"
+        avant = self.page.evaluate(compte, [texte, debut])
         action()
-        self.page.wait_for_function("([t, n]) => (window.__toasts || []).filter((x) => x === t).length > n",
-                                    arg=[texte, avant])
+        self.page.wait_for_function("([t, d, n]) => (window.__toasts || []).filter((x) => (d ? x.startsWith(t) : x === t)).length > n",
+                                    arg=[texte, debut, avant])
 
     def mener_jusqu_a_en_cours(self, ot_id):
         """Préparation (technicien habilité, date prévue gardée) → Préparé → Planifié → Démarrer,
@@ -556,8 +556,9 @@ class TestGamme(CasOrdresLot2):
         """« Clôturer techniquement » (onglet Compte rendu) ; attend le toast de succès, affiché APRÈS
         la mise à jour de la gamme (Ordres.changerStatut l'attend)."""
         self.onglet("compte-rendu")
+        # L23 (T539) : le toast dit ensuite « Prochaine visite : le … » (gamme périodique).
         self.avec_toast(ot_id + " : Clôturé techniquement.",
-                        lambda: self.transition("Clôturé techniquement", "#form-compte-rendu"))
+                        lambda: self.transition("Clôturé techniquement", "#form-compte-rendu"), debut=True)
         self.attendre_statut("Clôturé techniquement")
 
     def test_gamme_mise_a_jour_a_la_cloture_technique_par_l_interface(self):
@@ -593,8 +594,9 @@ class TestGamme(CasOrdresLot2):
             self.onglet("compte-rendu")
             self.transition("Clôturé techniquement", "#form-compte-rendu")
             self.attendre_statut("Clôturé techniquement")
-            self.attendre_toast_note("^%s : Clôturé techniquement\\.$" % ot_id)
-            self.assertEqual(page.locator("#ot-message .alerte").count(), 0)
+            self.attendre_toast_note("^%s : Clôturé techniquement\\. Prochaine visite : le \\d{2}/\\d{2}/\\d{4}\\.$" % ot_id)  # L23
+            self.assertEqual(page.locator("#ot-message .alerte.attention, #ot-message .alerte.important").count(), 0)
+            self.assertIn("Prochaine visite : le ", page.inner_text("#ot-message"))
 
             ot = ligne_par_id(dossier, "ordres_travail.csv", ot_id)
             self.assertEqual(ot["statut"], "Clôturé techniquement")
@@ -641,7 +643,8 @@ class TestGamme(CasOrdresLot2):
             self.attendre_statut("En cours")
             self.saisir_date_de_fin(ot_id, (jour - datetime.timedelta(days=2)).isoformat() + "T10:00")
             self.cloturer_par_l_interface(ot_id)
-            self.assertEqual(page.locator("#ot-message .alerte").count(), 0)
+            self.assertEqual(page.locator("#ot-message .alerte.attention, #ot-message .alerte.important").count(), 0)   # L23 : la
+            # prochaine visite est dite (message de succès) ; aucun avertissement de la gamme.
 
             ot = ligne_par_id(dossier, "ordres_travail.csv", ot_id)
             self.assertEqual(ot["statut"], "Clôturé techniquement")

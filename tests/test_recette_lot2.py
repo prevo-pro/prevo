@@ -301,7 +301,9 @@ class OutilsLot2:
         self.avec_toast("^" + re.escape(ot_id + " : Clôturé techniquement."),
                         lambda: self.transition("Clôturé techniquement", "#form-compte-rendu"))
         self.attendre_statut("Clôturé techniquement")
-        self.assertEqual(page.locator("#ot-message .alerte").count(), 0)
+        # L23 (T539) : un message de succès dit la prochaine visite ; aucun avertissement (gamme mise à jour).
+        self.assertEqual(page.locator("#ot-message .alerte.attention, #ot-message .alerte.important").count(), 0)
+        self.assertIn("Prochaine visite : le ", page.inner_text("#ot-message"))
         return fin
 
     # -- Préventif, Magasin, Accueil ---------------------------------------------------------------

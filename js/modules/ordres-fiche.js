@@ -467,7 +467,8 @@ Object.assign(Ordres, (() => {
     viderMessage();
     const sauvegarde = await enregistrerFormulairesModifies();
     if (!sauvegarde.ok) return;
-    const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
+    let actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
+    if (cible === 'Clôturé techniquement') actuel = await Ordres.interne.preparerCloture(actuel);   // L23 : ordres-cloture.js
     const complement = await demanderComplement(actuel, cible);
     if (complement === null) { if (sauvegarde.enregistres) await apresEnregistrement(); return; }
     const verification = verifierPassage(Object.assign({}, actuel, complement), cible);

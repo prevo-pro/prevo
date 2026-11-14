@@ -352,6 +352,7 @@ Object.assign(Ordres, (() => {
     const temps = lignesDeLOt('ot_temps', ot.id).slice().sort((a, b) => texte(a.date).localeCompare(texte(b.date)) || a.id.localeCompare(b.id));
     const total = temps.reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
     const technicienParDefaut = (estTechnicien() && monTechnicienId()) || ot.technicien_id || '';
+    const propose = modifiable && Ordres.interne.tempsPropose(ot) ? UI.heures(Ordres.interne.tempsPropose(ot)) : '';   // L23
     UI.remplir(bloc, UI.html`
       ${enteteOnglet(I18n.t('ordres.temps.temps_passes'), I18n.t('ordres.temps.total_total', { total: UI.heures(total) }))}
       <div class="table-defile"><table class="table">
@@ -363,11 +364,12 @@ Object.assign(Ordres, (() => {
         <div class="champ"><label class="libelle" for="ot-temps-technicien">${I18n.t('commun.champ.technicien')}</label>
           <select id="ot-temps-technicien" name="technicien_id">${optionsHtml(listeTechniciens(technicienParDefaut), technicienParDefaut)}</select></div>
         <div class="champ"><label class="libelle" for="ot-temps-date">${I18n.t('commun.champ.date')}</label><input type="date" id="ot-temps-date" name="date" value="${aujourdhui()}"></div>
-        <div class="champ ot-champ-quantite"><label class="libelle" for="ot-temps-heures">${I18n.t('ordres.temps.heures')}</label><input type="text" id="ot-temps-heures" name="heures" data-type="duree" autocomplete="off" placeholder="${I18n.t('socle.duree.exemple')}"></div>
+        <div class="champ ot-champ-quantite"><label class="libelle" for="ot-temps-heures">${I18n.t('ordres.temps.heures')}</label><input type="text" id="ot-temps-heures" name="heures" data-type="duree" autocomplete="off" value="${propose}" placeholder="${I18n.t('socle.duree.exemple')}"></div>
         <button type="submit" class="btn btn-secondaire">${UI.icone('ajouter')}${I18n.t('ordres.temps.ajouter_temps')}</button>
       </form>` : ''}`);
     if (!modifiable) return;
     const formulaire = UI.$('#form-temps', bloc);
+    if (propose) formulaire.dataset.tempsPropose = propose;      // L23 : ajouté à la clôture technique s'il est laissé tel quel
     // Avant une transition, un temps saisi mais pas encore ajouté est ajouté ; un champ vide est ignoré.
     declarerFormulaire(formulaire, () => ajouterTemps(ot, formulaire, false));
     formulaire.addEventListener('submit', async (evenement) => {
@@ -418,7 +420,7 @@ Object.assign(Ordres, (() => {
     placer('symptome_code', champOt('symptome_code', ot.symptome_code, { liste: listeCodes('symptôme') }));
     placer('cause_code', Ordres.champCode(ot, 'cause'));             // T515 : « Autre (préciser) », préventif
     placer('remede_code', Ordres.champCode(ot, 'remede'));
-    placer('compte_rendu', champOt('compte_rendu', ot.compte_rendu, {
+    placer('compte_rendu', champOt('compte_rendu', texte(ot.compte_rendu) || (modifiable ? Ordres.interne.compteRenduDOffice(ot) : ''), {
       aide: I18n.t('ordres.compte_rendu.ete_constate_cause_ete'),
     }));
     // Astuce (facultative, jamais exigée par RG4) : mêmes règles d'édition ; en lecture seule, montrée si elle existe.

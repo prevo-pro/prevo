@@ -841,7 +841,17 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   (systématique, conditionnel) ou réglementaire, ni cause ni remède ne sont exigés ; le champ cause n'est pas affiché
   à la clôture, sauf anomalie constatée (ou cause déjà renseignée) ; le remède est proposé, facultatif. Mêmes règles
   pour la clôture technique et pour « Clore » (`cloture_une_etape`). Affichage d'une précision : « Autre : <texte> »
-  (wiki, causes fréquentes) ; au Pareto des causes, toutes regroupées sous « Autre (précisé) », avant « sans code ». La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
+  (wiki, causes fréquentes) ; au Pareto des causes, toutes regroupées sous « Autre (précisé) », avant « sans code ».
+  Lot 2 ergonomie (T539, L23 ; `ordres-cloture.js`), visite préventive (OT d'une gamme ou de type préventif) : liste de
+  contrôle toute cochée (une ligne au moins) sans anomalie constatée → le compte rendu vide est montré rempli d'office
+  (« Visite faite, rien à signaler. », dans la langue de l'écran, modifiable : onglet Compte rendu et fenêtre « Clore »)
+  et écrit au clic sur « Clôturer techniquement » (`Ordres.interne.preparerCloture`, une ligne de journal) ; anomalie
+  constatée → rien d'office, et après la clôture l'OT de réparation est proposé (responsable : « Créer l'OT de
+  réparation », nouvel OT correctif pré-rempli sur l'équipement ; technicien : « Signaler la réparation à faire », la
+  demande liée) tant qu'aucune demande n'est liée à la visite ; sans temps saisi, le temps passé est proposé d'après le
+  temps prévu de l'OT (recopié de la gamme) et pris au clic s'il est laissé tel quel ; `remise_service` reste exigée ;
+  le message de clôture dit « Prochaine visite : le … » quand la gamme est périodique (déclencheur date). RG4 inchangée.
+  La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
   « Cocher une case ne consigne rien : appliquez la procédure. » Clôture administrative
   (responsable) : `date_cloture_admin`, OT en lecture seule.
 - **RG7** coût = Σ (heures × `taux_horaire` du technicien) + Σ (sorties de stock imputées à
