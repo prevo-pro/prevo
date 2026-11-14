@@ -155,11 +155,12 @@ class TestRegles(CasOrdres):
                         "([s, o, t]) => Ordres.transitionsPossibles({ id: 'X', statut: s, origine: o, type: t })",
                         [statut, origine, type_ot])
                     self.assertEqual(obtenu, transitions)
-            # En attente : reprise En cours si l'OT a démarré, sinon Préparé
+            # En attente : reprise En cours si l'OT a démarré, sinon Préparé ; L18 : clôture sans reprise
             self.assertEqual(self.page.evaluate(
-                "Ordres.transitionsPossibles({ statut: 'En attente', date_debut: '2026-10-19 08:00' })"), ["En cours", "Annulé"])
+                "Ordres.transitionsPossibles({ statut: 'En attente', date_debut: '2026-10-19 08:00' })"),
+                ["En cours", "Clôturé techniquement", "Annulé"])
             self.assertEqual(self.page.evaluate(
-                "Ordres.transitionsPossibles({ statut: 'En attente', date_debut: '' })"), ["Préparé", "Annulé"])
+                "Ordres.transitionsPossibles({ statut: 'En attente', date_debut: '' })"), ["Préparé", "Clôturé techniquement", "Annulé"])
             # Motifs obligatoires ; verrouillage ; Planifié sans technicien ni date
             passage = self.page.evaluate(
                 "Ordres.verifierPassage({ id: 'X', statut: 'En cours', motif_attente: '' }, 'En attente')")

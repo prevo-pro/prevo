@@ -177,14 +177,14 @@ class TestParcoursPrise(CasPrise):
             case.check()
             self.page.wait_for_function("() => document.querySelector('#form-execution .ot-fait').checked")
 
-            # Karim reprend la panne de Julien : confirmation qui nomme Julien ; le statut ne change pas
+            # Karim prend la suite de la panne de Julien (L18) : confirmation qui nomme Julien ; à son nom et en cours
             self.aller_fiche(panne)
             self.page.click(".ot-actions button[data-action=prendre-ot]")
             self.page.wait_for_selector("dialog.dialogue[open]")
             self.assertIn("Cet OT est au nom de Julien", self.page.inner_text("dialog.dialogue[open]"))
             self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
-            ligne = self.attendre_disque(serveur, panne, lambda o: o["technicien_id"] == KARIM)
-            self.assertEqual(ligne["statut"], "En attente")
+            ligne = self.attendre_disque(serveur, panne, lambda o: o["technicien_id"] == KARIM and o["statut"] == "En cours")
+            self.assertEqual(ligne["statut"], "En cours")
             lignes = ligne["prises_en_charge"].split("\n")
             self.assertEqual(len(lignes), 1, lignes)                    # affecté à la création : seule la reprise
             self.assertEqual(LIGNE_PRISE.match(lignes[-1]).groups(), (KARIM, JULIEN))

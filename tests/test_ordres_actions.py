@@ -3,7 +3,9 @@ un seul bouton mis en avant, celui de la prochaine étape utile pour la personne
 « Annuler » sous « Plus d'options » ; Préparé et Planifié marqués « facultatif » sur la frise.
 
 Familles :
-    principal : le bouton mis en avant selon l'état de l'OT et le profil (responsable, technicien), le reste en second.
+    principal : le bouton mis en avant selon l'état de l'OT et le profil (responsable, technicien), le reste en second ;
+    suite     : OT en attente à mon nom (« Reprendre le travail », clôture sans reprise) ; OT en attente d'un collègue
+                (« Prendre la suite » : à mon nom et en cours en un geste, trace de prise, RG8 comme l'affectation).
 
 Lancer depuis la racine du projet :
     py -X utf8 -m unittest discover -s tests -p "test_ordres_actions.py" -v
@@ -11,7 +13,7 @@ Lancer depuis la racine du projet :
 import unittest
 
 from commun import ServeurPrevo
-from test_ordres_prise import CasPrise, KARIM, JULIEN
+from test_ordres_prise import CasPrise, KARIM, JULIEN, THOMAS, LIGNE_PRISE, ot_sur_disque
 
 PRINCIPAL = ".ot-actions > .actions > .ot-bouton-principal"
 
@@ -34,6 +36,15 @@ class CasActions(CasPrise):
 
     def passer(self, ot_id, depuis, cible, complement=None):
         self.page.evaluate("([id, a, b, c]) => Ordres.changerStatut(id, a, b, c || {})", [ot_id, depuis, cible, complement])
+
+    def completer_cloture(self, ot_id, technicien_id=JULIEN):
+        """Saisies de la clôture technique (RG4) faites, temps passé compris."""
+        self.page.evaluate("""id => Donnees.modifier('ordres_travail', (lignes) => { const l = lignes.find((o) => o.id === id);
+            Object.assign(l, { date_fin: Donnees.maintenant().slice(0, 16), compte_rendu: 'Courroie changée et retendue.',
+              remise_service: '1', cause_precision: 'usure', remede_precision: 'remplacement' }); })""", ot_id)
+        self.page.evaluate("""([id, tec]) => Donnees.modifier('ot_temps', (lignes, outils) => { lignes.push({ id: outils.nouvelId(lignes),
+            ot_id: id, technicien_id: tec, date: Donnees.aujourdhui(), heures: '1' }); })""", [ot_id, technicien_id])
+        self.assertEqual(self.page.evaluate("id => Ordres.verifierCloture(Donnees.trouver('ordres_travail', id))", ot_id), [])
 
 
 class TestPrincipal(CasActions):
@@ -78,17 +89,94 @@ class TestPrincipal(CasActions):
             self.aller_fiche(affecte)
             self.assertEqual(self.principal(), "Clôturé techniquement")
             self.assertEqual(self.nombre_bleus(), 1)
-            self.page.evaluate("""id => Donnees.modifier('ordres_travail', (lignes) => { const l = lignes.find((o) => o.id === id);
-                Object.assign(l, { date_fin: Donnees.maintenant().slice(0, 16), compte_rendu: 'Courroie changée et retendue.',
-                  remise_service: '1', cause_precision: 'usure', remede_precision: 'remplacement' }); })""", affecte)
-            self.page.evaluate("""id => Donnees.modifier('ot_temps', (lignes, outils) => { lignes.push({ id: outils.nouvelId(lignes),
-                ot_id: id, technicien_id: 'TEC-0001', date: Donnees.aujourdhui(), heures: '1' }); })""", affecte)
-            self.assertEqual(self.page.evaluate("id => Ordres.verifierCloture(Donnees.trouver('ordres_travail', id))", affecte), [])
+            self.completer_cloture(affecte)
             self.passer(affecte, "En cours", "Clôturé techniquement")
             self.aller_fiche(affecte)
             self.assertEqual(self.principal(), "Clôturé administrativement")
             self.assertEqual(self.nombre_bleus(), 1)
             self.assertIn("btn-secondaire", self.page.get_attribute(".ot-actions button[data-cible='En cours']", "class"))
+
+
+
+class TestSuite(CasActions):
+
+    def test_en_attente_a_mon_nom_reprendre_le_travail_et_clore_sans_reprise(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            # en attente sans avoir démarré (la friction du retest : « Reprendre (Préparé) » caché, ni Démarrer ni Clore)
+            jamais = self.creer_ot({"equipement_id": "EQ-0005", "titre": "L18 attente", "technicien_id": KARIM}, statut="En attente")
+            demarre = self.creer_ot({"equipement_id": "EQ-0005", "titre": "L18 attente démarré", "technicien_id": KARIM})
+            self.passer(demarre, "Créé", "En cours")
+            self.passer(demarre, "En cours", "En attente", {"motif_attente": "pièce"})
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.aller_fiche(jamais)
+            self.assertEqual(self.principal(), "En cours")
+            self.assertEqual(self.page.inner_text(PRINCIPAL).strip(), "Reprendre le travail")
+            self.assertEqual(self.nombre_bleus(), 1)
+            self.assertTrue(self.page.is_visible(".ot-actions > .actions button[data-cible='Clôturé techniquement']"))
+            self.assertEqual(self.page.locator(".ot-actions > .actions button[data-cible='Préparé']").count(), 0)   # plus de « Reprendre (Préparé) »
+            self.assertEqual(self.page.locator(".ot-actions button[data-action=prendre-ot]").count(), 0)
+            # « Reprendre le travail » : En cours d'un geste (date de début posée)
+            self.page.click(PRINCIPAL)
+            ligne = self.attendre_disque(serveur, jamais, lambda o: o["statut"] == "En cours")
+            self.assertEqual(ligne["statut"], "En cours")
+            self.assertTrue(ligne["date_debut"])
+            # Clôture technique directe depuis En attente (sans reprise), avec les contrôles RG4 habituels
+            self.aller_fiche(demarre)
+            self.assertEqual(self.page.inner_text(PRINCIPAL).strip(), "Reprendre le travail")
+            self.completer_cloture(demarre, KARIM)
+            self.aller_fiche(demarre)
+            self.page.click(".ot-actions > .actions button[data-cible='Clôturé techniquement']")
+            try:                                     # mot pour l'opérateur (A4, facultatif) : fenêtre validée telle quelle
+                self.page.wait_for_selector("dialog.dialogue[open]", timeout=3000)
+                self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
+            except Exception:
+                pass
+            ligne = self.attendre_disque(serveur, demarre, lambda o: o["statut"] == "Clôturé techniquement")
+            self.assertEqual(ligne["statut"], "Clôturé techniquement")
+            self.assertEqual(ligne["technicien_id"], KARIM)
+
+    def test_prendre_la_suite_d_un_collegue(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            panne = self.creer_ot({"equipement_id": "EQ-0005", "titre": "L18 panne de Julien", "technicien_id": JULIEN})
+            self.passer(panne, "Créé", "En cours")
+            self.passer(panne, "En cours", "En attente", {"motif_attente": "pièce"})
+            exige = self.creer_ot({"equipement_id": "EQ-0012", "titre": "L18 armoire", "technicien_id": JULIEN,
+                                   "date_prevue": "2026-10-21"}, statut="En attente")
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.aller_fiche(panne)
+            self.assertEqual(self.principal(), "suite")
+            self.assertEqual(self.page.inner_text(PRINCIPAL).strip(), "Prendre la suite")
+            self.assertEqual(self.nombre_bleus(), 1)
+            # un seul « Reprendre » à l'écran : celui qui remettrait en cours au nom de Julien est replié
+            self.assertEqual(self.page.locator(".ot-actions > .actions button[data-cible='En cours']").count(), 0)
+            self.assertEqual(self.page.locator(".ot-plus-options button[data-cible='En cours']").count(), 1)
+            self.assertTrue(self.page.is_visible(".ot-actions > .actions button[data-cible='Clôturé techniquement']"))
+            self.page.click(PRINCIPAL)
+            self.page.wait_for_selector("dialog.dialogue[open]")
+            self.assertIn("Cet OT est au nom de Julien", self.page.inner_text("dialog.dialogue[open]"))
+            self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
+            ligne = self.attendre_disque(serveur, panne, lambda o: o["statut"] == "En cours" and o["technicien_id"] == KARIM)
+            self.assertEqual((ligne["statut"], ligne["technicien_id"]), ("En cours", KARIM))
+            self.assertEqual(LIGNE_PRISE.match(ligne["prises_en_charge"].split("\n")[-1]).groups(), (KARIM, JULIEN))
+            self.page.wait_for_selector(".onglet[data-onglet='execution'][aria-selected='true']")
+            self.page.wait_for_selector(".ot-actions > .actions > .ot-bouton-principal[data-cible='Clôturé techniquement']")
+            # En cours au nom d'un collègue : « Prendre la suite » aussi (le statut reste En cours)
+            self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
+            self.aller_fiche(panne)
+            self.assertEqual(self.principal(), "suite")
+            # RG8 : Thomas (sans BR valide) est refusé comme à l'affectation ; rien n'est écrit, pas même le statut
+            self.changer_profil(serveur, "#/accueil", "technicien", THOMAS, "Thomas Garnier")
+            self.autoriser_erreur("BR")
+            self.aller_fiche(exige)
+            avant = ot_sur_disque(serveur.dossier, exige)
+            self.page.click(PRINCIPAL)
+            self.page.wait_for_selector("dialog.dialogue[open]")
+            self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
+            self.page.wait_for_selector("#toast")
+            self.assertIn("BR", self.page.inner_text("#toast"))
+            self.assertEqual(ot_sur_disque(serveur.dossier, exige), avant)
 
 
 if __name__ == "__main__":

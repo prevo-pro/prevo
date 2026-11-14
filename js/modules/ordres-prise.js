@@ -10,7 +10,8 @@
 // Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, la carte
 // « À prendre » et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises récentes ».
 // Carte Actions de la fiche (lot 2, L18) : un seul bouton mis en avant, celui de la prochaine étape utile pour la
-// personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ».
+// personne connectée (rangerActions) ; « Marquer préparé » et « Annuler » rangés sous « Plus d'options ». Sur un OT en
+// attente ou en cours au nom d'un collègue, « Prendre la suite » : à mon nom (prendre, trace de prise) puis en cours.
 // Chargé après ordres-habilitations.js ; les écrans des fichiers précédents l'appellent par Ordres.interne au moment
 // de l'appel. Complète l'objet Ordres.
 
@@ -19,6 +20,7 @@ Object.assign(Ordres, (() => {
   const { estOuvert, nomTechnicien, controlerAffectation, ecrireAvecTrace } = Ordres;
   const { texte, estResponsable, estTechnicien, apresEnregistrement } = Ordres.interne;
 
+  const STATUTS_SUITE = ['En attente', 'En cours'];   // L18 : « Prendre la suite » plutôt que « Reprendre à mon nom »
   const JOURS_REPRISES = 7;            // une reprise reste dite sur l'accueil pendant 7 jours
   const NOMBRE_A_PRENDRE = 5;          // OT montrés par la carte « À prendre »
   const RANG_PRIORITE = { P1: 1, P2: 2, P3: 3, P4: 4 };
@@ -169,15 +171,22 @@ Object.assign(Ordres, (() => {
       <ul>${prises.map((prise) => UI.html`<li>${UI.dateHeureFr(prise.date)} — ${phrasePrise(prise)}</li>`)}</ul></section>`;
   }
 
-  function boutonPrise(sorte, otId) {
-    if (!sorte) return '';
-    const libelle = sorte === 'prendre' ? I18n.t('ordres.prise.je_prends') : I18n.t('ordres.prise.reprendre');
-    return UI.html`<button type="button" class="btn ${sorte === 'prendre' ? 'btn-primaire' : 'btn-secondaire'}" data-action="prendre-ot" data-sorte="${sorte}" data-ot="${otId}">${UI.icone('valider')}${libelle}</button>`;
+  /** Geste de la fiche : celui de priseProposee, « suite » (L18) pour un OT en attente ou en cours d'un collègue. */
+  function gesteFiche(ot, moi) {
+    const sorte = priseProposee(ot, moi);
+    return sorte === 'reprendre' && STATUTS_SUITE.includes(texte(ot.statut)) ? 'suite' : sorte;
   }
 
-  /** Bouton de la carte Actions de la fiche (« Je prends cet OT » ou « Reprendre cet OT à mon nom »), ou ''. */
+  function boutonPrise(sorte, otId) {
+    if (!sorte) return '';
+    const libelle = { prendre: 'ordres.prise.je_prends', suite: 'ordres.prise.prendre_suite', reprendre: 'ordres.prise.reprendre' }[sorte];
+    return UI.html`<button type="button" class="btn ${sorte === 'reprendre' ? 'btn-secondaire' : 'btn-primaire'}" data-action="prendre-ot" data-sorte="${sorte}" data-ot="${otId}">${UI.icone('valider')}${I18n.t(libelle)}</button>`;
+  }
+
+  /** Bouton de la carte Actions de la fiche (« Je prends cet OT », « Prendre la suite » ou « Reprendre cet OT à mon
+   *  nom »), ou ''. */
   function boutonsPrise(ot) {
-    return boutonPrise(priseProposee(ot, monTechnicien()), ot.id);
+    return boutonPrise(gesteFiche(ot, monTechnicien()), ot.id);
   }
 
   /**
@@ -203,7 +212,7 @@ Object.assign(Ordres, (() => {
    *  ou reprendre le travail, le clore, le clôturer, puis créer l'OT lié d'un OT verrouillé. */
   function boutonPrincipal(zone, ot) {
     const parCible = (cible) => 'button[data-cible="' + cible + '"]';
-    const selecteurs = ['button[data-action="prendre-ot"][data-sorte="prendre"]',
+    const selecteurs = ['button[data-action="prendre-ot"][data-sorte="prendre"]', 'button[data-sorte="suite"]',
       ot.statut === 'Clôturé techniquement' ? '' : parCible('En cours'),                  // « Rouvrir » : jamais en avant
       '#ot-clore', parCible('Clôturé techniquement'), parCible('Clôturé administrativement'), '#ot-lie'];
     for (const selecteur of selecteurs) {
@@ -214,7 +223,8 @@ Object.assign(Ordres, (() => {
   }
 
   /** Range la carte Actions : le bouton principal en tête (seul en bleu), les autres en second, « Marquer préparé »
-   *  et « Annuler » sous « Plus d'options » (replié). Rend le bouton principal (ou null). */
+   *  et « Annuler » sous « Plus d'options » (replié), avec « Reprendre le travail » quand « Prendre la suite » est là
+   *  (il remettrait en cours au nom du collègue). Rend le bouton principal (ou null). */
   function rangerActions(racine, ot) {
     const zone = racine.querySelector('.ot-actions > .actions');
     if (!zone) return null;
@@ -227,7 +237,8 @@ Object.assign(Ordres, (() => {
       principal.classList.remove('btn-secondaire');
       zone.prepend(principal);
     }
-    const replies = UI.$$('button[data-action="transition"]', zone).filter((bouton) => CIBLES_REPLIEES.includes(bouton.dataset.cible));
+    const cibles = CIBLES_REPLIEES.concat(zone.querySelector('[data-sorte="suite"]') ? ['En cours'] : []);
+    const replies = UI.$$('button[data-action="transition"]', zone).filter((bouton) => cibles.includes(bouton.dataset.cible));
     if (replies.length) {
       const plus = UI.element(UI.html`<details class="ot-plus-options">
         <summary>${I18n.t('ordres.actions.plus_options')}</summary><div class="actions"></div></details>`);
@@ -248,27 +259,35 @@ Object.assign(Ordres, (() => {
 
   /**
    * Prise ou reprise par l'écran : confirmation qui nomme le collègue pour une reprise ; RG8 comme l'affectation ;
-   * puis la fiche réaffichée, « Démarrer » proposé (sur la liste : la fiche ouverte).
+   * puis la fiche réaffichée, « Démarrer » proposé (sur la liste : la fiche ouverte). « Prendre la suite » (L18) : la
+   * reprise (trace dans prises_en_charge), puis, pour un OT en attente, le passage En cours (changerStatut, journal
+   * habituel) ; la fiche s'ouvre sur Exécution.
    */
   async function demanderPrise(otId, bouton, depuisListe) {
     const actuel = Donnees.trouver('ordres_travail', otId);
     const moi = monTechnicien();
-    const sorte = priseProposee(actuel, moi);
+    const sorte = depuisListe ? priseProposee(actuel, moi) : gesteFiche(actuel, moi);
     if (!sorte) return;
     const precedent = texte(actuel.technicien_id);
-    if (sorte === 'reprendre' && !(await UI.confirmer(
-      I18n.t('ordres.prise.confirmer_reprise', { nomTechnicien: prenom(precedent) }),
-      { titre: I18n.t('ordres.prise.titre_reprise', { otId }), oui: I18n.t('ordres.prise.reprendre_oui') }))) return;
+    const suite = sorte === 'suite';
+    if (sorte !== 'prendre' && !(await UI.confirmer(
+      I18n.t(suite ? 'ordres.prise.confirmer_suite' : 'ordres.prise.confirmer_reprise', { nomTechnicien: prenom(precedent) }),
+      { titre: I18n.t('ordres.prise.titre_reprise', { otId }), oui: I18n.t(suite ? 'ordres.prise.prendre_suite' : 'ordres.prise.reprendre_oui') }))) return;
     if (bouton) bouton.disabled = true;
     try {
       await Ordres.avecDerogation((options) => prendre(otId, moi, precedent, options));
+      const apres = Donnees.trouver('ordres_travail', otId);
+      if (suite && apres && apres.statut === 'En attente') await Ordres.changerStatut(otId, 'En attente', 'En cours', {});
     } catch (erreur) {
       App.signalerErreur(erreur, 'prise en charge d\'un OT');
       if (bouton && document.contains(bouton)) bouton.disabled = false;
+      if (suite) await apresEnregistrement();          // la reprise a pu être écrite : la fiche le montre
       return;
     }
-    UI.toast(sorte === 'prendre' ? I18n.t('ordres.prise.prise_faite', { otId }) : I18n.t('ordres.prise.reprise_faite', { otId, nomTechnicien: prenom(precedent) }), 'succes');
+    const toast = { prendre: 'ordres.prise.prise_faite', suite: 'ordres.prise.suite_faite', reprendre: 'ordres.prise.reprise_faite' }[sorte];
+    UI.toast(I18n.t(toast, { otId, nomTechnicien: prenom(precedent) }), 'succes');
     if (depuisListe) { App.naviguer('#/ot/' + encodeURIComponent(otId)); return; }
+    if (suite) Ordres.interne.memoire.ongletParOt[otId] = 'execution';
     await apresEnregistrement();
     const demarrer = document.querySelector('.ot-actions button[data-action="transition"][data-cible="En cours"]');
     if (demarrer) demarrer.focus();

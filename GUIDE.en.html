@@ -604,11 +604,15 @@ It is a statistic from the history, not a diagnosis; below about twenty cases, P
 closed → Administratively closed</b>. It can also be <b>On hold</b> or <b>Cancelled</b>,
 always with a reason; a cancelled WO is never deleted. An emergency WO goes straight from Created to
 In progress, and so does any WO that already has a technician: <span class="bouton">Start</span> is offered from
-Created or Prepared (a missing planned date becomes today).</p>
+Created or Prepared (a missing planned date becomes today). Prepared and Scheduled are therefore optional: the
+record's progress bar shows them lighter. On the record, only one button is blue: the next step for you;
+<span class="bouton">Mark as prepared</span> and <span class="bouton">Cancel the WO</span> are under “More options”. A WO
+on hold restarts with <span class="bouton">Resume work</span>, or can be closed directly, without resuming it first.</p>
 <p>A technician puts an unassigned WO in their own name with <span class="bouton">I'll take this WO</span> (on the
 record, or on its row in the list filtered on “Unassigned”; their home page lists them in the “Up for grabs” card).
 They take over a colleague's WO with <span class="bouton">Take over this WO in my name</span>; the status does not
-change. Every take, takeover or change of technician is noted in the “Taken on (history)” block of the record and of
+change. On a colleague's WO that is on hold or in progress, <span class="bouton">Take over and carry on</span> puts it
+in their name and in progress in one go. Every take, takeover or change of technician is noted in the “Taken on (history)” block of the record and of
 the work order sheet; the colleague sees the takeover on their home page for 7 days, the manager under
 “Recent takeovers”. A missing required authorisation refuses the take, just like an assignment.</p>
 <p>A WO record has four tabs:</p>

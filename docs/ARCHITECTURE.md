@@ -794,7 +794,7 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   | Préparé | Planifié, En attente, Annulé ; En cours si l'OT a un technicien (A3) |
   | Planifié | En cours, Préparé (déplanifier), En attente, Annulé |
   | En cours | Clôturé techniquement, En attente |
-  | En attente | statut de reprise (En cours si `date_debut` est renseignée, sinon Préparé), Annulé |
+  | En attente | statut de reprise (En cours si `date_debut` est renseignée, sinon Préparé, et aussi En cours si l'OT a un technicien : L18), Clôturé techniquement (L18 : clôture sans reprise, contrôles RG4 habituels), Annulé |
   | Clôturé techniquement | Clôturé administrativement ; En cours (réouverture, responsable) |
   | Clôturé administrativement, Annulé | aucun (verrouillé ; reprise par un nouvel OT lié `ot_lie_id`) |
 
@@ -5381,6 +5381,12 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   sont rangés sous `<details class="ot-plus-options">` « Plus d'options » (replié), que le mode Solo réutilise
   (`#solo-plus-options`). La frise garde les six étapes ; Préparé et Planifié portent `data-facultatif` (plus clairs,
   bord pointillé) et la mention « facultatif » (`tests/test_ordres_actions.py`).
+  OT en attente : la reprise En cours s'appelle « Reprendre le travail » ; « Clôturer techniquement » (et « Clore »)
+  restent proposés sans reprise. OT en attente ou en cours au nom d'un collègue : « Prendre la suite »
+  (`data-sorte="suite"`, à la place de « Reprendre cet OT à mon nom ») fait `Ordres.prendre` (RG8 comme l'affectation,
+  ligne de `prises_en_charge`, journal de reprise) puis, pour un OT en attente, `changerStatut(…, 'En attente', 'En
+  cours')` (journal habituel) ; confirmation qui nomme le collègue ; la fiche s'ouvre sur Exécution. La reprise au nom
+  du collègue (« Reprendre le travail ») est alors repliée. Droits du serveur inchangés.
 - **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
   `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
   4→5.

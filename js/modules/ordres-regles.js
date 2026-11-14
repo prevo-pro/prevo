@@ -218,7 +218,8 @@ const Ordres = (() => {
   }
 
   /** Statuts atteignables depuis le statut actuel (tableau RG3, sans tenir compte du profil). A3 (T516) : un OT qui a
-   *  un technicien se démarre aussi depuis Créé et Préparé (la date prévue manquante devient aujourd'hui). */
+   *  un technicien se démarre aussi depuis Créé et Préparé (la date prévue manquante devient aujourd'hui). L18 : un OT
+   *  en attente se clôture sans être repris, et repart en cours même s'il n'avait pas démarré (il a un technicien). */
   function transitionsPossibles(ot) {
     if (!ot) return [];
     const affecte = Boolean(texte(ot.technicien_id));
@@ -228,7 +229,7 @@ const Ordres = (() => {
       case 'Préparé': return affecte ? ['Planifié', 'En cours', 'En attente', 'Annulé'] : ['Planifié', 'En attente', 'Annulé'];
       case 'Planifié': return ['En cours', 'Préparé', 'En attente', 'Annulé'];
       case 'En cours': return ['Clôturé techniquement', 'En attente'];
-      case 'En attente': return [statutDeReprise(ot), 'Annulé'];
+      case 'En attente': return [statutDeReprise(ot)].concat(statutDeReprise(ot) === 'Préparé' && affecte ? ['En cours'] : [], ['Clôturé techniquement', 'Annulé']);
       case 'Clôturé techniquement': return ['Clôturé administrativement', 'En cours'];
       default: return []; // Clôturé administrativement, Annulé : verrouillés
     }
