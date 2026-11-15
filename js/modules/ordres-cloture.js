@@ -14,6 +14,9 @@
 // incohérente bloque toujours), le bouton le dit ; le responsable retrouve ces OT sur son accueil et sur la fiche,
 // les complète (« Compléter la clôture », sans rouvrir l'OT) ; la validation administrative exige RG4 entière. Pas de
 // règle serveur : le serveur ne vérifie pas RG4, et ce réglage ne protège ni donnée ni droit.
+// T554 (L20) : sur une panne, case « Dépannage provisoire, remise en état à prévoir » et un mot (colonne remise_en_etat,
+// non vide = à prévoir) ; à la validation, le responsable crée en un geste l'OT de remise en état (« Réparation
+// programmée », même machine, titre et travail à faire repris du mot, lié par ot_lie_id : Ordres.creerRemiseEnEtat).
 // Chargé juste après ordres-fiche.js ; les outils de la fiche (Ordres.interne) sont cherchés au moment de l'appel.
 // Complète l'objet Ordres.
 
@@ -27,7 +30,7 @@ Object.assign(Ordres, (() => {
 
   // Champs de l'OT lus dans la fenêtre pour calculer ce qui manque (les mêmes que Ordres.clore écrit).
   const CHAMPS_FENETRE = ['date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code', 'remede_code',
-    'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service'];
+    'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service', 'remise_en_etat'];
   const ECART_MAX_H = 12;               // au-delà, l'écart début → maintenant n'est pas un temps passé : rien n'est proposé
 
   // ===========================================================================================
@@ -111,8 +114,61 @@ Object.assign(Ordres, (() => {
    * Blocs ajoutés à la fenêtre, juste après la case de sécurité (un tableau : chaque tâche y ajoute les siens) ; leurs
    * champs nommés sont lus avec les autres (UI.lireFormulaire).
    */
-  function extensionsCloture(/* ot, mode */) {
-    return [];
+  function extensionsCloture(ot /* , mode */) {
+    return [...blocProvisoire(ot)];
+  }
+
+  // --- Dépannage provisoire (T554, L20) ------------------------------------------------------
+
+  /** Une panne (OT « correctif immédiat ») : seule elle peut être dépannée provisoirement. */
+  function estPanne(ot) {
+    return texte(ot && ot.type) === 'correctif immédiat';
+  }
+
+  /** Case « Dépannage provisoire, remise en état à prévoir » et le mot de ce qu'il reste à faire (panne seulement). */
+  function blocProvisoire(ot) {
+    if (!estPanne(ot)) return [];
+    const bloc = UI.element(UI.html`<div class="ot-cloture-provisoire"><label class="case"><input type="checkbox"
+      name="depannage_provisoire" value="1"${texte(ot.remise_en_etat) ? UI.brut(' checked') : ''}><span>${I18n.t('ordres.provisoire.case')}</span></label></div>`);
+    const mot = champOt('remise_en_etat', ot.remise_en_etat, { libelle: I18n.t('ordres.provisoire.mot'), aide: I18n.t('ordres.provisoire.aide') });
+    bloc.appendChild(mot);
+    const caseProvisoire = UI.$('input', bloc);
+    const montrer = () => { mot.hidden = !caseProvisoire.checked; };
+    caseProvisoire.addEventListener('change', montrer);
+    montrer();
+    return [bloc];
+  }
+
+  /** L'OT de remise en état déjà créé pour cette panne (lié, « Réparation programmée », non annulé), sinon null. */
+  function remiseEnEtatDe(otId) {
+    return Donnees.lignes('ordres_travail').find((autre) => autre.ot_lie_id === otId
+      && autre.type === 'correctif différé' && autre.statut !== 'Annulé') || null;
+  }
+
+  /** Fiche d'une panne dépannée provisoirement : le mot ; une fois validée, « Créer l'OT de remise en état » (responsable). */
+  function bandeauProvisoire(ot) {
+    if (!estPanne(ot) || !texte(ot.remise_en_etat) || !['Clôturé techniquement', 'Clôturé administrativement'].includes(ot.statut)) return null;
+    const faite = remiseEnEtatDe(ot.id);
+    const creer = !faite && ot.statut === 'Clôturé administrativement' && estResponsable();
+    const bandeau = UI.bandeau(faite ? 'info' : 'attention', UI.html`<p>${I18n.t('ordres.provisoire.bandeau', { mot: texte(ot.remise_en_etat) })}</p>${
+      faite ? UI.html`<p>${I18n.t('ordres.provisoire.deja_cree')} <a href="#/ot/${encodeURIComponent(faite.id)}">${faite.id}</a></p>`
+        : ot.statut === 'Clôturé techniquement' ? UI.html`<p>${I18n.t('ordres.provisoire.a_la_validation')}</p>` : ''}${creer ? UI.html`<div class="actions">
+      <button type="button" class="btn btn-primaire" id="ot-remise-en-etat">${UI.icone('ajouter')}${I18n.t('ordres.provisoire.creer')}</button></div>` : ''}`);
+    const bouton = UI.$('#ot-remise-en-etat', bandeau);
+    if (bouton) {
+      bouton.addEventListener('click', async () => {
+        bouton.disabled = true;
+        try {
+          const id = await Ordres.creerRemiseEnEtat(ot.id);
+          UI.toast(I18n.t('ordres.provisoire.cree', { id, otId: ot.id }), 'succes');
+          location.hash = '#/ot/' + encodeURIComponent(id);
+        } catch (erreur) {
+          App.signalerErreur(erreur, I18n.t('ordres.provisoire.creation'));
+          bouton.disabled = false;
+        }
+      });
+    }
+    return bandeau;
   }
 
   // --- Clôtures incomplètes (T554, L20) ------------------------------------------------------
@@ -172,7 +228,7 @@ Object.assign(Ordres, (() => {
 
   /** Bandeaux de la fiche posés par la clôture (ordres-fiche.js, sous le bandeau d'état). */
   function bandeauxCloture(ot) {
-    return [bandeauIncomplet(ot)].filter(Boolean);
+    return [bandeauIncomplet(ot), bandeauProvisoire(ot)].filter(Boolean);
   }
 
   /** Champs de la fenêtre, dans l'ordre du travail ; les champs exigés par RG4 portent une étoile. */
@@ -218,6 +274,11 @@ Object.assign(Ordres, (() => {
     const valeurs = UI.lireFormulaire(formulaire);
     if (valeurs.arret_production === '') { delete valeurs.arret_production; delete valeurs.duree_arret_h; }
     if (valeurs.arret_production === '0') valeurs.duree_arret_h = '';
+    if (valeurs.depannage_provisoire !== undefined) {           // T554 : case décochée → plus de remise en état à prévoir
+      valeurs.remise_en_etat = valeurs.depannage_provisoire === '1'
+        ? texte(valeurs.remise_en_etat) || I18n.donnees('ordres.provisoire.defaut') : '';
+      delete valeurs.depannage_provisoire;
+    }
     return valeurs;
   }
 
@@ -429,5 +490,5 @@ Object.assign(Ordres, (() => {
 
   // Règles de L20 et L23 exposées pour les tests ; clôtures incomplètes (T554) : réglage, règle, accueil du responsable.
   return { visiteSansAnomalie, messageApresTransition, manquesSaisis, cloturesIncompletesAutorisees, manquesQuiBloquent,
-    otsClotureIncomplete, cloturesIncompletesResponsable };
+    otsClotureIncomplete, cloturesIncompletesResponsable, remiseEnEtatDe };
 })());

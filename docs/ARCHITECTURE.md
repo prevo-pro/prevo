@@ -883,6 +883,13 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   responsable (lien pour retirer l'autorisation), bandeau sur la fiche ; « Compléter la clôture » (mode 'completer' de
   la fenêtre, `Ordres.completerCloture`) écrit temps et champs SANS rouvrir l'OT (RG4 entière exigée). La validation
   administrative revérifie RG4 comme avant. Pas de règle serveur : le serveur ne vérifie pas RG4.
+  Lot 2 ergonomie (T554, L20) : **dépannage provisoire**. Sur une panne (« correctif immédiat ») seulement, la fenêtre
+  a la case « Dépannage provisoire, remise en état à prévoir » et le mot de ce qu'il reste à faire (colonne
+  `remise_en_etat` du format 6, non vide = à prévoir ; case cochée sans mot : texte par défaut, décochée : vidée). La
+  fiche le dit ; une fois l'OT validé (« Clôturé administrativement »), le responsable a « Créer l'OT de remise en
+  état » : `Ordres.creerRemiseEnEtat` crée en un geste une « Réparation programmée » (`correctif différé`, P3), même
+  machine, titre (première ligne, 120 caractères) et travail à faire repris du mot, consignes reprises, liée à la
+  panne par `ot_lie_id` ; une seule (`Ordres.remiseEnEtatDe` : liée, correctif différé, non annulée).
   La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
   « Cocher une case ne consigne rien : appliquez la procédure. » Clôture administrative
   (responsable) : `date_cloture_admin`, OT en lecture seule.

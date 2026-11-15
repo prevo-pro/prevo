@@ -267,6 +267,25 @@ Object.assign(Ordres, (() => {
     });
   }
 
+  /**
+   * T554 (L20) : OT de remise en état d'une panne dépannée provisoirement (remise_en_etat non vide), en un geste :
+   * « Réparation programmée » (correctif différé), même machine, titre et travail à faire repris du mot, consignes
+   * reprises, lié à la panne (ot_lie_id). Un seul : s'il existe déjà (Ordres.remiseEnEtatDe), son identifiant est rendu.
+   */
+  async function creerRemiseEnEtat(otId) {
+    const panne = Donnees.trouver('ordres_travail', otId);
+    if (!panne) throw ErreurValidation(I18n.t('commun.message.ot_introuvable', { otId }));
+    const mot = texte(panne.remise_en_etat);
+    if (!mot) throw ErreurValidation(I18n.t('ordres.provisoire.rien_a_prevoir', { otId }));
+    const deja = Ordres.remiseEnEtatDe(otId);
+    if (deja) return deja.id;
+    return creer({
+      origine: 'manuel', equipement_id: panne.equipement_id, type: 'correctif différé', priorite: 'P3',
+      titre: mot.split('\n')[0].trim().slice(0, 120), travail_a_faire: mot, consignes: panne.consignes,
+      date_prevue: datePrevueParDefaut('P3'), ot_lie_id: panne.id,
+    });
+  }
+
   // Refus d'écrire dans une table liée (temps, pièces, opérations) si l'OT est verrouillé ou
   // clôturé techniquement. Lit le cache : appeler via modifierLieeAOt, qui le relit juste avant.
   function verifierOtModifiable(otId) {
@@ -298,7 +317,7 @@ Object.assign(Ordres, (() => {
   // Champs de la clôture technique saisis dans la fenêtre « Clore » (mêmes champs que les onglets
   // Exécution et Compte rendu ; temps passé et pièce sortie sont écrits dans leurs tables).
   const CHAMPS_CLOTURE = ['date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code',
-    'remede_code', 'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service'];
+    'remede_code', 'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service', 'remise_en_etat'];
   const ASTUCE_MAX = 500;                     // comme l'onglet Compte rendu (Wiki.SEUILS.astuceMax)
 
   /** Vrai si « Clore » est proposé : réglage cloture_une_etape = 1 et profil responsable. */
@@ -436,7 +455,7 @@ Object.assign(Ordres, (() => {
 
   return {
     // écritures (ARCHITECTURE.md §10)
-    creer, changerStatut, changerPriorite, creerOtLie,
+    creer, changerStatut, changerPriorite, creerOtLie, creerRemiseEnEtat,
     // RG8 bloquante à l'affectation (D186, D191) : aussi pour Planning.planifier
     controlerAffectation, ecrireAvecTrace,
     // clôture en une étape (§22.11, D132)
