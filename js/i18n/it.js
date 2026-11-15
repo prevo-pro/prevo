@@ -1382,6 +1382,7 @@ I18n.ajouter('it', {
   'ordres.prise.journal_reprise': 'OdL ripreso da {precedentId}',
   'ordres.prise.ligne_prise': '{nomTechnicien} ha preso l\'OdL',
   'ordres.prise.ligne_reprise': '{nomTechnicien} ha ripreso l\'OdL (prima: {nomPrecedent})',
+  'ordres.prise.ligne_passation': '{nomPrecedent} ha passato l\'OdL a {nomTechnicien}',
   'ordres.prise.plus_ouvert': '{otId} non è più aperto ({statut}): non può più essere preso.',
   'ordres.prise.prise_faite': '{otId} è a vostro nome. Avviatelo quando siete sul posto.',
   'ordres.prise.prendre_suite': 'Subentra e prosegui',

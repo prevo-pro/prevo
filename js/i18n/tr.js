@@ -1382,6 +1382,7 @@ I18n.ajouter('tr', {
   'ordres.prise.journal_reprise': 'iş emri {precedentId} kişisinden devralındı',
   'ordres.prise.ligne_prise': '{nomTechnicien} iş emrini üstlendi',
   'ordres.prise.ligne_reprise': '{nomTechnicien} iş emrini devraldı (önceki: {nomPrecedent})',
+  'ordres.prise.ligne_passation': '{nomPrecedent} iş emrini {nomTechnicien} kişisine devretti',
   'ordres.prise.plus_ouvert': '{otId} artık açık değil ({statut}): artık üstlenilemez.',
   'ordres.prise.prise_faite': '{otId} artık sizin adınıza. Sahaya vardığınızda başlatın.',
   'ordres.prise.prendre_suite': 'Devral ve sürdür',

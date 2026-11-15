@@ -5588,7 +5588,10 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   disponible » : `technicien_id` vide, l'OT retourne dans « À prendre »), mot facultatif dicté (micro de `dictee.js`,
   réglage L24) ; `Ordres.passerLaMain` : refus si l'OT n'est plus ouvert ou plus à son nom, RG8 de l'affectation pour
   le collègue (dérogation au responsable seul), statut inchangé, le collègue sort des renforts, journal « main passée
-  à TEC-… ». Le mot s'affiche en tête de la fiche (nom, date, heure, motif) et sur les cartes de l'accueil (« Mes
+  à TEC-… ». Vers un collègue, une ligne de `prises_en_charge` (le collègue, avant : celui qui passe la main, à la
+  minute de `releve_le` ; T567) ; « à qui est disponible » n'en écrit pas. `Ordres.estPassation` reconnaît cette
+  ligne (précédent = `releve_par`, date = `releve_le` : la dernière passation seulement) : « X a passé la main à Y »
+  dans le bloc « Prises en charge », et ni « Vos OT repris » chez celui qui l'a passée, ni « Reprises récentes ». Le mot s'affiche en tête de la fiche (nom, date, heure, motif) et sur les cartes de l'accueil (« Mes
   ordres de travail », « À prendre », « En attente dans l'équipe ») tant que celui qui l'a passé ne tient plus l'OT
   (`Ordres.releveAMontrer`). « Journée terminée » (carte « Mes ordres de travail ») : pour chaque OT ouvert à son nom,
   « Je le garde » (d'office : rien n'est écrit, un OT en cours reste en cours), « Je le passe à… » ou « À qui est

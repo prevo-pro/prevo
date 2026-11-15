@@ -68,6 +68,17 @@ class TestReglesPassation(CasPassation):
             self.assertTrue(evaluer("Ordres.releveAMontrer({ technicien_id: '', releve_par: 'A', releve_le: '2026-11-15 17:00' })"))
             self.assertFalse(evaluer("Ordres.releveAMontrer({ technicien_id: 'A', releve_par: 'A', releve_le: '2026-11-15 17:00' })"))
             self.assertFalse(evaluer("Ordres.releveAMontrer({ technicien_id: 'B', releve_par: '', releve_le: '' })"))
+            # T567 : la ligne de prise d'une passation (précédent = releve_par, à la minute de releve_le) n'est pas
+            # une reprise : ni « Vos OT repris » chez celui qui a passé la main, ni « Reprises récentes »
+            ot_passe = ("{ id: 'OT-9', statut: 'En cours', technicien_id: 'B', releve_par: 'A', releve_le: '2026-11-15 17:00', "
+                        "prises_en_charge: '2026-11-14 08:00|A|\\n2026-11-15 17:00|B|A' }")
+            self.assertTrue(evaluer("Ordres.estPassation(%s, { date: '2026-11-15 17:00', technicienId: 'B', precedentId: 'A' })" % ot_passe))
+            self.assertFalse(evaluer("Ordres.estPassation(%s, { date: '2026-11-14 08:00', technicienId: 'A', precedentId: '' })" % ot_passe))
+            self.assertFalse(evaluer("Ordres.estPassation(%s, { date: '2026-11-15 17:05', technicienId: 'B', precedentId: 'A' })" % ot_passe))
+            self.assertEqual(evaluer("Ordres.reprisesRecentes([%s], '2026-11-01', 'A').length" % ot_passe), 0)
+            self.assertEqual(evaluer("Ordres.reprisesRecentes([%s], '2026-11-01').length" % ot_passe), 0)
+            ot_repris = ot_passe.replace("releve_par: 'A'", "releve_par: ''")     # même ligne sans passation : reprise
+            self.assertEqual(evaluer("Ordres.reprisesRecentes([%s], '2026-11-01', 'A').length" % ot_repris), 1)
             # liste filtrée sur un technicien : ses OT et ceux où il est en renfort
             ids = evaluer("""Ordres.filtrer([
                 { id: 'A', statut: 'En cours', technicien_id: 'TEC-0001', renforts: '' },
@@ -103,6 +114,10 @@ class TestParcoursPassation(CasPassation):
                              (JULIEN, "En cours", KARIM, "pas le temps"))
             self.assertEqual(ligne["releve_mot"], "Joint changé, reste à resserrer la bride.")
             self.assertRegex(ligne["releve_le"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+            # T567 : la passation ajoute sa ligne aux prises en charge (Julien, avant : Karim, à la minute de la relève)
+            prises = [p.split("|") for p in ligne["prises_en_charge"].replace("\r", "").split("\n") if p.strip()]
+            self.assertEqual(prises[-1], [ligne["releve_le"], JULIEN, KARIM])
+            nombre_prises = len(prises)
             journal = [j for j in lire_csv(serveur.dossier, "journal.csv") if j["id_ligne"] == ot]
             self.assertTrue(any("main passée à " + JULIEN in j["action"] for j in journal), journal)
             # le mot en tête de la fiche, avec le nom et l'heure ; plus de « Passer la main » pour Karim
@@ -112,6 +127,12 @@ class TestParcoursPassation(CasPassation):
             self.assertIn(ligne["releve_le"][11:16], tete)
             self.assertIn("resserrer la bride", tete)
             self.assertEqual(self.page.locator("#ot-passer-main").count(), 0)
+            self.page.wait_for_selector(".ot-prises")
+            self.assertIn("Karim a passé la main à Julien", self.page.inner_text(".ot-prises"))
+            # celui qui a passé la main n'est pas « repris » sur son accueil
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.page.wait_for_selector(".accueil-mes-ordres, .accueil-a-prendre")
+            self.assertEqual(self.page.locator(".accueil-reprises").count(), 0)
 
             # Julien : l'OT dans « Mes ordres de travail », avec le mot
             self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
@@ -128,6 +149,8 @@ class TestParcoursPassation(CasPassation):
             self.valider_fenetre()
             ligne = self.attendre(serveur, ot, lambda o: o["technicien_id"] == "")
             self.assertEqual((ligne["technicien_id"], ligne["releve_par"], ligne["releve_mot"]), ("", JULIEN, ""))
+            # à qui est disponible : aucune ligne de prise (l'OT n'a plus de technicien)
+            self.assertEqual(len([p for p in ligne["prises_en_charge"].split("\n") if p.strip()]), nombre_prises)
             self.changer_profil(serveur, "#/accueil", "technicien", THOMAS, "Thomas Garnier")
             self.page.wait_for_selector(".accueil-a-prendre")
             carte = self.page.inner_text(".accueil-a-prendre li:has(a[href='#/ot/%s'])" % ot)

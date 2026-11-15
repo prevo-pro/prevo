@@ -1380,6 +1380,7 @@ I18n.ajouter('en', {
   'ordres.prise.journal_reprise': 'WO taken over from {precedentId}',
   'ordres.prise.ligne_prise': '{nomTechnicien} took the WO',
   'ordres.prise.ligne_reprise': '{nomTechnicien} took over the WO (before: {nomPrecedent})',
+  'ordres.prise.ligne_passation': '{nomPrecedent} handed the WO over to {nomTechnicien}',
   'ordres.prise.plus_ouvert': '{otId} is no longer open ({statut}): it can no longer be taken.',
   'ordres.prise.prise_faite': '{otId} is now in your name. Start it when you are on site.',
   'ordres.prise.prendre_suite': 'Take over and carry on',

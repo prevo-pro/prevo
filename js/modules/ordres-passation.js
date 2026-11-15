@@ -115,12 +115,17 @@ Object.assign(Ordres, (() => {
         const marqueur = controlerAffectation(Object.assign({}, ligne, { technicien_id: a }), options);
         if (marqueur) Object.assign(journal, { action: action + ' ; ' + marqueur, derogation: marqueur });
       }
+      const quand = Donnees.maintenant().slice(0, 16);
+      // « chaque prise, reprise ou changement de technicien ajoute une ligne » (prises_en_charge) : le collègue qui
+      // reçoit l'OT, à la minute de la relève (Ordres.estPassation la reconnaît : pas une « reprise ») ; à qui est
+      // disponible : aucune ligne (l'OT n'a plus de technicien ; celui qui le prendra écrira la sienne).
+      if (a) ligne.prises_en_charge = Ordres.ajouterPrise(ligne.prises_en_charge, quand, a, de);
       Object.assign(ligne, {
         technicien_id: a,
         renforts: ecrireRenforts(lireRenforts(ligne.renforts).filter((id) => id !== a)),
         releve_mot: texte(choix.mot),
         releve_par: de,
-        releve_le: Donnees.maintenant().slice(0, 16),
+        releve_le: quand,
         releve_motif: motif,
       });
       return a;

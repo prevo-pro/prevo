@@ -1382,6 +1382,7 @@ I18n.ajouter('pt-PT', {
   'ordres.prise.journal_reprise': 'OT retomada de {precedentId}',
   'ordres.prise.ligne_prise': '{nomTechnicien} assumiu a OT',
   'ordres.prise.ligne_reprise': '{nomTechnicien} retomou a OT (antes: {nomPrecedent})',
+  'ordres.prise.ligne_passation': '{nomPrecedent} passou a OT a {nomTechnicien}',
   'ordres.prise.plus_ouvert': '{otId} já não está aberta ({statut}): já não pode ser assumida.',
   'ordres.prise.prise_faite': '{otId} está em seu nome. Inicie-a quando estiver no local.',
   'ordres.prise.prendre_suite': 'Assumir e continuar',

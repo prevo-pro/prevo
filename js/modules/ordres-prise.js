@@ -75,6 +75,17 @@ Object.assign(Ordres, (() => {
   }
 
   /**
+   * L16 : la ligne de prise d'un « Passer la main » vers un collègue (le précédent est celui qui a passé la main, à la
+   * minute de la relève : releve_par, releve_le de l'OT). Ce n'est pas une reprise : ni « Vos OT repris » chez celui
+   * qui a passé la main, ni « Reprises récentes » chez le responsable. Seule la dernière passation de l'OT est connue
+   * (releve_* est réécrit à chaque passation).
+   */
+  function estPassation(ot, prise) {
+    return !!(ot && prise && prise.precedentId && prise.precedentId === texte(ot.releve_par)
+      && prise.date === texte(ot.releve_le).slice(0, 16));
+  }
+
+  /**
    * Reprises (lignes avec un précédent) datées de `depuis` (ISO) ou après, les plus récentes d'abord ; precedentId :
    * seulement celles qui ont repris un OT à ce technicien. → [{ ot, date, technicienId, precedentId }].
    */
@@ -83,7 +94,7 @@ Object.assign(Ordres, (() => {
     ordres.forEach((ot) => lirePrises(ot.prises_en_charge).forEach((prise) => {
       if (!prise.precedentId || prise.date.slice(0, 10) < depuis) return;
       if (precedentId && prise.precedentId !== precedentId) return;
-      if (prise.technicienId === prise.precedentId) return;
+      if (prise.technicienId === prise.precedentId || estPassation(ot, prise)) return;
       resultat.push(Object.assign({ ot }, prise));
     }));
     return resultat.sort((a, b) => b.date.localeCompare(a.date) || b.ot.id.localeCompare(a.ot.id));
@@ -184,7 +195,10 @@ Object.assign(Ordres, (() => {
     return texte(technicien && technicien.prenom) || nomTechnicien(id) || texte(id);
   }
 
-  function phrasePrise(prise) {
+  function phrasePrise(prise, ot) {
+    if (estPassation(ot, prise)) {
+      return I18n.t('ordres.prise.ligne_passation', { nomTechnicien: prenom(prise.technicienId), nomPrecedent: prenom(prise.precedentId) });
+    }
     return prise.precedentId
       ? I18n.t('ordres.prise.ligne_reprise', { nomTechnicien: prenom(prise.technicienId), nomPrecedent: prenom(prise.precedentId) })
       : I18n.t('ordres.prise.ligne_prise', { nomTechnicien: prenom(prise.technicienId) });
@@ -195,7 +209,7 @@ Object.assign(Ordres, (() => {
     const prises = lirePrises(ot.prises_en_charge);
     if (!prises.length) return '';
     return UI.html`<h3 class="ot-sous-titre">${I18n.t('ordres.prise.titre_bloc')}</h3>
-      <ul class="ot-prises">${prises.map((prise) => UI.html`<li><span class="sans-coupure">${UI.dateHeureFr(prise.date)}</span> — ${phrasePrise(prise)}</li>`)}</ul>`;
+      <ul class="ot-prises">${prises.map((prise) => UI.html`<li><span class="sans-coupure">${UI.dateHeureFr(prise.date)}</span> — ${phrasePrise(prise, ot)}</li>`)}</ul>`;
   }
 
   /** Même bloc sur le bon de travail. */
@@ -203,7 +217,7 @@ Object.assign(Ordres, (() => {
     const prises = lirePrises(ot.prises_en_charge);
     if (!prises.length) return '';
     return UI.html`<section class="bt-prises"><h2>${I18n.t('ordres.prise.titre_bloc')}</h2>
-      <ul>${prises.map((prise) => UI.html`<li>${UI.dateHeureFr(prise.date)} — ${phrasePrise(prise)}</li>`)}</ul></section>`;
+      <ul>${prises.map((prise) => UI.html`<li>${UI.dateHeureFr(prise.date)} — ${phrasePrise(prise, ot)}</li>`)}</ul></section>`;
   }
 
   /** Geste de la fiche : celui de priseProposee, « suite » (L18) pour un OT en attente ou en cours d'un collègue. */
@@ -543,7 +557,7 @@ Object.assign(Ordres, (() => {
 
   return {
     // règles pures (prises en charge, format 5)
-    lirePrises, ajouterPrise, priseProposee, reprisesRecentes, otsAPrendre, otsEnAttenteEquipe, demandesPrisesParTechniciens,
+    lirePrises, ajouterPrise, estPassation, priseProposee, reprisesRecentes, otsAPrendre, otsEnAttenteEquipe, demandesPrisesParTechniciens,
     joursAvant,
     // écriture
     prendre, monTechnicien,

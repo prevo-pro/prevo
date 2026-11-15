@@ -1378,6 +1378,7 @@ I18n.ajouter('fr', {
   'ordres.prise.journal_reprise': 'reprise de l\'OT à {precedentId}',
   'ordres.prise.ligne_prise': '{nomTechnicien} a pris l\'OT',
   'ordres.prise.ligne_reprise': '{nomTechnicien} a repris l\'OT (avant : {nomPrecedent})',
+  'ordres.prise.ligne_passation': '{nomPrecedent} a passé la main à {nomTechnicien}',
   'ordres.prise.plus_ouvert': '{otId} n\'est plus ouvert ({statut}) : il ne peut plus être pris.',
   'ordres.prise.prise_faite': '{otId} est à votre nom. Démarrez-le quand vous êtes sur place.',
   'ordres.prise.prendre_suite': 'Prendre la suite',
