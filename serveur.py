@@ -3093,6 +3093,16 @@ def ecoute_du_brouillon(brouillon):
     return '0.0.0.0'
 
 
+def adresse_de_la_porte(brouillon):
+    """L05 (T567) : début de l'adresse par laquelle les téléphones ouvriront Prévo après « Terminer » (la porte : la
+    première adresse réseau du PC, au port http du brouillon, comme la fiche d'installation), '' si Prévo n'écoutera
+    pas le réseau (« ce PC », mandataire seul) ou sans adresse réseau. Sert au QR de premier accès de la direction."""
+    if ecoute_du_brouillon(brouillon) != '0.0.0.0':
+        return ''
+    adresses = adresses_ip_reseau()
+    return 'http://%s:%d/' % (adresses[0], brouillon.get('port_http', PORT_PAR_DEFAUT)) if adresses else ''
+
+
 def etapes_du_brouillon(config, brouillon):
     """État de chaque étape (fait, a_faire, sans_objet) : celui noté dans le brouillon, corrigé par ce qui n'a pas
     d'objet — compte et certificat sur « ce PC » (le compte reste proposé en Solo : il crée le technicien « moi »),
@@ -9512,14 +9522,21 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         reponse = self.garder_brouillon(brouillon, 'compte')
         reponse = dict(reponse, compte=compte, technicien_id=technicien_id)
         if direction is not None:
-            # T520 (A7) : accès facultatif de la direction (lecture seule), mot de passe provisoire rendu une seule
-            # fois, comme Équipe › Accès (api_compte_creer) ; un échec ne défait pas le compte du responsable.
-            provisoire = mot_de_passe_provisoire()
+            # T520 (A7), L05 (lot 2, T567) : accès facultatif de la direction (lecture seule) par un QR de premier
+            # accès, comme « Ajouter des utilisateurs » (api_compte_creer, « qr ») : compte créé avec un mot de passe
+            # tiré au sort que personne ne voit (a_changer), jeton à usage unique de la durée des invitations (seule
+            # son empreinte est écrite, dans comptes.json : il survit à la relance de « Terminer »), rendu une seule
+            # fois, jamais au journal ni à la console. Le QR ne répond qu'après « Terminer » (R1 : avant, le réseau ne
+            # sert que la page d'attente) ; « adresse » : celle de la future porte. Un échec ne défait pas le compte du
+            # responsable.
             try:
+                cree = creer_compte(self.config, direction[0], direction[1], 'direction', mot_de_passe_provisoire(),
+                                    a_changer=True, origine=self.origine())
+                jeton, expire_le = poser_premier_acces(self.config, cree['identifiant'], self.origine())
                 reponse['direction'] = {
-                    'compte': creer_compte(self.config, direction[0], direction[1], 'direction', provisoire,
-                                           a_changer=True, origine=self.origine()),
-                    'mot_de_passe_provisoire': provisoire}
+                    'compte': compte_public(trouver_compte(comptes_du_serveur(self.config), cree['identifiant'])),
+                    'chemin': CHEMIN_PREMIER_ACCES + jeton, 'expire_le': expire_le,
+                    'adresse': adresse_de_la_porte(brouillon)}
             except ErreurCompte as erreur:
                 reponse['direction'] = {'erreur': traduisible_de(erreur)}
         return reponse

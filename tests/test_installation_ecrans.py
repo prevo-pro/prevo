@@ -309,6 +309,8 @@ class TestParcours(CasInstallation):
         page.fill("#inst-mot-de-passe", MOT_DE_PASSE)
         self.assertIn("solide", page.inner_text("#inst-force"))
         page.fill("#inst-confirmation", MOT_DE_PASSE)
+        page.fill("#inst-direction-prenom", "Laurent")          # L05 (T567) : l'accès de la direction, par QR
+        page.fill("#inst-direction-nom", "Girard")
         self.continuer()
         # R3 (lot 2) : compte créé, une fenêtre redit l'identifiant réel, un seul bouton « OK » (focus dessus) ;
         # tant qu'elle n'est pas validée, l'étape ne change pas ; Entrée valide.
@@ -323,6 +325,17 @@ class TestParcours(CasInstallation):
         self.assertEqual(page.locator("dialog[open]").count(), 0)
         self.assertTrue((self.dossier / "donnees" / "acces" / "comptes.json").is_file())
         self.assertNotIn(MOT_DE_PASSE, page.content())
+        # L05 (T567) : la direction reçoit un QR de premier accès (plus de mot de passe provisoire), qui ne répond
+        # qu'après « Terminer et ouvrir Prévo »
+        bloc = "#installation-contenu .installation-acces-direction"
+        self.assertEqual(page.locator(bloc + " #installation-direction-qr svg").count(), 1)
+        self.assertEqual(page.locator(bloc + " .mot-de-passe-provisoire").count(), 0)
+        self.assertRegex(page.input_value("#installation-direction-lien"), r"^https?://[^/]+/#/premier-acces/[A-Za-z0-9_-]{40,}$")
+        texte_bloc = page.inner_text(bloc)
+        self.assertIn("laurent.girard", texte_bloc)
+        self.assertIn("à flasher par le patron", texte_bloc)
+        self.assertIn("ne répond qu'après", texte_bloc)
+        self.assertNotIn("provisoire", texte_bloc)
         self.sans_defilement_horizontal("étape 4")
         self.assertGreaterEqual(page.evaluate(ZONES_TACTILES_JS), 48)
         self.verifier_textes("certificat", "equipe")

@@ -59,7 +59,8 @@ const Installation = (() => {
   let sautees = [];                // étapes sans objet passées depuis la dernière étape montrée
   let resoudre = null;             // termine Installation.ouvrir (l'assistant quitté sans terminer)
   let fiche = null;                // GET fiche, lue à la dernière étape
-  // T520 : accès de la direction créé à l'étape « compte » ({ compte, mot_de_passe_provisoire } ou { erreur }) ;
+  // T520 : accès de la direction créé à l'étape « compte » ({ compte, chemin, expire_le, adresse } : QR de premier
+  // accès, L05 ; ou { erreur }) ;
   // gardé en mémoire de la page seulement, montré en tête des étapes suivantes jusqu'à la fin de l'assistant.
   let accesDirection = null;
 
@@ -110,17 +111,35 @@ const Installation = (() => {
     if (donnees.direction) accesDirection = donnees.direction;
   }
 
-  /** Mot de passe provisoire de l'accès de la direction, montré une seule fois (comme Équipe › Accès). */
+  /** « 2026-10-26T10:05:00 » → « 26/10/2026 10:05 ». */
+  function dateHeureCourte(valeur) {
+    const trouve = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(valeur || ''));
+    return trouve ? trouve[3] + '/' + trouve[2] + '/' + trouve[1] + ' ' + trouve[4] + ':' + trouve[5] : String(valeur || '');
+  }
+
+  /** L05 (T567) : lien du QR de premier accès de la direction — l'adresse de la future porte (serveur), sinon celle de
+   *  la fiche (Tailscale, mandataire), sinon celle de cette page. */
+  function lienAccesDirection() {
+    const base = accesDirection.adresse || (fiche && (fiche.adresse_tailscale || (fiche.adresses_mandataire || [])[0]))
+      || location.origin + '/';
+    return base.replace(/\/+$/, '') + '/' + String(accesDirection.chemin || '').replace(/^\/+/, '');
+  }
+
+  /** L05 (T567) : QR de premier accès de l'accès de la direction (plus de mot de passe provisoire), montré tant que
+   *  l'assistant est ouvert, jamais mémorisé ; il ne répond qu'après « Terminer » (R1). */
   function blocAccesDirection() {
     if (!accesDirection) return '';
     if (!accesDirection.compte) {
       const message = StockageServeur.texte(accesDirection, 'erreur') || '';
       return UI.html`<div class="alerte attention installation-acces-direction" role="status"><div class="alerte-texte">${I18n.t(situation() === 'seul' ? 'installation.direction.non_cree_solo' : 'installation.direction.non_cree', { message })}</div></div>`;
     }
+    const lien = lienAccesDirection();
     return UI.html`<div class="alerte info installation-acces-direction" role="status"><div class="alerte-texte">
       <p>${I18n.html('installation.direction.cree', { identifiant: accesDirection.compte.identifiant })}</p>
-      <p><code class="mot-de-passe-provisoire">${accesDirection.mot_de_passe_provisoire}</code></p>
-      <p>${I18n.t(situation() === 'seul' ? 'installation.direction.noter_solo' : 'installation.direction.noter')}</p></div></div>`;
+      <div class="acces-qr"><div class="acces-qr-image" id="installation-direction-qr">${UI.qrSvg(lien, 200)}</div>
+        <div class="acces-lien champ"><label for="installation-direction-lien">${I18n.t('equipe.montrer_invitation.lien_invitation')}</label>
+          <input type="text" id="installation-direction-lien" readonly value="${lien}" spellcheck="false"></div></div>
+      <p>${I18n.t(situation() === 'seul' ? 'installation.direction.noter_solo' : 'installation.direction.noter', { dateHeure: dateHeureCourte(accesDirection.expire_le) })}</p></div></div>`;
   }
 
   // ===========================================================================================

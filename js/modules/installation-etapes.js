@@ -238,7 +238,7 @@ const InstallationEtapes = (() => {
   }
 
   // T520 (A7) : accès facultatif de la direction (lecture seule : tableau de bord, bilan, historique), créé avec le
-  // compte du responsable ; son mot de passe provisoire est montré une fois par l'écran (installation-ecrans.js).
+  // compte du responsable ; L05 (T567) : par un QR de premier accès, montré par l'écran (installation-ecrans.js).
   function blocDirection(c) {
     return UI.html`<fieldset class="installation-direction">
       <legend>${I18n.t('installation.direction.titre')}</legend>

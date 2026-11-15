@@ -16,8 +16,10 @@ ROLES_PAR_ROUTE (une colonne « direction ») sont jouées par tests/test_acces_
     écriture       PUT, ajout, document, sauvegarde, IA : 403 au message « lecture seule » ; rien n'est écrit ;
     comptes        un compte Direction n'a pas de technicien lié (création et modification : 400) ; il ne compte pas
                    comme responsable (tests/test_acces_roles.py, dernier responsable gardé) ;
-    assistant      étape « compte » : accès facultatif de la direction créé avec un mot de passe provisoire rendu une
-                   fois, refusé avant toute écriture s'il est mal formé ou si c'est la personne du responsable ;
+    assistant      étape « compte » : accès facultatif de la direction créé avec un QR de premier accès (L05, T567 :
+                   plus de mot de passe provisoire ; jeton à usage unique, empreinte seule, jamais dans un fichier ni
+                   sur la console, gardé à la relance), refusé avant toute écriture s'il est mal formé ou si c'est la
+                   personne du responsable ;
     navigateur     écrans de la Direction : menu réduit, aucun bouton d'écriture, écran interdit → page lisible.
 
 Lancer depuis la racine du projet :
@@ -29,6 +31,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import commun
 from commun import attendre_pret
@@ -245,23 +248,59 @@ class TestAssistantDirection(installation.CasAssistant):
         chemin = Path(instance.config.dossier_donnees, "acces", "comptes.json")
         return json.loads(chemin.read_text(encoding="utf-8"))["comptes"] if chemin.exists() else []
 
-    def test_acces_de_la_direction_cree_avec_un_mot_de_passe_provisoire(self):
+    def test_acces_de_la_direction_cree_avec_un_qr_de_premier_acces(self):
+        """L05 (T567) : comme « Ajouter des utilisateurs » — QR de premier accès, plus de mot de passe provisoire."""
+        # le serveur de l'assistant est celui de test_installation_api (installation.serveur)
+        console = []
+        espion = mock.patch.object(installation.serveur, "afficher", side_effect=console.append)
+        espion.start()
+        self.addCleanup(espion.stop)
         client, instance = self.preparer()
-        reponse = self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand",
-                                                 "mot_de_passe": installation.MOT_DE_PASSE,
-                                                 "direction": {"prenom": "Laurent", "nom": "Girard"}}))
+        with mock.patch.object(installation.serveur, "adresses_ip_reseau", return_value=["192.168.1.20", "10.0.0.5"]):
+            reponse = self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand",
+                                                     "mot_de_passe": installation.MOT_DE_PASSE,
+                                                     "direction": {"prenom": "Laurent", "nom": "Girard"}}))
         self.assertEqual(reponse["compte"]["role"], "responsable")
         direction = reponse["direction"]
         self.assertEqual((direction["compte"]["identifiant"], direction["compte"]["role"],
                           direction["compte"]["technicien_id"], direction["compte"]["a_changer"]),
                          ("laurent.girard", "direction", "", True))
-        provisoire = direction["mot_de_passe_provisoire"]
-        self.assertEqual(len(provisoire), 16)
-        self.assertEqual([(c["identifiant"], c["role"]) for c in self.comptes(instance)],
+        self.assertNotIn("mot_de_passe_provisoire", direction)
+        self.assertEqual(direction["compte"]["premier_acces_expire_le"], direction["expire_le"])
+        # la future porte : première adresse réseau du PC, au port http du brouillon
+        self.assertEqual(direction["adresse"], "http://192.168.1.20:%d/" % installation.serveur.PORT_PAR_DEFAUT)
+        self.assertTrue(direction["chemin"].startswith(installation.serveur.CHEMIN_PREMIER_ACCES), direction["chemin"])
+        jeton = direction["chemin"][len(installation.serveur.CHEMIN_PREMIER_ACCES):]
+        self.assertGreaterEqual(len(jeton), 40)
+        comptes = self.comptes(instance)
+        self.assertEqual([(c["identifiant"], c["role"]) for c in comptes],
                          [("nicolas.briand", "responsable"), ("laurent.girard", "direction")])
-        for fichier in Path(instance.config.dossier_donnees).rglob("*"):
+        self.assertEqual(comptes[1]["premier_acces"]["empreinte"], installation.serveur.empreinte_jeton(jeton))
+        # le jeton n'est écrit nulle part (fichiers de l'installation, journaux) ni sur la console
+        for fichier in self.dossier.rglob("*"):
             if fichier.is_file():
-                self.assertNotIn(provisoire.encode("utf-8"), fichier.read_bytes(), fichier.name)
+                self.assertNotIn(jeton.encode("utf-8"), fichier.read_bytes(), fichier.name)
+        self.assertNotIn(jeton, "\n".join(map(str, console)))
+        # personne ne se connecte avec un mot de passe avant le QR
+        self.assertTrue(comptes[1]["a_changer"])
+        # il survit à la relance (« Terminer » relance le serveur) : un autre serveur sur le même dossier le lit,
+        # sert une fois, puis le refuse
+        _, relance = self.lancer(self.dossier)
+        self.assertEqual(installation.serveur.lire_premier_acces(relance.config, jeton)["identifiant"], "laurent.girard")
+        installation.serveur.choisir_premier_mot_de_passe(relance.config, jeton, installation.MOT_DE_PASSE + "-patron")
+        with self.assertRaises(installation.serveur.ErreurHttp):
+            installation.serveur.lire_premier_acces(relance.config, jeton)
+
+    def test_adresse_de_la_porte(self):
+        """L05 (T567) : l'adresse du QR de la direction est celle de la future porte, '' si Prévo n'écoutera pas le
+        réseau (ce PC, mandataire seul) ou sans adresse réseau."""
+        srv = installation.serveur
+        with mock.patch.object(srv, "adresses_ip_reseau", return_value=["192.168.1.20"]):
+            self.assertEqual(srv.adresse_de_la_porte({"portee": "atelier", "port_http": 8090}), "http://192.168.1.20:8090/")
+            self.assertEqual(srv.adresse_de_la_porte({"portee": "ce-pc"}), "")
+            self.assertEqual(srv.adresse_de_la_porte({"portee": "dehors", "mandataire": True}), "")
+        with mock.patch.object(srv, "adresses_ip_reseau", return_value=[]):
+            self.assertEqual(srv.adresse_de_la_porte({"portee": "atelier"}), "")
 
     def test_acces_de_la_direction_refuse_avant_toute_ecriture(self):
         client, instance = self.preparer()

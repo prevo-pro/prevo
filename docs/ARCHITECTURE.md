@@ -4237,8 +4237,11 @@ installation lui répondent 403 (`acces.direction_lecture_seule` pour une écrit
 une route du responsable) ; seules restent les routes de tout compte (session, mot de passe et langue, déconnexion).
 `GET /api/info` ne lui rend que le port. Un compte Direction n'a jamais de technicien lié (`comptes.direction_sans_technicien`,
 création et modification) et ne compte pas comme responsable (au moins un responsable actif reste exigé). L'assistant
-d'installation le propose à l'étape « compte » (champ facultatif `direction` : `{prenom, nom}`, compte créé avec un mot
-de passe provisoire rendu une fois). Côté navigateur, profil `direction` (`App.estDirection`) : Accueil (quatre portes),
+d'installation le propose à l'étape « compte » (champ facultatif `direction` : `{prenom, nom}` ; L05, T567 : compte
+créé avec un QR de premier accès, comme « Ajouter des utilisateurs » — `poser_premier_acces`, réponse `{compte, chemin,
+expire_le, adresse}`, `adresse` : la future porte, `adresse_de_la_porte` —, plus de mot de passe provisoire ; l'écran
+montre le QR et le lien en tête des étapes suivantes ; il ne répond qu'après « Terminer », le jeton, écrit en empreinte
+dans `comptes.json`, survit à la relance). Côté navigateur, profil `direction` (`App.estDirection`) : Accueil (quatre portes),
 Ordres de travail, Parc et fiches (OT, équipement, demande) en lecture, Indicateurs avec le coût de l'arrêt, onglet
 Rapports mensuels (ouvrir, imprimer, télécharger ; « Bilan d'un mois » calculé sans rien écrire) ; un écran qui ne lui
 est pas ouvert, adresse tapée à la main, montre une page « Cet écran n'est pas ouvert à la Direction ». Sans comptes,
