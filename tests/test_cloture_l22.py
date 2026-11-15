@@ -95,6 +95,8 @@ class TestEquipe(CasCloture):
         page = self.ouvrir_demo("responsable")
         self.assertNotIn(PART_TERMINEE, page.evaluate("() => Ordres.messageApresTransition({ id: 'OT-X' }, 'Clôturé techniquement')"))
         self.assertEqual(page.evaluate("() => Ordres.messageApresTransition({ id: 'OT-X' }, 'En cours')"), "OT-X : En cours.")
+        # T554 : « Clore » (une fois) dit le libellé de P10.
+        self.assertEqual(page.evaluate("() => Ordres.messageApresTransition({ id: 'OT-X' }, 'Clôturé administrativement', true)"), "OT-X : clôturé.")
 
     def test_technicien_en_equipe(self):
         page = self.ouvrir_demo("technicien", "TEC-0001")

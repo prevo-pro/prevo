@@ -457,7 +457,7 @@ Object.assign(Ordres, (() => {
     const cloture = enUneFois || cible === 'Clôturé techniquement';
     const morceaux = [enUneFois
       ? (enSolo() ? I18n.t('ordres.cloture.solo_clos', { otId: ot.id })
-        : I18n.t('ordres.demander_clore.cloture_techniquement_administrativement', { actuelId: ot.id }))
+        : I18n.t('ordres.cloture.cloture_une_fois', { otId: ot.id }))      // T554 : libellé de P10 (« Clôturé »)
       : ot.id + ' : ' + Schema.libelleValeur('ordres_travail', 'statut', cible) + '.'];
     if (!enUneFois && cible === 'Clôturé techniquement' && !estResponsable()) morceaux.push(I18n.t('ordres.cloture.part_terminee'));
     if (cloture) morceaux.push(prochaineVisite(ot));
