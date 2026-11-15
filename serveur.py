@@ -3744,7 +3744,7 @@ def poser_parametres(config, valeurs):
     ecrire_table(config, 'parametres', entete, lignes)
 
 
-def nombre_de_l_assistant(valeur, maximum, nom):
+def nombre_de_l_assistant(valeur, maximum, nom, plus_de_zero=False):
     """Nombre saisi dans l'assistant (texte ou nombre, virgule ou point décimal ; vide : None), de 0 à « maximum » ;
     400 au message clair sinon. Rendu en texte à point décimal (comme l'écrit le navigateur : « 7.5 »)."""
     if valeur is None or (isinstance(valeur, str) and not valeur.strip()):
@@ -3755,6 +3755,10 @@ def nombre_de_l_assistant(valeur, maximum, nom):
         nombre = float(valeur.strip().replace(',', '.')) if isinstance(valeur, str) else float(valeur)
     except (TypeError, ValueError):
         nombre = float('nan')
+    if plus_de_zero and nombre == 0:             # heures de marche : 0 n'a pas de sens pour « toutes les machines »
+        raise ErreurHttp(400, traduisible('installation.bilan_heures',
+                                          '« {nom} » : un nombre de plus de 0 à {maximum} est attendu.',
+                                          nom=nom, maximum=maximum))
     if not (0 <= nombre <= maximum):             # faux aussi pour nan et l'infini
         raise ErreurHttp(400, traduisible('installation.bilan_nombre',
                                           '« {nom} » : un nombre de 0 à {maximum} est attendu.',
@@ -9624,7 +9628,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         taux = nombre_de_l_assistant(demande.get('taux_horaire_moyen'), TAUX_HORAIRE_MAX,
                                      'taux_horaire_moyen')
         heures = nombre_de_l_assistant(demande.get('heures_marche_jour'), HEURES_PAR_JOUR_MAX,
-                                       'heures_marche_jour')
+                                       'heures_marche_jour', plus_de_zero=True)
         for cle, valeur in (('bilan_taux', taux), ('bilan_heures', heures)):
             if valeur is None:
                 brouillon.pop(cle, None)

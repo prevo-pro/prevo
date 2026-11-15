@@ -1043,7 +1043,8 @@ class TestPourChiffrerLeBilan(CasAssistant):
         client, _ = self.jusqu_au_bilan()
         for corps in ({"taux_horaire_moyen": "abc"}, {"taux_horaire_moyen": "-3"}, {"taux_horaire_moyen": "10001"},
                       {"heures_marche_jour": "25"}, {"heures_marche_jour": "huit"}, {"heures_marche_jour": True},
-                      {"heures_marche_jour": "nan"}, {"taux_horaire_moyen": "inf"}):
+                      {"heures_marche_jour": "nan"}, {"taux_horaire_moyen": "inf"},
+                      {"heures_marche_jour": "0"}, {"heures_marche_jour": "0,0"}):   # heures : plus de 0, comme « Renseigner »
             with self.subTest(corps=corps):
                 reponse = client.post("bilan", corps)
                 self.assertEqual(reponse.statut, 400, reponse.octets)

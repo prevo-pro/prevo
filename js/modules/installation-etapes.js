@@ -462,15 +462,15 @@ const InstallationEtapes = (() => {
         <div class="actions installation-actions-etape"><button type="button" class="btn btn-fantome" id="inst-bilan-plus-tard">${I18n.t('installation.formulaire_tailscale.plus_tard')}</button></div>`,
       autrement: UI.html`<p class="note">${notePlusTard()}</p>`,
       lire(section) {
-        const lue = (cle, maximum) => {
+        const lue = (cle, maximum, plusDeZero) => {
           const brut = UI.$('#inst-' + cle, section).value.trim();
           if (!brut) return '';
           const nombre = UI.enNombre(brut);
-          return nombre !== null && nombre >= 0 && nombre <= maximum ? brut : null;
+          return nombre !== null && (plusDeZero ? nombre > 0 : nombre >= 0) && nombre <= maximum ? brut : null;
         };
         const taux = lue('bilan_taux', 10000);
         if (taux === null) return { probleme: I18n.t('installation.formulaire_bilan.taux_invalide') };
-        const heures = lue('bilan_heures', 24);
+        const heures = lue('bilan_heures', 24, true);   // comme la fenêtre « Renseigner » : plus de 0
         if (heures === null) return { probleme: I18n.t('installation.formulaire_bilan.heures_invalide') };
         return { taux_horaire_moyen: taux, heures_marche_jour: heures };
       },
