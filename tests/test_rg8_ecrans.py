@@ -44,7 +44,9 @@ PASSER_OUTRE = FENETRE + " .ot-passer-outre"
 ANNULER = FENETRE + " .fenetre-actions .btn-fantome"
 ZONE_NOUVEL_OT = "#form-nouvel-ot .ot-zone-habilitation"
 ZONE_PREPARATION = "#form-preparation .ot-zone-habilitation"
-BANDEAU_DEROGATION = ".ot-bandeau-etat .alerte.attention .alerte-texte"
+# L29 (T543) : le bandeau « Panne à répétition » (.pannes-recurrentes) est aussi une alerte « attention » de la
+# zone ; il apparaît quand les tests ont créé trois pannes sur la même machine. Il n'est pas la dérogation.
+BANDEAU_DEROGATION = ".ot-bandeau-etat .alerte.attention:not(.pannes-recurrentes) .alerte-texte"
 
 
 def lire_csv(dossier, nom):

@@ -88,7 +88,9 @@ CHAMP_MOTIF = DEROGATION + " [name=motif]"
 PASSER_OUTRE = DEROGATION + " .ot-passer-outre"
 ANNULER = DEROGATION + " .fenetre-actions .btn-fantome"
 ZONE = "%s .ot-zone-habilitation"
-BANDEAU_DEROGATION = ".ot-bandeau-etat .alerte.attention .alerte-texte"
+# L29 (T543) : le bandeau « Panne à répétition » (.pannes-recurrentes) est aussi une alerte « attention » de la
+# zone ; il apparaît quand les tests ont créé trois pannes sur la même machine. Il n'est pas la dérogation.
+BANDEAU_DEROGATION = ".ot-bandeau-etat .alerte.attention:not(.pannes-recurrentes) .alerte-texte"
 PLANIFIER_FICHE = ".ot-actions button[data-action='transition'][data-cible='%s']"
 
 # Si location.hash est déjà la route, l'écran est redessiné (App.reafficher), sinon on y va.
