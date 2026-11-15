@@ -107,7 +107,9 @@ Object.assign(Ordres, (() => {
       <div class="ot-sorties-message"></div>
       ${tableauSortiesHtml(lignes, modifiable)}
       ${lignes.length ? UI.html`<p class="ot-sorties-total">${I18n.html('ordres.pieces_sorties.montant_pieces_net', { euro: UI.euro(total) })}</p>` : ''}
-      ${modifiable ? formulaireSortieHtml(ot) : UI.html`<p class="note ot-sorties-lecture">${raisonLectureSeule(ot)}</p>`}`);
+      ${modifiable ? formulaireSortieHtml(ot) : UI.html`<p class="note ot-sorties-lecture">${raisonLectureSeule(ot)}</p>`}
+      <div class="ot-hors-magasin"></div>`);
+    afficherHorsMagasin(UI.$('.ot-hors-magasin', bloc), ot, modifiable);
     if (!modifiable) return;
     const formulaire = UI.$('#form-sortie', bloc);
     formulaire.addEventListener('submit', (evenement) => {
@@ -121,10 +123,90 @@ Object.assign(Ordres, (() => {
     });
   }
 
+  // ===========================================================================================
+  // 13 bis. Pièces hors magasin (L25) : désignation, quantité, prix facultatif ; comptées dans le coût, pas dans le
+  // stock. Le technicien ne voit ni ne saisit de prix (le serveur le lui cache, D126) ; le responsable (et le Solo) oui.
+  // ===========================================================================================
+
+  function tableauHorsMagasinHtml(pieces, prixVisible, prixModifiable) {
+    return UI.html`<div class="table-defile"><table class="table ot-table-empilee ot-table-hors-magasin">
+      <thead><tr><th scope="col">${I18n.t('ordres.hors_magasin.designation')}</th><th scope="col" class="num">${I18n.t('commun.champ.quantite')}</th>
+        ${prixVisible ? UI.html`<th scope="col" class="num">${I18n.t('commun.champ.prix_unitaire')}</th><th scope="col" class="num">${I18n.t('ordres.tableau_sorties.montant')}</th>` : ''}
+        ${prixModifiable ? UI.html`<th scope="col"><span class="visuellement-cache">${I18n.t('ordres.hors_magasin.saisir_prix')}</span></th>` : ''}</tr></thead>
+      <tbody>${pieces.map((piece) => UI.html`<tr data-mouvement="${piece.mouvement_id}">
+        <td data-libelle="${I18n.t('ordres.hors_magasin.designation')}">${piece.libelle}</td>
+        <td class="num" data-libelle="${I18n.t('commun.champ.quantite')}">${UI.nombreFr(piece.quantite)}</td>
+        ${prixVisible ? UI.html`<td class="num" data-libelle="${I18n.t('commun.champ.prix_unitaire')}">${piece.prix === null ? I18n.t('ordres.cout.prix_non_saisi') : UI.euro(piece.prix)}</td>
+          <td class="num" data-libelle="${I18n.t('ordres.tableau_sorties.montant')}">${piece.prix === null ? '' : UI.euro(piece.montant)}</td>` : ''}
+        ${prixModifiable ? UI.html`<td class="ot-action-ligne"><button type="button" class="btn btn-secondaire ot-prix-hors-magasin" data-mouvement="${piece.mouvement_id}">${I18n.t('ordres.hors_magasin.saisir_prix')}</button></td>` : ''}
+      </tr>`)}</tbody></table></div>`;
+  }
+
+  function formulaireHorsMagasinHtml(prixVisible) {
+    return UI.html`<form class="form-ligne ot-hors-magasin-form" novalidate>
+        <div class="champ ot-champ-designation"><label class="libelle" for="ot-hm-designation">${I18n.t('ordres.hors_magasin.designation')} <span class="requis" aria-hidden="true">*</span></label>
+          <input type="text" id="ot-hm-designation" name="designation" maxlength="120" placeholder="${I18n.t('ordres.hors_magasin.exemple')}"></div>
+        <div class="champ ot-champ-quantite"><label class="libelle" for="ot-hm-quantite">${I18n.t('commun.champ.quantite')}</label>
+          <input type="text" inputmode="decimal" id="ot-hm-quantite" name="quantite" value="1"></div>
+        ${prixVisible ? UI.html`<div class="champ ot-champ-prix"><label class="libelle" for="ot-hm-prix">${I18n.t('ordres.hors_magasin.prix_facultatif')}</label>
+          <input type="text" inputmode="decimal" id="ot-hm-prix" name="prix"></div>` : ''}
+        <button type="submit" class="btn btn-secondaire">${UI.icone('ajouter')}${I18n.t('ordres.hors_magasin.noter')}</button>
+      </form>`;
+  }
+
+  /** Bloc « Pièces hors magasin » de l'OT (sous les pièces sorties) ; rien s'il n'y en a aucune et que l'OT est fermé. */
+  function afficherHorsMagasin(zone, ot, modifiable) {
+    const pieces = Ordres.interne.lignesDeLOt('mouvements_stock', ot.id).filter((m) => m.type === 'hors magasin').map(Ordres.pieceHorsMagasin);
+    if (!pieces.length && !modifiable) return;
+    const prixVisible = !estTechnicien();
+    const prixModifiable = modifiable && estResponsable();
+    UI.remplir(zone, UI.html`<h3 class="ot-sous-titre">${I18n.t('ordres.hors_magasin.titre')}</h3>
+      <p class="aide">${I18n.t('ordres.hors_magasin.aide')}</p><div class="ot-hm-message"></div>
+      ${pieces.length ? tableauHorsMagasinHtml(pieces, prixVisible, prixModifiable) : ''}
+      ${modifiable ? formulaireHorsMagasinHtml(prixVisible) : ''}`);
+    const message = (texteMessage) => {
+      const cible = UI.$('.ot-hm-message', zone);
+      cible.textContent = '';
+      if (texteMessage) cible.appendChild(UI.bandeau('important', texteMessage));
+    };
+    const formulaire = UI.$('.ot-hors-magasin-form', zone);
+    if (formulaire) formulaire.addEventListener('submit', async (evenement) => {
+      evenement.preventDefault();
+      const valeurs = UI.lireFormulaire(formulaire);
+      if (!texte(valeurs.designation)) { message(I18n.t('magasin.hors_magasin.designation_obligatoire')); return; }
+      const reussi = await ecrireMouvement(zone, UI.$('button[type=submit]', formulaire), () => Magasin.noterHorsMagasin(ot.id, valeurs),
+        I18n.t('ordres.hors_magasin.titre'), message);
+      if (!reussi) return;
+      await apresEnregistrement();
+      UI.toast(I18n.t('ordres.hors_magasin.notee', { designation: texte(valeurs.designation), otId: ot.id }), 'succes');
+    });
+    zone.addEventListener('click', async (evenement) => {
+      const bouton = evenement.target.closest('button.ot-prix-hors-magasin');
+      const piece = bouton && pieces.find((p) => p.mouvement_id === bouton.dataset.mouvement);
+      if (!piece) return;
+      const prix = await demanderPrixHorsMagasin(piece);
+      if (prix === null) return;
+      const reussi = await ecrireMouvement(zone, bouton, () => Magasin.completerHorsMagasin(piece.mouvement_id, { prix }),
+        I18n.t('ordres.hors_magasin.titre'), message);
+      if (reussi) await apresEnregistrement();
+    });
+  }
+
+  /** Fenêtre « Saisir le prix » (responsable) : renvoie le prix saisi ('' l'efface), ou null si elle est annulée. */
+  async function demanderPrixHorsMagasin(piece) {
+    const id = UI.identifiantUnique('ot-hm-prix');
+    const contenu = UI.element(UI.html`<div class="form-colonne"><div class="champ"><label class="libelle" for="${id}">${I18n.t('ordres.hors_magasin.prix_de', { designation: piece.libelle })}</label>
+      <input type="text" inputmode="decimal" id="${id}" name="prix" value="${piece.prix === null ? '' : quantiteSaisie(piece.prix)}"></div></div>`);
+    const choix = await UI.fenetre({ titre: I18n.t('ordres.hors_magasin.saisir_prix'), contenu,
+      boutons: [{ libelle: I18n.t('commun.bouton.annuler'), valeur: null, classe: 'btn-fantome' },
+        { libelle: I18n.t('commun.bouton.enregistrer'), valeur: 'ok', classe: 'btn-primaire', defaut: true }] });
+    return choix === 'ok' ? UI.$('[name="prix"]', contenu).value.trim() : null;
+  }
+
   // --- Messages et écritures ------------------------------------------------------------------
 
   /** Message du bloc (refus RG6 affiché tel quel) ; texte vide = message effacé. */
-  function messageBloc(bloc, message) {
+  function messageAuBloc(bloc, message) {
     const zone = UI.$('.ot-sorties-message', bloc);
     zone.textContent = '';
     if (message) zone.appendChild(UI.bandeau('important', message));
@@ -134,9 +216,10 @@ Object.assign(Ordres, (() => {
    * Exécute une écriture du magasin, bouton désactivé pendant l'action. Un refus
    * (ErreurValidation : stock insuffisant, retour au-delà du net, OT clôturé ailleurs…) s'affiche
    * dans le bloc ; une autre erreur (conflit, stockage) passe par App.signalerErreur.
-   * Renvoie true si l'écriture a réussi.
+   * `afficherMessage(texte)` : où dire le refus (par défaut, le message du bloc). Renvoie true si l'écriture a réussi.
    */
-  async function ecrireMouvement(bloc, bouton, action, contexte) {
+  async function ecrireMouvement(bloc, bouton, action, contexte, afficherMessage) {
+    const messageBloc = afficherMessage ? (zone, texteMessage) => afficherMessage(texteMessage) : messageAuBloc;
     messageBloc(bloc, '');
     if (bouton) bouton.disabled = true;
     try {
@@ -159,8 +242,8 @@ Object.assign(Ordres, (() => {
   async function sortirPiece(ot, formulaire, bloc) {
     const valeurs = UI.lireFormulaire(formulaire);
     const quantite = UI.enNombre(valeurs.quantite);
-    if (!valeurs.article_id) { messageBloc(bloc, I18n.t('ordres.sortir_piece.choisissez_article_sortir')); return; }
-    if (quantite === null || quantite <= 0) { messageBloc(bloc, I18n.t('ordres.sortir_piece.saisissez_quantite_superieure_0')); return; }
+    if (!valeurs.article_id) { messageAuBloc(bloc, I18n.t('ordres.sortir_piece.choisissez_article_sortir')); return; }
+    if (quantite === null || quantite <= 0) { messageAuBloc(bloc, I18n.t('ordres.sortir_piece.saisissez_quantite_superieure_0')); return; }
     const article = Donnees.trouver('articles', valeurs.article_id);
     const reussi = await ecrireMouvement(bloc, UI.$('button[type=submit]', formulaire),
       () => Magasin.sortir(ot.id, valeurs.article_id, quantite, valeurs.commentaire), I18n.t('ordres.sortir_piece.sortie_stock'));

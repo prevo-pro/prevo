@@ -332,13 +332,17 @@ Object.assign(Ordres, (() => {
     if (texte(valeurs.heures) && !(heures > 0 && heures <= 24)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_nombre_heures'));
     if (heures > 0 && !texte(valeurs.technicien_id)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_choisissez_technicien'));
     if (texte(valeurs.article_id) && !(quantite > 0)) throw ErreurValidation(I18n.t('ordres.clore.piece_sortie_quantite_superieure'));
+    if (texte(valeurs.designation_hm) && !((Donnees.nombre(valeurs.quantite_hm) || 0) > 0)) throw ErreurValidation(I18n.t('ordres.clore.piece_sortie_quantite_superieure'));
     verifierClore(actuel, champs, heures, technique);
     return { actuel, champs, heures, quantite };
   }
 
-  // Pièce sortie du magasin et temps passé saisis dans la fenêtre de clôture (avant l'écriture de l'OT).
+  // Pièce sortie du magasin, pièce hors magasin (L25) et temps passé saisis dans la fenêtre de clôture (avant l'OT).
   async function ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite) {
     if (texte(valeurs.article_id)) await Magasin.sortir(actuel.id, valeurs.article_id, quantite, texte(valeurs.commentaire_piece));
+    if (texte(valeurs.designation_hm)) {                                       // L25 : pièce hors magasin
+      await Magasin.noterHorsMagasin(actuel.id, { designation: valeurs.designation_hm, quantite: valeurs.quantite_hm, prix: valeurs.prix_hm });
+    }
     if (heures > 0) {
       await modifierLieeAOt(actuel.id, 'ot_temps', (lignes, outils) => {
         lignes.push({ id: outils.nouvelId(lignes), ot_id: actuel.id, technicien_id: valeurs.technicien_id,

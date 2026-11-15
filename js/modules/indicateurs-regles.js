@@ -270,12 +270,13 @@ const Indicateurs = (() => {
     const montantHeures = (ctx.tempsParOt.get(ot.id) || []).reduce((somme, ligne) =>
       somme + nombreOuZero(ligne.heures) * (Ordres.tauxHoraire(ctx.techniciens.get(ligne.technicien_id)) || 0), 0);
     const quantites = new Map();
+    let montantPieces = 0;
     (ctx.mouvementsParOt.get(ot.id) || []).forEach((mouvement) => {
+      if (mouvement.type === 'hors magasin') montantPieces += Ordres.pieceHorsMagasin(mouvement).montant;     // L25
       if (mouvement.type !== 'sortie' && mouvement.type !== 'retour') return;
       const signe = mouvement.type === 'sortie' ? 1 : -1;
       quantites.set(mouvement.article_id, (quantites.get(mouvement.article_id) || 0) + signe * nombreOuZero(mouvement.quantite));
     });
-    let montantPieces = 0;
     quantites.forEach((quantite, articleId) => {
       montantPieces += quantite * nombreOuZero((ctx.articles.get(articleId) || {}).prix_unitaire);
     });

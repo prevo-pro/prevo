@@ -249,7 +249,8 @@ Object.assign(Indicateurs, (() => {
    * equipements } ; equipements (L30) : identifiants des équipements dont un OT compté a une heure ou une pièce non chiffrée.
    * Un taux horaire ou un prix vide (ou illisible) compte pour 0 dans le coût : ces heures et ces pièces y manquent ; une
    * heure d'un technicien sans taux propre prend le taux moyen du service quand il est réglé (L30) : elle ne manque pas.
-   * Un 0 saisi est une valeur (non listé).
+   * Un 0 saisi est une valeur (non listé). Une pièce hors magasin sans prix (L25) manque aussi : articles reçoit
+   * { articleId: identifiant du mouvement, article: { designation }, quantite }.
    */
   function manquesCout(periodeChoisie, filtres) {
     const ctx = contexte();
@@ -269,6 +270,13 @@ Object.assign(Indicateurs, (() => {
       });
       const quantites = new Map();
       (ctx.mouvementsParOt.get(ot.id) || []).forEach((mouvement) => {
+        const horsMagasin = mouvement.type === 'hors magasin' && Ordres.pieceHorsMagasin(mouvement);
+        if (horsMagasin && horsMagasin.prix === null && horsMagasin.quantite > 0) {       // L25 : pièce hors magasin sans prix
+          const element = articles.get('hors:' + mouvement.id) || { articleId: mouvement.id, article: { designation: horsMagasin.libelle }, quantite: 0 };
+          element.quantite += horsMagasin.quantite;
+          articles.set('hors:' + mouvement.id, element);
+          noter();
+        }
         if (mouvement.type !== 'sortie' && mouvement.type !== 'retour') return;
         quantites.set(texte(mouvement.article_id), (quantites.get(texte(mouvement.article_id)) || 0) + (mouvement.type === 'sortie' ? 1 : -1) * nombreOuZero(mouvement.quantite));
       });

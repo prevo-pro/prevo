@@ -177,6 +177,50 @@ Object.assign(Magasin, (() => {
     return id;
   }
 
+  /** L25 : prix d'une pièce hors magasin saisi → texte du fichier ('' si vide, ou pour le technicien : D126). */
+  function prixHorsMagasin(valeur) {
+    if (texte(valeur) === '' || (typeof App !== 'undefined' && App.estTechnicien())) return '';
+    const prix = Donnees.nombre(valeur);
+    if (prix === null || prix < 0) throw ErreurValidation(I18n.t('magasin.hors_magasin.prix_invalide'));
+    return valeurFichier(prix);
+  }
+
+  /**
+   * L25 : pièce hors magasin notée sur un OT ouvert (format 6) : article vide, désignation, quantité, prix
+   * facultatif (jamais pour le technicien). Elle ne compte pas dans le stock ; son prix compte dans le coût (RG7).
+   */
+  async function noterHorsMagasin(otId, valeurs) {
+    const quantite = quantiteValide(valeurs.quantite, false, I18n.t('magasin.hors_magasin.refusee'));
+    const designation = texte(valeurs.designation);
+    if (!designation) throw ErreurValidation(I18n.t('magasin.hors_magasin.designation_obligatoire'));
+    const prix = prixHorsMagasin(valeurs.prix);
+    await Donnees.rechargerTable('ordres_travail');
+    verifierOtOuvert(otId, 'sortie');
+    return Donnees.modifier('mouvements_stock', (lignes, outils) => {
+      verifierOtOuvert(otId, 'sortie');
+      const id = nouveauMouvement(lignes, outils, { articleId: '', type: 'hors magasin', quantite, otId, commentaire: valeurs.commentaire });
+      Object.assign(lignes[lignes.length - 1], { designation, prix_unitaire: prix });
+      return id;
+    }, { action: 'pièce hors magasin pour ' + otId });
+  }
+
+  /**
+   * L25 (responsable) : prix d'une pièce hors magasin (`prix` : '' l'efface), ou article créé pour elle (`articleId` :
+   * la ligne reliée à l'article est traitée ; elle reste hors du stock). Renvoie l'identifiant de la ligne.
+   */
+  async function completerHorsMagasin(mouvementId, { prix, articleId }) {
+    if (typeof App !== 'undefined' && App.profil && !App.estResponsable()) throw ErreurValidation(I18n.t('magasin.hors_magasin.reserve_responsable'));
+    const valeurPrix = prix === undefined ? undefined : prixHorsMagasin(prix);
+    if (articleId) articleExistant(articleId);
+    return Donnees.modifier('mouvements_stock', (lignes) => {
+      const ligne = lignes.find((l) => l.id === mouvementId && l.type === 'hors magasin');
+      if (!ligne) throw ErreurValidation(I18n.t('magasin.hors_magasin.introuvable', { id: mouvementId }));
+      if (valeurPrix !== undefined) ligne.prix_unitaire = valeurPrix;
+      if (articleId) ligne.article_id = articleId;
+      return ligne.id;
+    }, { action: 'pièce hors magasin ' + mouvementId + (articleId ? ' reliée à ' + articleId : ' : prix') });
+  }
+
   /** Entrée en stock hors achat (ex. pièce récupérée, don d'un autre site). Renvoie l'identifiant du mouvement. */
   async function entrer(articleId, quantite, commentaire) {
     const entree = quantiteValide(quantite, false, I18n.t('magasin.entrer.entree_refusee'));
@@ -427,7 +471,7 @@ Object.assign(Magasin, (() => {
 
   return {
     // écritures (ARCHITECTURE.md §14.4)
-    sortir, retourner, entrer, inventorier,
+    sortir, retourner, entrer, inventorier, noterHorsMagasin, completerHorsMagasin,
     demanderAchat, commander, recevoir,
     creerArticle, modifierArticle, creerFournisseur, modifierFournisseur,
     mettreAJourStocks,

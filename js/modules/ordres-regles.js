@@ -618,11 +618,20 @@ const Ordres = (() => {
     return propre !== null ? propre : (moyen !== null && moyen >= 0 ? moyen : null);
   }
 
+  /** L25 : pièce hors magasin (ligne « hors magasin » de mouvements_stock) → pièce du coût ; prix null s'il n'est pas saisi. */
+  function pieceHorsMagasin(mouvement) {
+    const quantite = nombre(mouvement.quantite);
+    const prix = Donnees.nombre(mouvement.prix_unitaire);
+    return { article_id: texte(mouvement.article_id), mouvement_id: mouvement.id, libelle: texte(mouvement.designation) || mouvement.id,
+      sorties: quantite, retours: 0, quantite, prix, montant: quantite * (prix || 0), horsMagasin: true };
+  }
+
   /**
    * Coût d'un OT (RG7), dans la devise réglée : { heures, pieces, soustraitance, total, detail }.
    *   heures : Σ heures passées × tauxHoraire (du technicien, sinon moyen du service), sinon 0 ; total : la somme ;
-   *   pieces : Σ (sorties − retours de stock imputées à l'OT) × prix unitaire de l'article ; soustraitance : cout_soustraitance ;
-   *   detail : { nombreHeures, temps: [{ technicien_id, date, heures, taux, montant }], pieces: [{ article_id, libelle, sorties, retours, quantite, prix, montant }] }.
+   *   pieces : Σ (sorties − retours de stock imputées à l'OT) × prix unitaire de l'article, plus (L25) les pièces hors
+   *   magasin × leur prix (sans prix : 0, « non chiffré » dans les indicateurs) ; soustraitance : cout_soustraitance ;
+   *   detail : { nombreHeures, temps: [{ technicien_id, date, heures, taux, montant }], pieces: [{ article_id, libelle, sorties, retours, quantite, prix, montant, horsMagasin }] }.
    */
   function cout(ot) {
     const temps = lignesDeLOt('ot_temps', ot.id).map((ligne) => {
@@ -647,6 +656,7 @@ const Ordres = (() => {
       pieces.push({ article_id: articleId, libelle: libelleArticle(article) || articleId, sorties: entree.sorties,
         retours: entree.retours, quantite, prix, montant: quantite * prix });
     });
+    lignesDeLOt('mouvements_stock', ot.id).filter((m) => m.type === 'hors magasin').forEach((m) => pieces.push(pieceHorsMagasin(m)));
     const montantHeures = temps.reduce((somme, ligne) => somme + ligne.montant, 0);
     const montantPieces = pieces.reduce((somme, ligne) => somme + ligne.montant, 0);
     const soustraitance = nombre(ot.cout_soustraitance);
@@ -663,7 +673,7 @@ const Ordres = (() => {
     STATUTS, TYPES, PRIORITES, rappelConsignation, RAISONS_HABILITATION, ORIGINES_HABILITATION,
     // règles pures (ARCHITECTURE.md §10)
     transitionsPossibles, verifierPassage, verifierCloture, manquesCloture, cout, verifierHabilitation, estOuvert, enRetard,
-    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire,
+    estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire, pieceHorsMagasin,
     // RG8 (D186, D191) : exigences de l'OT, contrôle, dérogation du responsable (marqueur du journal)
     habilitationsExigees, controleHabilitation, marqueurDerogation, lireDerogation, derogationAccordee,
     // affichage (les écritures, l'export et le bon de travail sont ajoutés par les fichiers suivants)
