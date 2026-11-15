@@ -6,7 +6,8 @@
 // Les réglages que l'API n'écrit pas (durées de session, IA, quota) sont montrés avec leur aide et renvoyés à
 // Paramètres › Accès et installation. Migration depuis 1.2 (T171) : les CSV présents sont annoncés dès l'étape 1 et
 // gardés ; sans CSV au départ (brouillon.base_presente faux), l'étape 8 demande par quoi commencer (vide ou démo) et
-// la langue de Prévo (langue_defaut de la base neuve, proposée d'après le navigateur : UI.langueDuNavigateur, T296 ;
+// la langue de Prévo (langue_defaut de la base neuve, celle de l'écran « base vide » ou, sans elle, d'après le
+// navigateur : langueDeDepart, UI.langueDuNavigateur, T296 ;
 // appliquée à la fin, quand Prévo s'ouvre sur la base créée) et la dictée vocale (L24 : oui / non, dictee_autorisee ;
 // cochée d'après l'écran « base vide » ou, en Solo, « oui » : dicteeDeDepart ; sans réponse, « non » sauf en Solo) ;
 // dossier conseillé C:\Prevo proposé à l'étape 8 tant que le brouillon n'a pas deplacement_refuse (« Rester ici »).
@@ -66,6 +67,25 @@ const InstallationEtapes = (() => {
       if (valeur === '0' || valeur === '1') window.sessionStorage.setItem(CLE_DICTEE_DE_DEPART, valeur);
       else window.sessionStorage.removeItem(CLE_DICTEE_DE_DEPART);
     } catch (erreur) { /* sans mémoire d'onglet : l'étape 8 repose la question */ }
+  }
+
+  // L01 (T549) : la langue de Prévo choisie sur l'écran « base vide » suit de même (sessionStorage de l'onglet) ; sans
+  // elle, ou si elle n'est pas déclarée, la langue du navigateur (T296).
+  const CLE_LANGUE_DE_DEPART = 'prevo.installation.langue';
+
+  /** Note la langue choisie sur l'écran « base vide » (un code déclaré ; autre chose : oubliée). Sans sessionStorage, rien. */
+  function noterLangueDeDepart(code) {
+    try {
+      if (I18n.langues.some((declaree) => declaree.code === code)) window.sessionStorage.setItem(CLE_LANGUE_DE_DEPART, code);
+      else window.sessionStorage.removeItem(CLE_LANGUE_DE_DEPART);
+    } catch (erreur) { /* sans mémoire d'onglet : la langue du navigateur */ }
+  }
+
+  /** Langue proposée à l'étape 8 : celle notée au départ si elle est déclarée, sinon celle du navigateur. */
+  function langueDeDepart() {
+    let notee = null;
+    try { notee = window.sessionStorage.getItem(CLE_LANGUE_DE_DEPART); } catch (erreur) { notee = null; }
+    return I18n.langues.some((declaree) => declaree.code === notee) ? notee : UI.langueDuNavigateur();
   }
 
   /** Réponse à cocher à l'étape 8 : celle notée au départ, sinon « 1 » en Solo (solo vrai), sinon '' (rien de coché). */
@@ -452,7 +472,7 @@ const InstallationEtapes = (() => {
           </div>
           <div class="champ installation-langue">
             <label class="libelle" for="inst-langue_defaut">${I18n.t('installation.formulaire_recapitulatif.langue_prevo')}</label>
-            <select id="inst-langue_defaut" name="langue_defaut">${UI.optionsLangues(UI.langueDuNavigateur())}</select>
+            <select id="inst-langue_defaut" name="langue_defaut">${UI.optionsLangues(langueDeDepart())}</select>
             <p class="aide">${I18n.t('installation.formulaire_recapitulatif.langue_prevo_aide')}</p>
           </div>
           <div class="champ installation-dictee" id="inst-dictee">
@@ -499,5 +519,5 @@ const InstallationEtapes = (() => {
     return FORMULAIRES[cle](contexte);
   }
 
-  return { formulaire, indicationForce, noterDicteeDeDepart, dicteeDeDepart, LIBELLES_PORTEE, LIBELLES_DEMARRAGE };
+  return { formulaire, indicationForce, noterDicteeDeDepart, dicteeDeDepart, noterLangueDeDepart, langueDeDepart, LIBELLES_PORTEE, LIBELLES_DEMARRAGE };
 })();

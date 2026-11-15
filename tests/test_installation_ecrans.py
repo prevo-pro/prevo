@@ -912,6 +912,21 @@ class TestLangueDePrevo(CasInstallation):
                 self.assertGreaterEqual(ecarts["langue"], 14)
                 self.assertAlmostEqual(ecarts["langue"], ecarts["choix"], delta=1)
 
+    def test_langue_choisie_avant_installer_prevo_reprise_a_l_etape_8(self):
+        """T549 (L01) : la langue choisie sur l'écran « base vide » (Italiano, navigateur en français) suit dans
+        l'assistant (même onglet) : proposée à l'étape 8 et écrite à « Terminer » (langue_defaut)."""
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        page = self.page                                         # contexte des tests : fr-FR
+        instance = self.lancer()
+        page.goto(instance.url + "/")
+        page.wait_for_selector("#btn-base-installer", state="visible")
+        page.select_option("#base-vide-langue", "it")
+        page.click("#btn-base-installer")
+        page.wait_for_selector('#installation-contenu section[data-etape="situation"]')
+        self.solo_jusqu_au_recapitulatif()
+        self.assertEqual(page.evaluate(LISTE_LANGUE_JS)["valeur"], "it")
+        self.assertEqual(self.terminer_puis_ouvrir(instance)["langue_defaut"], "it")
+
     def test_navigateur_francais_francais_propose(self):
         self.autoriser_erreur(ERREUR_404_TABLES)
         page = self.page                                         # contexte des tests : fr-FR
