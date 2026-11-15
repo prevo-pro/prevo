@@ -4350,6 +4350,7 @@ I18n.ajouter('en', {
   'rapport.html.comprendre': 'Understanding the figures',
   'rapport.html.cout_arret_mois_equipement': 'Downtime cost for the month by equipment ({devise})',
   'rapport.html.decisions_prendre': 'Decisions to be made',
+  'rapport.html.detail_indicateurs': 'The detail by machine, workshop and technician is in Indicators.',
   'rapport.html.donnees_rapport_fige_prevo': '{entreprise} · Data as of {genereLe} · Report finalised by Prévo (CMMS)',
   'rapport.html.donnees_rapport_fige_prevo_2': 'Data as of {genereLe} · Report finalised by Prévo (CMMS)',
   'rapport.html.dont_attente_pieces_panne': { one: ', of which waiting for parts: {duree} (over {n} breakdown with a full history)', other: ', of which waiting for parts: {duree} (over {n} breakdowns with a full history)' },

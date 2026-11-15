@@ -193,6 +193,15 @@ class TestRapportBilan(CasBilan):
         self.assertNotIn("0 €", bloc)
         self.assertIn("non chiffré", bloc)
 
+    def test_ligne_vers_indicateurs_en_bas_du_bilan(self):
+        """T559 (P08) : une ligne en bas du bilan renvoie au détail de l'écran Indicateurs ; texte simple dans le document
+        (le bilan est un document isolé : ni script ni lien vers Prévo), imprimé comme enregistré."""
+        page = blancs(self.page.evaluate("() => Rapport.html('2026-11', { apercu: true })"))
+        ligne = '<p class="pied">Le détail par machine, atelier et technicien est dans Indicateurs.</p>'
+        self.assertIn(ligne, page)
+        self.assertLess(page.index("<main"), page.index(ligne))
+        self.assertEqual(page.count(ligne), 1)
+
     def test_activite_du_mois_et_mois_en_cours_dans_la_page(self):
         r = self.donnees()
         self.assertEqual(r["etat"], {"provisoire": True, "auJour": "2026-11-20", "depuis": "2026-11-03"})

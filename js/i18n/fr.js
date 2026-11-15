@@ -4348,6 +4348,7 @@ I18n.ajouter('fr', {
   'rapport.html.comprendre': 'Comprendre',
   'rapport.html.cout_arret_mois_equipement': 'Coût de l\'arrêt du mois par équipement ({devise})',
   'rapport.html.decisions_prendre': 'Décisions à prendre',
+  'rapport.html.detail_indicateurs': 'Le détail par machine, atelier et technicien est dans Indicateurs.',
   'rapport.html.donnees_rapport_fige_prevo': '{entreprise} · Données au {genereLe} · Rapport figé par Prévo (GMAO)',
   'rapport.html.donnees_rapport_fige_prevo_2': 'Données au {genereLe} · Rapport figé par Prévo (GMAO)',
   'rapport.html.dont_attente_pieces_panne': { one: ', dont attente de pièces : {duree} (sur {n} panne(s) à historique complet)', other: ', dont attente de pièces : {duree} (sur {n} panne(s) à historique complet)' },

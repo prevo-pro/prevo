@@ -4352,6 +4352,7 @@ I18n.ajouter('pt-PT', {
   'rapport.html.comprendre': 'Compreender',
   'rapport.html.cout_arret_mois_equipement': 'Custo da paragem do mês por equipamento ({devise})',
   'rapport.html.decisions_prendre': 'Decisões a tomar',
+  'rapport.html.detail_indicateurs': 'O detalhe por máquina, oficina e técnico está em Indicadores.',
   'rapport.html.donnees_rapport_fige_prevo': '{entreprise} · Dados em {genereLe} · Relatório finalizado pelo Prévo (GMAO)',
   'rapport.html.donnees_rapport_fige_prevo_2': 'Dados em {genereLe} · Relatório finalizado pelo Prévo (GMAO)',
   'rapport.html.dont_attente_pieces_panne': { one: ', dos quais espera de peças: {duree} (em {n} avaria com histórico completo)', other: ', dos quais espera de peças: {duree} (em {n} avarias com histórico completo)' },

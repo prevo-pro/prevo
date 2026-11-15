@@ -4352,6 +4352,7 @@ I18n.ajouter('it', {
   'rapport.html.comprendre': 'Capire',
   'rapport.html.cout_arret_mois_equipement': 'Costo del fermo del mese per attrezzatura ({devise})',
   'rapport.html.decisions_prendre': 'Decisioni da prendere',
+  'rapport.html.detail_indicateurs': 'Il dettaglio per macchina, officina e tecnico è in Indicatori.',
   'rapport.html.donnees_rapport_fige_prevo': '{entreprise} · Dati al {genereLe} · Rapporto finalizzato da Prévo (software di manutenzione)',
   'rapport.html.donnees_rapport_fige_prevo_2': 'Dati al {genereLe} · Rapporto finalizzato da Prévo (software di manutenzione)',
   'rapport.html.dont_attente_pieces_panne': { one: ', di cui attesa ricambi: {duree} (su {n} guasto con cronologia completa)', other: ', di cui attesa ricambi: {duree} (su {n} guasti con cronologia completa)' },

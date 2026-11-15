@@ -4353,6 +4353,7 @@ I18n.ajouter('tr', {
   'rapport.html.comprendre': 'Anlamak',
   'rapport.html.cout_arret_mois_equipement': 'Ekipmana göre ayın duruş maliyeti ({devise})',
   'rapport.html.decisions_prendre': 'Alınacak kararlar',
+  'rapport.html.detail_indicateurs': 'Makine, atölye ve teknisyen bazındaki ayrıntılar Göstergeler\'de.',
   'rapport.html.donnees_rapport_fige_prevo': '{entreprise} · Veriler {genereLe} itibarıyla · Rapor Prévo (BYBS) tarafından kesinleştirildi',
   'rapport.html.donnees_rapport_fige_prevo_2': 'Veriler {genereLe} itibarıyla · Rapor Prévo (BYBS) tarafından kesinleştirildi',
   'rapport.html.dont_attente_pieces_panne': { one: ', bunun parça bekleme payı: {duree} (geçmişi tam olan {n} arıza üzerinden)', other: ', bunun parça bekleme payı: {duree} (geçmişi tam olan {n} arıza üzerinden)' },

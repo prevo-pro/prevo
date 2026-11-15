@@ -459,7 +459,7 @@ const Rapport = (() => {
   // Trois graphiques côte à côte (2.2) : dessinés à la largeur d'une colonne de la page A4 (186 mm, deux intervalles de
   // 10 px), donc imprimés à leur taille, sans réduction du texte.
   const LARGEUR_GRAPHIQUE = 226;
-  const HAUTEUR_GRAPHIQUE = 140;          // 150 avant T519 (la ligne « Activité du mois » tient sur la page A4)
+  const HAUTEUR_GRAPHIQUE = 120;          // 150 avant T519 (ligne « Activité du mois »), 140 avant T559 (ligne vers Indicateurs) : la page tient sur un A4
 
   function graphiques(lib, rapport) {
     const pareto = rapport.pareto.length ? svg(lib, LARGEUR_GRAPHIQUE, HAUTEUR_GRAPHIQUE, {
@@ -578,6 +578,7 @@ ${mttr}
 <section class="comprendre"><h2>${I18n.html('rapport.html.comprendre')}</h2><dl>${rapport.comprendre.map(([terme, definition]) => UI.html`<div><dt>${terme} :</dt> <dd>${definition}</dd></div>`)}</dl></section>
 ${rapport.nonCalculables.length ? UI.html`<section class="non-calculable"><h2>${I18n.html('rapport.html.non_calculable')}</h2><ul>${rapport.nonCalculables.map((element) => UI.html`<li><b>${element.libelle}</b> : ${element.raison}${element.ou
     ? ' — ' + I18n.t('rapport.ou.a_renseigner', { ou: element.ou }) : ''}</li>`)}</ul></section>` : ''}
+<p class="pied">${I18n.html('rapport.html.detail_indicateurs')}</p>
 <p class="pied sans-impression">${I18n.html('rapport.html.lien_courriel', { adresse: lienCourriel(rapport) })}</p>
 </main></body></html>`;
     return String(page);
