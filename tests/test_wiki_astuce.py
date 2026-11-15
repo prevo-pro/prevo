@@ -104,9 +104,10 @@ class CasAstuce(CasNavigateur):
         # L20 : la fenêtre de clôture unique reprend la fiche (mot pour l'opérateur facultatif, laissé vide) : validée.
         self.page.wait_for_selector("dialog[open] [name='compte_rendu']", state="visible")
         self.page.click("dialog[open] .fenetre-actions .btn-primaire")
+        # P10 : le badge montre le libellé du statut (valeur stockée inchangée, D155).
         self.page.wait_for_function(
-            "document.querySelector('.ot-badges .badge.statut') && document.querySelector('.ot-badges .badge.statut').textContent === %r"
-            % CLOS_TECH)
+            "document.querySelector('.ot-badges .badge.statut') && document.querySelector('.ot-badges .badge.statut').textContent"
+            " === Schema.libelleValeur('ordres_travail', 'statut', %r)" % CLOS_TECH)
         self.page.wait_for_selector(FORMULAIRE)
 
     @staticmethod
