@@ -1115,6 +1115,9 @@ const App = (() => {
     appliquerProfil(profilDepuisSession(session));
     montrer('ecran-chargement', 'chargement');
     try {
+      // R2 (T556) : l'adaptateur relit la session, pour lire le journal selon le rôle du compte qui vient de se
+      // connecter (un autre compte que le précédent après une session perdue : extraits du journal, pas un 403).
+      if (typeof adaptateur.session === 'function') await adaptateur.session();
       await Donnees.chargerTout();
     } catch (erreur) {
       signalerErreur(erreur, 'lecture des données après la connexion');
