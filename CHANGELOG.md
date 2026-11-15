@@ -7,6 +7,123 @@ suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Lot 2 d'ergonomie, livraison 1 (proposé pour la 2.4.0-beta.1)
+
+Les frictions relevées au retest du 14/11/2026 sont reprises une à une avec le responsable du projet. Cette première
+livraison corrige l'installation, l'accueil, la fiche d'un ordre de travail, le bilan et le serveur ; la seconde est
+listée en fin de section.
+
+#### Ajouté
+
+- **Pannes récurrentes.** Une machine qui a 3 pannes en 30 jours est signalée : tuile « Pannes récurrentes » sur
+  l'accueil du responsable (et du mode Solo), bandeau « Panne à répétition » sur la demande qu'il traite et sur l'OT
+  correctif ouvert, avec les interventions précédentes en lien. La mention est renforcée quand deux pannes ont la même
+  cause. Les deux seuils se règlent dans Paramètres ; l'opérateur ne voit rien de tout cela.
+- **Historique de la machine plus complet.** Chaque ligne dit le technicien, le temps passé et, pour une panne, la
+  cause et le remède en clair ; trois boutons « Pannes / Préventif / Tout » filtrent la liste. Sur téléphone, un
+  bouton « Historique » le fait venir à l'écran. Aucun montant n'y figure, et le demandeur n'a pas cette carte.
+- **Qui accepte une demande.** Paramètres › « Qui peut accepter une demande » : « Le responsable et les techniciens »
+  (par défaut) ou « Le responsable seulement ». Quand les techniciens le peuvent, « Je prends » accepte la demande et
+  crée l'OT à leur nom en un geste ; le responsable voit sur son accueil « Demandes prises par les techniciens ».
+- **« Prendre la suite »** sur un OT en attente ou en cours chez un collègue, avec une confirmation qui le nomme ;
+  **« Reprendre le travail »** sur son propre OT en attente. Clore un OT en attente ne demande plus de le reprendre.
+- **Fiche d'un OT sur téléphone** : une barre fixe en bas porte le bouton de la prochaine étape, sans défiler jusqu'à la
+  carte Actions.
+- **Responsable qui répare aussi.** Tout compte responsable reçoit d'office sa fiche de technicien : il peut mettre un
+  OT à son nom, et « Je prends cet OT » lui est proposé. L'assistant le dit à l'étape du compte.
+- **Taux horaire moyen du service** (Paramètres, facultatif) : utilisé pour un technicien sans taux propre. Sans
+  aucun taux, l'heure reste « sans taux horaire » et rien n'est supposé.
+- **Import des machines** : la question « Combien d'heures par jour tournent vos machines ? » est posée quand des
+  machines importées n'ont pas ces heures ; vide, elle est passée. Un bouton « Importer des machines » est aussi
+  à l'écran Parc.
+- **Durées saisies à la main** : « 1h15 », « 1 h 15 », « 1:15 », « 75 min », « 1,25 » sont compris pour le temps passé,
+  la durée d'arrêt et le temps prévu ; une saisie non comprise est dite sous le champ. Les durées s'affichent
+  « 1 h 15 », « 2 h », « 45 min » partout, bilan compris.
+- **Visite préventive** : quand tout est coché sans anomalie, le compte rendu « Visite faite, rien à signaler. » est
+  rempli d'office ; le temps prévu est proposé comme temps passé ; la clôture dit « Prochaine visite : le … » ; sur
+  une anomalie constatée, l'OT de réparation est proposé après la clôture.
+- **Calendrier du préventif** : les visites suivantes d'une gamme à date fixe sont montrées, en plus clair et
+  marquées « prévue » ; les gammes au compteur ou au seuil n'en ont pas, la légende le dit.
+- **Réglages du responsable** : « Les techniciens peuvent créer des articles du magasin » (désactivé par défaut) ;
+  « Dictée vocale » autorisée ou non (l'assistant pose la question sur une base neuve ; le micro reste affiché, un
+  appui dit alors « La dictée n'a pas été activée par votre responsable ») ; « L'atelier n'a pas de Wi-Fi ».
+- **Assistant d'installation** : un encadré annonce « Votre identifiant sera : prénom.nom » dès le nom saisi, une
+  fenêtre le redit une fois le compte créé, et l'écran de connexion le propose déjà rempli. L'assistant demande aussi
+  « Y a-t-il du Wi-Fi dans l'atelier ? » et, sinon, explique deux solutions : un poste de déclaration relié par câble,
+  ou une borne Wi-Fi réservée à Prévo.
+- **Poste de déclaration** : un appareil invité comme poste (case dans Équipe › Accès › Appareils) n'ouvre que
+  « Signaler un problème », demande « Votre nom » à chaque déclaration et se vide après chaque envoi.
+- **Page du téléphone qui ne fait pas encore confiance au PC** : « Pourquoi cet écran ? », trois schémas des gestes à
+  faire, et l'alternative pour qui ne veut pas installer la clé.
+- **Fichier de diagnostic** : Paramètres › « Préparer un fichier de diagnostic », pour le responsable. Il contient la
+  version, la configuration sans secret et les journaux ; la carte dit qu'il contient les noms des comptes.
+- **Journal du serveur** (`donnees/journal-serveur.log`) écrit dans tous les cas, sans secret, y compris les erreurs
+  d'écran du poste ; jamais écrit sur des données d'un format plus récent (lecture seule).
+
+#### Modifié
+
+- **Fiche d'un ordre de travail** : un seul bouton en bleu, celui de la prochaine étape utile pour la personne ;
+  « Marquer préparé » et « Annuler l'OT » passent sous « Plus d'options ». Dans la frise, Préparé et Planifié sont
+  marqués « facultatif ». En mode Solo, la fenêtre « Clore » ne parle plus de deux clôtures.
+- **Après sa clôture technique**, le technicien lit « Votre part est terminée. Le responsable validera. ».
+- **Accueil du technicien** : « Mes ordres de travail » en une seule liste, pannes d'abord ; « À prendre (n) » ;
+  « En attente dans l'équipe (n) », avec le prénom du collègue et le motif. Sur téléphone, ces blocs passent
+  au-dessus de l'aide.
+- **Accueil** : « Demandes à traiter », « Ordres en retard » et « Urgences ouvertes » remplacent les sigles. Les
+  « Préventifs de la semaine » comptent les visites dues d'après le calendrier, OT créé ou non.
+- **Tableau de bord** : il s'ouvre sur les quatre chiffres du bilan ; le reste est replié par famille (Fiabilité,
+  Préventif, Retards, Coûts et stock, Heures, Par équipement). L'accueil de la direction commence par ces chiffres.
+  Un coût sans taux ni prix est dit « non chiffré », plus jamais « 0,00 € ». « Heures des OT clôturés et coût » et
+  « x de préventif sur y pointées » disent qu'il s'agit de deux mesures.
+- **Bilan du mois** : deux lignes en plus (OT en retard, délai de prise en charge) ; « Voir le bilan » propose tous les
+  mois qui ont des données ; « Figer » devient « Enregistrer ce bilan », « Rapports figés » devient
+  « Bilans enregistrés ».
+- **Installation** : « Installer Prévo » vient d'abord sur l'écran de première ouverture, puis la démo, puis la base
+  vide en petit lien. Une seule adresse est donnée aux téléphones (celle de la carte qui porte la connexion du PC) ;
+  les autres sont sous « Autres adresses de ce PC ». Pendant l'installation, la fiche d'accès ne donne ni adresse ni
+  QR : « Les téléphones pourront se connecter dès que vous aurez cliqué sur Terminer ».
+- **Étiquettes QR** : la consigne Wi-Fi passe au-dessus du QR, en plus gros. Sur ce PC seulement, ou sans Wi-Fi,
+  « Imprimer » dit d'abord que les QR ne s'ouvriront pas sur les téléphones et donne les deux solutions.
+- **Accueil et « Mes demandes »** se mettent à jour sans recharger : à l'arrivée sur l'écran, puis toutes les 5 s, sans
+  jamais redessiner pendant une saisie.
+- **Textes** : plus de numéro de règle dans les textes affichés ; l'aide ne cite plus l'« Atelier Usinage » ; le bouton
+  de l'écran Préventif dit « Nouvelle visite périodique (gamme) » ; le choix d'une machine d'une gamme montre
+  repère, désignation et emplacement avec recherche. En mode Solo, les textes ne parlent plus de « votre
+  responsable » ni d'« Équipe › ».
+- Un opérateur qui flashe le QR d'une machine sans y être autorisé lit sur l'écran de connexion quoi faire ; après
+  son invitation, il arrive sur la fiche de cette machine et non sur l'accueil.
+
+#### Corrigé
+
+- **Paramètres › Accès et installation** ne montre plus que les dernières erreurs du serveur, et dit « Aucune erreur
+  notée. » quand il n'y en a pas, au lieu de ses 20 dernières lignes.
+- **Fiche de la machine vue par le demandeur** : plus d'historique des OT (qui disait « Tout (0) » en mode serveur).
+- Le récapitulatif de l'assistant espace la question de la dictée comme les autres blocs.
+- Le tableau de bord garde la famille que vous venez d'ouvrir, même quand un redessin suit aussitôt le clic.
+
+#### Sécurité (mode serveur avec comptes)
+
+- **Le serveur applique pour le technicien ce que l'écran permettait sur le magasin.** Sur `articles.csv`, un technicien
+  ne peut plus écrire que la colonne du stock (sortie, retour) ; il ne crée un article que si le réglage du
+  responsable l'autorise ; modifier ou retirer un article lui est refusé. Un script tiers qui écrivait `articles.csv`
+  avec une session de technicien reçoit désormais un refus.
+- Un technicien ne peut accepter une demande que si le réglage le permet, et avec un OT créé à son nom ; refuser,
+  différer, regrouper ou supprimer une demande lui est refusé.
+- **Le journal du serveur et « Préparer un fichier de diagnostic » sont réservés au responsable** : refusés au
+  technicien, au demandeur, à l'appareil et à la direction. Aucun secret n'y est écrit, et le mot de passe provisoire
+  d'une réinitialisation ne va qu'à l'écran.
+- Le taux horaire moyen n'est servi ni au technicien, ni au demandeur, ni à l'appareil.
+
+#### Pas encore fait (livraison 2)
+
+- La page d'attente du téléphone pendant l'installation (pour l'instant, la fiche dit d'attendre « Terminer »).
+- Les utilisateurs ajoutés par QR, et le technicien qui invite des opérateurs.
+- « Passer la main » et « Journée terminée ».
+- Les habilitations BR, B1, B2, BC, H0, H1, H2 et HC.
+- L'écran de clôture unique, et les clôtures incomplètes.
+- La pièce hors magasin.
+- Le journal des modifications fermé au technicien et à la direction.
+
 ### Lot 1 d'ergonomie et mode Solo (proposé pour la 2.3.0-beta.1)
 
 Corrections tirées du test d'ergonomie par taille d'équipe du 13/11/2026 (18 passages, équipes de 1 à 5).
