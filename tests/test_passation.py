@@ -39,6 +39,44 @@ class CasPassation(CasPrise):
         self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
 
 
+class TestReglesPassation(CasPassation):
+
+    def test_regles(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            evaluer = self.page.evaluate
+            self.assertEqual(evaluer("Ordres.lireRenforts(' TEC-0001, ,TEC-0003,TEC-0001 ')"), ["TEC-0001", "TEC-0003"])
+            self.assertEqual(evaluer("Ordres.ecrireRenforts(['TEC-0003', '', 'TEC-0003', 'TEC-0001'])"), "TEC-0003,TEC-0001")
+            self.assertEqual(evaluer("Ordres.techniciensDeLOt({ technicien_id: 'TEC-0002', renforts: 'TEC-0001,TEC-0002' })"),
+                             ["TEC-0002", "TEC-0001"])
+            self.assertEqual(evaluer("Ordres.techniciensDeLOt({ technicien_id: '', renforts: 'TEC-0001' })"), ["TEC-0001"])
+            self.assertTrue(evaluer("Ordres.estTechnicienDeLOt({ technicien_id: 'TEC-0002', renforts: 'TEC-0001' }, 'TEC-0001')"))
+            self.assertFalse(evaluer("Ordres.estTechnicienDeLOt({ technicien_id: 'TEC-0002', renforts: 'TEC-0001' }, 'TEC-0004')"))
+            self.assertFalse(evaluer("Ordres.estTechnicienDeLOt({ technicien_id: '', renforts: '' }, '')"))
+            # « Passer la main » : OT ouvert, à mon nom (principal) seulement
+            self.assertTrue(evaluer("Ordres.passationPossible({ statut: 'En cours', technicien_id: 'TEC-0002' }, 'TEC-0002')"))
+            self.assertFalse(evaluer("Ordres.passationPossible({ statut: 'En cours', technicien_id: 'TEC-0001', renforts: 'TEC-0002' }, 'TEC-0002')"))
+            self.assertFalse(evaluer("Ordres.passationPossible({ statut: 'Clôturé techniquement', technicien_id: 'TEC-0002' }, 'TEC-0002')"))
+            self.assertFalse(evaluer("Ordres.passationPossible({ statut: 'Créé', technicien_id: '' }, '')"))
+            # temps manquants : seulement pour un OT fait à plusieurs, sauf celui qui clôture
+            self.assertEqual(evaluer("""Ordres.tempsManquants({ technicien_id: 'A', renforts: 'B,C' },
+                [{ technicien_id: 'B', heures: '1.5' }, { technicien_id: 'C', heures: '0' }], 'A')"""), ["C"])
+            self.assertEqual(evaluer("Ordres.tempsManquants({ technicien_id: 'A', renforts: '' }, [], 'B')"), [])
+            self.assertEqual(evaluer("Ordres.tempsManquants({ technicien_id: 'A', renforts: 'B' }, [], '')"), ["A", "B"])
+            # mot de relève sur une carte : main passée, et celui qui l'a passée ne tient plus l'OT
+            self.assertTrue(evaluer("Ordres.releveAMontrer({ technicien_id: 'B', releve_par: 'A', releve_le: '2026-11-15 17:00' })"))
+            self.assertTrue(evaluer("Ordres.releveAMontrer({ technicien_id: '', releve_par: 'A', releve_le: '2026-11-15 17:00' })"))
+            self.assertFalse(evaluer("Ordres.releveAMontrer({ technicien_id: 'A', releve_par: 'A', releve_le: '2026-11-15 17:00' })"))
+            self.assertFalse(evaluer("Ordres.releveAMontrer({ technicien_id: 'B', releve_par: '', releve_le: '' })"))
+            # liste filtrée sur un technicien : ses OT et ceux où il est en renfort
+            ids = evaluer("""Ordres.filtrer([
+                { id: 'A', statut: 'En cours', technicien_id: 'TEC-0001', renforts: '' },
+                { id: 'B', statut: 'En cours', technicien_id: 'TEC-0002', renforts: 'TEC-0001' },
+                { id: 'C', statut: 'En cours', technicien_id: 'TEC-0002', renforts: '' }],
+                { etat: 'ouverts', technicien: 'TEC-0001' }).map((o) => o.id)""")
+            self.assertEqual(ids, ["A", "B"])
+
+
 class TestParcoursPassation(CasPassation):
 
     def test_passer_la_main_mot_en_tete_et_sur_l_accueil(self):
@@ -144,6 +182,57 @@ class TestParcoursPassation(CasPassation):
             carte = self.page.inner_text(".accueil-en-attente-equipe li:has(a[href='#/ot/%s'])" % passe)
             self.assertIn("pièce", carte)
             self.assertIn("Carter ouvert.", carte)
+
+    def test_renforts_accueil_cloture_et_retrait(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            ot = self.creer_ot({"equipement_id": "EQ-0005", "titre": "Moteur L16", "technicien_id": KARIM})
+            self.page.evaluate("id => Ordres.changerStatut(id, 'Créé', 'En cours', {})", ot)
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.aller_fiche(ot)
+            self.page.click("#ot-ajouter-renfort")
+            self.page.wait_for_selector(self.fenetre())
+            self.assertIn("Karim Benali reste le technicien principal", self.page.inner_text(self.fenetre()))
+            self.assertEqual(self.page.locator("#ot-renfort option[value='%s']" % KARIM).count(), 0)
+            self.page.select_option("#ot-renfort", JULIEN)
+            self.valider_fenetre()
+            ligne = self.attendre(serveur, ot, lambda o: o["renforts"] == JULIEN)
+            self.assertEqual((ligne["technicien_id"], ligne["renforts"]), (KARIM, JULIEN))
+            self.page.wait_for_selector(".ot-renforts")
+            self.assertIn("Julien", self.page.inner_text(".ot-renforts"))
+
+            # Julien : l'OT chez lui, marqué « Renfort » ; il saisit son temps ; pas de « Passer la main » pour lui
+            self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
+            self.page.wait_for_selector(".accueil-mes-ordres a[href='#/ot/%s']" % ot)
+            self.assertIn("Renfort", self.page.inner_text(".accueil-mes-ordres li:has(a[href='#/ot/%s'])" % ot))
+            self.aller_fiche(ot)
+            self.assertEqual(self.page.locator("#ot-passer-main").count(), 0)
+            self.assertEqual(self.page.locator("#ot-ajouter-renfort").count(), 1)
+
+            # Thomas en second renfort (par Julien), sans temps : à la clôture par Karim, le rappel nomme Julien et
+            # Thomas sans rien bloquer de plus que RG4
+            self.page.evaluate("([id, t]) => Ordres.ajouterRenfort(id, t)", [ot, THOMAS])
+            self.page.evaluate("""id => Donnees.modifier('ot_temps', (lignes, outils) => {
+                lignes.push({ id: outils.nouvelId(lignes), ot_id: id, technicien_id: 'TEC-0001', date: Donnees.aujourdhui(), heures: '2' }); })""", ot)
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.aller_fiche(ot)
+            self.page.click(".ot-actions button[data-cible='Clôturé techniquement']")
+            self.page.wait_for_selector(".ot-cloture-temps-renforts")
+            rappel = self.page.inner_text(".ot-cloture-temps-renforts")
+            self.assertIn("Thomas", rappel)
+            self.assertNotIn("Julien", rappel)
+            self.assertNotIn("Karim", rappel)
+            manques = self.page.inner_text(".ot-cloture-manques")
+            self.assertNotIn("Thomas", manques)
+            self.page.click("dialog.dialogue[open] .fenetre-actions .btn-fantome")
+
+            # Retrait d'un renfort (confirmation) : Thomas n'est plus sur l'OT
+            self.aller_fiche(ot)
+            self.page.click("button[data-action=retirer-renfort][data-technicien='%s']" % THOMAS)
+            self.page.wait_for_selector(self.fenetre())
+            self.valider_fenetre()
+            ligne = self.attendre(serveur, ot, lambda o: o["renforts"] == JULIEN)
+            self.assertEqual(ligne["renforts"], JULIEN)
 
 
 class TestDroitsServeurPassation(unittest.TestCase):

@@ -134,6 +134,7 @@ Object.assign(Ordres, (() => {
       fin,
       total > 0 ? heures : marquerExige(heures),
       champTechnicien(ot),
+      ...Ordres.interne.rappelTempsRenforts(ot),                  // L16 : temps des renforts, sans bloquer
       ...questionArret(ot),                                       // P04 : le bilan compte les arrêts
       ...codes,
       marquerExige(champOt('compte_rendu', texte(ot.compte_rendu) || compteRenduDOffice(ot), {        // L23 : écrit d'office

@@ -27,7 +27,7 @@ Object.assign(Ordres, (() => {
       if (reglages.etat === 'annules' && ot.statut !== 'Annulé') return false;
       if (reglages.priorite && ot.priorite !== reglages.priorite) return false;
       if (reglages.technicien === '__aucun' && ot.technicien_id) return false;
-      if (reglages.technicien && reglages.technicien !== '__aucun' && ot.technicien_id !== reglages.technicien) return false;
+      if (reglages.technicien && reglages.technicien !== '__aucun' && !Ordres.estTechnicienDeLOt(ot, reglages.technicien)) return false;   // L16 : renforts
       if (reglages.type && ot.type !== reglages.type) return false;
       if (mots.length) {
         const equipement = Donnees.trouver('equipements', ot.equipement_id) || {};

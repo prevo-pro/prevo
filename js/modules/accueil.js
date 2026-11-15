@@ -358,9 +358,9 @@ const Accueil = (() => {
     const ordonnes = mesOrdres.filter((ot) => !estPreventif(ot)).concat(mesOrdres.filter(estPreventif));
     const montres = ordonnes.slice(0, NOMBRE_OT_TECHNICIEN);
     const reste = ordonnes.length - montres.length;
-    const passation = typeof Ordres !== 'undefined' && Ordres.boutonJourneeTerminee;           // L16 : ordres-passation.js
+    const passation = typeof Ordres !== 'undefined' && Ordres.etiquetteRenfort;           // L16 : ordres-passation.js
     const etiquette = (ot) => UI.html`${estPreventif(ot)
-      ? UI.html`<span class="badge violet accueil-etiquette-preventif">${Schema.libelleValeur('ordres_travail', 'origine', ot.origine)}</span>` : ''}`;
+      ? UI.html`<span class="badge violet accueil-etiquette-preventif">${Schema.libelleValeur('ordres_travail', 'origine', ot.origine)}</span>` : ''}${passation ? Ordres.etiquetteRenfort(ot, App.profil.technicienId) : ''}`;
     return UI.html`<article class="carte accueil-mes-ordres">
       <div class="entete-carte"><h2>${I18n.t('accueil.carte_ordres_technicien.mes_ordres_travail', { n: mesOrdres.length })}</h2>${passation ? Ordres.boutonJourneeTerminee() : ''}</div>
       ${montres.length
@@ -385,7 +385,8 @@ const Accueil = (() => {
     const identifiant = App.profil.technicienId;
     const rangPriorite = { P1: 1, P2: 2, P3: 3, P4: 4 };
     const mesOrdres = Donnees.lignes('ordres_travail')
-      .filter((ot) => ot.technicien_id === identifiant && otOuvert(ot))
+      .filter((ot) => otOuvert(ot) && (ot.technicien_id === identifiant                  // L16 : et ses renforts
+        || (typeof Ordres !== 'undefined' && Ordres.estTechnicienDeLOt && Ordres.estTechnicienDeLOt(ot, identifiant))))
       .sort((a, b) => (rangPriorite[a.priorite] || 9) - (rangPriorite[b.priorite] || 9)
         || (a.date_prevue || '9999').localeCompare(b.date_prevue || '9999'));
     const compteurs = calculerCompteurs();

@@ -225,7 +225,7 @@ Object.assign(Ordres, (() => {
     const lies = Donnees.lignes('ordres_travail').filter((autre) => autre.ot_lie_id === ot.id);
     return UI.html`<dl class="valeurs">
       <dt>${I18n.t('ordres.reperes.origine')}</dt><dd>${origineHtml(ot)}${ot.gamme_id ? UI.html` ${I18n.t('ordres.reperes.gamme_gamme_id', { gamme_id: ot.gamme_id })}` : ''}</dd>
-      <dt>${I18n.t('commun.champ.technicien')}</dt><dd>${nomTechnicien(ot.technicien_id)}</dd>
+      <dt>${I18n.t('commun.champ.technicien')}</dt><dd>${nomTechnicien(ot.technicien_id)}</dd>${Ordres.interne.renfortsHtml(ot)}
       <dt>${I18n.t('ordres.reperes.cree')}</dt><dd>${UI.dateHeureFr(ot.date_creation)}</dd>
       <dt>${I18n.t('ordres.reperes.prevu')}</dt><dd>${UI.dateFr(ot.date_prevue)}${badgeRetard(ot)}</dd>
       <dt>${I18n.t('ordres.reperes.temps_prevu')}</dt><dd>${ot.temps_prevu_h ? UI.heures(ot.temps_prevu_h) : ''}</dd>
