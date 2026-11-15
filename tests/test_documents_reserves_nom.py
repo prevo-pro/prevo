@@ -135,7 +135,7 @@ class TestReserveParLeNom(droits.CasServeur):
         """Scénario de R2 : 403 avant ; document remplacé ; 403 sur l'ancien ET le nouveau."""
         ancien = droits.CONTRAT                                   # cité par CTP-0001
         self.assertReserve(ancien, PDF + ancien.encode("ascii"))
-        self.assertEqual(self.requete("technicien", "GET", "/api/csv/journal").statut, 200)
+        self.assertEqual(self.requete("technicien", "GET", "/api/journal/extraits").statut, 200)   # R2 (T556)
         envoi = self.envoyer("responsable", self.noms["contrat"], PDF + b"avenant")
         self.assertEqual(envoi.statut, 201, envoi.octets[:300])
         nouveau = envoi.json()["nom"]

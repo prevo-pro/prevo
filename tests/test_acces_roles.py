@@ -70,7 +70,10 @@ OUI, NON = "oui", "non"
 ROLES = ("demandeur", "appareil", "technicien", "responsable", "direction")
 TOUTES_LES_TABLES = frozenset(serveur.TABLES)
 # T520 (A7) : la Direction lit tout sauf les habilitations (justificatifs, D196) et le wiki, et n'écrit rien.
-TABLES_DE_LA_DIRECTION = TOUTES_LES_TABLES - {"habilitations", "wiki_pages", "wiki_journal"}
+# R2 (lot 2 ergonomie, T556) : le journal des modifications est fermé au technicien et à la Direction ; leurs écrans en
+# lisent les seules lignes utiles par GET /api/journal/extraits (tests/test_journal_ferme_r2.py).
+TABLES_DE_LA_DIRECTION = TOUTES_LES_TABLES - {"habilitations", "wiki_pages", "wiki_journal", "journal"}
+LECTURE_DU_TECHNICIEN = TOUTES_LES_TABLES - {"journal"}
 TABLES_DU_DEMANDEUR = frozenset({"localisations", "equipements", "demandes", "compteurs", "releves",
                                  "codes_defaillance", "parametres", "wiki_pages"})
 # habilitations : T445, D195 ; documents réservés : tests/test_droits_format4.py.
@@ -106,7 +109,8 @@ ATTENDU = {
     ("POST", "acces/invitations/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/revoquer-tous"): RESPONSABLE,
-    ("GET", "csv/<table>"): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI, TABLES_DE_LA_DIRECTION),
+    ("GET", "csv/<table>"): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, LECTURE_DU_TECHNICIEN, OUI, TABLES_DE_LA_DIRECTION),
+    ("GET", "journal/extraits"): (NON, NON, OUI, OUI, OUI),
     ("PUT", "csv/<table>"): (frozenset({"demandes"}), frozenset({"demandes"}), ECRITURE_DU_TECHNICIEN, OUI, NON),
     ("POST", "csv/<table>/ajout"): (frozenset({"demandes", "journal"}), frozenset({"demandes", "journal"}),
                                     ECRITURE_DU_TECHNICIEN, OUI, NON),

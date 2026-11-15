@@ -4191,7 +4191,8 @@ ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne
 | `POST /api/acces/invitations/<id>/revoquer` | non | non | non | oui | non |
 | `POST /api/acces/appareils/<id>/revoquer` | non | non | non | oui | non |
 | `POST /api/acces/appareils/revoquer-tous` | non | non | non | oui | non |
-| `GET /api/csv/<table>` | tables du demandeur | tables du demandeur | toutes (colonnes retirées) | toutes | toutes sauf `habilitations`, `wiki_pages`, `wiki_journal` (aucune colonne retirée) |
+| `GET /api/csv/<table>` | tables du demandeur | tables du demandeur | toutes sauf `journal` (colonnes retirées) | toutes | toutes sauf `habilitations`, `wiki_pages`, `wiki_journal`, `journal` (aucune colonne retirée) |
+| `GET /api/journal/extraits` | non | non | oui | oui | oui |
 | `PUT /api/csv/<table>` | `demandes` (ajout seulement) | `demandes` (ajout seulement) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : ajout seulement) | toutes | non |
 | `POST /api/csv/<table>/ajout` | `demandes`, `journal` (à son profil) | `demandes`, `journal` (à son profil) | toutes sauf `parametres`, `techniciens`, `fournisseurs`, `reserves_controle`, `garanties`, `contrats_prestataires`, `habilitations` (le journal : à son profil) | toutes | non |
 | `GET /api/documents/<nom>` | photos de demandes, documents des équipements (sauf documents réservés) | photos de demandes, documents des équipements (sauf documents réservés) | oui (sauf documents réservés) | oui | oui (sauf documents réservés par D196 ; rapports mensuels figés compris) |
@@ -4206,6 +4207,15 @@ ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne
 | `POST /api/installation/<etape>` | non | non | non | oui | non |
 
 Tables du demandeur : `localisations`, `equipements`, `demandes`, `compteurs`, `releves`, `codes_defaillance`, `parametres`, `wiki_pages`.
+
+Journal des modifications (lot 2 ergonomie, T556, R2 ; règle : les journaux ne sont lisibles que par le responsable) :
+`journal.csv` est fermé au technicien et à la Direction (`GET /api/csv/journal` : 403 ; ils y ajoutent toujours leurs
+lignes). Ce que leurs écrans en lisent leur vient de `GET /api/journal/extraits` (`extraits_du_journal` de serveur.py),
+au format du journal, que le navigateur tient pour sa table `journal` (`charger` de js/stockage-serveur.js, d'après le
+rôle de la session) : lignes d'une dérogation d'habilitation sur un OT (poste vidé ; `Ordres.derogationAccordee`), lignes
+de `controles_reglementaires` et `reserves_controle` (historique d'un contrôle), créations et changements de statut
+d'un OT (profil et poste vidés ; `Indicateurs.attentePieces`, indicateurs et rapport). Sa version y est voilée, la même
+dans `/api/versions` (qui suit le journal pour eux : `tables_suivies`).
 
 Retour vers l'opérateur (T517, A4 ; droits inchangés) : tout ce que le demandeur et l'appareil enrôlé lisent du retour
 d'une réparation est dans `demandes.csv` (`statut`, `mot_technicien`, `date_reparation`, `repare_par` = prénom du

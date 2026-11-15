@@ -6870,7 +6870,7 @@ def jeton_des_versions(config, identite):
     fichiers change (écriture de Prévo, Excel, restauration) ; GET /api/versions avec X-Jeton-Versions égal au jeton
     courant répond {"inchange": true} sans lire ni hacher aucun fichier (relève rapide des écrans d'accueil et des
     demandes, js/donnees.js). À appeler en tenant VERROU_ECRITURE."""
-    lisibles = tables_lisibles(identite)
+    lisibles = tables_suivies(identite)
     morceaux = [GRAIN_DU_DEMARRAGE, role_effectif(identite) if identite else '']
     for table in TABLES:
         if lisibles is not None and table not in lisibles:
@@ -7243,6 +7243,7 @@ ROUTES_API = {
     ('POST', 'acces/appareils/<id>/revoquer'): 'api_appareil_revoquer',
     ('POST', 'acces/appareils/revoquer-tous'): 'api_appareils_revoquer_tous',
     ('GET', 'csv/<table>'): 'api_csv_lire',
+    ('GET', 'journal/extraits'): 'api_journal_extraits',               # R2 (T556) : ce que leurs écrans en lisent
     ('PUT', 'csv/<table>'): 'api_csv_ecrire',
     ('POST', 'csv/<table>/ajout'): 'api_ajout',
     ('GET', 'documents/<nom>'): 'api_document_lire',
@@ -7351,7 +7352,12 @@ DOCUMENTS_DU_TECHNICIEN = 'documents_sauf_reserves'
 # Aucune écriture (table, document, compte, sauvegarde, restauration, IA, installation) : NON ; seules restent les
 # routes de tout compte (session, mot de passe, langue, déconnexion). GET /api/info : réponse réduite au port
 # (api_info : ni adresses, ni état des sauvegardes, ni Tailscale, ni format des données).
-TABLES_FERMEES_A_LA_DIRECTION = ('habilitations', 'wiki_pages', 'wiki_journal')
+# R2 (lot 2 ergonomie, T556 ; règle de Nicolas : les journaux ne sont lisibles que par le responsable) : le journal des
+# modifications est fermé à la Direction et au technicien ; ce que leurs écrans en lisent (dérogation RG8 accordée,
+# historique d'un contrôle et de ses réserves, attente de pièces des indicateurs et du rapport) leur vient de
+# GET /api/journal/extraits (extraits_du_journal), seulement ces lignes-là.
+TABLES_FERMEES_A_LA_DIRECTION = ('habilitations', 'wiki_pages', 'wiki_journal', 'journal')
+TABLES_DU_TECHNICIEN_EN_LECTURE = tuple(table for table in TABLES if table != 'journal')
 TABLES_DE_LA_DIRECTION = tuple(table for table in TABLES if table not in TABLES_FERMEES_A_LA_DIRECTION)
 DOCUMENTS_DE_LA_DIRECTION = 'documents_sauf_reserves_rapports_compris'
 TOUS = (OUI, OUI, OUI, OUI, OUI)
@@ -7387,7 +7393,9 @@ ROLES_PAR_ROUTE = {
     ('POST', 'acces/invitations/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/revoquer-tous'): RESPONSABLE,
-    ('GET', 'csv/<table>'): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, OUI, OUI, TABLES_DE_LA_DIRECTION),
+    ('GET', 'csv/<table>'): (TABLES_DU_DEMANDEUR, TABLES_DU_DEMANDEUR, TABLES_DU_TECHNICIEN_EN_LECTURE, OUI,
+                             TABLES_DE_LA_DIRECTION),
+    ('GET', 'journal/extraits'): (NON, NON, OUI, OUI, OUI),
     ('PUT', 'csv/<table>'): (TABLES_DU_DEMANDEUR_EN_ECRITURE, TABLES_DU_DEMANDEUR_EN_ECRITURE,
                              TABLES_DU_TECHNICIEN_EN_ECRITURE, OUI, NON),
     ('POST', 'csv/<table>/ajout'): (TABLES_DU_DEMANDEUR_EN_AJOUT, TABLES_DU_DEMANDEUR_EN_AJOUT,
@@ -7480,7 +7488,8 @@ def voile_des_versions(config, identite, table):
     demandeur ne reçoit pas certaines pages, garde sa version). À appeler en tenant VERROU_ECRITURE."""
     role = role_effectif(identite) if identite is not None else ''
     lignes_secretes = table == 'parametres' and LIGNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
-    if identite is None or not (colonnes_cachees(role, table, config) or lignes_secretes):
+    extraits = table == 'journal' and role in ROLES_DES_EXTRAITS_DU_JOURNAL      # R2 (T556)
+    if identite is None or not (colonnes_cachees(role, table, config) or lignes_secretes or extraits):
         return lambda version: version
     chemin = os.path.join(dossier_acces(config), '.cle-versions')
     cle = lire_octets(chemin)
@@ -7503,13 +7512,71 @@ def regle_du_role(identite, route):
 
 
 def tables_lisibles(identite):
-    """Tables que la session lit (GET /api/csv/<table>) : None pour toutes (sans comptes, technicien, responsable)."""
+    """Tables que la session lit (GET /api/csv/<table>) : None pour toutes (sans comptes, responsable)."""
     if identite is None:
         return None
     regle = regle_du_role(identite, ('GET', 'csv/<table>'))
     if regle == OUI:
         return None
     return set(regle) if isinstance(regle, tuple) else set()
+
+
+# R2 (T556) : rôles qui lisent les extraits du journal sans en lire la table (GET /api/journal/extraits) ; leur version
+# du journal est voilée (voile_des_versions) et suivie par /api/versions (tables_suivies).
+ROLES_DES_EXTRAITS_DU_JOURNAL = ('technicien', 'direction')
+
+
+def tables_suivies(identite):
+    """Tables dont /api/versions donne la version à cette session : celles qu'elle lit (tables_lisibles, None pour
+    toutes), plus le journal pour qui n'en lit que les extraits (R2)."""
+    lisibles = tables_lisibles(identite)
+    if lisibles is not None and regle_du_role(identite, ('GET', 'journal/extraits')) == OUI:
+        lisibles.add('journal')
+    return lisibles
+
+
+# Lignes du journal utiles aux écrans du technicien et de la Direction (R2, T556), et rien de plus :
+#   - controles_reglementaires, reserves_controle : l'historique de la fiche d'un contrôle (Controles, carteHistorique),
+#     lignes entières (le profil et le poste y sont montrés) ;
+#   - ordres_travail portant le marqueur d'une dérogation d'habilitation (Ordres.derogationAccordee : le bandeau de la
+#     fiche et le passage à « Planifié ») : le profil reste (seul celui du responsable vaut dérogation), le poste est vidé ;
+#   - ordres_travail d'une création ou d'un changement de statut (Indicateurs.attentePieces : indicateurs et rapport) :
+#     profil et poste vidés.
+TABLES_DES_EXTRAITS_ENTIERS = ('controles_reglementaires', 'reserves_controle')
+MARQUEUR_DEROGATION_AU_JOURNAL = 'dérogation habilitation : '
+MOTIF_ACTION_DE_STATUT = re.compile(r"^(création\b|statut .+ → |acceptation de DI-)")
+
+
+def extraits_du_journal(octets):
+    """Octets d'un CSV au format du journal (même en-tête) avec ses seules lignes utiles (voir plus haut)."""
+    entete, lignes = lire_tableau('journal', octets)
+    cles = [cle_entete(nom) for nom in entete]
+    position = {cle: (cles.index(cle) if cle in cles else None) for cle in ('table', 'action', 'profil', 'poste')}
+
+    def cellule(ligne, cle):
+        rang = position[cle]
+        return ligne[rang] if rang is not None and rang < len(ligne) else ''
+
+    def vider(ligne, *noms):
+        ligne = list(ligne)
+        for nom in noms:
+            rang = position[nom]
+            if rang is not None and rang < len(ligne):
+                ligne[rang] = ''
+        return ligne
+
+    gardees = []
+    for ligne in lignes:
+        table = cellule(ligne, 'table').strip()
+        action = cellule(ligne, 'action').strip()
+        if table in TABLES_DES_EXTRAITS_ENTIERS:
+            gardees.append(list(ligne))
+        elif table == 'ordres_travail' and MARQUEUR_DEROGATION_AU_JOURNAL in action:
+            gardees.append(vider(ligne, 'poste'))
+        elif table == 'ordres_travail' and (MOTIF_ACTION_DE_STATUT.search(action)
+                                            or MOTIF_ACTION_DE_STATUT.search(action.split(' — ', 1)[-1])):
+            gardees.append(vider(ligne, 'profil', 'poste'))
+    return ecrire_tableau_csv(entete, gardees)
 
 
 def documents_cites(config, table, colonne):
@@ -9118,7 +9185,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if inchange:
             self.envoyer_json(200, {'inchange': True, 'jeton': jeton})
             return
-        lisibles = tables_lisibles(self.session)
+        lisibles = tables_suivies(self.session)                 # R2 (T556) : le journal de ses extraits compris
         if lisibles is not None:
             tables = {table: version for table, version in tables.items() if table in lisibles}
         self.envoyer_json(200, {'tables': tables, 'jeton': jeton})
@@ -9136,6 +9203,19 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                               'Le fichier {table}.csv n\'existe pas encore.', table=table))
         self.envoyer(200, filtrer_csv_pour(self.session, table, octets, self.config), 'text/csv; charset=utf-8',
                      {'X-Version': voiler(empreinte(octets))})
+
+    def api_journal_extraits(self, segment, corps):
+        """GET /api/journal/extraits (R2, T556) : les lignes du journal dont les écrans du technicien et de la Direction
+        se servent (extraits_du_journal), au format du journal ; X-Version voilée comme celle de /api/versions
+        (voile_des_versions) : le navigateur les tient pour sa table journal. Responsable et sans comptes : le
+        journal entier n'a pas besoin de ce chemin (ils lisent GET /api/csv/journal), ils y reçoivent les mêmes extraits."""
+        chemin = chemin_table(self.config, 'journal')
+        with VERROU_ECRITURE:
+            octets = lire_octets(chemin)
+            voiler = voile_des_versions(self.config, self.session, 'journal')
+        if octets is None:
+            raise ErreurHttp(404, traduisible('csv.absent', 'Le fichier {table}.csv n\'existe pas encore.', table='journal'))
+        self.envoyer(200, extraits_du_journal(octets), 'text/csv; charset=utf-8', {'X-Version': voiler(empreinte(octets))})
 
     def api_csv_ecrire(self, table, corps):
         version_attendue = self.headers.get('X-Version-Attendue')

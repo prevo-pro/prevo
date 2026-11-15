@@ -156,7 +156,7 @@ class TestLectureEtEcrituresDeLaDirection(CasDirection):
 
     def test_couts_compris_ni_habilitations_ni_wiki_versions_et_info_reduites(self):
         for table in ("techniciens", "articles", "achats", "equipements", "contrats_prestataires", "ordres_travail",
-                      "ot_temps", "mouvements_stock", "journal", "parametres"):
+                      "ot_temps", "mouvements_stock", "parametres"):     # journal : fermé (R2, T556)
             with self.subTest(table=table):
                 lu = self.requete("GET", "/api/csv/" + table)
                 self.assertEqual(lu.statut, 200, lu.octets[:200])
@@ -168,7 +168,9 @@ class TestLectureEtEcrituresDeLaDirection(CasDirection):
             with self.subTest(table=table):
                 self.assertTrue(self.requete("GET", "/api/csv/" + table).refus_de_role())
         versions = self.requete("GET", "/api/versions").json()["tables"]
-        self.assertEqual(set(versions), set(roles.TABLES_DE_LA_DIRECTION))
+        # R2 (T556) : le journal, fermé, reste suivi (version voilée) pour ses extraits (GET /api/journal/extraits).
+        self.assertEqual(set(versions), set(roles.TABLES_DE_LA_DIRECTION) | {"journal"})
+        self.assertNotEqual(versions["journal"]["version"], roles.version_de((self.serveur.dossier / "journal.csv").read_bytes()))
         self.assertEqual(self.requete("GET", "/api/info").json(), {"port": self.serveur.port})
         self.assertIn("adresses_reseau", self.requete("GET", "/api/info", role="responsable").json())
 

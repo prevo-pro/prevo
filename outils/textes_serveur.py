@@ -96,6 +96,8 @@ CONSTANTES_HORS_CODES = {
     'STATUT_DEMANDE_EN_COURS': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
     'STATUT_DEMANDE_REPAREE': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
     'TYPE_HORS_MAGASIN': 'valeur stockée (D155) : type de mouvement des pièces hors magasin (T558, L25)',
+    'MARQUEUR_DEROGATION_AU_JOURNAL': 'marqueur relu dans journal.csv (D156 : dérogation RG8), jamais affiché (R2, T556)',
+    'MOTIF_ACTION_DE_STATUT': 'marqueurs relus dans journal.csv (D156 : création et statut des OT), jamais affichés (R2)',
     'POLITIQUE_CONTENU': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_PORTE': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_ATTENTE': 'technique : en-tête Content-Security-Policy (page d\'attente du téléphone, R1)',

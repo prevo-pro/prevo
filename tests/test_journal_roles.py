@@ -111,8 +111,9 @@ class CasServeur(unittest.TestCase):
         return lire_tableau(self.fichier())[1]
 
     def mettre(self, role, octets):
-        """PUT du journal entier, avec la version du fichier en place."""
-        version = requete(self.serveur, "GET", "/api/versions", None, self.cookies.get("responsable"))
+        """PUT du journal entier, avec la version du fichier en place telle que ce rôle la lit (R2, T556 : voilée pour le
+        technicien, qui ne lit plus le journal entier ; repli de Donnees.ajouter)."""
+        version = requete(self.serveur, "GET", "/api/versions", None, self.cookies.get("technicien" if role == "technicien" else "responsable"))
         attendue = json.loads(version[2].decode("utf-8"))["tables"]["journal"]["version"]
         return requete(self.serveur, "PUT", "/api/csv/journal", octets, self.cookies.get(role),
                        {"X-Version-Attendue": attendue})

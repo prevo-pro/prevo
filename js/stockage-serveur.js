@@ -18,6 +18,8 @@ const StockageServeur = (() => {
   const ENTETE_REMPLACER_ABIME = 'X-Prevo-Remplacer-Abime';  // dérogation demandée (import ZIP, T200)
   const ENTETE_ABIME_DEPUIS = 'X-Prevo-Abime-Depuis';        // CSV abîmé importé tel quel, et sa date (T213)
   const MOTIF_DATE_HEURE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;   // dates de fichiers-abimes.json (T206)
+  // R2 (lot 2 ergonomie, T556) : rôles qui lisent les extraits du journal (ROLES_DES_EXTRAITS_DU_JOURNAL de serveur.py).
+  const ROLES_DES_EXTRAITS = ['technicien', 'direction'];
 
   // ===========================================================================
   // Détection
@@ -300,8 +302,15 @@ const StockageServeur = (() => {
       return base + '/api/documents/' + encodeURIComponent(nom);
     }
 
+    // R2 (lot 2 ergonomie, T556) : rôle de la session lue par session() (mode comptes), '' sinon.
+    let roleSession = '';
+
     async function charger(table) {
-      const reponse = await appeler(urlTable(table), { method: 'GET' });
+      // R2 : le journal est fermé au technicien et à la Direction ; leurs écrans lisent ses seules lignes utiles
+      // (dérogation RG8, historique d'un contrôle, attente de pièces) par /api/journal/extraits, tenues pour la table
+      // journal. Le demandeur n'y a pas droit : son 403 de /api/csv/journal fait la table absente, ci-dessous.
+      const extraits = table === 'journal' && ROLES_DES_EXTRAITS.indexOf(roleSession) !== -1;
+      const reponse = await appeler(extraits ? base + '/api/journal/extraits' : urlTable(table), { method: 'GET' });
       // 404 = fichier absent, mais seulement pour une table du schéma (sinon : table inconnue). 403 (lot 7, D126,
       // ARCHITECTURE.md §22.5) : table que le rôle de la session ne lit pas (demandeur) : vue comme absente, sans
       // erreur, pour que le chargement des tables (Donnees.chargerTout) aboutisse ; /api/versions ne la liste pas.
@@ -471,6 +480,7 @@ const StockageServeur = (() => {
       const reponse = await appelerOuErreur(base + '/api/session', { method: 'GET' });
       const donnees = await lireJson(reponse);
       const identite = donnees.session && typeof donnees.session === 'object' ? donnees.session : null;
+      roleSession = identite === null || identite.appareil ? '' : String(identite.role || '');      // R2 (T556)
       return Object.assign({
         comptes: Boolean(donnees.comptes),
         session: identite === null ? null : {
