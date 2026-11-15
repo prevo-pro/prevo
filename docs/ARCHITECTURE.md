@@ -1674,7 +1674,7 @@ Route interdite → accueil avec message (§8). Compteurs d'accueil du lot 3 : t
 Période = `{ debut, fin }` (dates ISO incluses). Chaque indicateur rend un **résultat** :
 `{ valeur: nombre | null, raison: texte | null, effectif: entier, ots: [id…], exclus: [{ id, raison }] }`
 — `valeur` null ⇒ `raison` non vide (« non calculable : … », « aucune panne sur la période »).
-Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, € 2 décimales).
+Valeurs non arrondies ; l'écran arrondit (heures 1 décimale, % 1 décimale, € 2 décimales) ; un pourcentage sous 100 % ne s'affiche jamais « 100,0 % » (plafond 99,9 : `Indicateurs.pourcentAffiche`, écran Indicateurs et bilan, T567).
 - `Indicateurs.periode(code, aujourdhui, du, au)` : `mois`, `mois-precedent`, `3-mois` (3 mois
   calendaires se terminant aujourd'hui), `12-mois` (défaut : du même jour 12 mois plus tôt + 1 jour à
   aujourd'hui), `du-au` → `{ debut, fin, libelle }`.

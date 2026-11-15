@@ -222,7 +222,7 @@ class TestContenu(CasRapport):
         contenu = self.figer_depuis_l_accueil()
         attendu = self.page.evaluate("""(mois) => {
             const g = Indicateurs.global(Indicateurs.periodeDuMois(mois), {}, Donnees.aujourdhui());
-            const pct = (v) => v === null ? 'non calculable' : UI.nombreFr(v * 100, 1) + ' %';
+            const pct = (v) => v === null ? 'non calculable' : UI.nombreFr(Indicateurs.pourcentAffiche(v), 1) + ' %';
             const arret = Indicateurs.coutArret(Indicateurs.periodeDuMois(mois));
             return { disponibilite: pct(g.disponibilite.valeur), partPreventif: pct(g.partPreventif.valeur),
                      cout: g.cout.valeur === null ? 'non calculable' : UI.euro(g.cout.valeur, 0),
@@ -243,6 +243,9 @@ class TestContenu(CasRapport):
             self.assertIn("par rapport à " + libelle_mois(decaler_mois(MOIS, -12)), contenu)
         for interdit in ("NaN", "Infinity", "undefined"):
             self.assertNotIn(interdit, contenu)
+        # T567 : une disponibilité de 99,97 % ne se lit jamais « 100,0 % » (écran Indicateurs comme bilan)
+        self.assertEqual(self.page.evaluate("Indicateurs.interne.formats.pourcentage(0.9997)"), "99,9\u00a0%")
+        self.assertEqual(self.page.evaluate("Indicateurs.interne.formats.pourcentage(1)"), "100,0\u00a0%")
 
     def test_seuil_reparer_ou_remplacer_a_examiner_jamais_a_remplacer(self):
         ecrire_parametre(self.serveur.dossier, "seuil_remplacement_pct", "1")

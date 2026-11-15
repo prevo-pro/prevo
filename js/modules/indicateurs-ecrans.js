@@ -302,7 +302,7 @@ Object.assign(Indicateurs, (() => {
       : UI.html`<div data-indicateur="${cle}" data-valeur="${valeur}">${contenu}</div>`;
   }
 
-  const enPourcentage = (fraction) => arrondi(fraction * 100, 1);
+  const enPourcentage = (fraction) => Indicateurs.pourcentAffiche(fraction);     // T567 : jamais 100,0 % sous 1
   const enHeures = (valeur) => arrondi(valeur, 1);
   const enEuros = (valeur) => arrondi(valeur, 2);
 

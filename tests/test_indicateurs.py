@@ -93,7 +93,9 @@ ATTENDUS_INSTRUMENTS_JS = """() => {
   const filtres = { criticite: zone.dataset.criticite || '', atelier: zone.dataset.atelier || '' };
   const g = Indicateurs.global(p, filtres, Donnees.aujourdhui());
   const arrondi = (v, d) => Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
-  const pct = (r) => (r.valeur === null ? null : arrondi(r.valeur * 100, 1));
+  // T567 : sous 1 (des pannes avec arrêt), jamais 100,0 % : plafond 99,9 (un filtre de ce test le montre)
+  const pct = (r) => (r.valeur === null ? null
+    : (r.valeur < 1 && arrondi(r.valeur * 100, 1) >= 100 ? 99.9 : arrondi(r.valeur * 100, 1)));
   const h = (r) => (r.valeur === null ? null : arrondi(r.valeur, 1));
   const e = (r) => (r.valeur === null ? null : arrondi(r.valeur, 2));
   const n = (r) => r.valeur;

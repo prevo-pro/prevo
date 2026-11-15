@@ -317,6 +317,15 @@ class TestPreventifDelaisCouts(CasIndicateurs):
         mois = self.js("Indicateurs.coutsParMois('2026-02', 3)")
         self.assertEqual([m["mois"] for m in mois], ["2026-02", "2026-03", "2026-04"])
 
+    def test_pourcentage_affiche_jamais_100_sous_1(self):
+        """T567 (bilan) : 99,97 % de disponibilité (des pannes avec arrêt) ne s'affiche jamais « 100,0 % » : plafond 99,9 ;
+        100 % exact reste 100 ; l'arrondi à une décimale ne change pas ailleurs."""
+        cas = [(0.9997, 99.9), (0.99951, 99.9), (0.9994, 99.9), (0.999, 99.9), (0.9876, 98.8), (1, 100), (0, 0),
+               (0.00004, 0)]
+        for fraction, attendu in cas:
+            with self.subTest(fraction=fraction):
+                self.assertEqual(self.js("(f) => Indicateurs.pourcentAffiche(f)", fraction), attendu)
+
     def test_valeur_du_stock(self):
         v = self.js("Indicateurs.valeurStock()")
         self.assertEqual(v["valeur"], 139.5)                               # 9 × 15,5

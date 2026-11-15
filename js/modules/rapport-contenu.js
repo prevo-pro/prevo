@@ -79,8 +79,9 @@ const Rapport = (() => {
     return Boolean(debut) && Indicateurs.periodeDuMois(mois).debut >= debut;
   }
 
+  /** T567 : une disponibilité de 99,97 % (des pannes avec arrêt) ne se lit jamais « 100,0 % » (Indicateurs.pourcentAffiche). */
   function pourcentage(valeur) {
-    return UI.nombreFr(valeur * 100, 1) + ' %';
+    return UI.nombreFr(Indicateurs.pourcentAffiche(valeur), 1) + ' %';
   }
 
   /** Format d'une tuile selon sa nature. */

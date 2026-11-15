@@ -49,7 +49,7 @@ Object.assign(Indicateurs, (() => {
   /** Formats d'affichage (arrondis du §15.3 : % à 1 décimale, euros à 2 ; L21 : durées « 1 h 15 », à la minute). */
   const formats = {
     heures: (valeur) => UI.heures(valeur),
-    pourcentage: (fraction) => UI.nombreFr(arrondi(fraction * 100, 1), 1) + ESPACE_INSECABLE + '%',
+    pourcentage: (fraction) => UI.nombreFr(Indicateurs.pourcentAffiche(fraction), 1) + ESPACE_INSECABLE + '%',   // T567 : jamais 100,0 % sous 1
     euros: (valeur) => UI.euro(arrondi(valeur, 2), 2),
     nombre: (valeur, decimales) => UI.nombreFr(arrondi(valeur, decimales || 0), decimales || 0),
   };

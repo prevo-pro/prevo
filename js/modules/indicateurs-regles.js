@@ -74,6 +74,15 @@ const Indicateurs = (() => {
     return Math.round(valeur * facteur) / facteur;
   }
 
+  /**
+   * Fraction (0,9997) → pourcentage à une décimale pour l'affichage (§15.3). Bilan (T567) : une fraction sous 1 n'est
+   * jamais montrée « 100,0 % » (une disponibilité de 99,97 % a eu des pannes avec arrêt) : plafond de l'arrondi, 99,9.
+   */
+  function pourcentAffiche(fraction) {
+    const valeur = arrondi(fraction * 100, 1);
+    return fraction < 1 && valeur >= 100 ? 99.9 : valeur;
+  }
+
   /** Texte sans accents ni majuscules : « Pièce » → « piece ». */
   function simplifier(valeur) {
     return texte(valeur).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -654,6 +663,8 @@ const Indicateurs = (() => {
     partPreventif, respectPreventif, otEnRetard, delaisPriseEnCharge, coutParEquipement, coutsParMois, valeurStock,
     // Date de la panne et contexte de calcul (lot 6 : le wiki s'en sert, §20.1).
     datePanne, contexte,
+    // Pourcentage affiché (jamais 100,0 % sous 1 : T567), pour les indicateurs et le bilan.
+    pourcentAffiche,
     // Usage interne au module (pas une API).
     interne: {
       TYPES_CORRECTIFS, TYPES_PREVENTIFS, texte, nombre, nombreOuZero, arrondi, jourDe, ajouterJours, ajouterMois,
