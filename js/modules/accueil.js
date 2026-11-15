@@ -282,7 +282,7 @@ const Accueil = (() => {
 
   async function lireAcces(chemin, texte) {
     const reponse = await fetch(chemin, { method: 'GET', headers: { 'X-Prevo': '1' }, cache: 'no-store', credentials: 'same-origin' });
-    if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+    if (!reponse.ok) throw new Error(String(reponse.status));
     return texte ? reponse.text() : reponse.json();
   }
 
