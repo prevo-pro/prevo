@@ -879,6 +879,10 @@ class CasWiki(CasNavigateur):
         return self.page.evaluate("""() => Object.fromEntries(['equipements', 'articles', 'techniciens', 'ordres_travail',
           'codes_defaillance', 'wiki_pages', 'wiki_journal', 'localisations'].map((t) => [t, Donnees.lignes(t)]))""")
 
+    def libelles_statut(self, statuts):
+        """P10 : l'écran montre un statut d'OT par son libellé (Schema.libelleValeur), la valeur stockée ne change pas (D155)."""
+        return self.page.evaluate("(s) => s.map((v) => Schema.libelleValeur('ordres_travail', 'statut', v))", list(statuts))
+
     def calcul(self):
         """Calcul Python indépendant (tests/calcul_wiki.py) sur les tables affichées, réécrites en CSV."""
         tables = self.page.evaluate(TABLES_JS, list(CALCUL_TABLES))
@@ -1260,7 +1264,7 @@ class TestListes(CasWiki):
         self.assertEqual([l["id"] for l in lignes], [e["id"] for e in attendues])
         self.assertEqual(page.locator(".wiki-liste-entites .wiki-voir-autres").count(), 0)
         statuts = [l["statut"] for l in lignes]
-        self.assertEqual(statuts, [e["statut"] for e in attendues])                     # le statut sur chaque ligne
+        self.assertEqual(statuts, self.libelles_statut(e["statut"] for e in attendues))  # le statut sur chaque ligne (libellé P10)
         ouverts = [s in OUVERTS for s in statuts]
         self.assertTrue(any(ouverts) and not all(ouverts))
         self.assertEqual(ouverts, sorted(ouverts, reverse=True))                         # les ouverts en tête
@@ -1473,7 +1477,7 @@ class TestPagesEntites(CasWiki):
                     if "wiki-interventions" in SECTIONS[type_]:
                         ordre = calcul.entite(identifiant, profil, MAINTENANT)["sections"]["interventions"]
                         self.assertEqual([i[0] for i in lu["interventions"]], [o["id"] for o in ordre][:10])
-                        self.assertEqual([i[1] for i in lu["interventions"]], [o["statut"] for o in ordre][:10])
+                        self.assertEqual([i[1] for i in lu["interventions"]], self.libelles_statut(o["statut"] for o in ordre[:10]))
                         self.assertEqual([i[2] for i in lu["interventions"]],
                                          [None if profil == "demandeur" else "#/wiki/" + o["id"] for o in ordre][:10])
                     # Visibilité (D114) : prix au technicien et au responsable, taux horaire au responsable seul
@@ -1924,12 +1928,13 @@ class TestPagesEntites(CasWiki):
                 for identifiant in ("TEC-0002", "EQ-0001", "PANNE-S01"):
                     attendues = calcul.entite(identifiant, "technicien", MAINTENANT)["sections"]["interventions"]
                     lu = self.lire(identifiant)
-                    self.assertEqual([i[:2] for i in lu["interventions"]], [[o["id"], o["statut"]] for o in attendues[:10]], identifiant)
+                    libelles = self.libelles_statut(o["statut"] for o in attendues)   # P10 : libellés à l'écran
+                    self.assertEqual([i[:2] for i in lu["interventions"]], [[o["id"], l] for o, l in zip(attendues, libelles)][:10], identifiant)
                     self.assertEqual(page.locator("#wiki-interventions .wiki-intervention[hidden]").count(), 0)
                     self.assertEqual(lu["voirAutres"], "Voir les %d autres interventions" % (len(attendues) - 10))
                     page.click("#wiki-interventions .wiki-voir-autres")
                     lu = page.evaluate(ENTITE_JS)
-                    self.assertEqual([i[:2] for i in lu["interventions"]], [[o["id"], o["statut"]] for o in attendues], identifiant)
+                    self.assertEqual([i[:2] for i in lu["interventions"]], [[o["id"], l] for o, l in zip(attendues, libelles)], identifiant)
                     self.assertIsNone(lu["voirAutres"])
                 ouverts = [o["statut"] in OUVERTS for o in calcul.entite("EQ-0001", "technicien", MAINTENANT)["sections"]["interventions"]]
                 self.assertEqual(ouverts[0], True)
