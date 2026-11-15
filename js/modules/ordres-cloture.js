@@ -38,7 +38,7 @@ Object.assign(Ordres, (() => {
   /** Étoile sur un champ exigé (sans `required` : ce qui manque est dit par RG4, jamais par « Champ obligatoire »). */
   function marquerExige(bloc) {
     const etiquette = bloc.querySelector('label.case > span, label.libelle, legend');
-    if (etiquette) etiquette.appendChild(UI.element(UI.html` <span class="requis" aria-hidden="true">*</span>`));
+    if (etiquette) etiquette.append(' ', UI.element(UI.html`<span class="requis" aria-hidden="true">*</span>`));
     const controle = bloc.querySelector('select, input, textarea');
     if (controle) controle.setAttribute('aria-required', 'true');
     return bloc;

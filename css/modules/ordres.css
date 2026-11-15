@@ -76,7 +76,7 @@
 .ot-cloture-arret { border: 0; padding: 0; margin: 0; min-width: 0; }
 .ot-cloture-arret legend { padding: 0; margin-bottom: .35rem; font-weight: 600; color: var(--texte-2); }
 .ot-cloture-choix { display: flex; flex-wrap: wrap; gap: .25rem 1.75rem; }
-.ot-cloture-facultatif > summary { display: flex; align-items: center; min-height: var(--tactile); cursor: pointer; font-weight: 600; color: var(--texte-2); }
+.ot-cloture-facultatif > summary { padding: .6rem 0; cursor: pointer; font-weight: 600; color: var(--texte-2); }   /* garde le triangle */
 .ot-cloture-facultatif > .form-colonne { margin-top: .5rem; }
 .dialogue:has(.ot-fenetre-clore) .fenetre-actions { position: sticky; bottom: -22px; z-index: 2; margin-bottom: -22px; padding: .75rem 0 22px; background: var(--carte); }
 
