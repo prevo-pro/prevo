@@ -251,7 +251,7 @@ Object.assign(Equipe, (() => {
 
     if (champType) champType.addEventListener('change', choisirType);
     // L19 : une case cochée suffit, l'intitulé libre (autre autorisation) devient facultatif.
-    const cochees = (valeurs) => Equipe.HABILITATIONS_ELECTRIQUES.filter((symbole) => valeurs['symbole_' + symbole] === symbole);
+    const cochees = (valeurs) => Equipe.HABILITATIONS_ELECTRIQUES.filter((symbole) => valeurs['symbole_' + symbole] === '1');
     if (symboles && champIntitule) {
       symboles.addEventListener('change', () => { champIntitule.required = !UI.$$('input:checked', symboles).length; });
     }
