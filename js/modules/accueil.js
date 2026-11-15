@@ -193,6 +193,7 @@ const Accueil = (() => {
       <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}${etiquette || ''}</div>
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${libelleEquipement(ot.equipement_id)}</span>${prevu}${retard}</div>
+      ${typeof Ordres !== 'undefined' && Ordres.releveCarteHtml ? Ordres.releveCarteHtml(ot) : ''}
     </a></li>`;
   }
 

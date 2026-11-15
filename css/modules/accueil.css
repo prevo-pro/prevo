@@ -16,6 +16,8 @@
 .accueil-mes-ordres-vide { margin: 0; }
 .accueil-collegue { font-weight: 600; color: var(--texte); }
 .accueil-motif-attente { margin: .4rem 0 0; font-size: .9375rem; color: var(--texte); overflow-wrap: anywhere; }
+.accueil-releve { margin: .4rem 0 0; font-size: .9375rem; color: var(--texte); overflow-wrap: anywhere; white-space: pre-wrap; }   /* L16 : mot de relève */
+.accueil-journee-terminee { margin-left: auto; }
 
 /* Technicien : « Mes habilitations » (D199, T480 ; liste et statuts : styles d'equipe.css) */
 .accueil-habilitations-aide { margin: 0 0 .9rem; }

@@ -1569,13 +1569,14 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   `pannes-recurrentes.js` juste après `causes-frequentes.js`, objet `PannesRecurrentes` : panne à répétition sur une
   machine — 3 pannes (demandes ou OT correctifs, une demande et son OT comptés une fois) en 30 jours, réglages
   `pannes_recurrentes_seuil` et `pannes_recurrentes_jours` ; tuile de l'accueil du responsable, bandeau sur la demande
-  qu'il traite et sur l'OT correctif ouvert) :
+  qu'il traite et sur l'OT correctif ouvert) ; T557 (L16) : `ordres-passation.js` juste après `ordres-prise.js`
+  (passation et renforts, §14.2) :
   ```
   apropos.js  mise-a-jour.js  accueil.js  causes-frequentes.js  pannes-recurrentes.js
   parc-regles.js  parc-arbre.js  parc-formulaires.js  parc-etiquettes.js  parc-fiche.js
   demandes-regles.js  demandes-retour.js  demandes-ecritures.js  demandes-signaler.js  demandes-liste.js  demandes-fiche.js
   ordres-regles.js  ordres-codes.js  ordres-ecritures.js  ordres-liste.js  ordres-fiche.js  ordres-cloture.js  ordres-onglets.js
-  ordres-pieces.js  ordres-impression.js  ordres-habilitations.js  ordres-prise.js  solo-flux.js  solo-accueil.js
+  ordres-pieces.js  ordres-impression.js  ordres-habilitations.js  ordres-prise.js  ordres-passation.js  solo-flux.js  solo-accueil.js
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
@@ -5554,6 +5555,25 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   Dans l'onglet Préparation en lecture seule, le technicien est un texte (plus de liste qui se déroule sans bouton pour
   l'enregistrer). Droits du serveur inchangés : le technicien écrit déjà `ordres_travail`
   (`tests/test_ordres_prise.py`).
+- **Passation et renforts (lot 2 ergonomie, L16, T557)** : `js/modules/ordres-passation.js` (chargé juste après
+  `ordres-prise.js`). Colonnes du format 6 : `renforts` (identifiants séparés par « , » ; le principal reste
+  `technicien_id`), `releve_mot`, `releve_par`, `releve_le`, `releve_motif` (le dernier passage de main). « Passer la
+  main » (carte Actions, technicien principal d'un OT ouvert, hors Solo) : motif, à qui (un collègue ou « à qui est
+  disponible » : `technicien_id` vide, l'OT retourne dans « À prendre »), mot facultatif dicté (micro de `dictee.js`,
+  réglage L24) ; `Ordres.passerLaMain` : refus si l'OT n'est plus ouvert ou plus à son nom, RG8 de l'affectation pour
+  le collègue (dérogation au responsable seul), statut inchangé, le collègue sort des renforts, journal « main passée
+  à TEC-… ». Le mot s'affiche en tête de la fiche (nom, date, heure, motif) et sur les cartes de l'accueil (« Mes
+  ordres de travail », « À prendre », « En attente dans l'équipe ») tant que celui qui l'a passé ne tient plus l'OT
+  (`Ordres.releveAMontrer`). « Journée terminée » (carte « Mes ordres de travail ») : pour chaque OT ouvert à son nom,
+  « Je le garde » (d'office : rien n'est écrit, un OT en cours reste en cours), « Je le passe à… » ou « À qui est
+  disponible » (motif « fin de journée »). « Ajouter un technicien » (responsable ou technicien de l'OT) :
+  `Ordres.ajouterRenfort` (RG8 de l'affectation pour le renfort), retrait par « × » dans Repères
+  (`Ordres.retirerRenfort` : responsable, principal ou le renfort lui-même). L'OT apparaît chez chaque renfort (accueil,
+  étiquette « Renfort » ; liste filtrée sur un technicien : `Ordres.estTechnicienDeLOt`) ; chacun saisit son temps
+  (onglet Exécution) ; n'importe quel technicien clôture (droit inchangé) ; la fenêtre de clôture rappelle les
+  techniciens de l'OT sans temps saisi (`Ordres.tempsManquants`), sans rien bloquer. Droits du serveur inchangés : le
+  technicien écrit déjà tout `ordres_travail`, sans règle par OT ; un renfort n'a rien de plus
+  (`tests/test_passation.py`).
 - **Qui accepte une demande (lot 2 ergonomie, L17)** : réglage du responsable `acceptation_demandes` (Paramètres,
   section « Demandes d'intervention » : `techniciens`, par défaut, ou `responsable`), lu par
   `Demandes.techniciensAcceptent` seul. Quand les techniciens le peuvent, les demandes `Nouvelle`

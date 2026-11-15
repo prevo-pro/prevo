@@ -45,7 +45,8 @@ NON_IGNORES = ["donnees/demo/equipements.csv", "donnees/.gitkeep", "docs/brief-g
 # parametres-reglages.js (le tableau REGLAGES, sorti de parametres.js) juste avant parametres.js. Lot 1 ergonomie
 # (T515) : ordres-codes.js (codes cause et remède de la clôture) juste après ordres-regles.js. Lot 1 ergonomie (T521) :
 # solo-flux.js et solo-accueil.js (mode Solo sans la couche équipe) juste après ordres-prise.js. Lot 2 ergonomie (T539) :
-# ordres-cloture.js (fenêtre « Clore » et messages après une clôture, sortis de ordres-fiche.js) juste après ordres-fiche.js.
+# ordres-cloture.js (fenêtre « Clore » et messages après une clôture, sortis de ordres-fiche.js) juste après ordres-fiche.js. Lot 2
+# ergonomie (T557, L16) : ordres-passation.js (passation et renforts) juste après ordres-prise.js.
 ORDRE_MODULES = [
     "apropos.js", "mise-a-jour.js", "aide-ecrans-textes.js", "aide-ecrans.js", "acces-textes.js", "connexion-ecrans.js",
     "installation-etapes.js", "installation-ecrans.js", "installation-fiche.js",
@@ -56,7 +57,7 @@ ORDRE_MODULES = [
     "ordres-regles.js", "ordres-codes.js", "ordres-ecritures.js", "ordres-liste.js", "ordres-fiche.js", "ordres-cloture.js",
     "ordres-onglets.js",
     "ordres-pieces.js", "ordres-impression.js", "ordres-habilitations.js", "ordres-prise.js",
-    "solo-flux.js", "solo-accueil.js",
+    "ordres-passation.js", "solo-flux.js", "solo-accueil.js",
     "preventif-regles.js", "preventif-ecritures.js", "preventif-ecrans.js", "preventif-calendrier.js",
     "suggestions-regles.js", "suggestions-ecrans.js",
     "magasin-regles.js", "magasin-ecritures.js", "magasin-articles.js", "magasin-mouvements.js", "magasin-achats.js",

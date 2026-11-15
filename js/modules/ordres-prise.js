@@ -9,7 +9,7 @@
 // inchangée (Ordres.controlerAffectation ; la dérogation reste au responsable, Ordres.avecDerogation).
 // Affichage : bloc « Prises en charge » de la fiche et du bon de travail ; sur l'accueil du technicien, les cartes
 // « À prendre » (nombre dans le titre) et « En attente dans l'équipe » (lot 2, L14 : les OT des collègues mis en
-// attente, avec le motif ; hors mode Solo) et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises
+// attente, avec le motif et, L16, le mot de relève ; hors mode Solo) et les reprises de ses OT (7 jours) ; sur celui du responsable, « Reprises
 // récentes » et (L17) « Demandes prises par les techniciens ».
 // Qui accepte une demande (lot 2, L17) : quand le réglage le permet (Demandes.techniciensAcceptent), les demandes
 // « Nouvelle » sont aussi dans « À prendre », avec « Je prends » (Demandes.prendre : acceptée, OT créé à son nom, en
@@ -383,6 +383,7 @@ Object.assign(Ordres, (() => {
       <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</div>
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${libelleEquipementCourt(ot.equipement_id)}</span>${ot.date_prevue ? UI.html`<span>${UI.dateFr(ot.date_prevue)}</span>` : ''}</div>
+      ${Ordres.releveCarteHtml(ot)}
     </a></li>`;
   }
 
@@ -437,8 +438,8 @@ Object.assign(Ordres, (() => {
     });
   }
 
-  /** L14 : carte « En attente dans l'équipe » : les OT des collègues mis en attente, le collègue et le motif d'attente
-   *  (un mot de relève, seconde livraison, viendra sous le motif) ; chaque ligne mène à la fiche, où « Prendre la
+  /** L14 : carte « En attente dans l'équipe » : les OT des collègues mis en attente, le collègue, le motif d'attente
+   *  et le mot de relève (L16, ordres-passation.js, chargé après ce fichier : cherché à l'affichage) ; chaque ligne mène à la fiche, où « Prendre la
    *  suite » (L18) existe. Montrée hors Solo, même vide (une phrase courte, jamais « aucun OT ouvert »). */
   function carteEnAttenteEquipe(ots, repere) {
     const ligne = (ot) => UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}" class="${ot.priorite === 'P1' ? 'accent-p1' : (ot.priorite === 'P2' ? 'accent-p2' : '')}">
@@ -446,6 +447,7 @@ Object.assign(Ordres, (() => {
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${libelleEquipementCourt(ot.equipement_id)}</span></div>
       ${texte(ot.motif_attente) ? UI.html`<p class="accueil-motif-attente"><b>${I18n.t('ordres.prise.motif_attente')}</b> ${ot.motif_attente}</p>` : ''}
+      ${Ordres.releveCarteHtml(ot)}
     </a></li>`;
     return UI.html`<article class="carte accueil-en-attente-equipe" ${repere ? UI.brut('data-aide-apres') : ''}>
       <div class="entete-carte"><h2>${I18n.t('ordres.prise.en_attente_equipe_n', { n: ots.length })}</h2></div>
