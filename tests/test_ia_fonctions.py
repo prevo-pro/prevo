@@ -522,8 +522,11 @@ class TestCompteRenduDemo(CasIaFonctions):
         attendus = premiers_codes()
         page.fill(CHAMP_CR, NOTES)
         self.proposer_et_choisir(LIBELLE_CODES, "Utiliser")
+        # Un vrai code de la table, autre que celui proposé : pas « Autre (préciser) » (valeur '*autre*', en tête de
+        # liste depuis T553), qui s'enregistre en code vide plus une précision (T515).
         autre = page.evaluate("""(actuel) => Array.from(document.querySelectorAll('#form-compte-rendu [name=cause_code] option'))
-          .map((option) => option.value).find((valeur) => valeur && valeur !== actuel)""", attendus["cause_code"])
+          .map((option) => option.value).find((valeur) => valeur && valeur !== '*autre*' && valeur !== actuel)""",
+                              attendus["cause_code"])
         page.select_option("#form-compte-rendu [name=cause_code]", autre)
         page.click("#form-compte-rendu button[type=submit]")
         self.attendre_toast("Compte rendu enregistré.")
