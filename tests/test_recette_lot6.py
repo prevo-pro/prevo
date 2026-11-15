@@ -248,10 +248,9 @@ class TestRecetteWiki(CasRecetteLot6):
             page.fill("#form-compte-rendu [name=astuce]", ASTUCE)
             page.check("#form-compte-rendu [name=remise_service]")
             page.click("#form-compte-rendu button:has-text('Clôturer techniquement')")
-            # Lot 1 ergonomie, A4 (T517) : un OT venu d'une demande ouvre d'abord la fenêtre du mot pour l'opérateur
-            # (facultatif, laissé vide ici).
-            if ot["di_id"] or page.evaluate("(id) => Donnees.lignes('demandes').some((d) => d.ot_id === id)", OT_EN_COURS):
-                page.click("dialog .fenetre-actions .btn-primaire")
+            # L20 : la fenêtre de clôture unique reprend la fiche (mot pour l'opérateur facultatif, laissé vide) : validée.
+            page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
+            page.click("dialog .fenetre-actions .btn-primaire")
             self.attendre_statut("Clôturé techniquement")
             sur_disque = ligne_csv(serveur.dossier, "ordres_travail", OT_EN_COURS)
             self.assertEqual((sur_disque["statut"], sur_disque["astuce"], sur_disque["cause_code"], sur_disque["remede_code"]),

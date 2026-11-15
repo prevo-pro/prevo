@@ -306,16 +306,19 @@ class TestParcours(CasOrdres):
             page.click("#form-temps button[type=submit]")
             self.attendre_js("Donnees.lignes('ot_temps').some(t => t.ot_id === %r && t.heures === '1.5')" % ot_id)
 
-            # Clôture refusée : « RAS », sans cause, sans date de fin, sans remise en service
+            # L20 : la fenêtre de clôture unique dit d'avance ce qui manque (« RAS », sans cause ni remède, sans
+            # remise en service ; la date de fin y est proposée à « maintenant ») ; on la ferme sans clôturer.
             self.onglet("compte-rendu")
             page.fill("#form-compte-rendu [name=compte_rendu]", "RAS")
             self.transition("Clôturé techniquement", "#form-compte-rendu")
-            page.wait_for_selector("#ot-message .alerte")
-            message = page.inner_text("#ot-message")
-            for attendu in ("Clôture technique impossible", "code cause", "code remède", "RAS",
-                            "date de fin", "remis en service"):
+            page.wait_for_selector("dialog .ot-cloture-manques .alerte")
+            message = page.inner_text("dialog .ot-cloture-manques")
+            for attendu in ("il manque", "code cause", "code remède", "RAS", "remis en service"):
                 self.assertIn(attendu, message)
             self.assertNotIn("temps passé", message)
+            self.assertNotIn("date de fin", message)
+            page.click("dialog .fenetre-actions .btn-fantome")
+            page.wait_for_selector("dialog", state="detached")
             self.assertEqual(self.statut_affiche(), "En cours")
             ligne = next(o for o in lire_csv(serveur.dossier, "ordres_travail.csv") if o["id"] == ot_id)
             self.assertEqual(ligne["statut"], "En cours")
@@ -334,6 +337,8 @@ class TestParcours(CasOrdres):
                       "Fuite à la garniture : kit garniture remplacé, essai 15 min sans fuite.")
             page.check("#form-compte-rendu [name=remise_service]")
             self.transition("Clôturé techniquement", "#form-compte-rendu")
+            page.wait_for_selector("dialog [name='compte_rendu']", state="visible")     # L20 : tout est repris
+            page.click("dialog .fenetre-actions .btn-primaire")
             self.attendre_statut("Clôturé techniquement")
 
             # Clôture administrative (confirmation) → lecture seule

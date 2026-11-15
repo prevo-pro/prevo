@@ -468,11 +468,11 @@ Object.assign(Ordres, (() => {
 
   /** Clic sur un bouton de transition : motifs, enregistrement des saisies, contrôles, écriture. */
   async function demanderTransition(ot, cible, bouton) {
+    if (cible === 'Clôturé techniquement') { await Ordres.interne.demanderCloture(ot, 'technique'); return; }   // L20 : ordres-cloture.js
     viderMessage();
     const sauvegarde = await enregistrerFormulairesModifies();
     if (!sauvegarde.ok) return;
-    let actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
-    if (cible === 'Clôturé techniquement') actuel = await Ordres.interne.preparerCloture(actuel);   // L23 : ordres-cloture.js
+    const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
     const complement = await demanderComplement(actuel, cible);
     if (complement === null) { if (sauvegarde.enregistres) await apresEnregistrement(); return; }
     const verification = verifierPassage(Object.assign({}, actuel, complement), cible);
@@ -486,9 +486,8 @@ Object.assign(Ordres, (() => {
     if (cible === 'Clôturé administrativement' && !(await UI.confirmer(
       I18n.t('ordres.demander_transition.ot_sera_verrouille_plus', { actuelId: actuel.id }),
       { titre: I18n.t('ordres.cloture_administrativement.cloturer_administrativement'), oui: I18n.t('ordres.demander_transition.cloturer_verrouiller') }))) return;
-    const mot = cible === 'Clôturé techniquement' ? await Demandes.demanderMotOperateur(actuel) : {};   // A4 : facultatif
-    if (mot === null) return;
-    const reussi = await pendant(bouton, () => Ordres.avecDerogation((options) => changerStatut(actuel.id, actuel.statut, cible, Object.assign({}, complement, mot), options)), I18n.t('ordres.demander_transition.changement_statut'));
+    // La clôture technique (et son mot pour l'opérateur, A4) passe par la fenêtre de clôture unique (L20).
+    const reussi = await pendant(bouton, () => Ordres.avecDerogation((options) => changerStatut(actuel.id, actuel.statut, cible, complement, options)), I18n.t('ordres.demander_transition.changement_statut'));
     if (reussi === undefined) return;
     // T528 : « Démarrer » (ni Reprendre, ni Rouvrir) ouvre l'onglet Exécution, celui de la check-list.
     if (cible === 'En cours' && !['En attente', 'Clôturé techniquement'].includes(actuel.statut)) memoire.ongletParOt[actuel.id] = 'execution';

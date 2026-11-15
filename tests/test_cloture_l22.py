@@ -62,11 +62,9 @@ class CasCloture(CasNavigateur):
 
     def clore_techniquement(self, page):
         page.click(".ot-actions [data-cible='Clôturé techniquement']")
-        # A4 : l'OT vient d'une demande, un mot pour l'opérateur est proposé (facultatif) : on valide la fenêtre.
-        page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'"
-                               " || document.querySelector('dialog')", arg=OT)
-        if page.locator("dialog").count():
-            page.click("dialog .fenetre-actions .btn-primaire")
+        # L20 : la fenêtre de clôture unique (tout est déjà rempli ; mot pour l'opérateur facultatif, A4) : on la valide.
+        page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
+        page.click("dialog .fenetre-actions .btn-primaire")
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'", arg=OT)
         page.wait_for_selector("#ot-message .alerte")
         return page.text_content("#ot-message")
@@ -114,7 +112,8 @@ class TestEquipe(CasCloture):
         self.aller_fiche(page)
         page.click("#ot-clore")
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
-        self.assertEqual(page.text_content("dialog .fenetre-actions .btn-primaire").strip(), "Clore et verrouiller")
+        # L20 : le bouton dit ce qui manque (OT de la démo incomplet) ; rempli, il redevient « Clore et verrouiller ».
+        self.assertTrue(page.text_content("dialog .fenetre-actions .btn-primaire").strip().startswith("Clore et verrouiller — il manque"))
 
 
 class TestSolo(CasCloture):
@@ -131,11 +130,12 @@ class TestSolo(CasCloture):
         page.evaluate(NOTER_TOASTS_JS)
         page.click("#ot-clore")
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
-        self.assertEqual(page.text_content("dialog .fenetre-actions .btn-primaire").strip(), "Clore")
+        self.assertEqual(page.text_content("dialog .fenetre-actions .btn-primaire").strip(), "Clore")         # tout est rempli d'avance
         fenetre = page.text_content("dialog")
         self.assertNotIn("verrouill", fenetre)
         self.assertNotIn("administrative", fenetre)
         page.check("dialog [name='remise_service']")
+        self.assertEqual(page.text_content("dialog .fenetre-actions .btn-primaire").strip(), "Clore")
         page.click("dialog .fenetre-actions .btn-primaire")
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé administrativement'", arg=OT)
         message = page.wait_for_function("() => window.__toasts.find((t) => / est clos\./.test(t)) || null").json_value()

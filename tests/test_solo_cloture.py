@@ -89,10 +89,13 @@ class TestClotureUneEtape(CasNavigateur):
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
         self.assertEqual(page.locator("dialog").count(), 1)
         page.fill("dialog [name='date_fin']", s["date_fin"].replace(" ", "T"))
-        page.check("dialog [name='arret_production']")
+        page.check("dialog [name='arret_production'][value='1']")       # L20 : « La machine était-elle arrêtée ? » Oui
         page.fill("dialog [name='duree_arret_h']", "1,5")
         page.fill("dialog [name='heures']", "2,5")
-        page.select_option("dialog [name='technicien_id']", s["technicien_id"])
+        if page.locator("dialog select[name='technicien_id']").count():
+            page.select_option("dialog [name='technicien_id']", s["technicien_id"])
+        if not page.is_visible("dialog [name='article_id']"):                # L20 : saisies facultatives repliées
+            page.click("dialog .ot-cloture-facultatif > summary")
         page.select_option("dialog [name='article_id']", s["article_id"])
         page.fill("dialog [name='quantite']", "2")
         page.select_option("dialog [name='symptome_code']", s["symptome_code"])
@@ -192,8 +195,10 @@ class TestClotureUneEtape(CasNavigateur):
         temps_avant = page.evaluate("(id) => Donnees.lignes('ot_temps').filter((l) => l.ot_id === id).length", OT)
         self.aller(page, "#/ot/" + OT, "#ot-clore")
         self.remplir_fenetre_clore(page, s, compte_rendu="RAS")
-        page.wait_for_selector("dialog .erreur-champ[role=alert]:not([hidden])")
-        self.assertIn("RAS", page.text_content("dialog .erreur-champ[role=alert]"))
+        # L20 : le manque est dit sous le compte rendu et dans la liste en haut de la fenêtre ; rien n'est écrit.
+        page.wait_for_selector("dialog .champ[data-champ='compte_rendu'] .erreur-champ:not([hidden])")
+        self.assertIn("RAS", page.text_content("dialog .champ[data-champ='compte_rendu'] .erreur-champ"))
+        self.assertIn("RAS", page.text_content("dialog .ot-cloture-manques"))
         self.assertEqual(page.evaluate("(id) => JSON.stringify(Donnees.trouver('ordres_travail', id))", OT), avant)
         self.assertEqual(page.evaluate("(id) => Donnees.lignes('ot_temps').filter((l) => l.ot_id === id).length", OT), temps_avant)
         page.click("dialog .fenetre-actions .btn-fantome")

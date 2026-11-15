@@ -154,7 +154,7 @@ const Ordres = (() => {
   function listeCodes(famille) {
     return Donnees.lignes('codes_defaillance')
       .filter((c) => c.famille === famille && c.code)
-      .map((c) => ({ valeur: c.code, libelle: c.code + ' — ' + (c.libelle || '') }))
+      .map((c) => ({ valeur: c.code, libelle: c.code + (texte(c.libelle) ? ' — ' + texte(c.libelle) : '') }))
       .sort((a, b) => a.valeur.localeCompare(b.valeur, 'fr', { numeric: true }));
   }
 
@@ -318,20 +318,23 @@ const Ordres = (() => {
    * options.temps : lignes ot_temps à utiliser (par défaut, celles de l'OT dans Donnees).
    */
   function verifierCloture(ot, options) {
+    return manquesCloture(ot, options).map((manque) => manque.texte);
+  }
+
+  /** L20 : les mêmes manques avec le champ de la fenêtre de clôture qui les remplit : [{ champ, texte }]. */
+  function manquesCloture(ot, options) {
     const manques = [];
+    const manque = (champ, cle) => manques.push({ champ, texte: I18n.t(cle) });
     const temps = (options && options.temps) || lignesDeLOt('ot_temps', ot.id);
     const compteRendu = texte(ot.compte_rendu);
-    if (!texte(ot.date_fin)) manques.push(I18n.t('ordres.verifier_cloture.date_fin_travaux'));
-    else if (texte(ot.date_debut) && texte(ot.date_fin) < texte(ot.date_debut)) manques.push(I18n.t('ordres.verifier_cloture.date_fin_posterieure_date'));
-    else if (dateFinDansLeFutur(ot.date_fin)) manques.push(I18n.t('ordres.verifier_cloture.date_fin_soit_pas'));
-    if (!temps.some((ligne) => nombre(ligne.heures) > 0)) manques.push(I18n.t('ordres.verifier_cloture.moins_temps_passe_onglet'));
-    manques.push(...Ordres.manquesDesCodes(ot));       // T515 : ordres-codes.js (préventif, « Autre », liste vide)
-    if (estCorrectif(ot) && estRienASignaler(compteRendu)) {
-      manques.push(I18n.t('ordres.verifier_cloture.vrai_compte_rendu_ras'));
-    } else if (compteRendu.length < 10) {
-      manques.push(I18n.t('ordres.verifier_cloture.compte_rendu_moins_10'));
-    }
-    if (ot.remise_service !== '1') manques.push(I18n.t('ordres.verifier_cloture.case_equipement_remis_service'));
+    if (!texte(ot.date_fin)) manque('date_fin', 'ordres.verifier_cloture.date_fin_travaux');
+    else if (texte(ot.date_debut) && texte(ot.date_fin) < texte(ot.date_debut)) manque('date_fin', 'ordres.verifier_cloture.date_fin_posterieure_date');
+    else if (dateFinDansLeFutur(ot.date_fin)) manque('date_fin', 'ordres.verifier_cloture.date_fin_soit_pas');
+    if (!temps.some((ligne) => nombre(ligne.heures) > 0)) manque('heures', 'ordres.verifier_cloture.moins_temps_passe_onglet');
+    manques.push(...Ordres.manquesDesCodes(ot, true));  // T515 : ordres-codes.js (préventif, « Autre », liste vide)
+    if (estCorrectif(ot) && estRienASignaler(compteRendu)) manque('compte_rendu', 'ordres.verifier_cloture.vrai_compte_rendu_ras');
+    else if (compteRendu.length < 10) manque('compte_rendu', 'ordres.verifier_cloture.compte_rendu_moins_10');
+    if (ot.remise_service !== '1') manque('remise_service', 'ordres.verifier_cloture.case_equipement_remis_service');
     return manques;
   }
 
@@ -659,7 +662,7 @@ const Ordres = (() => {
   return {
     STATUTS, TYPES, PRIORITES, rappelConsignation, RAISONS_HABILITATION, ORIGINES_HABILITATION,
     // règles pures (ARCHITECTURE.md §10)
-    transitionsPossibles, verifierPassage, verifierCloture, cout, verifierHabilitation, estOuvert, enRetard,
+    transitionsPossibles, verifierPassage, verifierCloture, manquesCloture, cout, verifierHabilitation, estOuvert, enRetard,
     estVerrouille, estCorrectif, estRienASignaler, piecesManquantes, datePrevueParDefaut, dateFinDansLeFutur, tauxHoraire,
     // RG8 (D186, D191) : exigences de l'OT, contrôle, dérogation du responsable (marqueur du journal)
     habilitationsExigees, controleHabilitation, marqueurDerogation, lireDerogation, derogationAccordee,

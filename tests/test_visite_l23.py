@@ -99,16 +99,22 @@ class TestClotureEquipe(CasVisite):
         self.assertEqual(page.input_value("#ot-temps-heures").replace("\u00a0", " "), "1 h 30")
         self.onglet(page, "compte-rendu", "#form-compte-rendu [name='compte_rendu']")
         self.assertEqual(page.input_value("#form-compte-rendu [name='compte_rendu']"), RIEN_A_SIGNALER)
-        # La case de remise en service reste exigée : sans elle, refus (le temps proposé et le compte rendu d'office,
-        # eux, sont pris au clic, comme une saisie de la fiche).
+        # L20 : « Clôturer techniquement » ouvre la fenêtre de clôture unique : compte rendu d'office et temps proposé
+        # repris ; la case de remise en service reste exigée : seule à manquer, rien n'est écrit sans elle.
         page.click("#form-compte-rendu [data-cible='Clôturé techniquement']")
-        page.wait_for_selector("#ot-message .alerte")
-        self.assertIn("remis en service", page.inner_text("#ot-message"))
+        page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
+        self.assertEqual(page.input_value("dialog [name='compte_rendu']"), RIEN_A_SIGNALER)
+        self.assertEqual(page.input_value("dialog [name='heures']").replace("\u00a0", " "), "1 h 30")
+        manques = page.locator("dialog .ot-cloture-manques li").all_inner_texts()
+        self.assertEqual(len(manques), 1, manques)
+        self.assertIn("remis en service", manques[0])
+        page.click("dialog .fenetre-actions .btn-primaire")
+        page.wait_for_selector("dialog .champ[data-champ='remise_service'].en-erreur")
         self.assertEqual(self.ot(page)["statut"], "En cours")
-        self.assertEqual(self.temps(page), ["1.5"])
-        # Case cochée, puis « Clôturer techniquement » : l'OT est clos, rien de doublé.
-        page.check("#form-compte-rendu [name='remise_service']")
-        page.click("#form-compte-rendu [data-cible='Clôturé techniquement']")
+        self.assertEqual(self.temps(page), [])
+        # Case cochée : l'OT est clos, le temps proposé écrit une fois.
+        page.check("dialog [name='remise_service']")
+        page.click("dialog .fenetre-actions .btn-primaire")
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'", arg=OT)
         ot = self.ot(page)
         self.assertEqual(ot["compte_rendu"], RIEN_A_SIGNALER)
@@ -130,6 +136,8 @@ class TestClotureEquipe(CasVisite):
           { action: 'essai' })""", OT)
         self.onglet(page, "compte-rendu", "#form-compte-rendu [data-cible='Clôturé techniquement']")
         page.click("#form-compte-rendu [data-cible='Clôturé techniquement']")
+        page.wait_for_selector("dialog [name='compte_rendu']", state="visible")      # L20 : fenêtre de clôture unique
+        page.click("dialog .fenetre-actions .btn-primaire")
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'", arg=OT)
         page.wait_for_selector("#ot-reparation")
         self.assertIn("Créer l'OT de réparation", page.inner_text("#ot-reparation"))

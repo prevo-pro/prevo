@@ -369,7 +369,6 @@ Object.assign(Ordres, (() => {
       </form>` : ''}`);
     if (!modifiable) return;
     const formulaire = UI.$('#form-temps', bloc);
-    if (propose) formulaire.dataset.tempsPropose = propose;      // L23 : ajouté à la clôture technique s'il est laissé tel quel
     // Avant une transition, un temps saisi mais pas encore ajouté est ajouté ; un champ vide est ignoré.
     declarerFormulaire(formulaire, () => ajouterTemps(ot, formulaire, false));
     formulaire.addEventListener('submit', async (evenement) => {

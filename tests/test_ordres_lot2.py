@@ -160,6 +160,9 @@ class CasOrdresLot2(CasNavigateur):
 
     def transition(self, cible, zone=".ot-actions"):
         self.page.click("%s button[data-action='transition'][data-cible='%s']" % (zone, cible))
+        if cible == "Clôturé techniquement":        # L20 : la fenêtre de clôture unique reprend la fiche, on la valide
+            self.page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
+            self.page.click("dialog .fenetre-actions .btn-primaire")
 
     def attendre_toast_note(self, motif):
         """Texte du premier toast affiché depuis le chargement qui correspond à `motif` (regex)."""
@@ -769,11 +772,13 @@ class TestDateFin(CasOrdresLot2):
                 lignes.find((l) => l.id === id).date_fin = fin; return true; }); }""", [self.OT, demain + " 10:00"])
             self.ouvrir_fiche(self.OT)
             self.onglet("compte-rendu")
+            # L20 : la fenêtre de clôture unique le dit d'avance, et un clic n'écrit rien.
             page.click("#form-compte-rendu button:has-text('Clôturer techniquement')")
-            page.wait_for_selector("#ot-message .alerte")
-            message = page.inner_text("#ot-message")
-            self.assertIn("Clôture technique impossible", message)
-            self.assertIn("une date de fin qui ne soit pas dans le futur", message)
+            page.wait_for_selector("dialog .ot-cloture-manques .alerte")
+            self.assertIn("une date de fin qui ne soit pas dans le futur", page.inner_text("dialog .ot-cloture-manques"))
+            page.click("dialog .fenetre-actions .btn-primaire")
+            page.wait_for_selector("dialog .champ[data-champ='date_fin'].en-erreur")
+            page.click("dialog .fenetre-actions .btn-fantome")
             self.assertEqual(ligne_par_id(dossier, "ordres_travail.csv", self.OT)["statut"], "En cours")
             ot = page.evaluate("(id) => Donnees.trouver('ordres_travail', id)", self.OT)
             self.assertIn("une date de fin qui ne soit pas dans le futur", page.evaluate("(ot) => Ordres.verifierCloture(ot)", ot))

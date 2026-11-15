@@ -52,13 +52,14 @@ Object.assign(Ordres, (() => {
     return { cause: !familleVide('cause'), remede: !familleVide('remède') };
   }
 
-  /** Manques de RG4 pour les codes (phrases, dans l'ordre cause puis remède) ; lu par Ordres.verifierCloture. */
-  function manquesDesCodes(ot) {
+  /** Manques de RG4 pour les codes (phrases, dans l'ordre cause puis remède) ; lu par Ordres.verifierCloture.
+   *  avecChamp (L20) : [{ champ, texte }], le champ de la fenêtre de clôture qui remplit chaque manque. */
+  function manquesDesCodes(ot, avecChamp) {
     const exiges = codesExiges(ot);
     const manques = [];
-    if (exiges.cause && !codeRenseigne(ot, 'cause')) manques.push(I18n.t('ordres.verifier_cloture.code_cause'));
-    if (exiges.remede && !codeRenseigne(ot, 'remede')) manques.push(I18n.t('ordres.verifier_cloture.code_remede'));
-    return manques;
+    if (exiges.cause && !codeRenseigne(ot, 'cause')) manques.push({ champ: 'cause_code', texte: I18n.t('ordres.verifier_cloture.code_cause') });
+    if (exiges.remede && !codeRenseigne(ot, 'remede')) manques.push({ champ: 'remede_code', texte: I18n.t('ordres.verifier_cloture.code_remede') });
+    return avecChamp ? manques : manques.map((manque) => manque.texte);
   }
 
   /** Vrai si le champ cause est montré : pas sur un préventif, sauf anomalie constatée ou cause déjà renseignée. */
@@ -110,8 +111,8 @@ Object.assign(Ordres, (() => {
     if (cle === 'cause' && !causeDemandee(ot)) return bloc;
     const precision = texte(ot[definition.precision]);
     const valeur = texte(ot[definition.champ]) || (precision ? AUTRE : '');
-    const liste = Ordres.interne.listeCodes(definition.famille)
-      .concat([{ valeur: AUTRE, libelle: I18n.t('commun.code.autre_preciser') }]);
+    const liste = [{ valeur: AUTRE, libelle: I18n.t('commun.code.autre_preciser') }]     // L20 : « Autre » en tête
+      .concat(Ordres.interne.listeCodes(definition.famille));
     const exige = codesExiges(ot)[cle];
     const choix = Ordres.interne.champOt(definition.champ, valeur, { liste,
       aide: estPreventif(ot) ? I18n.t('ordres.codes.facultatif_preventif') : '' });

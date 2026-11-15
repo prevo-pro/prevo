@@ -361,7 +361,7 @@ class TestRecettePompe(CasRecette):
         page.fill("#form-compte-rendu [name=compte_rendu]", COMPTE_RENDU_POMPE)
         page.check("#form-compte-rendu [name=remise_service]")
         page.click("#form-compte-rendu button:has-text('Clôturer techniquement')")
-        # Lot 1 ergonomie, A4 (T517) : l'OT vient d'une demande, une fenêtre propose le mot pour l'opérateur.
+        # A4 (T517) : l'OT vient d'une demande : le mot pour l'opérateur est dans la fenêtre de clôture unique (L20).
         page.fill("dialog textarea[name=mot_operateur]", MOT_OPERATEUR)
         page.click("dialog .fenetre-actions .btn-primaire")
         self.attendre_statut("Clôturé techniquement")
@@ -443,12 +443,17 @@ class TestRecetteRas(CasRecette):
         self.onglet("compte-rendu")
         page.select_option("#form-compte-rendu [name=cause_code]", "")
         page.fill("#form-compte-rendu [name=compte_rendu]", "RAS")
+        # L20 : la fenêtre de clôture unique dit d'avance ce qui manque ; un clic n'écrit rien.
         page.click("#form-compte-rendu button:has-text('Clôturer techniquement')")
-        page.wait_for_selector("#ot-message .alerte")
-        message = page.inner_text("#ot-message")
-        self.assertIn("Clôture technique impossible", message)
+        page.wait_for_selector("dialog .ot-cloture-manques .alerte")
+        message = page.inner_text("dialog .ot-cloture-manques")
+        self.assertIn("il manque", message)
         self.assertIn("code cause", message)
         self.assertIn("RAS", message)
+        page.click("dialog .fenetre-actions .btn-primaire")
+        page.wait_for_selector("dialog .champ[data-champ='compte_rendu'].en-erreur")
+        page.click("dialog .fenetre-actions .btn-fantome")
+        page.wait_for_selector("dialog", state="detached")
         self.assertEqual(self.statut_ot(), "En cours")
         return message
 

@@ -71,6 +71,15 @@
 .ot-derogation .ot-derogation-case { font-weight: 600; align-items: flex-start; }
 .ot-fenetre-derogation .ot-passer-outre:disabled { cursor: not-allowed; }
 
+/* L20 : fenêtre de clôture unique — ce qui manque reste visible en haut, le bouton en bas, pendant le défilement */
+.ot-fenetre-clore .ot-cloture-manques { position: sticky; top: -18px; z-index: 2; background: var(--carte); box-shadow: 0 -6px 0 var(--carte); }
+.ot-cloture-arret { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ot-cloture-arret legend { padding: 0; margin-bottom: .35rem; font-weight: 600; color: var(--texte-2); }
+.ot-cloture-choix { display: flex; flex-wrap: wrap; gap: .25rem 1.75rem; }
+.ot-cloture-facultatif > summary { display: flex; align-items: center; min-height: var(--tactile); cursor: pointer; font-weight: 600; color: var(--texte-2); }
+.ot-cloture-facultatif > .form-colonne { margin-top: .5rem; }
+.dialogue:has(.ot-fenetre-clore) .fenetre-actions { position: sticky; bottom: -22px; z-index: 2; margin-bottom: -22px; padding: .75rem 0 22px; background: var(--carte); }
+
 /* =========================================================================================
    3. Onglets : formulaires, tableaux de saisie, temps passés, coût
    ========================================================================================= */

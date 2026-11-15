@@ -95,7 +95,7 @@ class TestClore(CasNavigateur):
     def remplir(self, page, heures, arret):
         page.click("#ot-clore")
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
-        page.check("dialog [name='arret_production']")
+        page.check("dialog [name='arret_production'][value='1']")       # L20 : « La machine était-elle arrêtée ? » Oui
         page.fill("dialog [name='duree_arret_h']", arret)
         page.fill("dialog [name='heures']", heures)
         technicien = page.evaluate("(id) => Donnees.trouver('ordres_travail', id).technicien_id || "
@@ -104,7 +104,7 @@ class TestClore(CasNavigateur):
         page.evaluate("""() => {
           for (const nom of ['symptome_code', 'cause_code', 'remede_code']) {
             const liste = document.querySelector("dialog [name='" + nom + "']");
-            if (liste) { const option = Array.from(liste.options).find((o) => o.value); if (option) liste.value = option.value; }
+            if (liste) { const option = Array.from(liste.options).find((o) => o.value && o.value !== Ordres.CODE_AUTRE); if (option) liste.value = option.value; }
           }
         }""")
         page.fill("dialog [name='compte_rendu']", "Roulement grippé remplacé, essai à vide concluant.")

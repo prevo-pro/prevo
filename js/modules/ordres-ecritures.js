@@ -306,10 +306,10 @@ Object.assign(Ordres, (() => {
     return Ordres.interne.estResponsable() && texte(Donnees.parametre('cloture_une_etape', '0')) === '1';
   }
 
-  // Contrôles faits AVANT toute écriture : réglage, passage possible, astuce, RG4 sur l'OT tel qu'il
-  // sera (champs saisis + temps passé ajouté). Lève une ErreurValidation listant tous les manques.
-  function verifierClore(ot, champs, heures) {
-    if (!clotureUneEtape()) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_etape_pas_activee'));
+  // Contrôles faits AVANT toute écriture : réglage (« Clore » seulement), passage possible, astuce, RG4 sur l'OT tel
+  // qu'il sera (champs saisis + temps passé ajouté). Lève une ErreurValidation listant tous les manques.
+  function verifierClore(ot, champs, heures, technique) {
+    if (!technique && !clotureUneEtape()) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_etape_pas_activee'));
     if (!Ordres.transitionsPossibles(ot).includes('Clôturé techniquement')) {
       throw ErreurValidation(I18n.t('ordres.verifier_clore.ot_peut_pas_etre', { otId: ot.id, otStatut: Schema.libelleValeur('ordres_travail', 'statut', ot.statut) }));
     }
@@ -320,14 +320,8 @@ Object.assign(Ordres, (() => {
     if (manques.length) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_impossible_manque', { join: manques.join(' ; ') }));
   }
 
-  /**
-   * « Clore » (D132) : clôture technique puis administrative dans une seule écriture de
-   * ordres_travail, deux dates égales, deux lignes de journal, OT mis dans la file du wiki.
-   * valeurs : CHAMPS_CLOTURE, et facultatifs heures + technicien_id + date_temps (temps passé),
-   * article_id + quantite (pièce sortie par Magasin.sortir). Les règles de la clôture technique
-   * (RG4, stock RG6) s'appliquent : tout est contrôlé avant la première écriture, puis revérifié.
-   */
-  async function clore(ot, valeurs) {
+  // Saisies de la fenêtre de clôture lues et contrôlées (temps, technicien, pièce, RG4), avant toute écriture.
+  async function lireSaisiesCloture(ot, valeurs, technique) {
     await Donnees.rechargerTable('ordres_travail');
     const actuel = ligneOt(Donnees.lignes('ordres_travail'), ot.id, true);
     const champs = {};
@@ -338,8 +332,12 @@ Object.assign(Ordres, (() => {
     if (texte(valeurs.heures) && !(heures > 0 && heures <= 24)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_nombre_heures'));
     if (heures > 0 && !texte(valeurs.technicien_id)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_choisissez_technicien'));
     if (texte(valeurs.article_id) && !(quantite > 0)) throw ErreurValidation(I18n.t('ordres.clore.piece_sortie_quantite_superieure'));
-    verifierClore(actuel, champs, heures);
-    const statutAttendu = actuel.statut;
+    verifierClore(actuel, champs, heures, technique);
+    return { actuel, champs, heures, quantite };
+  }
+
+  // Pièce sortie du magasin et temps passé saisis dans la fenêtre de clôture (avant l'écriture de l'OT).
+  async function ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite) {
     if (texte(valeurs.article_id)) await Magasin.sortir(actuel.id, valeurs.article_id, quantite, texte(valeurs.commentaire_piece));
     if (heures > 0) {
       await modifierLieeAOt(actuel.id, 'ot_temps', (lignes, outils) => {
@@ -347,6 +345,31 @@ Object.assign(Ordres, (() => {
           date: texte(valeurs.date_temps) || texte(champs.date_fin).slice(0, 10) || outils.aujourdhui(), heures: String(heures) });
       }, { action: I18n.donnees('ordres.clore.temps_passe', { actuelId: actuel.id }) });     // journal : D156
     }
+  }
+
+  /**
+   * L20 : « Clôturer techniquement » par la fenêtre de clôture unique (technicien, responsable) : mêmes contrôles que
+   * « Clore » avant toute écriture (RG4 sur l'OT tel qu'il sera), pièce et temps écrits, champs de l'OT écrits, puis le
+   * passage habituel (changerStatut : RG4 revérifiée, demandes suivies avec le mot pour l'opérateur, gamme, RG5).
+   */
+  async function cloturerTechniquement(ot, valeurs, options) {
+    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, true);
+    await ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite);
+    await modifierOt(actuel.id, champs, I18n.donnees('ordres.cloture.journal_saisies_cloture'));
+    return changerStatut(actuel.id, actuel.statut, 'Clôturé techniquement', { mot_operateur: valeurs.mot_operateur }, options);
+  }
+
+  /**
+   * « Clore » (D132) : clôture technique puis administrative dans une seule écriture de
+   * ordres_travail, deux dates égales, deux lignes de journal, OT mis dans la file du wiki.
+   * valeurs : CHAMPS_CLOTURE, et facultatifs heures + technicien_id + date_temps (temps passé),
+   * article_id + quantite (pièce sortie par Magasin.sortir). Les règles de la clôture technique
+   * (RG4, stock RG6) s'appliquent : tout est contrôlé avant la première écriture, puis revérifié.
+   */
+  async function clore(ot, valeurs) {
+    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, false);
+    const statutAttendu = actuel.statut;
+    await ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite);
     const saisis = await Donnees.modifier('ordres_travail', (lignes, outils) => {
       const ligne = ligneOt(lignes, actuel.id, true);
       if (ligne.statut !== statutAttendu) {
@@ -387,5 +410,7 @@ Object.assign(Ordres, (() => {
     controlerAffectation, ecrireAvecTrace,
     // clôture en une étape (§22.11, D132)
     clore, clotureUneEtape,
+    // fenêtre de clôture unique (L20) : clôture technique seule
+    cloturerTechniquement,
   };
 })());

@@ -1,22 +1,32 @@
 'use strict';
-// Ordres — clôture d'un OT (T539, lot 2 ergonomie) : la fenêtre « Clore » (clôture en une étape, ARCHITECTURE.md
-// §22.11, D132 ; sortie de ordres-fiche.js), ce que Prévo dit après une clôture (L22 : le technicien lit « Votre part
-// est terminée. Le responsable validera. » ; en Solo, une seule clôture, sans « deux temps » ni « verrouiller ») et la
-// clôture d'une visite préventive (L23) : liste de contrôle toute cochée sans anomalie → compte rendu écrit d'office
-// (« Visite faite, rien à signaler », dans la langue de l'écran, modifiable) ; anomalie constatée → compte rendu à
-// écrire et OT de réparation proposé ; temps passé proposé d'après le temps prévu de la gamme ; prochaine visite dite.
+// Ordres — clôture d'un OT (T539, T553, lot 2 ergonomie) : la fenêtre de clôture unique (L20 : « Clôturer » du
+// technicien et du responsable, « Clore » du responsable et du mode Solo, ARCHITECTURE.md §22.11, D132), ce que Prévo
+// dit après une clôture (L22 : le technicien lit « Votre part est terminée. Le responsable validera. » ; en Solo, une
+// seule clôture) et la clôture d'une visite préventive (L23).
+// La fenêtre montre d'avance tout ce que la règle RG4 exige (étoile), la liste de ce qui manque en haut (tenue à jour
+// pendant la saisie, Ordres.manquesCloture : la même règle que Ordres.verifierCloture) et son bouton dit ce qui
+// manque au lieu de refuser après coup. Date de fin à « maintenant », temps passé proposé, « Autre » en tête des
+// codes, compte rendu repris, case « remis en service en sécurité » ; pour une panne, « La machine était-elle
+// arrêtée ? » (colonnes arret_production et duree_arret_h). Visite : compte rendu écrit d'office si tout est coché
+// sans anomalie, temps proposé d'après la gamme, OT de réparation proposé sur anomalie, prochaine visite dite.
 // Chargé juste après ordres-fiche.js ; les outils de la fiche (Ordres.interne) sont cherchés au moment de l'appel.
 // Complète l'objet Ordres.
 
 Object.assign(Ordres, (() => {
 
   const { transitionsPossibles } = Ordres;
-  const { texte, nombre, estResponsable, equipementDe, listeTechniciens, champOt, lignesDeLOt } = Ordres.interne;
+  const { texte, nombre, estResponsable, estTechnicien, monTechnicienId, equipementDe, listeTechniciens, champOt,
+    lignesDeLOt } = Ordres.interne;
 
   const enSolo = () => typeof App !== 'undefined' && typeof App.modeSolo === 'function' && App.modeSolo();
 
+  // Champs de l'OT lus dans la fenêtre pour calculer ce qui manque (les mêmes que Ordres.clore écrit).
+  const CHAMPS_FENETRE = ['date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code', 'remede_code',
+    'cause_precision', 'remede_precision', 'compte_rendu', 'astuce', 'remise_service'];
+  const ECART_MAX_H = 12;               // au-delà, l'écart début → maintenant n'est pas un temps passé : rien n'est proposé
+
   // ===========================================================================================
-  // 1. Clôture en une étape (ARCHITECTURE.md §22.11, D132) : « Clore », réglage cloture_une_etape
+  // 1. La fenêtre de clôture unique (L20) : « Clôturer » (clôture technique) et « Clore » (D132)
   // ===========================================================================================
 
   /** Bouton « Clore » : réglage actif, profil responsable, OT qui peut recevoir la clôture technique. */
@@ -25,61 +35,202 @@ Object.assign(Ordres, (() => {
       ? UI.html`<button type="button" class="btn btn-primaire" id="ot-clore">${UI.icone('valider')}${I18n.t('ordres.bouton_clore.clore')}</button>` : '';
   }
 
-  // Champs de la fenêtre « Clore » : ceux des onglets Exécution et Compte rendu (mêmes libellés et
-  // aides), le temps passé et une pièce sortie du magasin (facultative, Magasin.sortir).
-  function champsClore(ot) {
+  /** Étoile sur un champ exigé (sans `required` : ce qui manque est dit par RG4, jamais par « Champ obligatoire »). */
+  function marquerExige(bloc) {
+    const etiquette = bloc.querySelector('label.case > span, label.libelle, legend');
+    if (etiquette) etiquette.appendChild(UI.element(UI.html` <span class="requis" aria-hidden="true">*</span>`));
+    const controle = bloc.querySelector('select, input, textarea');
+    if (controle) controle.setAttribute('aria-required', 'true');
+    return bloc;
+  }
+
+  /**
+   * Temps passé proposé : { valeur (heures décimales, '' si rien), aide }. Un temps déjà saisi suffit (rien à
+   * ajouter) ; sinon, pour une visite, le temps prévu de la gamme (L23) ; sinon l'écart début → maintenant arrondi
+   * au quart d'heure (12 h au plus).
+   */
+  function tempsAProposer(ot, total) {
+    if (total > 0) return { valeur: '', aide: I18n.t('ordres.champs_clore.deja_saisi', { total: UI.heures(total) }) };
+    const visite = tempsPropose(ot);
+    if (visite) return { valeur: visite, aide: I18n.t('ordres.cloture.temps_propose') };
+    const debut = texte(ot.date_debut) ? new Date(texte(ot.date_debut).replace(' ', 'T')) : null;
+    const ecart = debut && !Number.isNaN(debut.getTime()) ? (Date.now() - debut.getTime()) / 3600000 : 0;
+    if (ecart > 0 && ecart <= ECART_MAX_H) {
+      return { valeur: UI.dureeEnTexte(Math.max(0.25, Math.round(ecart * 4) / 4)), aide: I18n.t('ordres.cloture.temps_ecart') };
+    }
+    return { valeur: '', aide: I18n.t('ordres.champs_clore.moins_temps_passe_exige') };
+  }
+
+  /** Pour une panne (OT correctif) : « La machine était-elle arrêtée ? » Oui / Non, et la durée de l'arrêt si oui. */
+  function questionArret(ot) {
+    if (!Ordres.estCorrectif(ot)) return [];
+    const coche = (valeur) => (ot.arret_production === valeur ? UI.brut(' checked') : '');
+    const question = UI.element(UI.html`<fieldset class="ot-cloture-arret"><legend class="libelle">${I18n.t('ordres.cloture.machine_arretee')}</legend>
+      <div class="ot-cloture-choix"><label class="case"><input type="radio" name="arret_production" value="1"${coche('1')}><span>${I18n.t('ordres.lecture.oui')}</span></label>
+      <label class="case"><input type="radio" name="arret_production" value="0"${texte(ot.duree_arret_h) ? coche('0') : ''}><span>${I18n.t('ordres.lecture.non')}</span></label></div></fieldset>`);
+    const duree = champOt('duree_arret_h', ot.duree_arret_h, { libelle: I18n.t('ordres.cloture.duree_arret') });
+    const montrer = () => { duree.hidden = !UI.$('input[value="1"]', question).checked; };
+    question.addEventListener('change', montrer);
+    montrer();
+    return [question, duree];
+  }
+
+  /** Technicien du temps passé : le sien pour un technicien (ou en Solo), sinon une liste (celui de l'OT d'avance). */
+  function champTechnicien(ot) {
+    const sien = (estTechnicien() && monTechnicienId()) || App.technicienSolo() || '';
+    if (sien) return UI.element(UI.html`<input type="hidden" name="technicien_id" value="${sien}">`);
+    const technicien = texte(ot.technicien_id);
+    return champOt('technicien_id', technicien, { liste: listeTechniciens(technicien), libelle: I18n.t('ordres.champs_clore.technicien_temps_passe') });
+  }
+
+  /** Saisies facultatives, repliées pour garder la fenêtre courte : pièce sortie du magasin (Magasin.sortir), astuce. */
+  function saisiesFacultatives(ot) {
     const { libelleArticle, aideAstuce } = Ordres.interne;
-    const total = lignesDeLOt('ot_temps', ot.id).reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
-    const technicien = App.technicienSolo() || ot.technicien_id || '';
     const articles = Donnees.lignes('articles').filter((a) => texte(a.actif) !== '0')
       .map((a) => ({ valeur: a.id, libelle: I18n.t('ordres.options_articles.libelle_article_stock_stock_article', { libelleArticle: libelleArticle(a), stockArticle: UI.nombreFr(Donnees.stockArticle(a.id)) }) }));
-    const fin = champOt('date_fin', texte(ot.date_fin) || Donnees.maintenant().slice(0, 16));
-    const propose = tempsPropose(ot);                                    // L23 : d'après le temps prévu de la gamme
-    UI.$('input', fin).max = Donnees.maintenant().replace(' ', 'T');     // pas de date de fin dans le futur
-    const remise = champOt('remise_service', ot.remise_service, {
-      libelle: I18n.t('ordres.champs_clore.equipement_remis_service_securite'),
-    });
-    if (texte((equipementDe(ot) || {}).habilitation_requise)) remise.appendChild(UI.element(UI.html`<p class="aide">${Ordres.rappelConsignation()}</p>`));
-    return [
-      fin,
-      champOt('arret_production', ot.arret_production, { libelle: I18n.t('ordres.champs_clore.arret_production_pendant_intervention') }),
-      champOt('duree_arret_h', ot.duree_arret_h),
-      UI.champ({ nom: 'heures', type: 'duree', libelle: I18n.t('ordres.champs_clore.temps_passe_ajouter_heures') }, propose,
-        { aide: total > 0 ? I18n.t('ordres.champs_clore.deja_saisi', { total: UI.heures(total) })
-          : propose ? I18n.t('ordres.cloture.temps_propose') : I18n.t('ordres.champs_clore.moins_temps_passe_exige') }),
-      champOt('technicien_id', technicien, { liste: listeTechniciens(technicien), libelle: I18n.t('ordres.champs_clore.technicien_temps_passe') }),
+    const bloc = UI.element(UI.html`<details class="ot-cloture-facultatif"${texte(ot.astuce) ? UI.brut(' open') : ''}>
+      <summary>${I18n.t('ordres.cloture.facultatif')}</summary><div class="form-colonne"></div></details>`);
+    UI.$('.form-colonne', bloc).append(
       UI.champ({ nom: 'article_id', type: 'ref', libelle: I18n.t('ordres.champs_clore.piece_sortie_magasin_facultatif') }, '', { liste: articles }),
       UI.champ({ nom: 'quantite', type: 'decimal', libelle: I18n.t('ordres.champs_clore.quantite_sortie') }, '1'),
-      ...Ordres.champsCodes(ot),                 // T515 : symptôme, cause (sauf préventif), remède, « Autre »
-      champOt('compte_rendu', texte(ot.compte_rendu) || compteRenduDOffice(ot), {        // L23 : écrit d'office, modifiable
+      champOt('astuce', ot.astuce, { aide: aideAstuce() }));
+    return bloc;
+  }
+
+  /**
+   * Réservé à T554 (« Autoriser les clôtures incomplètes », « Dépannage provisoire ») : blocs ajoutés à la fenêtre,
+   * juste après la case de sécurité ; leurs champs nommés sont lus avec les autres (UI.lireFormulaire).
+   */
+  function extensionsCloture(/* ot, mode */) {
+    return [];
+  }
+
+  /** Réservé à T554 : vrai si la clôture peut se faire malgré des manques (réglage du responsable). */
+  function clotureIncomplete(/* ot, manques */) {
+    return false;
+  }
+
+  /** Champs de la fenêtre, dans l'ordre du travail ; les champs exigés par RG4 portent une étoile. */
+  function champsCloture(ot, mode) {
+    const total = lignesDeLOt('ot_temps', ot.id).reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
+    const temps = tempsAProposer(ot, total);
+    const exiges = Ordres.codesExiges(ot);
+    const fin = marquerExige(champOt('date_fin', texte(ot.date_fin) || Donnees.maintenant().slice(0, 16)));
+    UI.$('input', fin).max = Donnees.maintenant().replace(' ', 'T');     // pas de date de fin dans le futur
+    const heures = UI.champ({ nom: 'heures', type: 'duree', libelle: total > 0 ? I18n.t('ordres.champs_clore.temps_passe_ajouter_heures')
+      : I18n.t('ordres.cloture.temps_passe') }, temps.valeur, { aide: temps.aide });
+    const codes = Ordres.champsCodes(ot);       // T515 : symptôme, cause (sauf préventif), remède ; « Autre » en tête
+    codes.forEach((bloc) => {
+      const cle = bloc.dataset.code;
+      if (cle && exiges[cle]) marquerExige(UI.$('.champ', bloc));
+    });
+    const remise = marquerExige(champOt('remise_service', ot.remise_service, {
+      libelle: I18n.t('ordres.champs_clore.equipement_remis_service_securite'),
+    }));
+    if (texte((equipementDe(ot) || {}).habilitation_requise)) remise.appendChild(UI.element(UI.html`<p class="aide">${Ordres.rappelConsignation()}</p>`));
+    return [
+      UI.element(UI.html`<div class="ot-cloture-manques" aria-live="polite"></div>`),
+      fin,
+      total > 0 ? heures : marquerExige(heures),
+      champTechnicien(ot),
+      ...questionArret(ot),                                       // P04 : le bilan compte les arrêts
+      ...codes,
+      marquerExige(champOt('compte_rendu', texte(ot.compte_rendu) || compteRenduDOffice(ot), {        // L23 : écrit d'office
         aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
-      }),
+      })),
       ...Demandes.champsMotOperateur(ot),                         // A4 : mot pour l'opérateur, si l'OT vient d'une demande
-      champOt('astuce', ot.astuce, { aide: aideAstuce() }),
       remise,
+      ...extensionsCloture(ot, mode),
+      saisiesFacultatives(ot),
     ];
   }
 
-  /** « Clore » : saisies de la fiche enregistrées, puis une seule fenêtre → Ordres.clore (technique + administrative). */
-  async function demanderClore(ot) {
+  /** Saisies de la fenêtre prêtes à écrire : question de l'arrêt sans réponse → rien ; « Non » → pas de durée. */
+  function saisiesFenetre(formulaire) {
+    const valeurs = UI.lireFormulaire(formulaire);
+    if (valeurs.arret_production === '') { delete valeurs.arret_production; delete valeurs.duree_arret_h; }
+    if (valeurs.arret_production === '0') valeurs.duree_arret_h = '';
+    return valeurs;
+  }
+
+  /** Ce qui manque encore (Ordres.manquesCloture) pour l'OT tel que la fenêtre l'écrirait : [{ champ, texte }]. */
+  function manquesSaisis(ot, valeurs) {
+    const saisies = Object.assign({}, valeurs, Ordres.codesSaisis(valeurs));
+    const futur = Object.assign({}, ot);
+    CHAMPS_FENETRE.forEach((nom) => { if (saisies[nom] !== undefined) futur[nom] = texte(saisies[nom]); });
+    const heures = Donnees.nombre(valeurs.heures) || 0;
+    const temps = lignesDeLOt('ot_temps', ot.id).concat(heures > 0 ? [{ heures: String(heures) }] : []);
+    return Ordres.manquesCloture(futur, { temps }).map((manque) => (manque.champ === 'heures'
+      ? { champ: 'heures', texte: I18n.t('ordres.cloture.manque_temps') } : manque));
+  }
+
+  /** Liste de ce qui manque (en haut de la fenêtre) et libellé du bouton, tenus à jour pendant la saisie. */
+  function actualiser(ot, boite, bouton, libelle) {
+    const manques = manquesSaisis(ot, saisiesFenetre(boite.closest('form')));
+    boite.textContent = '';
+    boite.appendChild(manques.length
+      ? UI.bandeau('attention', UI.html`<b>${I18n.t('ordres.cloture.il_manque')}</b>
+          <ul class="ot-manques">${manques.map((manque) => UI.html`<li data-champ="${manque.champ}">${manque.texte}</li>`)}</ul>`)
+      : UI.bandeau('succes', I18n.t('ordres.cloture.rien_ne_manque')));
+    if (bouton) {
+      bouton.lastChild.textContent = manques.length && !clotureIncomplete(ot, manques)
+        ? I18n.t('ordres.cloture.bouton_il_manque', { action: libelle, n: manques.length }) : libelle;
+    }
+    return manques;
+  }
+
+  /**
+   * La fenêtre de clôture unique (L20). mode 'technique' : « Clôturer » (technicien, responsable : clôture technique,
+   * Ordres.cloturerTechniquement) ; mode 'clore' : « Clore » (responsable, Solo : technique + administrative,
+   * Ordres.clore). Les saisies des onglets sont enregistrées d'abord. Renvoie true si l'OT a été clôturé.
+   */
+  async function demanderCloture(ot, mode) {
     const { viderMessage, enregistrerFormulairesModifies, apresEnregistrement } = Ordres.interne;
     viderMessage();
     const sauvegarde = await enregistrerFormulairesModifies();
-    if (!sauvegarde.ok) return;
+    if (!sauvegarde.ok) return false;
     const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
     const solo = enSolo();                       // L22 : en Solo, une seule clôture (ni « deux temps » ni « verrouiller »)
-    const fait = await UI.fenetreAction({
-      titre: I18n.t('ordres.demander_clore.clore_actuel_id', { actuelId: actuel.id }), classe: 'ot-fenetre-clore',
-      libelleValider: solo ? I18n.t('ordres.bouton_clore.clore') : I18n.t('ordres.demander_clore.clore_verrouiller'),
-      introduction: UI.html`<p>${solo ? I18n.t('ordres.cloture.solo_introduction') : I18n.t('ordres.demander_clore.cloture_technique_puis_administrative')}</p>`,
-      champs: champsClore(actuel),
-      verifier: () => [],
-      action: (valeurs, contenu) => Ordres.clore(actuel, UI.lireFormulaire(contenu.closest('form'))),
+    const clore = mode === 'clore';
+    const libelle = !clore ? I18n.t('ordres.cloture_techniquement.cloturer_techniquement')
+      : solo ? I18n.t('ordres.bouton_clore.clore') : I18n.t('ordres.demander_clore.clore_verrouiller');
+    const champs = champsCloture(actuel, mode);
+    const boite = champs[0];
+    const promesse = UI.fenetreAction({
+      titre: clore ? I18n.t('ordres.demander_clore.clore_actuel_id', { actuelId: actuel.id }) : I18n.t('ordres.cloture.titre', { otId: actuel.id }),
+      classe: 'ot-fenetre-clore', libelleValider: libelle,
+      introduction: UI.html`<p>${!clore ? I18n.t('ordres.cloture.introduction')
+        : solo ? I18n.t('ordres.cloture.solo_introduction') : I18n.t('ordres.demander_clore.cloture_technique_puis_administrative')}</p>`,
+      champs,
+      verifier: () => {
+        const manques = actualiser(actuel, boite, null, libelle);
+        return clotureIncomplete(actuel, manques) ? [] : manques.map((manque) => ({ nom: manque.champ, message: manque.texte }));
+      },
+      action: (valeurs, contenu) => {
+        const saisies = saisiesFenetre(contenu.closest('form'));
+        return clore ? Ordres.clore(actuel, saisies) : Ordres.cloturerTechniquement(actuel, saisies);
+      },
     });
-    if (!fait) { if (sauvegarde.enregistres) await apresEnregistrement(); return; }
+    const formulaire = boite.closest('form');                    // la fenêtre est ouverte (UI.fenetre, synchrone)
+    const bouton = formulaire && formulaire.querySelector('.fenetre-actions .btn-primaire');
+    if (formulaire) {
+      const suivre = () => actualiser(actuel, boite, bouton, libelle);
+      formulaire.addEventListener('input', suivre);
+      formulaire.addEventListener('change', suivre);
+      suivre();
+    }
+    const fait = await promesse;
+    if (!fait) { if (sauvegarde.enregistres) await apresEnregistrement(); return false; }
     await apresEnregistrement();
     const avertissementGamme = Ordres.interne.lireAvertissementGamme(actuel.id);
-    direApresTransition(actuel.id, 'Clôturé administrativement', avertissementGamme, avertissementGamme ? [avertissementGamme] : [], true);
+    direApresTransition(actuel.id, clore ? 'Clôturé administrativement' : 'Clôturé techniquement', avertissementGamme,
+      avertissementGamme ? [avertissementGamme] : [], clore);
+    return true;
+  }
+
+  /** « Clore » (bouton #ot-clore, D132) : la fenêtre de clôture unique en mode 'clore'. */
+  function demanderClore(ot) {
+    return demanderCloture(ot, 'clore');
   }
 
   // ===========================================================================================
@@ -109,28 +260,6 @@ Object.assign(Ordres, (() => {
     const gamme = texte(ot.gamme_id) ? Donnees.trouver('gammes', ot.gamme_id) : null;
     const prevu = nombre(ot.temps_prevu_h) || nombre(gamme && gamme.temps_prevu_h);
     return prevu > 0 && prevu <= 24 ? String(prevu) : '';
-  }
-
-  /**
-   * L23 : avant la clôture technique (bouton de la fiche) : le temps proposé dans l'onglet Exécution et laissé tel quel
-   * est ajouté (comme « Ajouter le temps ») ; le compte rendu d'une visite sans anomalie est écrit d'office.
-   */
-  async function preparerCloture(ot) {
-    const formulaire = document.getElementById('form-temps');
-    const saisie = formulaire && formulaire.querySelector('[name="heures"]');
-    if (saisie && formulaire.dataset.tempsPropose && saisie.value === formulaire.dataset.tempsPropose && tempsPropose(ot)) {
-      formulaire.dataset.modifie = '1';
-      if (!(await Ordres.interne.enregistrerFormulairesModifies()).ok) return ot;
-    }
-    const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
-    const compteRendu = compteRenduDOffice(actuel);
-    if (!compteRendu) return actuel;
-    try {
-      await Ordres.interne.modifierOt(ot.id, { compte_rendu: compteRendu }, I18n.donnees('ordres.cloture.journal_compte_rendu_d_office'));
-    } catch (erreur) {
-      App.signalerErreur(erreur);
-    }
-    return Donnees.trouver('ordres_travail', ot.id) || actuel;
   }
 
   /** L23 : « Prochaine visite : le 14/12/2026. » quand la gamme de l'OT est périodique (déclencheur date), sinon ''. */
@@ -200,9 +329,9 @@ Object.assign(Ordres, (() => {
 
   // Outils prêtés aux fichiers du module (usage interne) : la fiche, l'onglet Compte rendu et l'onglet Exécution.
   Object.assign(Ordres.interne, {
-    boutonClore, demanderClore, preparerCloture, direApresTransition, compteRenduDOffice, tempsPropose,
+    boutonClore, demanderClore, demanderCloture, direApresTransition, compteRenduDOffice, tempsPropose,
   });
 
-  // Règles de L23 exposées pour les tests.
-  return { visiteSansAnomalie, messageApresTransition };
+  // Règles de L20 et L23 exposées pour les tests.
+  return { visiteSansAnomalie, messageApresTransition, manquesSaisis };
 })());

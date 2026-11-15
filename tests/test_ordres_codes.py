@@ -206,7 +206,7 @@ class TestCloture(CasCodes):
             self.assertFalse(page.is_visible(precision))
             autre = page.evaluate("Ordres.CODE_AUTRE")
             options = page.eval_on_selector_all("#form-compte-rendu [name=cause_code] option", "o => o.map(x => x.textContent)")
-            self.assertEqual(options[-1], "Autre (préciser)")
+            self.assertEqual(options[1], "Autre (préciser)")            # L20 : « Autre » en tête, après « — »
             page.select_option("#form-compte-rendu [name=cause_code]", autre)
             self.assertTrue(page.is_visible(precision))
             self.assertIsNotNone(page.get_attribute(precision, "data-dictee"))
@@ -225,12 +225,14 @@ class TestCloture(CasCodes):
             self.assertEqual(page.input_value("#form-compte-rendu [name=cause_code]"), autre)
             self.assertTrue(page.is_visible(precision))
             self.assertEqual(page.input_value(precision), "Courroie sortie de sa gorge")
+            # L20 : la fenêtre de clôture unique dit ce qui manque encore : ni la cause ni le remède.
             page.click("#form-compte-rendu button[data-action='transition'][data-cible='Clôturé techniquement']")
-            page.wait_for_selector("#ot-message .alerte")
-            message = page.inner_text("#ot-message")
-            self.assertIn("Clôture technique impossible", message)
+            page.wait_for_selector("dialog .ot-cloture-manques .alerte")
+            message = page.inner_text("dialog .ot-cloture-manques")
             self.assertNotIn("code cause", message)
             self.assertNotIn("code remède", message)
+            page.click("dialog .fenetre-actions .btn-fantome")
+            page.wait_for_selector("dialog", state="detached")
             # Choisir un vrai code efface la précision
             page.select_option("#form-compte-rendu [name=cause_code]", "C01")
             self.assertFalse(page.is_visible(precision))

@@ -253,6 +253,9 @@ class OutilsLot2:
 
     def transition(self, cible, zone=".ot-actions"):
         self.page.click("%s button[data-action='transition'][data-cible='%s']" % (zone, cible))
+        if cible == "Clôturé techniquement":        # L20 : la fenêtre de clôture unique reprend la fiche, on la valide
+            self.page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
+            self.page.click("dialog .fenetre-actions .btn-primaire")
 
     def sortir_depuis_l_ot(self, article_id, quantite):
         """Bloc « Pièces sorties » (onglet Exécution) : sortie de `quantite` × article, réussie."""

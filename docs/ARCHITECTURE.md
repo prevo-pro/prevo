@@ -844,13 +844,31 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   (wiki, causes fréquentes) ; au Pareto des causes, toutes regroupées sous « Autre (précisé) », avant « sans code ».
   Lot 2 ergonomie (T539, L23 ; `ordres-cloture.js`), visite préventive (OT d'une gamme ou de type préventif) : liste de
   contrôle toute cochée (une ligne au moins) sans anomalie constatée → le compte rendu vide est montré rempli d'office
-  (« Visite faite, rien à signaler. », dans la langue de l'écran, modifiable : onglet Compte rendu et fenêtre « Clore »)
-  et écrit au clic sur « Clôturer techniquement » (`Ordres.interne.preparerCloture`, une ligne de journal) ; anomalie
+  (« Visite faite, rien à signaler. », dans la langue de l'écran, modifiable : onglet Compte rendu et fenêtre de
+  clôture) ; anomalie
   constatée → rien d'office, et après la clôture l'OT de réparation est proposé (responsable : « Créer l'OT de
   réparation », nouvel OT correctif pré-rempli sur l'équipement ; technicien : « Signaler la réparation à faire », la
   demande liée) tant qu'aucune demande n'est liée à la visite ; sans temps saisi, le temps passé est proposé d'après le
-  temps prévu de l'OT (recopié de la gamme) et pris au clic s'il est laissé tel quel ; `remise_service` reste exigée ;
+  temps prévu de l'OT (recopié de la gamme : onglet Exécution et fenêtre de clôture) ; `remise_service` reste exigée ;
   le message de clôture dit « Prochaine visite : le … » quand la gamme est périodique (déclencheur date). RG4 inchangée.
+  Lot 2 ergonomie (T553, L20 ; `ordres-cloture.js`) : **fenêtre de clôture unique**. « Clôturer techniquement »
+  (technicien, responsable, où que soit le bouton) et « Clore » (responsable avec `cloture_une_etape`, mode Solo)
+  ouvrent la même fenêtre (`Ordres.interne.demanderCloture(ot, 'technique' | 'clore')`), après l'enregistrement des
+  saisies des onglets (qui restent utilisables au fil de l'eau). Tout ce que RG4 exige y est marqué d'une étoile (sans
+  `required` : les manques sont ceux de RG4) : date et heure de fin (« maintenant » si vide, jamais dans le futur),
+  temps passé (le déjà saisi suffit ; sinon proposé : temps prévu de la gamme pour une visite, ou écart début →
+  maintenant arrondi au quart d'heure, 12 h au plus ; formats L21), cause et remède (« Autre (préciser) » en tête des
+  listes, aussi dans l'onglet Compte rendu ; le libellé en clair à côté du code, « C01 — Usure »), compte rendu repris,
+  case « remis en service en sécurité ». Pour un OT correctif : « La machine était-elle arrêtée ? » Oui / Non
+  (`arret_production`, et `duree_arret_h` si oui ; sans réponse, rien n'est écrit) — le bilan compte les arrêts.
+  Pièce sortie et astuce sont repliées (« facultatif ») ; le mot pour l'opérateur (A4) est dans la fenêtre. En haut,
+  la liste de ce qui manque, tenue à jour pendant la saisie (`Ordres.manquesCloture` : les manques de RG4 avec leur
+  champ, `Ordres.verifierCloture` n'en est que les textes : une seule règle) ; le bouton dit « … — il manque N
+  éléments » ; un clic avec des manques n'écrit rien et les dit sous chaque champ. Écriture : « Clore » →
+  `Ordres.clore` ; « Clôturer » → `Ordres.cloturerTechniquement` (mêmes contrôles avant toute écriture, pièce et temps,
+  champs de l'OT, puis `changerStatut` : RG4 revérifiée, demandes suivies, RG5). Le serveur ne vérifie pas RG4.
+  Réservé à T554 dans `ordres-cloture.js` : `extensionsCloture(ot, mode)` (blocs ajoutés après la case de sécurité)
+  et `clotureIncomplete(ot, manques)` (vrai : clôture permise malgré les manques).
   La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
   « Cocher une case ne consigne rien : appliquez la procédure. » Clôture administrative
   (responsable) : `date_cloture_admin`, OT en lecture seule.
@@ -1542,7 +1560,7 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   `ordres-codes.js` juste après `ordres-regles.js`, codes cause et remède de la clôture, §15.11 ; T521 : `solo-flux.js` et
   `solo-accueil.js` juste après `ordres-prise.js`, mode Solo sans la couche équipe, §22.11 ; lot 2 ergonomie, T539 :
   `ordres-cloture.js` juste après `ordres-fiche.js` (fenêtre « Clore » sortie de la fiche, messages après une clôture :
-  L22, L23) ; T543 (L29) :
+  L22, L23 ; T553 : fenêtre de clôture unique, L20) ; T543 (L29) :
   `pannes-recurrentes.js` juste après `causes-frequentes.js`, objet `PannesRecurrentes` : panne à répétition sur une
   machine — 3 pannes (demandes ou OT correctifs, une demande et son OT comptés une fois) en 30 jours, réglages
   `pannes_recurrentes_seuil` et `pannes_recurrentes_jours` ; tuile de l'accueil du responsable, bandeau sur la demande
