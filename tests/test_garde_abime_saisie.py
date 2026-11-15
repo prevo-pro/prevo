@@ -24,8 +24,9 @@ de panne faite par QR code :
        son propre bandeau (« Fichier abîmé laissé tel quel », le même pour tous les profils).
     d. TestResponsableDossier : mode dossier, responsable, equipements.csv abîmé : « Modifier l'équipement » → message
        du responsable (fichier, sauvegarde du jour, ZIP, Contrôle de la base), saisie gardée, fichier identique. Base
-       au format 4 (f4-v2.2.0) : sans passage, le bandeau de l'ouverture est celui des fichiers abîmés (T206 ; sur une
-       base au format 3, le passage laisserait equipements.csv tel quel, avec son propre bandeau).
+       au format 6 (f6-v2.4.0, T562) : sans passage, le bandeau de l'ouverture est celui des fichiers abîmés (T206 ; sur
+       une base plus ancienne, f4-v2.2.0 compris depuis que le format 6 ajoute risque_electrique aux équipements, le
+       passage laisse equipements.csv tel quel, avec son propre bandeau).
 
 Règle numéro un : jamais de données réelles (copies des jeux de tests/fixtures/formats/ dans des dossiers temporaires,
 ou dans l'OPFS du navigateur de test).
@@ -339,7 +340,7 @@ class TestResponsableDossier(CasSaisieGardee):
         self.demarrer_statique()
 
     def test_modification_d_equipement_sur_fichier_abime_message_du_responsable_saisie_gardee(self):
-        fichiers = fichiers_du_jeu("f4-v2.2.0")
+        fichiers = fichiers_du_jeu("f6-v2.4.0")
         fichiers["equipements.csv"] = avec_valeur_en_trop(fichiers["equipements.csv"])
         self.ouvrir_dossier(fichiers, "responsable")
         bandeaux = [b for b in self.page.evaluate(BANDEAUX_JS) if "abîmé" in b]
