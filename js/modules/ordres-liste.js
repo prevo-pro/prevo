@@ -24,6 +24,7 @@ Object.assign(Ordres, (() => {
       if (reglages.etat === 'ouverts' && !estOuvert(ot)) return false;
       if (reglages.etat === 'retard' && !enRetard(ot, date)) return false;
       if (reglages.etat === 'clotures' && !STATUTS_CLOTURES.includes(ot.statut)) return false;
+      if (reglages.etat === 'a-valider' && ot.statut !== 'Clôturé techniquement') return false;   // T566
       if (reglages.etat === 'annules' && ot.statut !== 'Annulé') return false;
       if (reglages.priorite && ot.priorite !== reglages.priorite) return false;
       if (reglages.technicien === '__aucun' && ot.technicien_id) return false;
@@ -38,15 +39,17 @@ Object.assign(Ordres, (() => {
     });
   }
 
-  // Choix du filtre « état » de la liste (valeur → libellé).
+  // Choix du filtre « état » de la liste (valeur → libellé). T566 : « À valider » (OT « Clôturé techniquement », dit
+  // « Terminé, à valider ») pour le responsable seul ; le technicien, le demandeur et la direction gardent leurs choix.
   function etatsListe() {
     return [
       { valeur: 'ouverts', libelle: I18n.t('ordres.etats_liste.ouverts') },
       { valeur: 'retard', libelle: I18n.t('ordres.etats_liste.retard') },
+    ].concat(estResponsable() ? [{ valeur: 'a-valider', libelle: I18n.t('ordres.etats_liste.a_valider') }] : [], [
       { valeur: 'clotures', libelle: I18n.t('ordres.etats_liste.clotures') },
       { valeur: 'annules', libelle: I18n.t('ordres.etats_liste.annules') },
       { valeur: 'tous', libelle: I18n.t('ordres.etats_liste.tous') },
-    ];
+    ]);
   }
 
   function filtresParDefaut() {
@@ -56,7 +59,7 @@ Object.assign(Ordres, (() => {
   const CLES_ADRESSE = ['filtre', 'etat', 'statut', 'priorite', 'technicien', 'type', 'recherche', 'equipement'];
 
   // Paramètres de l'adresse (liens de l'accueil) : ?filtre=retard (OT en retard), ?filtre=p1 (P1
-  // ouverts), ?etat=ouverts|retard|clotures|annules|tous, ?priorite=P1, ?technicien=TEC-0002, ?type=…,
+  // ouverts), ?etat=ouverts|retard|a-valider|clotures|annules|tous, ?priorite=P1, ?technicien=TEC-0002, ?type=…,
   // ?recherche=… (ou ?equipement=EQ-0005). Valeur inconnue ignorée. Avec des paramètres, on repart
   // des filtres par défaut ; sans paramètre, on reprend les filtres mémorisés pendant la session.
   function filtresDepuisAdresse(requete) {

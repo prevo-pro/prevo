@@ -7,7 +7,8 @@ fuseau Europe/Paris ; contexte en mouvements réduits (reduced_motion) pour lire
 pour les tests des mouvements. Familles (le nom du test le dit) :
     phrase      phrase de la tuile de synthèse et ligne secondaire construites d'après les données
                 (accords, segments à 0 omis, « Rien d'urgent ce matin. »), « Ce matin / Cet après-midi /
-                Ce soir » à 9 h, 14 h et 19 h ;
+                Ce soir » à 9 h, 14 h et 19 h ; T566 : « · N OT à valider » ajouté (ou à la place de « Rien
+                d'urgent »), bouton « OT à valider : N » vers #/ot?etat=a-valider ;
     premier     « À traiter en premier » : DI sécurité ou P1 la plus ancienne, sinon l'OT le plus en
                 retard, sinon le prochain préventif (choix recalculé en Python), libellé du bouton selon
                 le type ; rien → tuile masquée, la synthèse prend toute la largeur ;
@@ -52,6 +53,7 @@ LIEN_PREVENTIFS, LIEN_ARTICLES = "#/preventif?onglet=calendrier", "#/magasin?ong
 LIEN_CONTROLES, LIEN_HABILITATIONS = "#/controles?filtre=30j", "#/equipe?filtre=a-renouveler"
 LIEN_SUGGESTIONS, LIEN_PLANNING = "#/preventif?onglet=suggestions", "#/planning"
 LIEN_RESERVES = "#/controles?filtre=reserves-en-retard"
+LIEN_A_VALIDER = "#/ot?etat=a-valider"          # T566 : OT « Terminé, à valider »
 
 # Jetons du brief (valeurs écrites sans espaces pour la comparaison)
 JETONS = {
@@ -161,6 +163,7 @@ DONNEES_JS = """() => {
     habilitations: c.habilitationsARenouveler.length,
     reserves: c.reservesEnRetard.map((e) => ({ id: e.reserve.id, parDefaut: e.etat.parDefaut })),
     suggestions: Suggestions.ouvertes(Donnees.aujourdhui()).length,
+    aValider: Donnees.lignes('ordres_travail').filter((o) => o.statut === 'Clôturé techniquement').length,
   };
 }""" % json.dumps(STATUTS_FERMES)
 
@@ -293,13 +296,17 @@ def accord(nombre, singulier, pluriel=None):
     return "%d %s" % (nombre, singulier if nombre <= 1 else (pluriel or singulier + "s"))
 
 
-def phrase_attendue(di, securite, moment):
-    """Phrase de la synthèse (calcul indépendant de celui de l'application)."""
+def phrase_attendue(di, securite, moment, a_valider=0):
+    """Phrase de la synthèse (calcul indépendant de celui de l'application). T566 : « N OT à valider » s'y ajoute
+    (« · N OT à valider ») ou remplace « Rien d'urgent »."""
+    valider = "%d OT à valider" % a_valider
     if di == 0:
+        if a_valider:
+            return valider
         return {"matin": "Rien d'urgent ce matin.", "après-midi": "Rien d'urgent cet après-midi.",
                 "soir": "Rien d'urgent ce soir."}[moment]
     texte = accord(di, "demande") + " à traiter"
-    return texte + (", dont %d sécurité" % securite if securite else "")
+    return texte + (", dont %d sécurité" % securite if securite else "") + (" · " + valider if a_valider else "")
 
 
 def ligne_attendue(retard, p1, preventifs):
@@ -382,12 +389,16 @@ class CasBento(CasNavigateur):
 # phrase
 # ---------------------------------------------------------------------------
 
+VALIDER_TOUT = """async () => { await Donnees.modifier('ordres_travail', (l) => l.forEach((o) => {
+    if (o.statut === 'Clôturé techniquement') o.statut = 'Clôturé administrativement'; })); }"""
+
+
 class TestPhrase(CasBento):
 
     def verifier_phrase(self, page, moment):
         d = self.donnees(page)
         securite = sum(1 for x in d["di"] if x["impact"] == "sécurité")
-        self.assertEqual(self.texte(page, "#bento-phrase"), phrase_attendue(len(d["di"]), securite, moment))
+        self.assertEqual(self.texte(page, "#bento-phrase"), phrase_attendue(len(d["di"]), securite, moment, d["aValider"]))
         ligne = ligne_attendue(len(d["retard"]), len(d["p1"]), len(d["preventifs"]))
         if ligne:
             self.assertEqual(self.texte(page, "#bento-ligne"), ligne)
@@ -403,11 +414,15 @@ class TestPhrase(CasBento):
         # La démo du 19/10 donne du pluriel et du singulier (sinon ce test ne prouverait rien)
         self.assertEqual((len(d["di"]), sum(1 for x in d["di"] if x["impact"] == "sécurité")), (5, 1))
         self.assertEqual((len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (3, 1, 3))
-        self.assertEqual(self.texte(page, "#bento-phrase"), "5 demandes à traiter, dont 1 sécurité")
+        # T566 : les 13 OT « Terminé, à valider » de la démo s'ajoutent à la phrase et ont leur bouton
+        self.assertEqual(d["aValider"], 13)
+        self.assertEqual(self.texte(page, "#bento-phrase"), "5 demandes à traiter, dont 1 sécurité · 13 OT à valider")
         self.assertEqual(self.texte(page, "#bento-ligne"), "3 ordres en retard · 1 urgence ouverte · 3 préventifs cette semaine")
         # Boutons de la synthèse
         self.assertEqual(self.texte(page, "#bento-synthese a[href='%s']" % LIEN_DI), "Voir les demandes →")
         self.assertEqual(self.texte(page, "#bento-synthese a[href='%s']" % LIEN_PLANNING), "Ouvrir le planning")
+        self.assertEqual(self.texte(page, "#bento-a-valider"), "OT à valider : 13")
+        self.assertEqual(page.get_attribute("#bento-a-valider", "href"), LIEN_A_VALIDER)
         # En-tête : « Bonjour », date en toutes lettres
         self.assertEqual(self.texte(page, "#contenu .bento-entete h1"), "Bonjour")
         self.assertEqual(self.texte(page, "#contenu .bento-date"), "Lundi 19 octobre 2026")
@@ -431,7 +446,7 @@ class TestPhrase(CasBento):
         }""" % json.dumps(STATUTS_FERMES))
         d = self.verifier_phrase(page, "matin")
         self.assertEqual((len(d["di"]), len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (1, 0, 2, 1))
-        self.assertEqual(self.texte(page, "#bento-phrase"), "1 demande à traiter")
+        self.assertEqual(self.texte(page, "#bento-phrase"), "1 demande à traiter · 13 OT à valider")
         self.assertEqual(self.texte(page, "#bento-ligne"), "2 urgences ouvertes · 1 préventif cette semaine")
 
         # Deux DI de sécurité, un OT en retard, aucun P1, deux préventifs de la semaine
@@ -454,7 +469,7 @@ class TestPhrase(CasBento):
         }""" % json.dumps(STATUTS_FERMES))
         d = self.verifier_phrase(page, "matin")
         self.assertEqual((len(d["di"]), len(d["retard"]), len(d["p1"]), len(d["preventifs"])), (2, 1, 0, 2))
-        self.assertEqual(self.texte(page, "#bento-phrase"), "2 demandes à traiter, dont 2 sécurité")
+        self.assertEqual(self.texte(page, "#bento-phrase"), "2 demandes à traiter, dont 2 sécurité · 13 OT à valider")
         self.assertEqual(self.texte(page, "#bento-ligne"), "1 ordre en retard · 2 préventifs cette semaine")
 
     def test_phrase_cet_apres_midi_ce_soir_et_rien_d_urgent(self):
@@ -468,8 +483,30 @@ class TestPhrase(CasBento):
                 self.verifier_phrase(page, moment)
                 self.modifier_puis_reafficher(page, vider)
                 self.assertEqual(self.donnees(page)["di"], [])
-                self.assertEqual(self.texte(page, "#bento-phrase"), phrase_attendue(0, 0, moment))
+                # T566 : sans demande, les OT à valider remplacent « Rien d'urgent »
+                self.assertEqual(self.texte(page, "#bento-phrase"), "13 OT à valider")
                 self.verifier_phrase(page, moment)
+                self.modifier_puis_reafficher(page, VALIDER_TOUT)
+                self.assertEqual(self.texte(page, "#bento-phrase"), phrase_attendue(0, 0, moment))
+                self.assertEqual(page.locator("#bento-a-valider").count(), 0)
+                self.verifier_phrase(page, moment)
+
+    def test_phrase_ot_a_valider_bouton_vers_la_liste_filtree(self):
+        # T566 : un seul OT à valider (accord), le bouton mène à la liste filtrée « À valider »
+        page = self.ouvrir()
+        self.modifier_puis_reafficher(page, """async () => { await Donnees.modifier('ordres_travail', (l) => {
+            l.filter((o) => o.statut === 'Clôturé techniquement').slice(1)
+              .forEach((o) => { o.statut = 'Clôturé administrativement'; }); }); }""")
+        d = self.verifier_phrase(page, "matin")
+        self.assertEqual(d["aValider"], 1)
+        self.assertEqual(self.texte(page, "#bento-phrase"), "5 demandes à traiter, dont 1 sécurité · 1 OT à valider")
+        self.assertEqual(self.texte(page, "#bento-a-valider"), "OT à valider : 1")
+        page.click("#bento-a-valider")
+        page.wait_for_selector("#ot-filtre-etat")
+        page.wait_for_function("document.getElementById('ot-filtre-etat').value === 'a-valider'")
+        lignes = page.evaluate("""() => [...document.querySelectorAll('.ot-liste-tableau tbody tr')].map((tr) => tr.textContent)""")
+        self.assertEqual(len(lignes), 1)
+        self.assertIn("Terminé, à valider", lignes[0])
 
 
 # ---------------------------------------------------------------------------

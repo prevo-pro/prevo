@@ -104,7 +104,8 @@ const Accueil = (() => {
    * articlesACommander (éléments de Magasin.aCommander() : { article, stock, pointCommande, … }),
    * controlesSous30j, habilitationsARenouveler et reservesEnRetard (éléments de
    * Controles.reservesEnRetard() : { reserve, controle, etat }, l'échéance la plus ancienne d'abord),
-   * echeances (Garanties.aEcheance() : { garanties, contrats, aMettreAJour }, lignes ; null sans le module).
+   * echeances (Garanties.aEcheance() : { garanties, contrats, aMettreAJour }, lignes ; null sans le module),
+   * otAValider (T566 : OT « Clôturé techniquement », dits « Terminé, à valider », que le responsable doit valider).
    */
   function calculerCompteurs() {
     const aujourdhui = Donnees.aujourdhui();
@@ -114,6 +115,7 @@ const Accueil = (() => {
       diATraiter: Donnees.lignes('demandes').filter((di) => di.statut === 'Nouvelle'),
       otEnRetard: ordres.filter((ot) => otEnRetard(ot, aujourdhui)),
       p1Ouverts: ordres.filter(p1Ouvert),
+      otAValider: ordres.filter((ot) => ot.statut === 'Clôturé techniquement'),
       preventifsSemaine: ordres.filter((ot) => preventifDeLaSemaine(ot, dimanche)),
       // L27 : visites préventives dues d'ici dimanche d'après le calendrier du préventif (OT créé ou non).
       visitesPreventivesSemaine: visitesPreventivesSemaine(aujourdhui, ordres, dimanche),

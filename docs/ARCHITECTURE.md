@@ -667,7 +667,7 @@ aucun écran du lot 3.
 Paramètres d'adresse lus :
 - `#/di` : `?statut=` (ex. `Nouvelle`), `?portee=` (`mes` ou `toutes`), `?q=` (recherche), `?equipement=` ;
 - `#/ot` : `?filtre=retard` (OT en retard) ou `?filtre=p1` (P1 ouverts), liens de l'accueil ; aussi
-  `?etat=` (`ouverts`, `retard`, `clotures`, `annules`, `tous`), `?statut=`, `?priorite=`,
+  `?etat=` (`ouverts`, `retard`, `a-valider` — responsable seul, T566 —, `clotures`, `annules`, `tous`), `?statut=`, `?priorite=`,
   `?technicien=`, `?type=`, `?recherche=`, `?equipement=` ;
 - `#/di/nouvelle` : `?equipement=`, `?ot=` (OT préventif d'origine : DI liée, §14.6) ;
   `#/ot/nouveau` : `?equipement=`, `?urgence=1` ;

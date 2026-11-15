@@ -6,7 +6,7 @@
 //   (le bandeau démo de la coque est masqué sur cet écran seulement : css/modules/accueil.css).
 //   Grille #bento (12 colonnes internes, soit les 6 du brief ; 2 au téléphone), dans l'ordre :
 //     1. synthèse : « Ce matin / Cet après-midi / Ce soir dans l'atelier », phrase et ligne secondaire
-//        construites d'après les données, deux boutons, décor « lueur » (aria-hidden) ;
+//        construites d'après les données, deux boutons (trois avec « OT à valider : N », T566), décor « lueur » (aria-hidden) ;
 //     2. « À traiter en premier » (choisirEnPremier) ; rien → tuile absente, la synthèse s'étend ;
 //     3. quatre compteurs : DI à traiter, OT en retard, P1 ouverts, préventifs de la semaine ;
 //     4. rapport du mois écoulé (Rapport.tuileAccueil ; absent → les compteurs s'étendent) ;
@@ -36,6 +36,7 @@ Object.assign(Accueil, (() => {
   const LIEN_GARANTIES_BIENTOT = '#/garanties?onglet=garanties&filtre=bientot';
   const LIEN_CONTRATS_A_DECIDER = '#/garanties?onglet=contrats&filtre=a-decider';
   const LIEN_CONTRATS_A_METTRE_A_JOUR = '#/garanties?onglet=contrats&filtre=a-mettre-a-jour';
+  const LIEN_A_VALIDER = '#/ot?etat=a-valider';           // T566 : liste des OT « Terminé, à valider »
 
   // Les chiffres défilent à l'ouverture de l'écran (démarrage, changement d'adresse), pas quand il est
   // réaffiché parce que des données ont changé.
@@ -52,8 +53,10 @@ Object.assign(Accueil, (() => {
     return heure < 18 ? 'après-midi' : 'soir';
   }
 
-  /** « 5 demandes à traiter », « 1 demande à traiter » ; aucune : « Rien d'urgent ce matin. » (selon le moment). */
-  function phraseDemandes(nombre, moment) {
+  /** « 5 demandes à traiter », « 1 demande à traiter » ; aucune : « Rien d'urgent ce matin. » (selon le moment), sauf
+   *  s'il y a des OT à valider (T566) : « 2 OT à valider ». */
+  function phraseDemandes(nombre, moment, aValider) {
+    if (nombre === 0 && aValider) return I18n.t('accueil.phrase_demandes.ot_a_valider', { n: aValider });
     if (nombre === 0) {
       // Une phrase complète par moment (jamais un mot choisi au milieu d'une phrase).
       if (moment === 'matin') return I18n.t('accueil.phrase_demandes.rien_urgent_matin');
@@ -151,18 +154,23 @@ Object.assign(Accueil, (() => {
     </div>`;
   }
 
+  // T566 : les OT « Terminé, à valider » s'ajoutent à la phrase (« … · 2 OT à valider ») et ont leur bouton vers la
+  // liste filtrée (#/ot?etat=a-valider) ; aucun : rien ne change.
   function tuileSynthese(compteurs, moment) {
     const nombre = compteurs.diATraiter.length;
+    const aValider = (compteurs.otAValider || []).length;
     const securite = compteurs.diATraiter.filter((di) => di.impact === 'sécurité').length;
     const ligne = ligneSecondaire(compteurs.otEnRetard.length, compteurs.p1Ouverts.length, compteurs.visitesPreventivesSemaine.length);
     return UI.html`<section class="bento-tuile bento-synthese" id="bento-synthese" aria-labelledby="bento-phrase">
       <span class="bento-lueur" aria-hidden="true"><span class="bento-halo bento-halo-blanc"></span><span class="bento-halo bento-halo-cyan"></span></span>
       <p class="bento-moment">${momentAtelier(moment)}</p>
-      <h2 class="bento-phrase" id="bento-phrase">${phraseDemandes(nombre, moment)}${nombre && securite
-        ? UI.html`${I18n.html('accueil.tuile_synthese.dont_securite', { securite })}` : ''}</h2>
+      <h2 class="bento-phrase" id="bento-phrase">${phraseDemandes(nombre, moment, aValider)}${nombre && securite
+        ? UI.html`${I18n.html('accueil.tuile_synthese.dont_securite', { securite })}` : ''}${nombre && aValider
+        ? ' · ' + I18n.t('accueil.phrase_demandes.ot_a_valider', { n: aValider }) : ''}</h2>
       ${ligne ? UI.html`<p class="bento-resume" id="bento-ligne">${ligne}</p>` : ''}
       <div class="bento-actions">
-        ${I18n.html('accueil.tuile_synthese.voir_demandes_ouvrir_planning')}
+        ${I18n.html('accueil.tuile_synthese.voir_demandes_ouvrir_planning')}${aValider ? UI.html`
+        <a class="btn bento-btn-verre" id="bento-a-valider" href="${LIEN_A_VALIDER}">${I18n.t('accueil.tuile_synthese.ot_a_valider', { n: aValider })}</a>` : ''}
       </div>
     </section>`;
   }
