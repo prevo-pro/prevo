@@ -155,7 +155,7 @@ I18n.ajouter('en', {
   'aide.ecran.liste_di.technicien.texte': 'The requests and their status. A refusal or a deferral always shows its reason.',
   'aide.ecran.liste_di.titre': 'Requests',
   'aide.ecran.liste_ot.responsable.essayez': 'filter on “Overdue”.',
-  'aide.ecran.liste_ot.responsable.texte': 'All the work orders, which you can filter by status, technician, equipment or priority, and export to CSV. A work order goes from Created to Administratively closed through Prepared, Scheduled, In progress and Technically closed; it can be put on hold or cancelled, always with a reason.',
+  'aide.ecran.liste_ot.responsable.texte': 'All the work orders, which you can filter by status, technician, equipment or priority, and export to CSV. A work order goes from Created to Closed through Prepared, Scheduled, In progress and Done, to be validated (the technical closure); “Closed” is the former administrative closure; it can be put on hold or cancelled, always with a reason.',
   'aide.ecran.liste_ot.technicien.essayez': 'open an “In progress” work order.',
   'aide.ecran.liste_ot.technicien.texte': 'Your work orders and the team\'s. Yours come first; the “Unassigned” filter shows the ones up for grabs.',
   'aide.ecran.liste_ot.titre': 'Work orders',

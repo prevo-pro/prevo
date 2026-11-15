@@ -143,9 +143,9 @@ ECRANS = {
             "responsable": {
                 "texte": (
                     "Tous les ordres de travail, à filtrer par statut, technicien, équipement ou priorité, et "
-                    "à exporter en CSV. Un ordre va de Créé à Clôturé administrativement en passant par "
-                    "Préparé, Planifié, En cours et Clôturé techniquement ; il peut être mis en attente ou "
-                    "annulé, toujours avec un motif."
+                    "à exporter en CSV. Un ordre va de Créé à Clôturé en passant par Préparé, Planifié, En cours "
+                    "et Terminé, à valider (la clôture technique) ; « Clôturé » est l'ancienne clôture "
+                    "administrative ; il peut être mis en attente ou annulé, toujours avec un motif."
                 ),
                 "essayez": "filtrez sur « En retard ».",
             },
@@ -528,9 +528,9 @@ ECRANS_EN = {
             "responsable": {
                 "texte": (
                     "All the work orders, which you can filter by status, technician, equipment or priority, and "
-                    "export to CSV. A work order goes from Created to Administratively closed through Prepared, "
-                    "Scheduled, In progress and Technically closed; it can be put on hold or cancelled, always "
-                    "with a reason."
+                    "export to CSV. A work order goes from Created to Closed through Prepared, Scheduled, In "
+                    "progress and Done, to be validated (the technical closure); “Closed” is the former "
+                    "administrative closure; it can be put on hold or cancelled, always with a reason."
                 ),
                 "essayez": "filter on “Overdue”.",
             },
