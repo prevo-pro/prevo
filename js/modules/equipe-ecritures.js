@@ -242,6 +242,29 @@ Object.assign(Equipe, (() => {
   }
 
   /**
+   * L19 : plusieurs habilitations d'un coup (cases de la liste électrique cochées, « B2V BR BC » saisi d'un bloc), mêmes
+   * dates, recyclage, type et justificatif : une ligne par intitulé, toutes ou aucune (même refus qu'ajouterHabilitation
+   * si le technicien a déjà l'un d'eux). Rend les identifiants créés.
+   */
+  async function ajouterHabilitations(technicienId, intitules, valeurs) {
+    exigerResponsable();
+    const technicien = technicienExistant(technicienId);
+    const propres = valeursHabilitation(valeurs || {});
+    const liste = Array.from(new Set((intitules || []).map(texte).filter(Boolean)));
+    return Donnees.modifier('habilitations', (lignes, outils) => liste.map((intitule) => {
+      const nouvelle = completerEcheance(Object.assign({ date_obtention: '', date_echeance: '', recyclage_mois: '',
+        justificatif: '', catalogue_id: '', nature_source: '' }, propres, { intitule }));
+      refuserSiErreurs(verifierHabilitation(nouvelle));
+      if (memeHabilitation(lignes, technicien.id, intitule).length) {
+        throw ErreurValidation(I18n.t('equipe.ajouter_habilitation.deja_habilitation_utilisez_renouveler', { nomComplet: nomComplet(technicien), intitule }));
+      }
+      const id = outils.nouvelId(lignes);
+      lignes.push(Object.assign({ id, technicien_id: technicien.id }, nouvelle));
+      return id;
+    }), { action: 'habilitations ' + liste.join(', ') + ' ajoutées' });
+  }
+
+  /**
    * Corrige une habilitation (erreur de saisie) ; renvoie la liste des champs changés. Échéance vide
    * et recyclage connu : échéance recalculée (obtention + recyclage) ; une échéance saisie est gardée.
    */
@@ -381,6 +404,6 @@ Object.assign(Equipe, (() => {
   return {
     // écritures (ARCHITECTURE.md §15.8)
     verifierTechnicien, creerTechnicien, modifierTechnicien,
-    ajouterHabilitation, modifierHabilitation, renouvelerHabilitation, ecrireJustificatif,
+    ajouterHabilitation, ajouterHabilitations, modifierHabilitation, renouvelerHabilitation, ecrireJustificatif,
   };
 })());

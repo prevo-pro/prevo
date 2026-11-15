@@ -84,12 +84,15 @@ def lundi_de(jour):
 
 
 class CasPlanning(CasNavigateur):
-    """Un serveur neuf par test (les tests planifient) ; profil responsable par défaut."""
+    """Un serveur neuf par test (les tests planifient) ; profil responsable par défaut. SOURCE : None = jeu de démo
+    (une classe de RG8 bloquante donne demo_rg8_bloquante(), T556)."""
+
+    SOURCE = None
 
     def setUp(self):
         super().setUp()
         self.scenarios = scenarios_demo()
-        self.serveur = ServeurPrevo()
+        self.serveur = ServeurPrevo(self.SOURCE) if self.SOURCE else ServeurPrevo()
         self.serveur.demarrer()
         self.addCleanup(self.serveur.arreter)
 
@@ -206,6 +209,9 @@ class TestPlanning(CasPlanning):
         jour = (datetime.date.fromisoformat(lundi) + datetime.timedelta(days=4)).isoformat()
         technicien = self.scenarios["technicien_br_echue"]
         avant = self.journal_de(ot_id)
+        # L19 (T556) : le blocage est un réglage du responsable (défaut : signalée seulement), posé avant d'ouvrir.
+        with open(Path(self.serveur.dossier) / "parametres.csv", "ab") as fichier:
+            fichier.write(b"habilitation_absente;bloquante" + bytes([13, 10]))
         page = self.ouvrir("#/planning?semaine=" + lundi)
         page.drag_and_drop(".pl-a-planifier " + self.carte(ot_id), self.case(technicien, jour))
         # Le responsable voit la fenêtre « passer outre » (T439) ; Annuler redit le refus (le reste : test_rg8_planning.py).

@@ -348,6 +348,14 @@
   ],
   "textes": [
     {
+      "texte": "signalée",
+      "fichiers": [
+        "js/modules/parametres-reglages.js"
+      ],
+      "classe": "D155",
+      "raison": "Valeur stockée du réglage habilitation_absente (« signalée » ou « bloquante », L19, T556), affichée par parametres.valeur.habilitation_signalee."
+    },
+    {
       "texte": "Bearer ",
       "fichiers": [
         "js/modules/ia.js"

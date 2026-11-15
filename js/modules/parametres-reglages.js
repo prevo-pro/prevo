@@ -106,6 +106,13 @@ const ParametresReglages = (() => {
     { cle: 'clotures_incompletes', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true,
       get libelle() { return I18n.t('parametres.libelle.clotures_incompletes'); },
       get aide() { return I18n.t('parametres.aide.clotures_incompletes'); } },
+    // Lot 2 ergonomie (T556, L19, P06 B) : absence d'une habilitation électrique attendue. Valeurs stockées (en
+    // français) : « signalée » (par défaut, aussi quand la ligne manque) ou « bloquante ». Lu par
+    // Equipe.absenceBloquanteReglee seul. Pas de règle serveur : RG8 est tenue par l'application (D195).
+    { cle: 'habilitation_absente', type: 'choix', valeurs: ['signalée', 'bloquante'], defaut: 'signalée', large: true,
+      get libellesValeurs() { return { signalée: I18n.t('parametres.valeur.habilitation_signalee'), bloquante: I18n.t('parametres.valeur.habilitation_bloquante') }; },
+      get libelle() { return I18n.t('parametres.libelle.habilitation_absente'); },
+      get aide() { return I18n.t('parametres.aide.habilitation_absente'); } },
     // Lot 2 ergonomie (T541, L25) : le technicien peut créer un article du magasin (création seulement) ; lu par
     // Magasin.techniciensCreentArticles seul (magasin-regles.js) ; tenu aussi par le serveur (articles en ajout).
     { cle: 'techniciens_creent_articles', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },

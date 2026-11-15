@@ -6,6 +6,8 @@
 //   equipe-regles.js      CE FICHIER, qui crée l'objet Equipe : règles PURES
 //                           1. Constantes et petits outils
 //                           2. État d'une habilitation, habilitations qui comptent, à renouveler
+//                           3. Types d'habilitation du catalogue
+//                           4. Habilitations électriques simplifiées (L19) : liste fixe, déduction, réglage
 //   equipe-ecritures.js   techniciens et habilitations : création, modification, renouvellement
 //   equipe-ecrans.js      écrans #/equipe, #/equipe/nouveau, #/equipe/<id>
 //
@@ -253,6 +255,103 @@ const Equipe = (() => {
       .sort((a, b) => texte(b.date_obtention).localeCompare(texte(a.date_obtention)));
   }
 
+  // ===========================================================================================
+  // 4. Habilitations électriques simplifiées (lot 2 ergonomie, L19, Q1, P06) : règles pures, aucun texte affiché
+  // ===========================================================================================
+  // Liste fixe à cocher, liée au travail (symboles NF C 18-510, écrits tels quels dans habilitations.intitule, jamais
+  // traduits). Travail → symboles qui le permettent : l'un d'eux suffit. Q1 : B1V et B2V, variantes de B1 et B2,
+  // valent B1 et B2 ; de même H0V, H1V, H2V (déjà saisis dans des bases d'avant) valent H0, H1, H2.
+  const HABILITATIONS_ELECTRIQUES = Object.freeze(['BR', 'B1', 'B1V', 'B2', 'B2V', 'BC', 'H0', 'H1', 'H2', 'HC']);
+  const TRAVAUX_ELECTRIQUES = Object.freeze({
+    depannage_bt: ['BR'], planifie_bt: ['B1', 'B2', 'BC'], local_ht: ['H0'], travaux_ht: ['H1', 'H2', 'HC'],
+  });
+  const VARIANTES_ELECTRIQUES = Object.freeze({ B1V: 'B1', B2V: 'B2', H0V: 'H0', H1V: 'H1', H2V: 'H2' });
+  // Valeurs de equipements.risque_electrique (format 6) et types d'OT tenus pour un dépannage (les autres : planifié).
+  const RISQUES_ELECTRIQUES = Object.freeze({ 'basse tension': 'bt', 'haute tension': 'ht', 'local haute tension': 'local_ht' });
+  const TYPES_DEPANNAGE = Object.freeze(['correctif immédiat', 'correctif différé']);
+  // Réglage du responsable (parametres.csv) : « signalée » (défaut, P06 B, aussi quand la ligne manque) ou « bloquante ».
+  const PARAMETRE_ABSENCE_HABILITATION = 'habilitation_absente';
+  const ABSENCE_BLOQUANTE = 'bloquante';
+
+  /** Symbole de la liste fixe (ou variante H0V, H1V, H2V) écrit dans un intitulé (« b2v », « B 2 V »), sinon ''. */
+  function symboleElectrique(intitule) {
+    const symbole = texte(intitule).toUpperCase().replace(/\s+/g, '');
+    return HABILITATIONS_ELECTRIQUES.includes(symbole) || VARIANTES_ELECTRIQUES[symbole] ? symbole : '';
+  }
+
+  /** Symboles qu'une habilitation détenue permet : elle-même et, pour une variante, son symbole de base. */
+  function symbolesPermis(intitule) {
+    const symbole = symboleElectrique(intitule);
+    if (!symbole) return [];
+    return VARIANTES_ELECTRIQUES[symbole] ? [symbole, VARIANTES_ELECTRIQUES[symbole]] : [symbole];
+  }
+
+  /** Bloc saisi d'une traite (« B2V BR BC », « BR, B2V / H0V ») : ses symboles s'il n'est fait que de symboles de la
+   *  liste, doublons retirés ; null sinon (texte libre, « CACES R489 »). */
+  function symbolesDuBloc(valeur) {
+    if (symboleElectrique(valeur)) return [symboleElectrique(valeur)];        // « b r » : un seul symbole
+    const morceaux = texte(valeur).split(/[\s,;/+]+/).filter(Boolean);
+    const symboles = morceaux.map(symboleElectrique);
+    if (!morceaux.length || symboles.some((symbole) => !symbole)) return null;
+    return Array.from(new Set(symboles));
+  }
+
+  /** Travail électrique d'un OT sur cet équipement : 'depannage_bt', 'planifie_bt', 'local_ht', 'travaux_ht', ou ''
+   *  (machine non concernée). Basse tension : dépannage pour un correctif, travail planifié sinon. */
+  function travailElectrique(equipement, ot) {
+    const risque = RISQUES_ELECTRIQUES[texte(equipement && equipement.risque_electrique)];
+    if (risque === 'bt') return TYPES_DEPANNAGE.includes(texte(ot && ot.type)) ? 'depannage_bt' : 'planifie_bt';
+    if (risque === 'ht') return 'travaux_ht';
+    return risque === 'local_ht' ? 'local_ht' : '';
+  }
+
+  /** Habilitation attendue, déduite du risque de la machine et du type d'OT : { intitule (« B1 / B2 / BC »),
+   *  symboles, travail }, ou null. */
+  function exigenceDeduite(equipement, ot) {
+    const travail = travailElectrique(equipement, ot);
+    if (!travail) return null;
+    const symboles = TRAVAUX_ELECTRIQUES[travail].slice();
+    return { intitule: symboles.join(' / '), symboles, travail };
+  }
+
+  /** Vrai si l'habilitation détenue (intitulé) répond à l'exigence { intitule, symboles } : un de ses symboles
+   *  (électrique), sinon le même intitulé (casse et espaces ignorés). */
+  function repondA(exigence, intituleDetenu) {
+    if (exigence.symboles && exigence.symboles.length) {
+      return symbolesPermis(intituleDetenu).some((symbole) => exigence.symboles.includes(symbole));
+    }
+    return cleIntitule(intituleDetenu) === cleIntitule(exigence.intitule);
+  }
+
+  /** Réglage du responsable : l'absence d'habilitation électrique est-elle bloquante ? (défaut : signalée seulement) */
+  function absenceBloquanteReglee() {
+    return texte(Donnees.parametre(PARAMETRE_ABSENCE_HABILITATION, '')).toLowerCase() === ABSENCE_BLOQUANTE;
+  }
+
+  /** Aucune habilitation saisie dans l'équipe (aucune ligne avec un intitulé) : Prévo avertit sans bloquer. */
+  function aucuneHabilitationSaisie() {
+    return !Donnees.lignes('habilitations').some((h) => texte(h.intitule));
+  }
+
+  /** Une habilitation au moins est saisie sur la fiche de ce technicien (P06 A : sinon, aucun rappel en Solo). */
+  function habilitationSaisiePour(technicienId) {
+    const id = texte(technicienId);
+    return Boolean(id) && Donnees.lignes('habilitations').some((h) => texte(h.technicien_id) === id && texte(h.intitule));
+  }
+
+  /** RG8 bloque-t-elle ? Seulement si le responsable l'a réglée « bloquante » ET qu'une habilitation est saisie. */
+  function absenceBloquante() {
+    return absenceBloquanteReglee() && !aucuneHabilitationSaisie();
+  }
+
+  /** Techniciens actifs qui détiennent, valable ce jour, une habilitation répondant à l'exigence (« À prendre »). */
+  function techniciensHabilites(exigence, jour) {
+    const date = dateDuJour(jour);
+    return Donnees.lignes('techniciens').filter(estActif).filter((technicien) => habilitationsQuiComptent(technicien.id)
+      .some((h) => repondA(exigence, h.intitule) && compteVraiment(h, date)))
+      .sort(ordreDesNoms);
+  }
+
   return {
     STATUTS_HABILITATION,
     // règles pures (ARCHITECTURE.md §15.8)
@@ -260,6 +359,10 @@ const Equipe = (() => {
     // types d'habilitation du catalogue (2.2)
     typesHabilitation, typeHabilitation, typeDe, valeursDepuisType, intitulePropose, echeanceProposee,
     recyclageDuType, estAutorisationDeConduite, estCaces, cacesSansAutorisation, justificatifsReprenables,
+    // habilitations électriques simplifiées (lot 2 ergonomie, L19, Q1, P06)
+    HABILITATIONS_ELECTRIQUES, TRAVAUX_ELECTRIQUES, PARAMETRE_ABSENCE_HABILITATION, symboleElectrique, symbolesPermis,
+    symbolesDuBloc, travailElectrique, exigenceDeduite, repondA, absenceBloquanteReglee, aucuneHabilitationSaisie,
+    habilitationSaisiePour, absenceBloquante, techniciensHabilites,
     // Usage interne au module (pas une API).
     interne: { texte, dateIso, dateDuJour, cleIntitule, estActif, nomComplet },
   };

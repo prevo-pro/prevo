@@ -26,7 +26,7 @@ import io
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
+from commun import demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
 
 SCENARIOS = scenarios_demo()
 EQ_BR = SCENARIOS["equipement_br"]                     # exige la BR
@@ -72,7 +72,7 @@ class TestRg8Ecrans(CasNavigateur):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.serveur = ServeurPrevo()
+        cls.serveur = ServeurPrevo(demo_rg8_bloquante())
         cls.serveur.demarrer()
         cls.addClassCleanup(cls.serveur.arreter)
         cls.dossier = cls.serveur.dossier

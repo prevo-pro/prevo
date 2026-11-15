@@ -119,6 +119,22 @@ def scenarios_demo():
     return json.loads(_texte_scenarios())
 
 
+@functools.lru_cache(maxsize=None)
+def demo_rg8_bloquante():
+    """Copie temporaire de donnees/demo où le responsable a réglé l'absence d'habilitation « bloquante » (lot 2
+    ergonomie, T556, L19 : le défaut est « signalée seulement », P06 B) : source des tests de RG8 bloquante. Faite une
+    fois par processus de test ; jamais écrite par un test (ServeurPrevo en copie le dossier)."""
+    dossier = Path(tempfile.mkdtemp(prefix="prevo-demo-rg8-")) / "demo"
+    shutil.copytree(DOSSIER_DEMO, dossier)
+    parametres = dossier / "parametres.csv"
+    octets = parametres.read_bytes()
+    fin = bytes([13, 10])                       # CRLF (§3.1)
+    if not octets.endswith(fin):
+        octets += fin
+    parametres.write_bytes(octets + "habilitation_absente;bloquante".encode("utf-8") + fin)
+    return dossier
+
+
 # ---------------------------------------------------------------------------
 # Réseau et fichiers
 # ---------------------------------------------------------------------------

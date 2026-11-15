@@ -17,6 +17,7 @@ import datetime
 import re
 import unittest
 
+from commun import demo_rg8_bloquante
 from test_planning import CasPlanning, lire_csv, ot_sur_disque
 
 FENETRE = "dialog.ot-fenetre-derogation"
@@ -31,6 +32,8 @@ def non_tracee(ot_id):
 
 
 class TestDerogationEcran(CasPlanning):
+
+    SOURCE = demo_rg8_bloquante()       # T556 (L19) : RG8 réglée « bloquante »
 
     def setUp(self):
         super().setUp()

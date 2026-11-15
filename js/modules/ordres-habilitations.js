@@ -96,12 +96,46 @@ Object.assign(Ordres, (() => {
   /** « BR (équipement), H0V (OT) » : habilitations exigées par l'OT (celle de son équipement, puis
    *  ot.habilitation_requise), chacune avec son origine ; '' quand l'OT n'exige rien. */
   function libelleExigences(ot) {
+    return libelleListe(habilitationsExigees(ot));
+  }
+
+  /** « BR (dépannage basse tension), H0V (OT) » d'une liste d'exigences (ou de manquantes) : origine 'risque' (L19)
+   *  dite par le travail d'où l'habilitation est déduite. */
+  function libelleListe(exigences) {
     const origines = {
       equipement: I18n.t('ordres.habilitation_exigee.origine_equipement'), ot: I18n.t('ordres.habilitation_exigee.origine_ot'),
     };
-    return habilitationsExigees(ot).map((exigence) => I18n.t('ordres.habilitation_exigee.intitule_origines', {
-      intitule: exigence.intitule, origines: exigence.origines.map((origine) => origines[origine]).join(', '),
+    const libelle = (exigence, origine) => (origine === 'risque' && exigence.travail
+      ? I18n.t('ordres.habilitation_exigee.origine_risque.' + exigence.travail) : origines[origine] || '');
+    return exigences.map((exigence) => I18n.t('ordres.habilitation_exigee.intitule_origines', {
+      intitule: exigence.intitule, origines: exigence.origines.map((origine) => libelle(exigence, origine)).filter(Boolean).join(', '),
     })).join(', ');
+  }
+
+  /**
+   * L19 : signal sans blocage sur la fiche et dans les formulaires (bandeau 'attention'), ou null. Aucune habilitation
+   * saisie dans l'équipe : l'habilitation attendue et, pour le responsable, le lien pour les saisir. Sinon : le
+   * technicien affecté n'a pas une habilitation attendue valide et Prévo ne la refuse pas (réglage « signalée
+   * seulement », ou autre autorisation que la liste électrique). Rien en Solo (son rappel : Solo.ajusterFiche), pour la
+   * Direction (elle ne lit pas les habilitations), ni quand le refus RG8 est déjà dit (refus non nul).
+   */
+  function bandeauSignal(ot, technicienId, date) {
+    if ((typeof Solo !== 'undefined' && Solo.actif()) || App.estDirection() || !Ordres.estOuvert(ot)) return null;
+    const exigees = habilitationsExigees(ot);
+    if (!exigees.length) return null;
+    if (Equipe.aucuneHabilitationSaisie()) {
+      return UI.bandeau('attention', I18n.html(estResponsable() ? 'ordres.bandeau_habilitation.equipe_vide_responsable'
+        : 'ordres.bandeau_habilitation.equipe_vide', { liste: libelleListe(exigees), lien: '#/equipe' }));
+    }
+    const controle = controleHabilitation(ot, technicienId, date);
+    // Réglage « bloquante » : une habilitation électrique manquante est refusée ou couverte par une dérogation ;
+    // seules les autres autorisations restent à signaler.
+    const bloquante = Equipe.absenceBloquante();
+    const aSignaler = controle.manquantes.filter((m) => !bloquante || !(m.symboles && m.symboles.length));
+    if (!aSignaler.length) return null;
+    return UI.bandeau('attention', I18n.html('ordres.bandeau_habilitation.signal', {
+      nomTechnicien: nomTechnicien(controle.technicienId), liste: aSignaler.map(libelleManquante).join(', '),
+    }));
   }
 
   /** Badge de l'en-tête de la fiche : « Habilitation exigée : BR (équipement), H0V (OT) » ; '' sans exigence. */
@@ -140,7 +174,8 @@ Object.assign(Ordres, (() => {
       revoirChamp(ligne.equipement_id);
       const refus = refusHabilitation(ligne, valeurs.technicien_id, valeurs.date_prevue);
       zone.textContent = '';
-      if (refus) zone.appendChild(bandeauRefus(refus));
+      const bandeau = refus ? bandeauRefus(refus) : bandeauSignal(ligne, valeurs.technicien_id, valeurs.date_prevue);
+      if (bandeau) zone.appendChild(bandeau);
     };
     montrer();
     formulaire.addEventListener('change', montrer);
@@ -154,7 +189,7 @@ Object.assign(Ordres, (() => {
   /**
    * Fiche de l'OT : l'affectation actuelle manque d'une habilitation exigée et une dérogation du responsable est
    * notée au journal → « Affecté sans habilitation BR valide : dérogation du responsable le 08/11/2026 à 10:42 »
-   * (et son motif) ; sinon null. Vu de tous les profils.
+   * (et son motif) ; sinon le signal sans blocage de L19 (bandeauSignal), ou null. Vu de tous les profils.
    */
   function bandeauDerogation(ot) {
     if (nonTracee && nonTracee.otEcrit === ot.id) {            // T510 : dit une fois, sur la fiche de l'OT écrit
@@ -163,12 +198,13 @@ Object.assign(Ordres, (() => {
       return UI.bandeau('important', message);
     }
     const controle = controleHabilitation(ot, ot.technicien_id, ot.date_prevue);
-    if (!controle.bloque) return null;
-    const entree = derogationAccordee(ot.id, controle.technicienId, controle.date, controle.manquantes);
-    if (!entree) return null;
+    const signal = () => bandeauSignal(ot, ot.technicien_id, ot.date_prevue);       // L19 : signal sans blocage
+    const electriques = controle.manquantes.filter((m) => Boolean(m.symboles && m.symboles.length));
+    const entree = electriques.length ? derogationAccordee(ot.id, controle.technicienId, controle.date, electriques) : null;
+    if (!entree) return signal();
     const derogation = lireDerogation(entree.action);
     return UI.bandeau('attention', I18n.html('ordres.bandeau_habilitation.derogation', {
-      n: controle.manquantes.length, liste: controle.manquantes.map((m) => m.intitule).join(', '),
+      n: electriques.length, liste: electriques.map((m) => m.intitule).join(', '),
       date: UI.dateFr(entree.date_heure), heure: texte(entree.date_heure).slice(11, 16),
       motif: derogation ? derogation.motif : '',
     }));
@@ -180,7 +216,8 @@ Object.assign(Ordres, (() => {
 
   /** « équipement AE-03 », « OT » ou « équipement AE-03 ; OT » : d'où viennent les exigences manquantes. */
   function originesDe(manquantes, equipementId) {
-    const vient = (origine) => manquantes.some((m) => (m.origines || []).includes(origine));
+    // L19 : une habilitation déduite du risque électrique vient de l'équipement (son risque).
+    const vient = (origine) => manquantes.some((m) => (m.origines || []).some((o) => o === origine || (origine === 'equipement' && o === 'risque')));
     const valeurs = { repereEquipement: repereEquipement(equipementId) };
     if (vient('equipement') && vient('ot')) return I18n.t('ordres.derogation.origine_equipement_ot', valeurs);
     return vient('ot') ? I18n.t('ordres.derogation.origine_ot') : I18n.t('ordres.derogation.origine_equipement', valeurs);
@@ -265,7 +302,8 @@ Object.assign(Ordres, (() => {
 
   // Outils prêtés aux écrans du module (ordres-fiche.js, ordres-onglets.js, ordres-impression.js), cherchés au moment
   // de l'appel.
-  Object.assign(Ordres.interne, { brancherZoneHabilitation, bandeauDerogation, exigenceSaisie, libelleExigences, badgeExigences });
+  Object.assign(Ordres.interne, { brancherZoneHabilitation, bandeauDerogation, exigenceSaisie, libelleExigences, badgeExigences,
+    libelleListe, bandeauSignal });
 
   return { demanderDerogation, avecDerogation };
 })());

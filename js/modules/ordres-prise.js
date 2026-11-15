@@ -212,8 +212,26 @@ Object.assign(Ordres, (() => {
     return sorte === 'reprendre' && STATUTS_SUITE.includes(texte(ot.statut)) ? 'suite' : sorte;
   }
 
+  /** L19 : la prise serait refusée (réglage « bloquante », habilitation électrique manquante, aucune dérogation) : le
+   *  nom de ceux qui l'ont valide remplace le bouton (« Habilitation BR attendue. Peut le prendre : Marc Petit. ») ;
+   *  '' sinon (le bouton reste). */
+  function habilitesAuLieuDuBouton(otId) {
+    const ot = Donnees.trouver('ordres_travail', otId);
+    const moi = monTechnicien();
+    const refuse = (id) => Ordres.interne.refusHabilitation(Object.assign({}, ot, { technicien_id: id }), id, ot.date_prevue);
+    const refus = ot && moi ? refuse(moi) : null;
+    if (!refus) return '';
+    const liste = refus.manquantes.map((m) => m.intitule).join(', ');
+    const noms = Donnees.lignes('techniciens').filter((t) => texte(t.actif) !== '0' && texte(t.id) !== moi && !refuse(texte(t.id)))
+      .map((t) => nomTechnicien(t.id));
+    return UI.html`<p class="ot-habilites">${noms.length ? I18n.t('ordres.prise.habilites', { n: noms.length, liste, noms: noms.join(', ') })
+      : I18n.t('ordres.prise.personne_habilite', { liste })}</p>`;
+  }
+
   function boutonPrise(sorte, otId) {
     if (!sorte) return '';
+    const habilites = habilitesAuLieuDuBouton(otId);
+    if (habilites) return habilites;
     const libelle = { prendre: 'ordres.prise.je_prends', suite: 'ordres.prise.prendre_suite', reprendre: 'ordres.prise.reprendre' }[sorte];
     return UI.html`<button type="button" class="btn ${sorte === 'reprendre' ? 'btn-secondaire' : 'btn-primaire'}" data-action="prendre-ot" data-sorte="${sorte}" data-ot="${otId}">${UI.icone('valider')}${I18n.t(libelle)}</button>`;
   }
@@ -378,13 +396,16 @@ Object.assign(Ordres, (() => {
     return equipement ? (equipement.repere || equipement.id) : texte(equipementId);
   }
 
+  // L19 : l'habilitation attendue est dite sur la carte ; si la prise serait refusée, ceux qui l'ont, sous la carte.
   function ligneOtAccueil(ot) {
+    const attendue = Ordres.interne.libelleExigences(ot);
     return UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}" class="${ot.priorite === 'P1' ? 'accent-p1' : (ot.priorite === 'P2' ? 'accent-p2' : '')}">
       <div class="carte-tete"><b>${ot.id}</b>${UI.badgePriorite(ot.priorite)}${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</div>
       <div class="carte-titre">${ot.titre}</div>
       <div class="carte-meta"><span>${libelleEquipementCourt(ot.equipement_id)}</span>${ot.date_prevue ? UI.html`<span>${UI.dateFr(ot.date_prevue)}</span>` : ''}</div>
       ${Ordres.releveCarteHtml(ot)}
-    </a></li>`;
+      ${attendue ? UI.html`<div class="carte-meta ot-habilitation-attendue">${I18n.t('ordres.habilitation_exigee.attendue', { liste: attendue })}</div>` : ''}
+    </a>${habilitesAuLieuDuBouton(ot.id)}</li>`;
   }
 
   /** L17 : une demande « Nouvelle » dans « À prendre » : la carte mène à la demande, « Je prends » en dessous. */

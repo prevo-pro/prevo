@@ -338,6 +338,9 @@ class CasRecette(Ecran, CasNavigateur):
     """Le mode ouvre l'application (profil Responsable), appelle parcours(), puis ouvre la vue du technicien."""
 
     def parcours(self):
+        # L19 (T556) : le blocage RG8 est un réglage du responsable (défaut : signalée seulement, P06 B).
+        self.page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+          lignes.push({ cle: 'habilitation_absente', valeur: 'bloquante' }); })""")
         self.jour = self.aujourdhui()
         self.date = jour_ouvre(self.jour + datetime.timedelta(days=14))         # D : date prévue des affectations
         a = self.creer_technicien_a()

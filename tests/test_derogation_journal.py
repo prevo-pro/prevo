@@ -56,6 +56,7 @@ async function contexte(ots, journal) {
     habilitations: csv('id;technicien_id;intitule;date_obtention;date_echeance', ['HAB-0004;TEC-0004;BR;2023-06-01;2026-05-31']),
     ordres_travail: csv('id;statut;type;priorite;origine;equipement_id;technicien_id;date_prevue;date_creation;titre;date_debut', ots),
     journal: csv('id;date_heure;poste;profil;table;id_ligne;action', journal || []),
+    parametres: csv('cle;valeur', ['habilitation_absente;bloquante']),   // T556 (L19) : RG8 réglée « bloquante »
   };
   c.adaptateur = c.run('StockageDemo.creer(tables)');
   const ajouter = c.adaptateur.ajouter.bind(c.adaptateur);

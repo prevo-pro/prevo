@@ -123,9 +123,13 @@ JOURNAL_LIGNES = [
 JOURNAL = csv(ENTETE_JOURNAL, JOURNAL_LIGNES)
 
 
+# L19 (T556, P06 B) : RG8 ne refuse que si le responsable a réglé l'absence « bloquante » (défaut : signalée).
+PARAMETRES = csv("cle;valeur", ["habilitation_absente;bloquante"])
+
+
 def jeu_de_test():
     return {"equipements": EQUIPEMENTS, "techniciens": TECHNICIENS, "habilitations": HABILITATIONS,
-            "ordres_travail": ORDRES, "journal": JOURNAL}
+            "ordres_travail": ORDRES, "journal": JOURNAL, "parametres": PARAMETRES}
 
 
 class CasRg8(CasNavigateur):
@@ -184,7 +188,7 @@ class TestExigences(CasRg8):
                          ["CACES R489:equipement", "BR:ot"])
         self.assertEqual(self.js("() => Ordres.habilitationsExigees(null)"), [])
         self.assertEqual(self.js("() => Ordres.habilitationsExigees('OT-2099-9999')"), [])
-        self.assertEqual(self.js("() => Ordres.ORIGINES_HABILITATION"), ["equipement", "ot"])
+        self.assertEqual(self.js("() => Ordres.ORIGINES_HABILITATION"), ["equipement", "ot", "risque"])
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +218,7 @@ class TestControle(CasRg8):
         self.assertEqual(resultat["date"], DATE)
         self.assertEqual(resultat["technicienId"], "TEC-0004")
         self.assertEqual(resultat["manquantes"], [{"intitule": "BR", "origines": ["equipement"], "raison": "echue",
-                                                   "echeance": "2026-05-31", "obtention": ""}])
+                                                   "echeance": "2026-05-31", "obtention": "", "symboles": ["BR"], "travail": ""}])
         # Avant l'échéance, la même habilitation était valide.
         self.assertFalse(self.controle("OT-2026-0002", "TEC-0004", "2026-05-31")["bloque"])
 
@@ -222,15 +226,15 @@ class TestControle(CasRg8):
         resultat = self.controle("OT-2026-0003", "TEC-0006")
         self.assertTrue(resultat["bloque"])
         self.assertEqual(resultat["manquantes"], [
-            {"intitule": "BR", "origines": ["equipement"], "raison": "absente", "echeance": "", "obtention": ""},
-            {"intitule": "H0V", "origines": ["ot"], "raison": "absente", "echeance": "", "obtention": ""}])
+            {"intitule": "BR", "origines": ["equipement"], "raison": "absente", "echeance": "", "obtention": "", "symboles": ["BR"], "travail": ""},
+            {"intitule": "H0V", "origines": ["ot"], "raison": "absente", "echeance": "", "obtention": "", "symboles": ["H0V"], "travail": ""}])
         # Technicien inconnu : aucune ligne, donc absente aussi.
         self.assertEqual(self.raisons("OT-2026-0002", "TEC-9999"), [("BR", "absente")])
 
     def test_pas_encore_obtenue_l_emporte_sur_l_ancienne_ligne_echue(self):
         manquante = self.controle("OT-2026-0002", "TEC-0002")["manquantes"]
         self.assertEqual(manquante, [{"intitule": "BR", "origines": ["equipement"], "raison": "pas_encore_obtenue",
-                                      "echeance": "", "obtention": "2026-12-01"}])
+                                      "echeance": "", "obtention": "2026-12-01", "symboles": ["BR"], "travail": ""}])
         # Le jour de l'obtention, la ligne nouvelle vaut.
         self.assertFalse(self.controle("OT-2026-0002", "TEC-0002", "2026-12-01")["bloque"])
 
@@ -245,7 +249,7 @@ class TestControle(CasRg8):
         # TEC-0003 : « caces  r489 » vaut « CACES R489 » ; BR sans échéance et B2V sans obtention valent ;
         # H0V à l'échéance illisible (2026-02-30) est tenue pour échue, sans date.
         self.assertEqual(self.controle("OT-2026-0004", "TEC-0003")["manquantes"], [
-            {"intitule": "H0V", "origines": ["equipement", "ot"], "raison": "echue", "echeance": "", "obtention": ""}])
+            {"intitule": "H0V", "origines": ["equipement", "ot"], "raison": "echue", "echeance": "", "obtention": "", "symboles": ["H0V"], "travail": ""}])
         # En 2040, BR (sans échéance) vaut encore ; en 1990, B2V (sans obtention) vaut déjà ; l'échéance
         # illisible reste échue à toute date.
         self.assertEqual(self.raisons("OT-2026-0004", "TEC-0003", "2040-01-01"),
@@ -320,7 +324,7 @@ class TestVerifierHabilitation(CasRg8):
         self.assertEqual(passage["habilitation"], {
             "otId": "OT-2026-0002", "technicienId": "TEC-0006", "date": DATE, "message": message,
             "manquantes": [{"intitule": "BR", "origines": ["equipement"], "raison": "absente", "echeance": "",
-                            "obtention": ""}]})
+                            "obtention": "", "symboles": ["BR"], "travail": ""}]})
         # Les trois raisons, avec leur date (échéance, obtention) au format de l'écran.
         self.assertIn(": BR (échue le 31/05/2026). Seul", self.passage("OT-2026-0002", "TEC-0004", "2026-11-21")["erreurs"][0])
         self.assertIn(": BR (pas encore obtenue : valable à partir du 01/12/2026). Seul",

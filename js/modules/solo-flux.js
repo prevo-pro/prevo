@@ -177,10 +177,12 @@ const Solo = (() => {
     return liste;
   }
 
-  /** Rappel d'habilitation (jamais un refus en Solo) : '' quand sa fiche porte tout ce que l'OT exige. */
+  /** Rappel d'habilitation (jamais un refus en Solo) : '' quand sa fiche porte tout ce que l'OT exige, ou (P06 A, lot 2
+   *  ergonomie) tant qu'aucune habilitation n'est saisie sur sa fiche. */
   function rappelHabilitation(ot) {
     const id = moi();
     if (!id || etatSimple(ot) === 'fini' || etatSimple(ot) === 'annule') return null;
+    if (!Equipe.habilitationSaisiePour(id)) return null;        // P06 A : rien tant qu'aucune n'est saisie sur sa fiche
     const controle = Ordres.controleHabilitation(ot, id);
     if (!controle.bloque) return null;
     const liste = controle.manquantes.map((m) => Ordres.interne.libelleManquante(m)).join(', ');

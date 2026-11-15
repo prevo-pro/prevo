@@ -34,7 +34,7 @@ import unittest
 from pathlib import Path
 from urllib.parse import parse_qs
 
-from commun import RACINE, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
+from commun import RACINE, demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
 
 SCENARIOS = scenarios_demo()
 EQ_BR = SCENARIOS["equipement_br"]                     # exige la BR
@@ -161,7 +161,7 @@ class TestServeur(CasReservesOt):
 
     def test_creer_un_ot_depuis_une_reserve_le_relie_et_la_carte_le_montre(self):
         page = self.page
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:      # L19 (T556) : RG8 réglée « bloquante »
             dossier = serveur.dossier
             self.ouvrir(serveur, "#/controles")
             d1 = self.aujourdhui() - datetime.timedelta(days=10)

@@ -22,7 +22,7 @@ import re
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil
+from commun import demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil
 
 MOI = "TEC-0004"                         # Thomas, technicien du jeu de démo (sans BR valide), pris comme technicien seul
 LIGNE_PRISE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}\|TEC-0004\|$")
@@ -153,10 +153,10 @@ class TestFicheEtCreation(CasSolo):
     def test_ot_crees_a_son_nom_fiche_allegee_et_rappel_d_habilitation(self):
         page = self.page
         preregler_profil(self.contexte, "responsable", nom="Thomas")
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:
             self.ouvrir(serveur, "#/ot")
             evaluer = page.evaluate
-            # Équipe : RG8 refuse (D191 inchangée)
+            # Équipe, réglage « bloquante » (L19, T556) : RG8 refuse (D191)
             self.poser_mode(page, False)
             refus = evaluer("""() => Ordres.creer({ origine: 'manuel', equipement_id: 'EQ-0012', titre: 'Armoire',
                 type: 'correctif différé', priorite: 'P3', technicien_id: 'TEC-0004', date_prevue: '2026-10-21' })

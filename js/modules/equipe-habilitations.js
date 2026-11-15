@@ -155,6 +155,17 @@ Object.assign(Equipe, (() => {
     return bloc;
   }
 
+  /** L19 : liste fixe à cocher des habilitations électriques (fenêtre « Ajouter » seulement), une case par symbole,
+   *  avec ce que chacun permet ; les autres autorisations (CACES, hauteur, soudure) restent dans l'intitulé libre. */
+  function blocSymboles() {
+    const id = UI.identifiantUnique('equipe-symboles');
+    return UI.element(UI.html`<fieldset class="champ equipe-symboles" data-champ="symboles" aria-describedby="${id}-aide">
+      <legend class="libelle">${I18n.t('equipe.habilitations_electriques.cases')}</legend>
+      <div class="equipe-cases">${Equipe.HABILITATIONS_ELECTRIQUES.map((symbole) => UI.html`<label class="case">
+        <input type="checkbox" name="symbole_${symbole}" value="${symbole}"><span lang="fr">${symbole}</span></label>`)}</div>
+      <p class="aide" id="${id}-aide">${I18n.t('equipe.habilitations_electriques.aide')}</p></fieldset>`);
+  }
+
   /** « Justificatif (PDF ou photo) » : un fichier, facultatif ; en correction, le nom du justificatif actuel. */
   function blocJustificatif(actuel) {
     const id = UI.identifiantUnique('equipe-justificatif');
@@ -194,6 +205,7 @@ Object.assign(Equipe, (() => {
     const liste = mode === 'renouvellement' ? null : blocType(typeInitial);
     const encart = UI.element(UI.html`<div class="encadre equipe-type-encart" hidden></div>`);
     const intitule = mode === 'renouvellement' ? null : blocIntitule(correction ? habilitation.intitule : '');
+    const symboles = mode === 'ajout' ? blocSymboles() : null;           // L19 : cases de la liste électrique
     const obtention = UI.champ(definitionChamp('habilitations', 'date_obtention', { obligatoire: true }),
       correction ? habilitation.date_obtention : Donnees.aujourdhui());
     const recyclage = UI.champ(definitionChamp('habilitations', 'recyclage_mois'), habilitation ? texte(habilitation.recyclage_mois) : '');
@@ -201,7 +213,7 @@ Object.assign(Equipe, (() => {
       { aide: I18n.t('equipe.type_habilitation.aide_echeance') });
     const justificatif = blocJustificatif(correction ? habilitation.justificatif : '');
     const reprise = blocReprise(technicienId);
-    const champs = [liste, encart, UI.element(principeHtml()), intitule, obtention, recyclage, echeance, justificatif, reprise]
+    const champs = [symboles, liste, encart, UI.element(principeHtml()), intitule, obtention, recyclage, echeance, justificatif, reprise]
       .filter(Boolean);
 
     const saisie = (bloc) => (bloc ? UI.$('[name]', bloc) : null);
@@ -238,6 +250,11 @@ Object.assign(Equipe, (() => {
     }
 
     if (champType) champType.addEventListener('change', choisirType);
+    // L19 : une case cochée suffit, l'intitulé libre (autre autorisation) devient facultatif.
+    const cochees = (valeurs) => Equipe.HABILITATIONS_ELECTRIQUES.filter((symbole) => valeurs['symbole_' + symbole] === symbole);
+    if (symboles && champIntitule) {
+      symboles.addEventListener('change', () => { champIntitule.required = !UI.$$('input:checked', symboles).length; });
+    }
     [champObtention, champRecyclage].forEach((champ) => ['input', 'change'].forEach((evenement) => champ.addEventListener(evenement, recalculer)));
     ['input', 'change'].forEach((evenement) => champEcheance.addEventListener(evenement, () => { echeanceAuto = !champEcheance.value; }));
     montrerType();
@@ -257,8 +274,14 @@ Object.assign(Equipe, (() => {
       }
       return ecrites;
     }
+    /** Intitulés à écrire (ajout) : les cases cochées, puis l'intitulé libre (« B2V BR BC » d'un bloc : ses symboles). */
+    function intitules(valeurs) {
+      const libre = texte(valeurs.intitule);
+      return Array.from(new Set(cochees(valeurs).concat(libre ? Equipe.symbolesDuBloc(libre) || [libre] : [])));
+    }
     return {
       champs,
+      intitules,
       valeurs: valeursEcrites,
       fichier: () => UI.$('input[type=file]', justificatif).files[0] || null,
       reprise: (valeurs) => (reprise && !reprise.hidden ? texte(valeurs.justificatif_repris) : ''),
@@ -273,7 +296,8 @@ Object.assign(Equipe, (() => {
       titre: reglages.titre, libelleValider: reglages.libelleValider, introduction: reglages.introduction,
       champs: formulaire.champs,
       verifier(valeurs) {
-        const erreurs = verifierHabilitation(Object.assign({}, valeurs, intituleFixe));
+        const premier = mode === 'ajout' ? formulaire.intitules(valeurs)[0] : '';
+        const erreurs = verifierHabilitation(Object.assign({}, valeurs, premier ? { intitule: premier } : {}, intituleFixe));
         const message = verifierFichierJustificatif(formulaire.fichier());
         if (message) erreurs.push({ nom: 'justificatif', message });
         return erreurs;
@@ -282,12 +306,14 @@ Object.assign(Equipe, (() => {
         const ecrites = formulaire.valeurs(valeurs);
         const fichier = formulaire.fichier();
         if (fichier) {
-          ecrites.justificatif = await Equipe.ecrireJustificatif(technicienId, ecrites.intitule || habilitation.intitule,
+          ecrites.justificatif = await Equipe.ecrireJustificatif(technicienId, ecrites.intitule || (mode === 'ajout' ? formulaire.intitules(valeurs)[0] : habilitation.intitule),
             ecrites.date_obtention, fichier);
         } else if (formulaire.reprise(valeurs)) {
           ecrites.justificatif = formulaire.reprise(valeurs);
         }
-        await reglages.ecrire(ecrites);
+        const plusieurs = mode === 'ajout' ? formulaire.intitules(valeurs) : [];
+        if (plusieurs.length > 1) await Equipe.ajouterHabilitations(technicienId, plusieurs, ecrites);   // L19
+        else await reglages.ecrire(plusieurs.length ? Object.assign(ecrites, { intitule: plusieurs[0] }) : ecrites);
       },
     });
     if (fait) await apresEcriture(reglages.message);

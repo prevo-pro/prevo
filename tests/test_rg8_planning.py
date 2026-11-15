@@ -13,6 +13,7 @@ Lancer depuis la racine du projet (au travers du verrou des navigateurs) :
 import datetime
 import unittest
 
+from commun import demo_rg8_bloquante
 from test_planning import CasPlanning, ot_sur_disque
 
 FENETRE = "dialog.ot-fenetre-derogation"
@@ -24,6 +25,8 @@ MOTIF = "Électricien du site présent ; consignation faite par lui"
 
 
 class TestRg8Planning(CasPlanning):
+
+    SOURCE = demo_rg8_bloquante()       # T556 (L19) : RG8 réglée « bloquante »
 
     def preparer(self, ot_cle="ot_a_planifier_br", decalage=4):
         ot_id = self.scenarios[ot_cle]

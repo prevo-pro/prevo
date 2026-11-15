@@ -26,7 +26,7 @@ import io
 import unittest
 from pathlib import Path
 
-from commun import COMPTES_DE_TEST, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
+from commun import demo_rg8_bloquante, COMPTES_DE_TEST, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo
 
 SCENARIOS = scenarios_demo()
 EQ_BR = SCENARIOS["equipement_br"]                     # AE-03, exige la BR
@@ -83,7 +83,7 @@ class CasRg8Ecritures(CasNavigateur):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.serveur = ServeurPrevo(comptes=cls.COMPTES)
+        cls.serveur = ServeurPrevo(demo_rg8_bloquante(), comptes=cls.COMPTES)
         cls.serveur.demarrer()
         cls.addClassCleanup(cls.serveur.arreter)
         cls.dossier = cls.serveur.dossier

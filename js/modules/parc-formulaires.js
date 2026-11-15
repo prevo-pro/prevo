@@ -191,6 +191,10 @@ Object.assign(Parc, (() => {
     ajouter(UI.champ(definition('cout_arret_h'), valeur('cout_arret_h'), {
       aide: I18n.t('parc.formulaire.production_perdue_penalites_heures'),
     }));
+    // L19 (T556) : la machine dit seulement si elle est concernée ; Prévo déduit l'habilitation (dépannage ou planifié).
+    ajouter(UI.champ(definition('risque_electrique'), valeur('risque_electrique'), {
+      aide: I18n.t('parc.formulaire.risque_electrique_aide'),
+    }));
     ajouter(UI.champ(definition('habilitation_requise'), valeur('habilitation_requise'), {
       aide: I18n.t('parc.formulaire.ex_br_plusieurs_habilitations'),
     }));

@@ -344,8 +344,8 @@ const Ordres = (() => {
   // Raisons d'une habilitation exigée non valide à la date : aucune ligne pour cet intitulé (absente),
   // des lignes toutes échues ou à échéance illisible (echue), une ligne obtenue après la date (pas_encore_obtenue).
   const RAISONS_HABILITATION = Object.freeze(['absente', 'echue', 'pas_encore_obtenue']);
-  // Origine d'une exigence : la colonne habilitation_requise de l'équipement, ou celle de l'OT.
-  const ORIGINES_HABILITATION = Object.freeze(['equipement', 'ot']);
+  // Origine d'une exigence : habilitation_requise de l'équipement ou de l'OT, ou (L19) le risque électrique déduit.
+  const ORIGINES_HABILITATION = Object.freeze(['equipement', 'ot', 'risque']);
   // Marqueur fixe du journal (D156), relu ici et par les écrans :
   // « dérogation habilitation : TEC-0004 le 2026-11-20 sans BR (échue), H0V (absente) ; motif : <texte> ». En mode
   // serveur avec comptes (T448, D186 « qui »), le compte connecté avant le motif : « … ; compte : nicolas.briand ;
@@ -374,19 +374,29 @@ const Ordres = (() => {
     return texte(valeur).split(/[,/]/).map((h) => h.trim()).filter(Boolean);
   }
 
-  /** Exigences de l'équipement puis de l'OT, lues chacune sur sa ligne (jamais fusionnées), doublons
-   *  (casse et espaces ignorés) réunis : [{ intitule, origines }] (première écriture gardée). */
+  /** Exigences de l'équipement puis de l'OT, lues chacune sur sa ligne (jamais fusionnées), puis (L19) celle que le
+   *  risque électrique de l'équipement et le type d'OT font attendre (origine 'risque') ; doublons (casse et espaces
+   *  ignorés) réunis : [{ intitule, origines, symboles, travail }] (première écriture gardée). symboles : ceux de la
+   *  liste fixe qui y répondent (Equipe.repondA), null pour une autre autorisation (texte libre, jamais bloquante). */
   function exigencesDe(equipement, ot) {
     const parCle = new Map();
+    const noter = (intitule, symboles, origine, travail) => {
+      const cle = cleIntitule(intitule);
+      if (!cle) return;
+      const exigence = parCle.get(cle) || { intitule, origines: [], symboles, travail: '' };
+      if (!exigence.origines.includes(origine)) exigence.origines.push(origine);
+      if (travail && !exigence.travail) exigence.travail = travail;
+      parCle.set(cle, exigence);
+    };
     [[equipement, 'equipement'], [ot, 'ot']].forEach(([ligne, origine]) => {
       intitulesDe(ligne && ligne.habilitation_requise).forEach((intitule) => {
-        const cle = cleIntitule(intitule);
-        if (!cle) return;
-        const exigence = parCle.get(cle) || { intitule, origines: [] };
-        if (!exigence.origines.includes(origine)) exigence.origines.push(origine);
-        parCle.set(cle, exigence);
+        const symboles = Equipe.symbolesDuBloc(intitule);      // L19 : « B2V BC » saisi d'un bloc → B2V, BC
+        if (symboles) symboles.forEach((symbole) => noter(symbole, [symbole], origine));
+        else noter(intitule, null, origine);
       });
     });
+    const deduite = equipement ? Equipe.exigenceDeduite(equipement, ot) : null;
+    if (deduite) noter(deduite.intitule, deduite.symboles, 'risque', deduite.travail);
     return Array.from(parCle.values());
   }
 
@@ -404,11 +414,11 @@ const Ordres = (() => {
   /** Exigence non valide au jour → { intitule, origines, raison, echeance, obtention }, sinon null.
    *  echeance : la plus lointaine des lignes échues (lisible) ; obtention : la plus proche des lignes à venir. */
   function manquanteAuJour(exigence, lignes, jour) {
-    const cle = cleIntitule(exigence.intitule);
-    const siennes = lignes.filter((h) => cleIntitule(h.intitule) === cle);
+    const siennes = lignes.filter((h) => Equipe.repondA(exigence, h.intitule));
     const etats = siennes.map((h) => etatAuJour(h, jour));
     if (etats.includes('valide')) return null;
-    const manquante = { intitule: exigence.intitule, origines: exigence.origines.slice(), raison: 'absente', echeance: '', obtention: '' };
+    const manquante = { intitule: exigence.intitule, origines: exigence.origines.slice(), raison: 'absente', echeance: '',
+      obtention: '', symboles: exigence.symboles, travail: exigence.travail || '' };
     const aVenir = siennes.filter((h, i) => etats[i] === 'pas_encore_obtenue').map((h) => dateLue(h.date_obtention)).sort();
     if (aVenir.length) return Object.assign(manquante, { raison: 'pas_encore_obtenue', obtention: aVenir[0] });
     if (siennes.length) {
@@ -562,14 +572,18 @@ const Ordres = (() => {
    * RG8 bloquante (D186, D191 ; §7.3) : refus d'affecter technicienId à l'OT (ligne telle qu'elle sera
    * écrite) à la date (sinon date prévue, sinon aujourd'hui) → { otId, technicienId, date, manquantes,
    * message }, ou null : pas de technicien, aucune exigence, tout valide, ou dérogation déjà notée au
-   * journal pour ce même OT, technicien, date et habilitations (§7.4).
+   * journal pour ce même OT, technicien, date et habilitations (§7.4). L19 : seulement si le responsable a réglé
+   * l'absence « bloquante » et qu'une habilitation est saisie dans l'équipe (Equipe.absenceBloquante), et pour les
+   * seules habilitations électriques (symboles de la liste fixe) : une autre autorisation n'est que signalée.
    */
   function refusHabilitation(ot, technicienId, date) {
     if (typeof Solo !== 'undefined' && Solo.sansRefusHabilitation()) return null;   // T521 : un rappel en Solo
+    if (!Equipe.absenceBloquante()) return null;
     const controle = controleHabilitation(ot, technicienId, date);
     const otId = texte(ot && ot.id);
-    if (!controle.bloque || derogationAccordee(otId, controle.technicienId, controle.date, controle.manquantes)) return null;
-    const refus = { otId, technicienId: controle.technicienId, date: controle.date, manquantes: controle.manquantes };
+    const manquantes = controle.manquantes.filter((m) => Boolean(m.symboles && m.symboles.length));
+    if (!manquantes.length || derogationAccordee(otId, controle.technicienId, controle.date, manquantes)) return null;
+    const refus = { otId, technicienId: controle.technicienId, date: controle.date, manquantes };
     return Object.assign(refus, { message: messageRefusHabilitation(refus, false) });
   }
 

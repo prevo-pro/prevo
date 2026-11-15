@@ -95,6 +95,7 @@ Object.assign(Parc, (() => {
           <dt>${I18n.t('parc.carte_caracteristiques.heures_jour')}</dt><dd>${heures === null ? '' : UI.heures(heures)}</dd>
           <dt>${I18n.t('parc.carte_caracteristiques.valeur_remplacement')}</dt><dd class="parc-valeur-remplacement">${valeurRemplacement(equipement)}</dd>
           ${responsable ? UI.html`<dt>${I18n.t('parc.carte_caracteristiques.cout_heure_arret')}</dt><dd class="parc-cout-arret">${coutHeureArret(equipement)}</dd>` : ''}
+          <dt>${I18n.t('schema.equipements.risque_electrique')}</dt><dd>${equipement.risque_electrique ? Schema.libelleValeur('equipements', 'risque_electrique', equipement.risque_electrique) : ''}</dd>
           <dt>${I18n.t('parc.carte_caracteristiques.habilitation_requise')}</dt><dd>${equipement.habilitation_requise}</dd>
           <dt>${I18n.t('parc.carte_caracteristiques.document')}</dt><dd>${documentHtml}</dd>
           <dt>${I18n.t('parc.carte_caracteristiques.actif')}</dt><dd>${estActif(equipement) ? I18n.t('parc.carte_caracteristiques.oui') : I18n.t('parc.carte_caracteristiques.non_equipement_desactive')}</dd>

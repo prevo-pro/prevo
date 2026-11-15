@@ -19,7 +19,7 @@ import re
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil
+from commun import demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil
 import test_acces_roles as roles
 
 KARIM, JULIEN, THOMAS = "TEC-0002", "TEC-0001", "TEC-0004"       # techniciens du jeu de démo
@@ -243,18 +243,22 @@ class TestParcoursPrise(CasPrise):
             self.assertIn("Karim a repris l'OT (avant : Julien)", html)
 
     def test_habilitation_refus_comme_l_affectation_et_raccourci_de_la_liste(self):
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:                 # L19 (T556) : réglage « bloquante »
             self.ouvrir(serveur, "#/ot")
             exige = self.creer_ot({"equipement_id": "EQ-0012", "titre": "Armoire A3", "date_prevue": "2026-10-21"})
             libre = self.creer_ot({"equipement_id": "EQ-0005", "titre": "Libre A3", "priorite": "P1"})
-            # Thomas (sans BR valide) : refus avec le message de l'affectation, rien d'écrit
+            # Thomas (sans BR valide) : le nom de ceux qui l'ont remplace le bouton (L19) ; l'écriture refuse comme
+            # l'affectation, rien d'écrit
             self.changer_profil(serveur, "#/accueil", "technicien", THOMAS, "Thomas Garnier")
             self.autoriser_erreur("BR")
             self.aller_fiche(exige)
             avant = ot_sur_disque(serveur.dossier, exige)
-            self.page.click(".ot-actions button[data-action=prendre-ot]")
-            self.page.wait_for_selector("#toast")
-            self.assertIn("BR", self.page.inner_text("#toast"))
+            self.page.wait_for_selector(".ot-actions .ot-habilites")
+            self.assertIn("BR", self.page.inner_text(".ot-actions .ot-habilites"))
+            self.assertEqual(self.page.locator(".ot-actions button[data-action=prendre-ot]").count(), 0)
+            refus = self.page.evaluate("""([ot, tec]) => Ordres.prendre(ot, tec, '').then(() => 'écrit', (e) => e.message)""",
+                                       [exige, THOMAS])
+            self.assertIn("BR", refus)
             self.assertEqual(self.page.locator("dialog.dialogue[open]").count(), 0)                 # pas de dérogation pour lui
             self.assertEqual(ot_sur_disque(serveur.dossier, exige), avant)
             # Liste filtrée « Non affectés » : « Je prends » sur la ligne, puis la fiche ouverte

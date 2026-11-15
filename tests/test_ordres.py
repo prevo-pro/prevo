@@ -19,7 +19,7 @@ import re
 import unittest
 from pathlib import Path
 
-from commun import CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, preregler_profil, scenarios_demo, url_fichier
 
 BOM = b"\xef\xbb\xbf"
 RAPPEL = "Cocher une case ne consigne rien : appliquez la procédure."
@@ -407,7 +407,7 @@ class TestParcours(CasOrdres):
         # outre » du responsable (T438, tests/test_rg8_ecrans.py) est annulée, le message d'erreur commun redit le
         # refus ; rien n'est écrit, ni l'OT ni le journal.
         page = self.page
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:          # L19 (T556) : réglage « bloquante »
             self.ouvrir(serveur, "#/ot")
             ot_id = self.creer_ot_par_l_interface("EQ-0012", "AE-03 — contrôle du câblage")
             self.onglet("preparation")
