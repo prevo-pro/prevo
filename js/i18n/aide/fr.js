@@ -153,7 +153,7 @@ I18n.ajouter('fr', {
   'aide.ecran.liste_di.technicien.texte': 'Les demandes d\'intervention et leur statut. Un refus ou un report affiche toujours son motif.',
   'aide.ecran.liste_di.titre': 'Demandes',
   'aide.ecran.liste_ot.responsable.essayez': 'filtrez sur « En retard ».',
-  'aide.ecran.liste_ot.responsable.texte': 'Tous les ordres de travail, à filtrer par statut, technicien, équipement ou priorité, et à exporter en CSV. Un ordre va de Créé à Clôturé en passant par Préparé, Planifié, En cours et Terminé, à valider (la clôture technique) ; « Clôturé » est l\'ancienne clôture administrative ; il peut être mis en attente ou annulé, toujours avec un motif.',
+  'aide.ecran.liste_ot.responsable.texte': 'Tous les ordres de travail, à filtrer par statut, technicien, équipement ou priorité, et à exporter en CSV. Un ordre va de Créé à Clôturé administrativement en passant par Préparé, Planifié, En cours et Clôturé techniquement ; il peut être mis en attente ou annulé, toujours avec un motif.',
   'aide.ecran.liste_ot.technicien.essayez': 'ouvrez un ordre « En cours ».',
   'aide.ecran.liste_ot.technicien.texte': 'Vos ordres de travail et ceux de l\'équipe. Les vôtres sont en tête ; filtre « Non affectés » : les ordres à prendre.',
   'aide.ecran.liste_ot.titre': 'Ordres de travail',

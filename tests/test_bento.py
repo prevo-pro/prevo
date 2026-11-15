@@ -121,6 +121,10 @@ STRUCTURE_AVANT["technicien"]["classes"] = sorted((set(STRUCTURE_AVANT["technici
 # Lot 2, L17 (T537) : les demandes « Nouvelle » de la démo dans « À prendre », avec « Je prends » (réglage par défaut).
 STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicien"]["classes"])
                                                   | {"accueil-demande-a-prendre", "actions", "ko", "ot-carte-prise"})
+# Lot 2, livraison 2 : « Journée terminée » sur l'accueil du technicien (L16, T557) ; habilitation attendue sur les
+# cartes « À prendre » (L19, T556).
+STRUCTURE_AVANT["technicien"]["classes"] = sorted(set(STRUCTURE_AVANT["technicien"]["classes"])
+                                                  | {"accueil-journee-terminee", "btn-secondaire", "ot-habilitation-attendue"})
 
 NOTER_TOASTS_JS = """(() => {
   window.__toasts = [];
