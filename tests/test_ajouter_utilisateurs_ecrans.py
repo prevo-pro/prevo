@@ -101,6 +101,37 @@ class TestAjouterUtilisateurs(base.CasEcranAcces):
         self.page.click("#utilisateurs-inviter-operateur")
         self.assertRegex(self.lien_du_qr(), MOTIF_ENROLER)
 
+    def test_creer_un_compte_technicien_nouvelle_fiche_par_defaut(self):
+        """P05 A : « Créer un compte », rôle technicien : « Nouvelle fiche à ce nom » en tête et choisie ; plus de refus."""
+        responsable = self.poser_session("nicolas.briand", "responsable", "Nicolas Briand")
+        self.ouvrir_acces()
+        self.page.wait_for_selector("#acces-comptes tbody tr")
+        self.page.click("#acces-creer-compte")
+        dialogue = self.dialogue()
+        liste = dialogue.locator("select[name=technicien_id]")
+        self.assertEqual(liste.locator("option").nth(1).inner_text(), "Nouvelle fiche à ce nom")
+        self.assertEqual(liste.locator("option:checked").inner_text(), "Nouvelle fiche à ce nom")
+        dialogue.locator("input[name=prenom]").fill("Hugo")
+        dialogue.locator("input[name=nom]").fill("Blanc")
+        dialogue.locator("select[name=role]").select_option("technicien")
+        dialogue.locator("button:has-text('Créer le compte')").click()
+        self.page.wait_for_selector("#acces-mot-de-passe-provisoire")
+        compte = {c["identifiant"]: c for c in self.client.requete("GET", "/api/acces/comptes",
+                                                                    cookie=responsable).json()["comptes"]}["hugo.blanc"]
+        self.assertEqual(compte["role"], "technicien")
+        self.assertRegex(compte["technicien_id"], r"^TEC-[0-9]{4}$")
+        # Un demandeur créé avec la valeur par défaut reste sans fiche.
+        self.fermer_dialogue()
+        self.page.click("#acces-creer-compte")
+        dialogue = self.dialogue()
+        dialogue.locator("input[name=prenom]").fill("Paul")
+        dialogue.locator("input[name=nom]").fill("Simon")
+        dialogue.locator("button:has-text('Créer le compte')").click()
+        self.page.wait_for_selector("#acces-mot-de-passe-provisoire")
+        comptes = {c["identifiant"]: c for c in self.client.requete("GET", "/api/acces/comptes",
+                                                                     cookie=responsable).json()["comptes"]}
+        self.assertEqual((comptes["paul.simon"]["role"], comptes["paul.simon"]["technicien_id"]), ("demandeur", ""))
+
     def test_lien_vers_acces_et_installation(self):
         self.poser_session("nicolas.briand", "responsable", "Nicolas Briand")
         self.ouvrir("#/parametres?rubrique=acces")

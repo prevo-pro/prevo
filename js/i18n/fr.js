@@ -4564,6 +4564,7 @@ I18n.ajouter('fr', {
   'equipe.champs_compte.role': 'Rôle',
   'equipe.champs_compte.role_direction_aide': 'Direction : lecture seule du tableau de bord, du bilan et de l\'historique (coûts compris), sans technicien lié.',
   'equipe.champs_compte.technicien_lie': 'Technicien lié',
+  'equipe.champs_compte.nouvelle_fiche': 'Nouvelle fiche à ce nom',
   'equipe.champs_habilitation.ex_br_h_0': 'Ex. BR, H0V, CACES R489',
   'equipe.changer_activation.compte_active': 'Compte activé.',
   'equipe.changer_activation.compte_desactive': 'Compte désactivé.',

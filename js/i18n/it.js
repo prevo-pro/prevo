@@ -4568,6 +4568,7 @@ I18n.ajouter('it', {
   'equipe.champs_compte.role': 'Ruolo',
   'equipe.champs_compte.role_direction_aide': 'Direzione: sola lettura del cruscotto, del rapporto e dello storico (costi compresi), senza tecnico collegato.',
   'equipe.champs_compte.technicien_lie': 'Tecnico collegato',
+  'equipe.champs_compte.nouvelle_fiche': 'Nuova scheda con questo nome',
   'equipe.champs_habilitation.ex_br_h_0': 'Es. BR, H0V, CACES R489',
   'equipe.changer_activation.compte_active': 'Account attivato.',
   'equipe.changer_activation.compte_desactive': 'Account disattivato.',

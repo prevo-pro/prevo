@@ -18,6 +18,8 @@ const EquipeAcces = (() => {
   // T520 (A7) : « direction », lecture seule (tableau de bord, bilan, historique), sans technicien lié.
   const ROLES = ['responsable', 'technicien', 'demandeur', 'direction'];
   const DUREE_PAR_DEFAUT_H = 24;
+  // P05 A (lot 2) : en tête de « Technicien lié » à la création, par défaut ; le serveur crée la fiche (nouvelle_fiche).
+  const NOUVELLE_FICHE = '(nouvelle)';
   const LIGNES_JOURNAL_AFFICHEES = 300;
 
   /** Libellé d'un rôle (tableau des comptes, fenêtre du mot de passe provisoire) ; '' pour un rôle inconnu. */
@@ -251,14 +253,18 @@ const EquipeAcces = (() => {
       UI.champ(definition('prenom', 'texte', I18n.t('commun.champ.prenom'), { obligatoire: true }), valeur('prenom'), { attributs: { maxlength: '60' } }),
       UI.champ(definition('nom', 'texte', I18n.t('equipe.champs_compte.nom')), valeur('nom'), { attributs: { maxlength: '60' } }),
       champRole,
-      UI.champ(definition('technicien_id', 'ref', I18n.t('equipe.champs_compte.technicien_lie')), valeur('technicien_id'),
-        { liste: listeTechniciens(), aide: I18n.t('equipe.champs_compte.compte_technicien_fiche_equipe') }),
+      UI.champ(definition('technicien_id', 'ref', I18n.t('equipe.champs_compte.technicien_lie')), compte ? valeur('technicien_id') : NOUVELLE_FICHE,
+        { liste: (compte ? [] : [{ valeur: NOUVELLE_FICHE, libelle: I18n.t('equipe.champs_compte.nouvelle_fiche') }]).concat(listeTechniciens()),
+          aide: I18n.t('equipe.champs_compte.compte_technicien_fiche_equipe') }),
       champLangue(compte),
     ];
   }
 
-  function verifierCompte(valeurs) {
+  function verifierCompte(valeursLues) {
     const erreurs = [];
+    // P05 A : « Nouvelle fiche à ce nom » ne compte que pour un technicien (un responsable reçoit la sienne d'office).
+    const valeurs = texte(valeursLues.technicien_id) === NOUVELLE_FICHE && texte(valeursLues.role) !== 'technicien'
+      ? Object.assign({}, valeursLues, { technicien_id: '' }) : valeursLues;
     if (!texte(valeurs.prenom)) erreurs.push({ nom: 'prenom', message: I18n.t('equipe.verifier_compte.prenom_obligatoire') });
     if (!ROLES.includes(texte(valeurs.role))) erreurs.push({ nom: 'role', message: I18n.t('equipe.verifier_compte.choisissez_role') });
     if (texte(valeurs.role) === 'technicien' && !texte(valeurs.technicien_id)) {
@@ -273,8 +279,11 @@ const EquipeAcces = (() => {
   }
 
   function champsEnvoyes(valeurs) {
-    return { prenom: texte(valeurs.prenom), nom: texte(valeurs.nom), role: texte(valeurs.role),
-      technicien_id: texte(valeurs.technicien_id), langue: texte(valeurs.langue) };
+    const nouvelle = texte(valeurs.technicien_id) === NOUVELLE_FICHE;
+    const champs = { prenom: texte(valeurs.prenom), nom: texte(valeurs.nom), role: texte(valeurs.role),
+      technicien_id: nouvelle ? '' : texte(valeurs.technicien_id), langue: texte(valeurs.langue) };
+    if (nouvelle && champs.role === 'technicien') champs.nouvelle_fiche = true;
+    return champs;
   }
 
   /** Mot de passe provisoire montré une seule fois : à noter et à remettre en main propre. */
@@ -314,6 +323,7 @@ const EquipeAcces = (() => {
     });
     if (!cree || !resultat) return;
     App.marquerSaisie(false);
+    await Donnees.rechargerTable('techniciens').catch(() => {});      // P05 A : fiche créée par le serveur
     await montrerMotDePasseProvisoire(resultat.compte || {}, texte(resultat.mot_de_passe_provisoire), I18n.t('equipe.creer_compte.titre_compte_cree'));
     UI.toast(I18n.t('equipe.creer_compte.compte_cree'), 'succes');
     await rafraichir();
@@ -424,8 +434,7 @@ const EquipeAcces = (() => {
   // 4. Appareils enrôlés et invitations
   // ===========================================================================================
 
-  // Invitation créée : QR et lien, montrés une seule fois (le jeton n'est écrit nulle part) ; la fenêtre est celle
-  // d'« Ajouter des utilisateurs » (L05, equipe-utilisateurs.js, chargé après ce fichier).
+  // Invitation : QR et lien montrés une fois, jamais écrits ; fenêtre d'« Ajouter des utilisateurs » (L05).
   const montrerInvitation = (resultat) => EquipeUtilisateurs.montrerInvitation(resultat);
 
   async function creerInvitation(selecteur, bouton, rafraichir, poste) {

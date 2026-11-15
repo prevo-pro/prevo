@@ -4568,6 +4568,7 @@ I18n.ajouter('pt-PT', {
   'equipe.champs_compte.role': 'Função',
   'equipe.champs_compte.role_direction_aide': 'Direção: só leitura do painel, do relatório e do histórico (custos incluídos), sem técnico associado.',
   'equipe.champs_compte.technicien_lie': 'Técnico associado',
+  'equipe.champs_compte.nouvelle_fiche': 'Nova ficha com este nome',
   'equipe.champs_habilitation.ex_br_h_0': 'Ex. BR, H0V, CACES R489',
   'equipe.changer_activation.compte_active': 'Conta ativada.',
   'equipe.changer_activation.compte_desactive': 'Conta desativada.',

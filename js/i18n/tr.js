@@ -4569,6 +4569,7 @@ I18n.ajouter('tr', {
   'equipe.champs_compte.role': 'Rol',
   'equipe.champs_compte.role_direction_aide': 'Yönetim: gösterge paneli, aylık rapor ve geçmiş yalnızca okunur (maliyetler dahil), bağlı teknisyen yoktur.',
   'equipe.champs_compte.technicien_lie': 'Bağlı teknisyen',
+  'equipe.champs_compte.nouvelle_fiche': 'Bu adla yeni kayıt',
   'equipe.champs_habilitation.ex_br_h_0': 'Örn. BR, H0V, CACES R489',
   'equipe.changer_activation.compte_active': 'Hesap etkinleştirildi.',
   'equipe.changer_activation.compte_desactive': 'Hesap devre dışı bırakıldı.',

@@ -4566,6 +4566,7 @@ I18n.ajouter('en', {
   'equipe.champs_compte.role': 'Role',
   'equipe.champs_compte.role_direction_aide': 'Management: read only for the dashboard, the monthly report and the history (costs included), with no linked technician.',
   'equipe.champs_compte.technicien_lie': 'Linked technician',
+  'equipe.champs_compte.nouvelle_fiche': 'New record under this name',
   'equipe.champs_habilitation.ex_br_h_0': 'E.g. BR, H0V, CACES R489',
   'equipe.changer_activation.compte_active': 'Account activated.',
   'equipe.changer_activation.compte_desactive': 'Account deactivated.',
