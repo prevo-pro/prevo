@@ -230,7 +230,11 @@ class TestParcDemo(CasParc):
         decalage = timedelta(weeks=(date.today() - JOUR_REFERENCE_DEMO).days // 7)
         creation = date.fromisoformat(fuite["date_creation"][:10]) + decalage
         ordres = page.locator("#contenu table tr", has_text=fuite["id"]).first.inner_text()
-        for attendu in (creation.strftime("%d/%m/%Y"), "correctif différé", "P2", fuite["statut"], "Fuite à la garniture"):
+        # P10 (T560) : type et statut affichés par leur libellé (« Réparation programmée », valeur stockée inchangée)
+        libelles = page.evaluate("(o) => [Schema.libelleValeur('ordres_travail', 'type', o.type),"
+                                 " Schema.libelleValeur('ordres_travail', 'statut', o.statut)]", fuite)
+        self.assertEqual(libelles[0], "Réparation programmée")
+        for attendu in (creation.strftime("%d/%m/%Y"), libelles[0], "P2", libelles[1], "Fuite à la garniture"):
             self.assertIn(attendu, ordres)
         # Le plus récent d'abord
         self.assertEqual(liens_ot[0], fuite["id"])
