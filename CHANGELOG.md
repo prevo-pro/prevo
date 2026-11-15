@@ -163,6 +163,18 @@ Modifié :
 - L'accueil du responsable met « Connecter un téléphone » en haut tant qu'aucun téléphone ne s'est connecté.
 - Le champ « Consignes » de l'OT devient « Consignes de sécurité (responsable) ».
 
+Corrigé après le rejeu de la livraison 2 (15/11/2026) :
+
+- Fiche technicien, « Ajouter une habilitation » : les cases BR à HC cochées sont enfin enregistrées, une ligne par
+  case, et l'intitulé n'est plus exigé quand une case est cochée (L19).
+- Accueil du responsable : les OT « Terminé, à valider » sont comptés (« · N OT à valider », ou à la place de « Rien
+  d'urgent ») avec un bouton « OT à valider : N » ; liste des OT : état « À valider » (responsable).
+- « Passer la main » à un collègue ajoute sa ligne aux prises en charge (« X a passé la main à Y ») ; ce n'est pas
+  compté comme une reprise (L16).
+- L'assistant d'installation donne à la Direction un QR de premier accès au lieu d'un mot de passe provisoire ; il ne
+  répond qu'après « Terminer » (L05).
+- Bilan et Indicateurs : un taux sous 100 % ne s'affiche plus « 100,0 % » (plafond 99,9 %).
+
 Format de données 6 : colonnes de l'OT pour les renforts, la relève (mot, qui, quand, motif) et la remise en état ;
 risque électrique de la machine ; pièce hors magasin (désignation, prix, type de mouvement « hors magasin »). Passage
 automatique au format 6 après une sauvegarde « avant-format-v6 » ; un ZIP au format 5 est migré à l'import.
