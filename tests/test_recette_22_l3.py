@@ -259,7 +259,7 @@ class Ecran:
 
     def attendre_statut(self, statut):
         self.page.wait_for_function("(s) => { const b = document.querySelector('.ot-badges .badge.statut');"
-                                    " return b && b.textContent === s; }", arg=statut)
+                                    " return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }", arg=statut)
 
     def choisir_affectation(self, formulaire, technicien, date):
         self.page.select_option(formulaire + " [name=technicien_id]", technicien)

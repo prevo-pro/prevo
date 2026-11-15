@@ -138,7 +138,7 @@ class TestRg8Ecrans(CasNavigateur):
 
     def attendre_statut(self, statut):
         self.page.wait_for_function(
-            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && b.textContent === s; }",
+            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }",
             arg=statut)
 
     def ouvrir_fiche(self, ot_id, onglet=None):

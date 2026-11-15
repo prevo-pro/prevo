@@ -142,7 +142,7 @@ class CasRecetteLot6(CasNavigateur):
 
     def attendre_statut(self, statut):
         self.page.wait_for_function(
-            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && b.textContent === s; }", arg=statut)
+            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }", arg=statut)
 
     def cloturer_administrativement(self, ot_id):
         """« Clôturer administrativement » (fiche de l'OT), confirmation dans la fenêtre, statut puis message de la file."""

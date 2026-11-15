@@ -156,7 +156,7 @@ class CasOrdresLot2(CasNavigateur):
 
     def attendre_statut(self, statut):
         self.page.wait_for_function(
-            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && b.textContent === s; }", arg=statut)
+            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }", arg=statut)
 
     def transition(self, cible, zone=".ot-actions"):
         self.page.click("%s button[data-action='transition'][data-cible='%s']" % (zone, cible))

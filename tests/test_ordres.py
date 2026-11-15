@@ -97,7 +97,8 @@ class CasOrdres(CasNavigateur):
 
     def attendre_statut(self, statut):
         self.page.wait_for_function(
-            "document.querySelector('.ot-badges .badge.statut') && document.querySelector('.ot-badges .badge.statut').textContent === %r" % statut)
+            "(s) => { const b = document.querySelector('.ot-badges .badge.statut');"
+            " return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }", arg=statut)
 
     def onglet(self, identifiant):
         self.page.click(".onglet[data-onglet='%s']" % identifiant)
@@ -346,7 +347,7 @@ class TestParcours(CasOrdres):
             page.click("dialog .fenetre-actions .btn-primaire")
             self.attendre_statut("Clôturé administrativement")
             self.assertEqual(page.locator(".ot-fiche button[data-action='transition']").count(), 0)
-            self.assertIn("lecture seule", page.inner_text(".ot-bandeau-etat"))
+            self.assertIn("OT clôturé le", page.inner_text(".ot-bandeau-etat"))
             self.assertTrue(page.is_disabled("#form-compte-rendu [name=compte_rendu]"))
             self.onglet("preparation")
             self.assertTrue(page.is_disabled("#form-preparation [name=travail_a_faire]"))

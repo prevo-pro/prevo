@@ -231,7 +231,7 @@ class CasRecette(CasNavigateur):
 
     def attendre_statut(self, statut):
         self.page.wait_for_function(
-            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && b.textContent === s; }",
+            "(s) => { const b = document.querySelector('.ot-badges .badge.statut'); return b && (b.textContent === s || b.textContent === Schema.libelleValeur('ordres_travail', 'statut', s)); }",
             arg=statut)
 
     def onglet(self, identifiant):
@@ -372,7 +372,7 @@ class TestRecettePompe(CasRecette):
         page.click("dialog .fenetre-actions .btn-primaire")
         self.attendre_statut("Clôturé administrativement")
         self.assertEqual(page.locator(".ot-fiche button[data-action='transition']").count(), 0)
-        self.assertIn("lecture seule", page.inner_text(".ot-bandeau-etat"))
+        self.assertIn("OT clôturé le", page.inner_text(".ot-bandeau-etat"))
 
         # --- La fiche de PO-02 montre l'OT dans son historique ---
         page.locator(".ot-fiche a[href='#/equipement/%s']" % POMPE).first.click()
