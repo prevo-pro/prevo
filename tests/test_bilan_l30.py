@@ -294,5 +294,83 @@ class TestDirectionArriveSurLesQuatreChiffres(CasL30):
         self.assertTrue(self.page.is_visible('#contenu a[href="#/indicateurs"]'))      # le tableau de bord reste à un clic
 
 
+class TestRenseignerDepuisLesCartes(CasL30):
+    """T559 (P04.2, décision P04 du 15/11) : « Renseigner » sur les cartes « non chiffré » et « à compléter » du tableau de
+    bord et sous « Voir le bilan » : le taux horaire ouvre son champ dans Paramètres puis revient, les heures de marche
+    s'appliquent aux machines sans valeur par une petite fenêtre ; la Direction n'a pas de bouton."""
+
+    def tete(self):
+        tete = self.page.locator("#contenu .indicateurs-tete")
+        tete.wait_for()
+        return {cle: blancs(tete.locator('[data-tete="%s"]' % cle).inner_text()) for cle in
+                ("disponibilite", "heures-cout", "pannes", "preventif")}
+
+    def sans_heures(self):
+        self.page.evaluate("async () => { await Donnees.modifier('equipements', (l) => { l.forEach((e) => { e.heures_fonct_jour = ''; }); }); }")
+
+    def vers_le_tableau_de_bord(self):
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        self.tete()
+
+    def test_taux_horaire_ouvre_son_champ_puis_revient_au_bilan_recalcule(self):
+        self.sans_taux_ni_prix()
+        self.vers_le_tableau_de_bord()
+        self.assertIn("non chiffré", self.tete()["heures-cout"])
+        self.page.click('#contenu [data-tete="heures-cout"] [data-renseigner="taux"]')
+        champ = self.page.locator('#form-parametres [name="taux_horaire_moyen"]')
+        champ.wait_for()
+        self.page.wait_for_function("() => document.activeElement && document.activeElement.name === 'taux_horaire_moyen'")
+        champ.fill("40")
+        self.page.click("#form-parametres button[type=submit]")
+        self.page.wait_for_function("() => location.hash.startsWith('#/indicateurs')")       # retour d'où l'on vient
+        self.page.locator("#contenu .indicateurs-tete").wait_for()
+        self.assertNotIn("non chiffré", self.tete()["heures-cout"])
+        self.assertEqual(self.page.locator('#contenu [data-renseigner="taux"]').count(), 0)
+
+    def test_heures_de_marche_une_petite_fenetre_pour_toutes_les_machines_sans_valeur(self):
+        self.sans_heures()
+        self.vers_le_tableau_de_bord()
+        self.assertIn("à compléter", self.tete()["disponibilite"])
+        garde = self.page.evaluate("() => Donnees.lignes('equipements').length")
+        self.page.click('#contenu [data-tete="disponibilite"] [data-renseigner="heures"]')
+        fenetre = self.page.locator("dialog.dialogue")
+        fenetre.wait_for()
+        self.assertIn("Machines sans heures de marche par jour : %d" % garde, fenetre.inner_text())
+        fenetre.locator('[name="heures"]').fill("30")
+        fenetre.get_by_text("Appliquer aux machines sans heures").click()
+        self.assertIn("supérieur à 0", fenetre.inner_text())                       # refusé : la fenêtre reste
+        self.assertEqual(self.page.evaluate("() => Donnees.lignes('equipements').filter((e) => e.heures_fonct_jour).length"), 0)
+        fenetre.locator('[name="heures"]').fill("8")
+        fenetre.get_by_text("Appliquer aux machines sans heures").click()
+        fenetre.wait_for(state="detached")
+        self.assertEqual(self.page.evaluate("() => Donnees.lignes('equipements').filter((e) => e.heures_fonct_jour === '8').length"), garde)
+        self.page.wait_for_function("() => !document.querySelector('#contenu [data-renseigner=\"heures\"]')")
+        self.assertNotIn("à compléter", self.tete()["disponibilite"])
+
+    def test_sous_voir_le_bilan_ce_qui_manque_avec_renseigner(self):
+        self.sans_taux_ni_prix()
+        self.sans_heures()
+        self.page.evaluate("() => { location.hash = '#/indicateurs?onglet=rapports'; }")
+        bloc = self.page.locator("#rapports-manques .rapports-manques")
+        bloc.wait_for()
+        self.assertEqual(bloc.locator("[data-renseigner]").evaluate_all("b => b.map((x) => x.dataset.renseigner)"), ["taux", "heures"])
+        self.assertNotIn("déjà enregistré", bloc.inner_text())                       # mois en cours : jamais enregistré
+        self.assertIn("Coût non chiffré", bloc.inner_text())
+        self.assertIn("Disponibilité à compléter", bloc.inner_text())
+
+
+class TestRenseignerDirection(CasL30):
+    PROFIL = ("direction", "")
+
+    def test_pas_de_bouton_renseigner(self):
+        self.page.evaluate("async () => { await Donnees.modifier('techniciens', (l) => { l.forEach((t) => { t.taux_horaire = ''; }); }); }")
+        self.page.evaluate("async () => { await Donnees.modifier('equipements', (l) => { l.forEach((e) => { e.heures_fonct_jour = ''; }); }); }")
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        tete = self.page.locator("#contenu .indicateurs-tete")
+        tete.wait_for()
+        self.assertIn("à compléter", tete.inner_text())
+        self.assertEqual(self.page.locator("#contenu [data-renseigner]").count(), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

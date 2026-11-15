@@ -195,6 +195,7 @@ Object.assign(Rapport, (() => {
             <select id="rapports-apercu-mois">${apercu.map((mois) => UI.html`<option value="${mois}">${libelleApercu(mois, courant)}</option>`)}</select></div>
           <button type="submit" class="btn btn-secondaire">${I18n.t('rapport.apercu.voir_bilan')}</button>
         </form>
+        <div id="rapports-manques"></div>
       </article>
       ${direction ? carteBilan(proposables) : UI.html`<article class="carte rapports-figer">
         <div class="entete-carte"><h2>${I18n.t('rapport.onglet.figer_rapport_mensuel')}</h2></div>
@@ -236,6 +237,10 @@ Object.assign(Rapport, (() => {
       try { await voirBilan(formulaireApercu.querySelector('#rapports-apercu-mois').value); } catch (erreur) { App.signalerErreur(erreur, 'bilan du mois'); }
       finally { bouton.disabled = false; }
     });
+    const zoneManques = racine.querySelector('#rapports-manques');
+    const montrerManques = () => UI.remplir(zoneManques, blocManques(formulaireApercu.querySelector('#rapports-apercu-mois').value));
+    montrerManques();
+    formulaireApercu.querySelector('#rapports-apercu-mois').addEventListener('change', montrerManques);
     const formulaire = racine.querySelector('.rapports-formulaire');
     if (formulaire) {
       const zoneCommentaire = formulaire.querySelector('#rapports-commentaire');
@@ -519,7 +524,77 @@ Object.assign(Rapport, (() => {
     return phrases;
   }
 
+  // ===========================================================================================
+  // 8. « Renseigner » (T559, P04.2, L30) : ce qui manque au bilan se renseigne depuis la carte qui le dit
+  // ===========================================================================================
+
+  /** Bouton « Renseigner » d'une carte « non chiffré » (cle « taux ») ou « à compléter » (cle « heures »), au responsable
+   *  seulement (Solo compris) : la Direction lit, elle n'en a pas. Le clic est repris par l'écouteur de ce module. */
+  function boutonRenseigner(cle) {
+    if (!App.estResponsable()) return '';
+    return UI.html`<button type="button" class="btn btn-secondaire" data-renseigner="${cle}">${I18n.t('rapport.renseigner.bouton')}</button>`;
+  }
+
+  /** Ce qui empêche de chiffrer le bilan d'un mois : { taux, heures } (taux horaire manquant ; aucune machine avec ses heures). */
+  function manquesDuBilan(mois) {
+    const periode = Indicateurs.periodeDuMois(mois);
+    const global = Indicateurs.global(periode, {}, Donnees.aujourdhui());
+    return { taux: Indicateurs.manquesCout(periode).techniciens.length > 0,
+      heures: global.tempsRequis.valeur === null && global.tempsRequis.exclus.length > 0 };
+  }
+
+  /** Machines suivies sans heures de marche par jour (celles que « Renseigner » complète). */
+  const sansHeures = (equipement) => texte(equipement.actif) !== '0' && texte(equipement.statut) !== 'rebut' && !texte(equipement.heures_fonct_jour);
+
+  /** Petite fenêtre « Heures de marche par jour » : la valeur est donnée à toutes les machines qui n'en ont pas. */
+  async function renseignerHeures(apres) {
+    const n = Donnees.lignes('equipements').filter(sansHeures).length;
+    if (!n) { UI.toast(I18n.t('rapport.renseigner.heures_aucune'), 'info'); apres(); return; }
+    const fait = await UI.fenetreAction({
+      titre: I18n.t('rapport.renseigner.heures_titre'),
+      introduction: UI.html`<p>${I18n.t('rapport.renseigner.heures_intro', { n })}</p>`,
+      champs: [UI.champ({ nom: 'heures', type: 'decimal', libelle: I18n.t('rapport.renseigner.heures_libelle') }, '', { aide: I18n.t('rapport.renseigner.heures_aide') })],
+      libelleValider: I18n.t('rapport.renseigner.heures_appliquer'),
+      verifier: (valeurs) => {
+        const heures = UI.enNombre(valeurs.heures);
+        return heures === null || heures <= 0 || heures > 24 ? [{ nom: 'heures', message: I18n.t('rapport.renseigner.heures_invalide') }] : [];
+      },
+      action: async (valeurs) => {
+        const heures = String(UI.enNombre(valeurs.heures));
+        await Donnees.modifier('equipements', (lignes) => { lignes.filter(sansHeures).forEach((ligne) => { ligne.heures_fonct_jour = heures; }); },
+          { action: 'heures de marche par jour' });
+      },
+    });
+    if (fait) { UI.toast(I18n.t('rapport.renseigner.heures_donnees', { n }), 'succes'); apres(); }
+  }
+
+  /** « Renseigner » : le taux horaire ouvre son champ dans Paramètres (retour ici ensuite) ; les heures, la petite fenêtre. */
+  function renseigner(cle) {
+    if (!App.estResponsable()) return;
+    if (cle === 'taux') location.hash = '#/parametres?champ=taux_horaire_moyen&retour=' + encodeURIComponent(location.hash);
+    else if (cle === 'heures') renseignerHeures(() => App.reafficher()).catch((erreur) => App.signalerErreur(erreur, 'heures de marche'));
+  }
+
+  document.addEventListener('click', (evenement) => {
+    const bouton = evenement.target && evenement.target.closest ? evenement.target.closest('[data-renseigner]') : null;
+    if (bouton) { evenement.preventDefault(); renseigner(bouton.dataset.renseigner); }
+  });
+
+  /** Sous « Voir le bilan » : ce que le bilan du mois choisi ne peut pas chiffrer, avec « Renseigner » (le responsable ; la
+   *  Direction ne voit rien). Un bilan déjà enregistré ne change pas : la phrase le dit. */
+  function blocManques(mois) {
+    if (!App.estResponsable()) return '';
+    const manques = manquesDuBilan(mois);
+    if (!manques.taux && !manques.heures) return '';
+    const enregistre = lignesDesRapports().some((ligne) => ligne.mois === mois);
+    return UI.html`<div class="rapports-manques" role="status">
+      <p>${I18n.t('rapport.renseigner.intro')}</p>
+      <ul>${manques.taux ? UI.html`<li>${I18n.t('rapport.renseigner.taux')} ${boutonRenseigner('taux')}</li>` : ''}
+        ${manques.heures ? UI.html`<li>${I18n.t('rapport.renseigner.heures')} ${boutonRenseigner('heures')}</li>` : ''}</ul>
+      ${enregistre ? UI.html`<p class="note">${I18n.t('rapport.renseigner.enregistre')}</p>` : ''}</div>`;
+  }
+
   Object.assign(Rapport.interne, { completerTuiles, manquesDuCout, activiteDuMois, phrasesActivite });
 
-  return { figer, afficherOnglet, tuileAccueil, voirBilan };
+  return { figer, afficherOnglet, tuileAccueil, voirBilan, boutonRenseigner };
 })());

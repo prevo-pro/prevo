@@ -216,6 +216,7 @@ Object.assign(Indicateurs, (() => {
   /** L30 : les quatre chiffres du bilan (disponibilité, heures et coût, pannes, préventif), en tête du tableau de bord et
    *  à l'accueil de la direction ; mêmes règles que le bilan (« à compléter », « non chiffré », jamais de valeur supposée). */
   function tete(global) {
+    const renseigner = (cle) => (typeof Rapport !== 'undefined' ? Rapport.boutonRenseigner(cle) : '');      // T559 (P04.2) : responsable seulement
     const tuile = (cle, libelle, chiffre, complements) => UI.html`<div data-tete="${cle}"><div class="lib">${libelle}</div>
       <div class="chiffre">${chiffre}</div>${complements.filter(Boolean).map((ligne) => UI.html`<div class="comp">${ligne}</div>`)}</div>`;
     const dispo = global.disponibilite;
@@ -226,8 +227,9 @@ Object.assign(Indicateurs, (() => {
     return [
       tuile('disponibilite', I18n.t('indicateurs.instruments.disponibilite'),
         dispo.valeur !== null ? formats.pourcentage(dispo.valeur) : (aCompleter ? I18n.t('rapport.manque.a_completer') : '–'),
-        [dispo.valeur !== null ? '' : (aCompleter ? I18n.t('rapport.manque.disponibilite_heures') : phrase(dispo.raison))]),
-      tuile('heures-cout', I18n.t('indicateurs.tete.heures_cout'), formats.heures(global.cout.heures || 0), [cout]),
+        [dispo.valeur !== null ? '' : (aCompleter ? I18n.t('rapport.manque.disponibilite_heures') : phrase(dispo.raison)), aCompleter ? renseigner('heures') : '']),
+      tuile('heures-cout', I18n.t('indicateurs.tete.heures_cout'), formats.heures(global.cout.heures || 0),
+        [cout, global.manquesCout && global.manquesCout.techniciens.length ? renseigner('taux') : '']),
       tuile('pannes', I18n.t('indicateurs.graphe_paretos.pannes'), String(global.pannes.valeur),
         [I18n.t('indicateurs.tete.arret', { duree: formats.heures(global.dureeArret.valeur || 0) })]),
       tuile('preventif', I18n.t('indicateurs.instruments.part_preventif'), part.valeur === null ? '–' : formats.pourcentage(part.valeur),

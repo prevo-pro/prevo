@@ -341,6 +341,7 @@ const Parametres = (() => {
       }, { action: 'paramètres généraux' });
       App.marquerSaisie(false);
       UI.toast(I18n.t('parametres.enregistrer_reglages.parametres_enregistres'), 'succes');
+      if (retourApresEnregistrement) { const retour = retourApresEnregistrement; retourApresEnregistrement = ''; location.hash = retour; }
     });
   }
 
@@ -364,6 +365,18 @@ const Parametres = (() => {
     if (!/^[a-z-]+$/.test(rubrique || '')) return;
     const carte = UI.$('#carte-' + rubrique, conteneur);
     if (carte) carte.scrollIntoView({ block: 'start' });
+  }
+
+  // T559 (P04.2) : #/parametres?champ=<clé d'un réglage>[&retour=#/écran] montre le champ et le prend ; une fois les réglages
+  // enregistrés, retour à l'écran d'où l'on vient (le bilan se recalcule à son ouverture).
+  let retourApresEnregistrement = '';
+  function montrerChamp(conteneur, requete) {
+    const retour = requete ? requete.get('retour') : '';
+    retourApresEnregistrement = /^#\/[\w\/?=&.-]*$/.test(retour || '') ? retour : '';
+    const cle = requete ? requete.get('champ') : '';
+    if (!/^[a-z_]+$/.test(cle || '')) return;
+    const champ = UI.$('[name="' + cle + '"]', conteneur);
+    if (champ) { champ.scrollIntoView({ block: 'center' }); champ.focus(); }
   }
 
   async function afficherParametres(conteneur, parametres) {
@@ -437,6 +450,7 @@ const Parametres = (() => {
     brancherImportZip(conteneur);
     brancherDiagnostic(conteneur);
     montrerRubrique(conteneur, parametres && parametres.requete ? parametres.requete.get('rubrique') : '');
+    montrerChamp(conteneur, parametres && parametres.requete);
     mettreSurLeBouton(conteneur, '#btn-export-zip', (bouton) => pendant(bouton, 'export ZIP', () => App.exporterZip()));
     mettreSurLeBouton(conteneur, '#btn-export-donnees-seules', (bouton) => pendant(bouton, 'export des données seules',
       () => App.exporterZip({ sansDocuments: true })));
