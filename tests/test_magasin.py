@@ -186,7 +186,7 @@ class TestSorties(CasMagasin):
             resultat = self.appeler("sortir", "", KIT_GARNITURE, 1, "")
             self.assertTrue(resultat.startswith("refus:") and "imputée à un ordre de travail" in resultat, resultat)
             resultat = self.appeler("sortir", OT_CLOTURE, KIT_GARNITURE, 1, "")
-            self.assertTrue(resultat.startswith("refus:") and "Clôturé techniquement" in resultat, resultat)
+            self.assertTrue(resultat.startswith("refus:") and "Terminé, à valider" in resultat, resultat)
             resultat = self.appeler("sortir", OT_ANNULE, KIT_GARNITURE, 1, "")
             self.assertTrue(resultat.startswith("refus:") and "Annulé" in resultat, resultat)
             resultat = self.appeler("sortir", OT_OUVERT, KIT_GARNITURE, 0, "")
