@@ -358,10 +358,11 @@ const Accueil = (() => {
     const ordonnes = mesOrdres.filter((ot) => !estPreventif(ot)).concat(mesOrdres.filter(estPreventif));
     const montres = ordonnes.slice(0, NOMBRE_OT_TECHNICIEN);
     const reste = ordonnes.length - montres.length;
-    const etiquette = (ot) => (estPreventif(ot)
-      ? UI.html`<span class="badge violet accueil-etiquette-preventif">${Schema.libelleValeur('ordres_travail', 'origine', ot.origine)}</span>` : '');
+    const passation = typeof Ordres !== 'undefined' && Ordres.boutonJourneeTerminee;           // L16 : ordres-passation.js
+    const etiquette = (ot) => UI.html`${estPreventif(ot)
+      ? UI.html`<span class="badge violet accueil-etiquette-preventif">${Schema.libelleValeur('ordres_travail', 'origine', ot.origine)}</span>` : ''}`;
     return UI.html`<article class="carte accueil-mes-ordres">
-      <div class="entete-carte"><h2>${I18n.t('accueil.carte_ordres_technicien.mes_ordres_travail', { n: mesOrdres.length })}</h2></div>
+      <div class="entete-carte"><h2>${I18n.t('accueil.carte_ordres_technicien.mes_ordres_travail', { n: mesOrdres.length })}</h2>${passation ? Ordres.boutonJourneeTerminee() : ''}</div>
       ${montres.length
         ? UI.html`<ul class="liste-cartes">${montres.map((ot) => carteOrdre(ot, aujourdhui, etiquette(ot)))}</ul>`
         : UI.html`<p class="muted accueil-mes-ordres-vide">${nombreAPrendre > 0
@@ -485,6 +486,8 @@ const Accueil = (() => {
     UI.remplir(conteneur, UI.html`${contenu}${finAccueil}`);
     // L17 : « Je prends » des demandes de la carte « À prendre » (ordres-prise.js).
     if (App.estTechnicien() && typeof Ordres !== 'undefined' && Ordres.brancherAccueilTechnicien) Ordres.brancherAccueilTechnicien(conteneur);
+    // L16 : « Journée terminée » de la carte « Mes ordres de travail » (ordres-passation.js).
+    if (App.estTechnicien() && typeof Ordres !== 'undefined' && Ordres.brancherJourneeTerminee) Ordres.brancherJourneeTerminee(conteneur);
   }
 
   // App est chargé après les modules : l'écran est enregistré une fois la page lue.

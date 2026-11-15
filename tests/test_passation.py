@@ -95,6 +95,56 @@ class TestParcoursPassation(CasPassation):
             carte = self.page.inner_text(".accueil-a-prendre li:has(a[href='#/ot/%s'])" % ot)
             self.assertIn("Passé par Julien (fin de journée)", carte)
 
+    def test_rg8_journee_terminee_et_attente_equipe(self):
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            exige = self.creer_ot({"equipement_id": "EQ-0012", "titre": "Armoire L16", "technicien_id": JULIEN,
+                                   "date_prevue": "2026-10-21"})
+            garde = self.creer_ot({"equipement_id": "EQ-0005", "titre": "Garde L16", "technicien_id": KARIM})
+            passe = self.creer_ot({"equipement_id": "EQ-0005", "titre": "Passe L16", "technicien_id": KARIM})
+            for ot in (garde, passe):
+                self.page.evaluate("id => Ordres.changerStatut(id, 'Créé', 'En cours', {})", ot)
+            self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
+            # RG8 : Thomas n'a plus l'habilitation BR (échue), la passation est refusée dans la fenêtre, rien d'écrit
+            self.aller_fiche(exige)
+            avant = ot_sur_disque(serveur.dossier, exige)
+            self.page.click("#ot-passer-main")
+            self.page.wait_for_selector(self.fenetre())
+            self.page.check("dialog.dialogue[open] input[name=releve_motif][value='autre']")
+            self.page.select_option("#ot-passation-a", THOMAS)
+            self.valider_fenetre()
+            self.page.wait_for_function("() => /BR/.test(document.querySelector('dialog.dialogue[open]').innerText)")
+            self.assertEqual(ot_sur_disque(serveur.dossier, exige), avant)
+            self.page.click("dialog.dialogue[open] .fenetre-actions .btn-fantome")
+
+            # « Journée terminée » : chaque OT ouvert à son nom ; « Je le garde » d'office
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.page.click("button[data-action=journee-terminee]")
+            self.page.wait_for_selector(self.fenetre())
+            self.assertEqual(self.page.locator("fieldset[data-ot='%s']" % exige).count(), 0)      # pas à son nom
+            for ot in (garde, passe):
+                self.assertTrue(self.page.is_checked("fieldset[data-ot='%s'] input[value=garde]" % ot))
+            bloc = "fieldset[data-ot='%s']" % passe
+            self.page.check(bloc + " input[value=passe]")
+            self.valider_fenetre()                                   # collègue non choisi : dit, rien d'écrit
+            self.page.wait_for_function("id => /" + "Choisissez à qui passer" + "/.test(document.querySelector('dialog.dialogue[open]').innerText)", arg=passe)
+            self.page.select_option(bloc + " select[data-role=a]", JULIEN)
+            self.page.fill(bloc + " textarea[data-role=mot]", "Carter ouvert.")
+            self.valider_fenetre()
+            ligne = self.attendre(serveur, passe, lambda o: o["technicien_id"] == JULIEN)
+            self.assertEqual((ligne["technicien_id"], ligne["releve_motif"], ligne["releve_mot"], ligne["statut"]),
+                             (JULIEN, "fin de journée", "Carter ouvert.", "En cours"))
+            gardee = ot_sur_disque(serveur.dossier, garde)
+            self.assertEqual((gardee["technicien_id"], gardee["statut"], gardee["releve_le"]), (KARIM, "En cours", ""))
+
+            # L14 : Julien met l'OT en attente ; Thomas le voit dans « En attente dans l'équipe » avec le mot
+            self.page.evaluate("id => Ordres.changerStatut(id, 'En cours', 'En attente', { motif_attente: 'pièce' })", passe)
+            self.changer_profil(serveur, "#/accueil", "technicien", THOMAS, "Thomas Garnier")
+            self.page.wait_for_selector(".accueil-en-attente-equipe .accueil-releve")
+            carte = self.page.inner_text(".accueil-en-attente-equipe li:has(a[href='#/ot/%s'])" % passe)
+            self.assertIn("pièce", carte)
+            self.assertIn("Carter ouvert.", carte)
+
 
 class TestDroitsServeurPassation(unittest.TestCase):
     """Aucun droit nouveau : un technicien écrit ordres_travail comme avant (pas de règle par OT au serveur), le

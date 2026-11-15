@@ -22,6 +22,7 @@ Object.assign(Ordres, (() => {
   const { texte, apresEnregistrement, listeTechniciens } = Ordres.interne;
 
   const MOTIFS = ['fin de journée', 'compétence ou habilitation', 'pas le temps', 'autre'];
+  const MOTIF_SOIR = 'fin de journée';
   const DISPONIBLE = '__disponible';
   const enSolo = () => typeof App !== 'undefined' && typeof App.modeSolo === 'function' && App.modeSolo();
 
@@ -42,6 +43,11 @@ Object.assign(Ordres, (() => {
   /** « Passer la main » proposé à `moi` : OT ouvert à son nom (technicien principal). */
   function passationPossible(ot, moi) {
     return Boolean(ot) && Boolean(texte(moi)) && estOuvert(ot) && texte(ot.technicien_id) === texte(moi);
+  }
+
+  /** OT ouverts dont `moi` est le technicien principal (« Journée terminée »), dans l'ordre reçu. */
+  function otsDeLaJournee(ordres, moi) {
+    return ordres.filter((ot) => passationPossible(ot, moi));
   }
 
   /** Mot de relève à montrer sur une carte de l'accueil : la main a été passée et celui qui l'a passée ne tient plus
@@ -201,14 +207,94 @@ Object.assign(Ordres, (() => {
     });
   }
 
+  // ===========================================================================================
+  // Accueil du technicien : « Journée terminée »
+  // ===========================================================================================
+
+  /** Bouton de la carte « Mes ordres de travail » : '' en Solo, hors technicien, ou sans OT ouvert à son nom. */
+  function boutonJourneeTerminee() {
+    const moi = monTechnicien();
+    if (enSolo() || !moi || !otsDeLaJournee(Donnees.lignes('ordres_travail'), moi).length) return '';
+    return UI.html`<button type="button" class="btn btn-secondaire accueil-journee-terminee" data-action="journee-terminee">${I18n.t('ordres.journee.bouton')}</button>`;
+  }
+
+  function choixJournee(ot, moi) {
+    const nom = 'journee-' + ot.id;
+    const bloc = UI.element(UI.html`<fieldset class="ot-journee" data-ot="${ot.id}" data-champ="${nom}">
+      <legend class="libelle"><b>${ot.id}</b> ${ot.titre} ${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</legend>
+      <div class="ot-cloture-choix">
+        <label class="case"><input type="radio" name="${nom}" value="garde" checked><span>${I18n.t('ordres.journee.garde')}</span></label>
+        <label class="case"><input type="radio" name="${nom}" value="passe"><span>${I18n.t('ordres.journee.passe')}</span></label>
+        <label class="case"><input type="radio" name="${nom}" value="disponible"><span>${I18n.t('ordres.passation.a_qui_disponible')}</span></label>
+      </div>
+      <div class="ot-journee-collegue" hidden><label class="libelle" for="${nom}-a">${I18n.t('ordres.journee.collegue')}</label>
+        <select id="${nom}-a" data-role="a">${optionsHtml(collegues([moi]), I18n.t('ordres.passation.choisir'))}</select></div>
+      <div class="ot-journee-mot" hidden><label class="libelle" for="${nom}-mot">${I18n.t('ordres.passation.mot')}</label>
+        <textarea id="${nom}-mot" rows="2" data-role="mot" data-dictee></textarea></div>
+      <p class="erreur-champ" hidden></p></fieldset>`);
+    bloc.addEventListener('change', () => {
+      const valeur = UI.$('input[type=radio]:checked', bloc).value;
+      UI.$('.ot-journee-collegue', bloc).hidden = valeur !== 'passe';
+      UI.$('.ot-journee-mot', bloc).hidden = valeur === 'garde';
+    });
+    return bloc;
+  }
+
+  /** Ce que la fenêtre demande : [{ otId, a, mot }] des OT passés (a : '' pour « à qui est disponible ») et les OT
+   *  « Je le passe à… » sans collègue choisi. */
+  function lireJournee(contenu) {
+    const passes = [];
+    const sansCollegue = [];
+    UI.$$('fieldset.ot-journee', contenu).forEach((bloc) => {
+      const valeur = UI.$('input[type=radio]:checked', bloc).value;
+      if (valeur === 'garde') return;
+      const a = valeur === 'passe' ? UI.$('[data-role=a]', bloc).value : '';
+      if (valeur === 'passe' && !a) { sansCollegue.push(bloc.dataset.ot); return; }
+      passes.push({ otId: bloc.dataset.ot, a, mot: UI.$('[data-role=mot]', bloc).value.trim() });
+    });
+    return { passes, sansCollegue };
+  }
+
+  async function demanderJourneeTerminee() {
+    const moi = monTechnicien();
+    const ots = otsDeLaJournee(Donnees.lignes('ordres_travail'), moi);
+    if (!ots.length) return;
+    let faits = [];
+    const ok = await UI.fenetreAction({
+      titre: I18n.t('ordres.journee.titre'), classe: 'ot-fenetre-journee', libelleValider: I18n.t('ordres.journee.valider'),
+      introduction: UI.html`<p>${I18n.t('ordres.journee.introduction')}</p>`,
+      champs: ots.map((ot) => choixJournee(ot, moi)),
+      verifier: (valeurs, contenu) => lireJournee(contenu).sansCollegue
+        .map((otId) => ({ nom: 'journee-' + otId, message: I18n.t('ordres.journee.choisir_collegue', { otId }) })),
+      action: async (valeurs, contenu) => {
+        faits = [];
+        for (const passe of lireJournee(contenu).passes) {
+          const actuel = Donnees.trouver('ordres_travail', passe.otId);
+          if (!passationPossible(actuel, moi)) continue;           // déjà passé (nouvel essai après un refus)
+          await passerLaMain(passe.otId, { de: moi, a: passe.a, motif: MOTIF_SOIR, mot: passe.mot });
+          faits.push(passe.otId);
+        }
+      },
+    });
+    if (!ok) return;
+    UI.toast(faits.length ? I18n.t('ordres.journee.fait', { liste: faits.join(', ') }) : I18n.t('ordres.journee.rien_a_passer'), 'succes');
+    await App.reafficher();
+  }
+
+  /** Branche « Journée terminée » sur l'accueil du technicien (après son affichage). */
+  function brancherJourneeTerminee(conteneur) {
+    const bouton = conteneur && conteneur.querySelector('button[data-action="journee-terminee"]');
+    if (bouton) bouton.addEventListener('click', () => demanderJourneeTerminee());
+  }
+
   Object.assign(Ordres.interne, { poserPassation });
 
   return {
     // règles pures
-    lireRenforts, ecrireRenforts, passationPossible, releveAMontrer, MOTIFS_RELEVE: MOTIFS,
+    lireRenforts, ecrireRenforts, passationPossible, otsDeLaJournee, releveAMontrer, MOTIFS_RELEVE: MOTIFS,
     // écritures
     passerLaMain,
     // accueils (accueil.js, ordres-prise.js : cherchés au moment de l'affichage)
-    releveCarteHtml,
+    releveCarteHtml, boutonJourneeTerminee, brancherJourneeTerminee,
   };
 })());
