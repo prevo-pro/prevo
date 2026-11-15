@@ -247,6 +247,8 @@ class TestTeteDuTableauDeBord(CasL30):
         self.tete()
         self.page.click('#contenu details[data-famille="retards"] > summary')
         self.page.locator("#contenu .indicateurs-delais").wait_for()
+        # L'évènement « toggle » part dans une tâche suivante (norme HTML) : l'écriture est attendue, pas lue aussitôt.
+        self.page.wait_for_function("() => localStorage.getItem('prevo.indicateurs.familles') !== null")
         self.assertEqual(self.page.evaluate("() => JSON.parse(localStorage.getItem('prevo.indicateurs.familles'))"), ["retards"])
         self.page.evaluate("() => { location.hash = '#/indicateurs?periode=3-mois'; }")    # autre période : réaffiché
         self.page.wait_for_function("() => document.querySelector('#contenu .indicateurs-resultats').dataset.periode === '3-mois'")
@@ -254,6 +256,23 @@ class TestTeteDuTableauDeBord(CasL30):
         self.assertEqual(ouvertes, ["retards"])
         self.page.click('#contenu details[data-famille="retards"] > summary')
         self.page.wait_for_function("() => JSON.parse(localStorage.getItem('prevo.indicateurs.familles')).length === 0")
+
+    def test_famille_ouverte_gardee_si_l_ecran_est_redessine_aussitot(self):
+        """T549 : un redessin (autre période, relève) juste après le clic, avant l'évènement « toggle », garde la
+        famille ouverte : l'état affiché est noté avant de redessiner."""
+        self.page.evaluate("() => { location.hash = '#/indicateurs?periode=mois'; }")
+        self.tete()
+        self.page.evaluate("""() => {
+          localStorage.removeItem('prevo.indicateurs.familles');
+          document.querySelector('#contenu details[data-famille="retards"] > summary').click();
+          const periode = document.querySelector('#indicateurs-periode');
+          periode.value = '3-mois';
+          periode.dispatchEvent(new Event('change', { bubbles: true }));
+        }""")
+        self.page.wait_for_function("() => document.querySelector('#contenu .indicateurs-resultats').dataset.periode === '3-mois'")
+        ouvertes = self.page.eval_on_selector_all("#contenu details.indicateurs-famille[open]", "ds => ds.map((d) => d.dataset.famille)")
+        self.assertEqual(ouvertes, ["retards"])
+        self.assertEqual(self.page.evaluate("() => JSON.parse(localStorage.getItem('prevo.indicateurs.familles'))"), ["retards"])
 
 
 class TestDirectionArriveSurLesQuatreChiffres(CasL30):

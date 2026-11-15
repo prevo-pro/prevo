@@ -162,6 +162,9 @@ Object.assign(Indicateurs, (() => {
     });
     // L30 (T544) : en tête, les quatre chiffres du bilan ; le reste replié par famille (état gardé sur ce poste).
     const liste = instruments(global, jour);           // disponibilité, MTBF, MTTR, arrêt | préventif ×2 | retard | coût, stock
+    // T549 : l'état des familles affichées est noté AVANT de redessiner. L'évènement « toggle » part plus tard (tâche
+    // suivante) : un redessin entre le clic et lui (autre période, relève) refermerait la famille qu'on vient d'ouvrir.
+    UI.$$('.indicateurs-famille', zone).forEach((details) => noterFamille(details.dataset.famille, details.open));
     const ouvertes = famillesOuvertes();
     const graphiques = (cle) => UI.html`<div class="grille indicateurs-graphiques" data-graphiques="${cle}"></div>`;
     const bandeau = (morceau) => UI.html`<div class="instruments indicateurs-instruments">${morceau}</div>`;
