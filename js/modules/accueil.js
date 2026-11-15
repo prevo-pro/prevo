@@ -271,6 +271,41 @@ const Accueil = (() => {
     return adresses;
   }
 
+  // P12 : tant qu'aucun téléphone ne s'est jamais connecté, la carte « Connecter un téléphone » est en haut de l'accueil
+  // du responsable. Ce que le serveur sait déjà (rien de nouveau) : un appareil enrôlé (GET /api/acces/invitations) ou une
+  // connexion depuis une autre adresse que ce PC (journal des connexions, GET /api/acces/journal). Une fois vu, c'est
+  // vu pour la session de la page ; sinon relu au plus toutes les 30 s ; une réponse illisible vaut « pas encore ».
+  const ADRESSES_DE_CE_PC = ['127.0.0.1', '::1', 'localhost'];
+  const RELECTURE_TELEPHONE_MS = 30000;
+  let telephoneDejaVu = false;
+  let telephoneLuLe = 0;
+
+  async function lireAcces(chemin, texte) {
+    const reponse = await fetch(chemin, { method: 'GET', headers: { 'X-Prevo': '1' }, cache: 'no-store', credentials: 'same-origin' });
+    if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+    return texte ? reponse.text() : reponse.json();
+  }
+
+  async function telephoneDejaConnecte() {
+    if (telephoneDejaVu) return true;
+    if (Date.now() - telephoneLuLe < RELECTURE_TELEPHONE_MS) return false;
+    telephoneLuLe = Date.now();
+    try {
+      const acces = await lireAcces('/api/acces/invitations', false);
+      if ((acces.appareils || []).length > 0) telephoneDejaVu = true;
+    } catch (erreur) { /* lecture impossible : la carte reste en haut */ }
+    if (!telephoneDejaVu) {
+      try {
+        const lignes = (await lireAcces('/api/acces/journal', true)).replace(/^\ufeff/, '').split(/\r?\n/).slice(1);
+        telephoneDejaVu = lignes.some((ligne) => {
+          const [, , adresse, , resultat] = ligne.split(';');
+          return resultat === 'connexion' && adresse && !ADRESSES_DE_CE_PC.includes(adresse.trim());
+        });
+      } catch (erreur) { /* idem */ }
+    }
+    return telephoneDejaVu;
+  }
+
   function carteConnexion(adresses) {
     // Recette du lot 7 : en portée « ce PC », Prévo n'écoute que sur ce PC : pas de QR qu'aucun téléphone n'ouvrirait.
     if (cePcSeulement) {
@@ -433,7 +468,15 @@ const Accueil = (() => {
     // l'affichage), avec la tuile du rapport du mois écoulé (lot 3, §15.9).
     // T521 : accueil du mode Solo (solo-accueil.js, chargé après ce fichier).
     if (typeof SoloAccueil !== 'undefined' && App.modeSolo()) { await SoloAccueil.afficher(conteneur, connexion); return; }
-    if (App.estResponsable()) { Accueil.afficherResponsable(conteneur, connexion); return; }
+    if (App.estResponsable()) {
+      // P12 : en haut tant qu'aucun téléphone ne s'est connecté (seulement quand la carte montre une adresse et un QR,
+      // et que les comptes sont exigés : sans eux, le serveur ne tient ni journal ni liste d'appareils).
+      const enHaut = Boolean(connexion) && !cePcSeulement && adresses.length > 0 && App.comptesExiges()
+        && !(await telephoneDejaConnecte());
+      if (!/^#\/accueil/.test(location.hash)) return;
+      Accueil.afficherResponsable(conteneur, connexion, enHaut);
+      return;
+    }
     const contenu = App.estTechnicien() ? accueilTechnicien() : accueilDemandeur();
     UI.remplir(conteneur, UI.html`${contenu}${connexion}`);
     // L17 : « Je prends » des demandes de la carte « À prendre » (ordres-prise.js).

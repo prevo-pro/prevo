@@ -467,8 +467,9 @@ Object.assign(Accueil, (() => {
   // 5. Écran
   // ===========================================================================================
 
-  /** Remplit #contenu avec l'accueil du responsable ; `carteConnexion` : fragment ou '' (accueil.js). */
-  function afficherResponsable(conteneur, carteConnexion) {
+  /** Remplit #contenu avec l'accueil du responsable ; `carteConnexion` : fragment ou '' (accueil.js) ; `carteEnHaut` :
+   *  la carte « Connecter un téléphone » se met sous le bonjour tant qu'aucun téléphone ne s'est connecté (P12). */
+  function afficherResponsable(conteneur, carteConnexion, carteEnHaut) {
     const aujourdhui = Donnees.aujourdhui();
     const compteurs = Accueil.calculerCompteurs();
     const choix = choisirEnPremier(compteurs);
@@ -476,14 +477,14 @@ Object.assign(Accueil, (() => {
     if (!choix) classes.push('sans-premier');
     if (animerChiffres) classes.push('bento-anime');
     animerChiffres = false;
-    UI.remplir(conteneur, UI.html`${entete(aujourdhui)}<div id="maj-zone"></div>${alerteControle()}
+    UI.remplir(conteneur, UI.html`${entete(aujourdhui)}${carteEnHaut ? carteConnexion : ''}<div id="maj-zone"></div>${alerteControle()}
       <div id="copie-externe-zone"></div><div id="tailscale-zone"></div>${carteBaseVide()}
       <div class="${classes.join(' ')}" id="bento">
         ${tuileSynthese(compteurs, momentDeLaJournee(new Date().getHours()))}${tuilePremier(choix, aujourdhui)}
         ${compteurs4(compteurs, aujourdhui)}
         ${listeDemandes(compteurs)}${listeRetards(compteurs, aujourdhui)}
         ${tuilesSurveiller(compteurs, aujourdhui)}
-      </div>${typeof Ordres !== 'undefined' && Ordres.reprisesResponsable ? Ordres.reprisesResponsable() : ''}${typeof Ordres !== 'undefined' && Ordres.prisesSansResponsable ? Ordres.prisesSansResponsable() : ''}${carteConnexion}`);
+      </div>${typeof Ordres !== 'undefined' && Ordres.reprisesResponsable ? Ordres.reprisesResponsable() : ''}${typeof Ordres !== 'undefined' && Ordres.prisesSansResponsable ? Ordres.prisesSansResponsable() : ''}${carteEnHaut ? '' : carteConnexion}`);
     // Rapport du mois écoulé (lot 3, §15.10) après les compteurs ; Rapport est chargé après ce fichier.
     const tuileRapport = typeof Rapport !== 'undefined' && typeof Rapport.tuileAccueil === 'function' ? Rapport.tuileAccueil() : null;
     const derniersCompteurs = conteneur.querySelectorAll('#bento .bento-compteur');

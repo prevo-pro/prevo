@@ -19,6 +19,7 @@ Aucun numéro d'OT, de DI, de mouvement ou d'achat écrit en dur. Lancer depuis 
 import csv
 import datetime
 import io
+import json
 import unittest
 from pathlib import Path
 
@@ -268,6 +269,53 @@ class TestTelephone(CasAccueil):
             page = self.ouvrir(serveur)
             page.wait_for_selector("#carte-connexion", state="visible")
             self.assertIn("Connecter un téléphone", page.inner_text("#carte-connexion"))
+
+    def ordre_carte_connexion(self, serveur, appareils=0, journal=""):
+        """Ordre « carte » / « bento » de l'accueil du responsable (comptes exigés, serveur joignable par le réseau, ce
+        que le serveur sait des téléphones imposé : appareils enrôlés et lignes du journal des connexions)."""
+        page = self.page
+        page.goto("about:blank")                  # une page neuve : rien de la lecture précédente ne reste en mémoire
+        page.unroute_all()
+        page.route("**/api/info", lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"port": 8080, "adresse_locale": "http://localhost:8080/", "adresses_reseau": ["http://192.168.7.20:8080/"], "porte": true}'))
+        page.route("**/api/acces/invitations", lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body=json.dumps({"invitations": [], "appareils": [{"id": "APP-%04d" % n} for n in range(appareils)],
+                             "enrolement_actif": True})))
+        page.route("**/api/acces/journal", lambda route: route.fulfill(
+            status=200, content_type="text/csv; charset=utf-8",
+            body="﻿date;qui;adresse;agent;resultat;tailscale\r\n" + journal))
+        self.ouvrir(serveur)
+        page.evaluate("() => { App.comptesExiges = () => true; App.reafficher(); }")
+        page.wait_for_selector("#qr-connexion", state="visible")
+        page.wait_for_load_state("networkidle")
+        return page.evaluate("""() => [...document.querySelectorAll('#contenu > *')]
+            .map((e) => e.id === 'carte-connexion' ? 'carte' : e.id === 'bento' ? 'bento' : '').filter(Boolean)""")
+
+    def test_p12_carte_connecter_un_telephone_en_haut_tant_qu_aucun_telephone_ne_s_est_connecte(self):
+        """P12 (T560) : sans téléphone jamais connecté, la carte est sous le bonjour, avant les tuiles ; dès qu'un appareil
+        est enrôlé (GET /api/acces/invitations) ou qu'une connexion est venue d'une autre adresse que ce PC (journal des
+        connexions), elle reprend sa place, après les tuiles."""
+        ce_pc = "2026-11-15 08:00;nicolas.briand;127.0.0.1;Chrome;connexion;\r\n"
+        telephone = "2026-11-15 09:00;paul.martin;192.168.1.42;Android;connexion;\r\n"
+        with ServeurPrevo() as serveur:
+            self.assertEqual(self.ordre_carte_connexion(serveur), ["carte", "bento"])
+            self.assertEqual(self.ordre_carte_connexion(serveur, journal=ce_pc), ["carte", "bento"])
+            self.assertEqual(self.ordre_carte_connexion(serveur, appareils=1), ["bento", "carte"])
+            self.assertEqual(self.ordre_carte_connexion(serveur, journal=ce_pc + telephone), ["bento", "carte"])
+
+    def test_p12_sans_comptes_la_carte_garde_sa_place(self):
+        """Sans comptes exigés, le serveur ne sait rien des téléphones : la carte reste à sa place habituelle."""
+        with ServeurPrevo() as serveur:
+            self.page.route("**/api/info", lambda route: route.fulfill(
+                status=200, content_type="application/json",
+                body='{"port": 8080, "adresse_locale": "http://localhost:8080/", "adresses_reseau": ["http://192.168.7.20:8080/"], "porte": true}'))
+            page = self.ouvrir(serveur)
+            page.wait_for_selector("#qr-connexion", state="visible")
+            self.assertEqual(page.evaluate("[...document.querySelectorAll('#contenu > *')].map((e) => e.id)"
+                                           ".filter((id) => id === 'carte-connexion' || id === 'bento')"),
+                             ["bento", "carte-connexion"])
 
     def test_telephone_technicien_ses_blocs_au_dessus_de_l_aide_et_des_compteurs(self):
         # Lot 2, L14 (T537) : sur téléphone, « Mes ordres de travail », « À prendre » et « En attente dans l'équipe »
