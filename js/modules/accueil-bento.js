@@ -484,7 +484,7 @@ Object.assign(Accueil, (() => {
         ${compteurs4(compteurs, aujourdhui)}
         ${listeDemandes(compteurs)}${listeRetards(compteurs, aujourdhui)}
         ${tuilesSurveiller(compteurs, aujourdhui)}
-      </div>${typeof Ordres !== 'undefined' && Ordres.reprisesResponsable ? Ordres.reprisesResponsable() : ''}${typeof Ordres !== 'undefined' && Ordres.prisesSansResponsable ? Ordres.prisesSansResponsable() : ''}${carteEnHaut ? '' : carteConnexion}`);
+      </div>${typeof Ordres !== 'undefined' && Ordres.cloturesIncompletesResponsable ? Ordres.cloturesIncompletesResponsable() : ''}${typeof Ordres !== 'undefined' && Ordres.reprisesResponsable ? Ordres.reprisesResponsable() : ''}${typeof Ordres !== 'undefined' && Ordres.prisesSansResponsable ? Ordres.prisesSansResponsable() : ''}${carteEnHaut ? '' : carteConnexion}`);
     // Rapport du mois écoulé (lot 3, §15.10) après les compteurs ; Rapport est chargé après ce fichier.
     const tuileRapport = typeof Rapport !== 'undefined' && typeof Rapport.tuileAccueil === 'function' ? Rapport.tuileAccueil() : null;
     const derniersCompteurs = conteneur.querySelectorAll('#bento .bento-compteur');

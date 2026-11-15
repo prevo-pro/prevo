@@ -101,6 +101,11 @@ const ParametresReglages = (() => {
     { cle: 'cloture_une_etape', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.ordres_travail'); },
       get libelle() { return I18n.t('parametres.libelle.cloture_etape_bouton_clore'); },
       get aide() { return I18n.t('parametres.aide.seule_fenetre_fait_cloture'); } },
+    // Lot 2 ergonomie (T554, L20) : le technicien peut clôturer techniquement malgré un champ vide ; lu par
+    // Ordres.cloturesIncompletesAutorisees seul (ordres-cloture.js). Pas de règle serveur (le serveur ne vérifie pas RG4).
+    { cle: 'clotures_incompletes', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true,
+      get libelle() { return I18n.t('parametres.libelle.clotures_incompletes'); },
+      get aide() { return I18n.t('parametres.aide.clotures_incompletes'); } },
     // Lot 2 ergonomie (T541, L25) : le technicien peut créer un article du magasin (création seulement) ; lu par
     // Magasin.techniciensCreentArticles seul (magasin-regles.js) ; tenu aussi par le serveur (articles en ajout).
     { cle: 'techniciens_creent_articles', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },

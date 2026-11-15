@@ -872,8 +872,17 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   éléments » ; un clic avec des manques n'écrit rien et les dit sous chaque champ. Écriture : « Clore » →
   `Ordres.clore` ; « Clôturer » → `Ordres.cloturerTechniquement` (mêmes contrôles avant toute écriture, pièce et temps,
   champs de l'OT, puis `changerStatut` : RG4 revérifiée, demandes suivies, RG5). Le serveur ne vérifie pas RG4.
-  Réservé à T554 dans `ordres-cloture.js` : `extensionsCloture(ot, mode)` (blocs ajoutés après la case de sécurité)
-  et `clotureIncomplete(ot, manques)` (vrai : clôture permise malgré les manques).
+  `extensionsCloture(ot, mode)` : blocs ajoutés après la case de sécurité (un tableau, plusieurs tâches y ajoutent).
+  Lot 2 ergonomie (T554, L20) : **clôtures incomplètes**. Réglage du responsable `clotures_incompletes` (« 1 » / « 0 »,
+  défaut « 0 », Paramètres › Ordres de travail ; seul lecteur `Ordres.cloturesIncompletesAutorisees`). Actif, le
+  technicien (pas le responsable, pas en Solo, pas « Clore ») clôture techniquement malgré des champs vides :
+  `Ordres.manquesQuiBloquent` ne garde alors que les manques marqués `incoherent` par `Ordres.manquesCloture` (date
+  de fin avant le début ou dans le futur), dans la fenêtre, dans `cloturerTechniquement` et dans `verifierPassage`.
+  Le bouton dit « Clôturer incomplet — il manque N éléments ». La liste se calcule (`Ordres.otsClotureIncomplete` :
+  « Clôturé techniquement » avec des manques de RG4, aucune colonne) : carte « Clôtures à compléter » sur l'accueil du
+  responsable (lien pour retirer l'autorisation), bandeau sur la fiche ; « Compléter la clôture » (mode 'completer' de
+  la fenêtre, `Ordres.completerCloture`) écrit temps et champs SANS rouvrir l'OT (RG4 entière exigée). La validation
+  administrative revérifie RG4 comme avant. Pas de règle serveur : le serveur ne vérifie pas RG4.
   La procédure de consignation de l'équipement s'affiche sur l'OT avec le rappel :
   « Cocher une case ne consigne rien : appliquez la procédure. » Clôture administrative
   (responsable) : `date_cloture_admin`, OT en lecture seule.

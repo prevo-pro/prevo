@@ -308,20 +308,24 @@ Object.assign(Ordres, (() => {
 
   // Contrôles faits AVANT toute écriture : réglage (« Clore » seulement), passage possible, astuce, RG4 sur l'OT tel
   // qu'il sera (champs saisis + temps passé ajouté). Lève une ErreurValidation listant tous les manques.
-  function verifierClore(ot, champs, heures, technique) {
-    if (!technique && !clotureUneEtape()) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_etape_pas_activee'));
-    if (!Ordres.transitionsPossibles(ot).includes('Clôturé techniquement')) {
+  // mode : 'technique' (clôture technique : une clôture incomplète autorisée laisse passer les champs vides, T554),
+  // 'clore' (D132) ou 'completer' (T554 : le responsable complète un OT « Clôturé techniquement » resté incomplet).
+  function verifierClore(ot, champs, heures, mode) {
+    if (mode === 'clore' && !clotureUneEtape()) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_etape_pas_activee'));
+    if (mode === 'completer' ? !(profilResponsable() && ot.statut === 'Clôturé techniquement')
+      : !Ordres.transitionsPossibles(ot).includes('Clôturé techniquement')) {
       throw ErreurValidation(I18n.t('ordres.verifier_clore.ot_peut_pas_etre', { otId: ot.id, otStatut: Schema.libelleValeur('ordres_travail', 'statut', ot.statut) }));
     }
     const longueur = Array.from(champs.astuce || '').length;
     if (longueur > ASTUCE_MAX) throw ErreurValidation(I18n.t('ordres.verifier_clore.astuce_trop_longue_caracteres', { n: longueur, max: ASTUCE_MAX }));
     const temps = Ordres.interne.lignesDeLOt('ot_temps', ot.id).concat(heures > 0 ? [{ heures: String(heures) }] : []);
-    const manques = Ordres.verifierCloture(Object.assign({}, ot, champs), { temps });
+    const tous = Ordres.manquesCloture(Object.assign({}, ot, champs), { temps });
+    const manques = (mode === 'technique' ? Ordres.manquesQuiBloquent(tous) : tous).map((manque) => manque.texte);
     if (manques.length) throw ErreurValidation(I18n.t('ordres.verifier_clore.cloture_impossible_manque', { join: manques.join(' ; ') }));
   }
 
   // Saisies de la fenêtre de clôture lues et contrôlées (temps, technicien, pièce, RG4), avant toute écriture.
-  async function lireSaisiesCloture(ot, valeurs, technique) {
+  async function lireSaisiesCloture(ot, valeurs, mode) {
     await Donnees.rechargerTable('ordres_travail');
     const actuel = ligneOt(Donnees.lignes('ordres_travail'), ot.id, true);
     const champs = {};
@@ -333,18 +337,22 @@ Object.assign(Ordres, (() => {
     if (heures > 0 && !texte(valeurs.technicien_id)) throw ErreurValidation(I18n.t('ordres.clore.temps_passe_choisissez_technicien'));
     if (texte(valeurs.article_id) && !(quantite > 0)) throw ErreurValidation(I18n.t('ordres.clore.piece_sortie_quantite_superieure'));
     if (texte(valeurs.designation_hm) && !((Donnees.nombre(valeurs.quantite_hm) || 0) > 0)) throw ErreurValidation(I18n.t('ordres.clore.piece_sortie_quantite_superieure'));
-    verifierClore(actuel, champs, heures, technique);
+    verifierClore(actuel, champs, heures, mode);
     return { actuel, champs, heures, quantite };
   }
 
-  // Pièce sortie du magasin, pièce hors magasin (L25) et temps passé saisis dans la fenêtre de clôture (avant l'OT).
-  async function ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite) {
-    if (texte(valeurs.article_id)) await Magasin.sortir(actuel.id, valeurs.article_id, quantite, texte(valeurs.commentaire_piece));
-    if (texte(valeurs.designation_hm)) {                                       // L25 : pièce hors magasin
+  // Pièce sortie du magasin, pièce hors magasin (L25) et temps passé saisis dans la fenêtre de clôture (avant
+  // l'écriture de l'OT). completer (T554) : l'OT est « Clôturé techniquement », que modifierLieeAOt refuse ; pas de
+  // pièce (la fenêtre n'en montre pas).
+  async function ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite, completer) {
+    if (!completer && texte(valeurs.article_id)) await Magasin.sortir(actuel.id, valeurs.article_id, quantite, texte(valeurs.commentaire_piece));
+    if (!completer && texte(valeurs.designation_hm)) {                         // L25 : pièce hors magasin
       await Magasin.noterHorsMagasin(actuel.id, { designation: valeurs.designation_hm, quantite: valeurs.quantite_hm, prix: valeurs.prix_hm });
     }
     if (heures > 0) {
-      await modifierLieeAOt(actuel.id, 'ot_temps', (lignes, outils) => {
+      const ecrire = completer ? (table, fonction, options) => Donnees.modifier(table, fonction, options)
+        : (table, fonction, options) => modifierLieeAOt(actuel.id, table, fonction, options);
+      await ecrire('ot_temps', (lignes, outils) => {
         lignes.push({ id: outils.nouvelId(lignes), ot_id: actuel.id, technicien_id: valeurs.technicien_id,
           date: texte(valeurs.date_temps) || texte(champs.date_fin).slice(0, 10) || outils.aujourdhui(), heures: String(heures) });
       }, { action: I18n.donnees('ordres.clore.temps_passe', { actuelId: actuel.id }) });     // journal : D156
@@ -357,10 +365,29 @@ Object.assign(Ordres, (() => {
    * passage habituel (changerStatut : RG4 revérifiée, demandes suivies avec le mot pour l'opérateur, gamme, RG5).
    */
   async function cloturerTechniquement(ot, valeurs, options) {
-    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, true);
+    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, 'technique');
     await ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite);
     await modifierOt(actuel.id, champs, I18n.donnees('ordres.cloture.journal_saisies_cloture'));
     return changerStatut(actuel.id, actuel.statut, 'Clôturé techniquement', { mot_operateur: valeurs.mot_operateur }, options);
+  }
+
+  /**
+   * T554 (L20) : le responsable complète un OT « Clôturé techniquement » resté incomplet (réglage clotures_incompletes) :
+   * RG4 entière sur l'OT tel qu'il sera, puis temps passé et champs écrits sans rouvrir l'OT (statut et date de clôture
+   * technique gardés ; la demande liée n'est pas touchée). La validation administrative reste un geste à part.
+   */
+  async function completerCloture(ot, valeurs) {
+    const { actuel, champs, heures } = await lireSaisiesCloture(ot, valeurs, 'completer');
+    await ecrirePieceEtTemps(actuel, valeurs, champs, heures, 0, true);
+    return Donnees.modifier('ordres_travail', (lignes) => {
+      const ligne = ligneOt(lignes, actuel.id, true);
+      if (ligne.statut !== 'Clôturé techniquement') {
+        throw ErreurValidation(I18n.t('ordres.clore.ot_passe_autre_poste', { actuelId: actuel.id, ligneStatut: Schema.libelleValeur('ordres_travail', 'statut', ligne.statut) }));
+      }
+      const changes = Object.keys(champs).filter((nom) => texte(ligne[nom]) !== champs[nom]);
+      changes.forEach((nom) => { ligne[nom] = champs[nom]; });
+      return changes;
+    }, { action: I18n.donnees('ordres.cloture.journal_completee') });
   }
 
   /**
@@ -371,7 +398,7 @@ Object.assign(Ordres, (() => {
    * (RG4, stock RG6) s'appliquent : tout est contrôlé avant la première écriture, puis revérifié.
    */
   async function clore(ot, valeurs) {
-    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, false);
+    const { actuel, champs, heures, quantite } = await lireSaisiesCloture(ot, valeurs, 'clore');
     const statutAttendu = actuel.statut;
     await ecrirePieceEtTemps(actuel, valeurs, champs, heures, quantite);
     const saisis = await Donnees.modifier('ordres_travail', (lignes, outils) => {
@@ -414,7 +441,7 @@ Object.assign(Ordres, (() => {
     controlerAffectation, ecrireAvecTrace,
     // clôture en une étape (§22.11, D132)
     clore, clotureUneEtape,
-    // fenêtre de clôture unique (L20) : clôture technique seule
-    cloturerTechniquement,
+    // fenêtre de clôture unique (L20) : clôture technique seule ; clôture incomplète complétée par le responsable (T554)
+    cloturerTechniquement, completerCloture,
   };
 })());

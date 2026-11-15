@@ -9,6 +9,11 @@
 // codes, compte rendu repris, case « remis en service en sécurité » ; pour une panne, « La machine était-elle
 // arrêtée ? » (colonnes arret_production et duree_arret_h). Visite : compte rendu écrit d'office si tout est coché
 // sans anomalie, temps proposé d'après la gamme, OT de réparation proposé sur anomalie, prochaine visite dite.
+// T554 (L20) : réglage « Autoriser les clôtures incomplètes » (clé clotures_incompletes de parametres.csv, lue par
+// Ordres.cloturesIncompletesAutorisees seul) : le technicien clôture malgré un champ vide (une date de fin
+// incohérente bloque toujours), le bouton le dit ; le responsable retrouve ces OT sur son accueil et sur la fiche,
+// les complète (« Compléter la clôture », sans rouvrir l'OT) ; la validation administrative exige RG4 entière. Pas de
+// règle serveur : le serveur ne vérifie pas RG4, et ce réglage ne protège ni donnée ni droit.
 // Chargé juste après ordres-fiche.js ; les outils de la fiche (Ordres.interne) sont cherchés au moment de l'appel.
 // Complète l'objet Ordres.
 
@@ -103,20 +108,76 @@ Object.assign(Ordres, (() => {
   }
 
   /**
-   * Réservé à T554 (« Autoriser les clôtures incomplètes », « Dépannage provisoire ») : blocs ajoutés à la fenêtre,
-   * juste après la case de sécurité ; leurs champs nommés sont lus avec les autres (UI.lireFormulaire).
+   * Blocs ajoutés à la fenêtre, juste après la case de sécurité (un tableau : chaque tâche y ajoute les siens) ; leurs
+   * champs nommés sont lus avec les autres (UI.lireFormulaire).
    */
   function extensionsCloture(/* ot, mode */) {
     return [];
   }
 
-  /** Réservé à T554 : vrai si la clôture peut se faire malgré des manques (réglage du responsable). */
-  function clotureIncomplete(/* ot, manques */) {
-    return false;
+  // --- Clôtures incomplètes (T554, L20) ------------------------------------------------------
+
+  /** Réglage du responsable « Autoriser les clôtures incomplètes » (seul lecteur de la clé clotures_incompletes). */
+  function cloturesIncompletesAutorisees() {
+    return texte(Donnees.parametre('clotures_incompletes', '0')) === '1';
+  }
+
+  /** Le profil courant peut-il clôturer techniquement malgré des champs vides ? Le technicien, réglage actif, hors Solo. */
+  function clotureIncompletePermise() {
+    return cloturesIncompletesAutorisees() && estTechnicien() && !estResponsable() && !enSolo();
+  }
+
+  /** Manques de RG4 qui bloquent la clôture technique : tous, ou seulement les incohérences si elle peut être incomplète. */
+  function manquesQuiBloquent(manques) {
+    return clotureIncompletePermise() ? manques.filter((manque) => manque.incoherent) : manques;
+  }
+
+  /** Vrai si la clôture se fait malgré des manques : clôture technique (pas « Clore »), permise, rien d'incohérent. */
+  function clotureIncomplete(ot, manques, mode) {
+    return mode === 'technique' && manques.length > 0 && manquesQuiBloquent(manques).length === 0;
+  }
+
+  /** OT « Clôturé techniquement » dont RG4 a encore des manques (calculé : aucune colonne), les plus anciens d'abord. */
+  function otsClotureIncomplete() {
+    return Donnees.lignes('ordres_travail')
+      .filter((ot) => ot.statut === 'Clôturé techniquement' && Ordres.verifierCloture(ot).length > 0)
+      .sort((a, b) => texte(a.date_cloture_tech).localeCompare(texte(b.date_cloture_tech)));
+  }
+
+  /** Accueil du responsable : la carte « Clôtures à compléter » (rien s'il n'y en a pas). */
+  function cloturesIncompletesResponsable() {
+    const ots = otsClotureIncomplete();
+    if (!ots.length) return '';
+    const lignes = ots.slice(0, 8).map((ot) => UI.html`<li><a href="#/ot/${encodeURIComponent(ot.id)}">
+      <div class="carte-tete"><b>${ot.id}</b>${UI.badgeValeur('ordres_travail', 'statut', ot.statut)}</div>
+      <div class="carte-titre">${ot.titre}</div>
+      <div class="carte-meta"><span>${I18n.t('ordres.incomplete.il_manque', { liste: Ordres.verifierCloture(ot).join(' ; ') })}</span></div></a></li>`);
+    return UI.html`<article class="carte accueil-clotures-incompletes" id="accueil-clotures-incompletes">
+      <div class="entete-carte"><h2>${I18n.t('ordres.incomplete.titre_accueil')}</h2><span class="badge attention">${ots.length}</span></div>
+      <p class="aide">${I18n.t('ordres.incomplete.aide_accueil')}</p><ul class="liste-cartes">${lignes}</ul>
+      ${cloturesIncompletesAutorisees() ? UI.html`<p class="accueil-voir-tout"><a href="#/parametres">${I18n.t('ordres.incomplete.retirer_autorisation')}</a></p>` : ''}</article>`;
+  }
+
+  /** Fiche d'un OT « Clôturé techniquement » incomplet : ce qui manque ; le responsable a « Compléter la clôture ». */
+  function bandeauIncomplet(ot) {
+    const manques = ot.statut === 'Clôturé techniquement' ? Ordres.verifierCloture(ot) : [];
+    if (!manques.length) return null;
+    const bandeau = UI.bandeau('attention', UI.html`<b>${I18n.t('ordres.incomplete.bandeau')}</b>
+      <ul class="ot-manques">${manques.map((manque) => UI.html`<li>${manque}</li>`)}</ul>${estResponsable() ? UI.html`<div class="actions">
+      <button type="button" class="btn btn-primaire" id="ot-completer">${I18n.t('ordres.incomplete.completer')}</button></div>` : ''}`);
+    const bouton = UI.$('#ot-completer', bandeau);
+    if (bouton) bouton.addEventListener('click', () => demanderCloture(ot, 'completer'));
+    return bandeau;
+  }
+
+  /** Bandeaux de la fiche posés par la clôture (ordres-fiche.js, sous le bandeau d'état). */
+  function bandeauxCloture(ot) {
+    return [bandeauIncomplet(ot)].filter(Boolean);
   }
 
   /** Champs de la fenêtre, dans l'ordre du travail ; les champs exigés par RG4 portent une étoile. */
   function champsCloture(ot, mode) {
+    const completer = mode === 'completer';
     const total = lignesDeLOt('ot_temps', ot.id).reduce((somme, ligne) => somme + nombre(ligne.heures), 0);
     const temps = tempsAProposer(ot, total);
     const exiges = Ordres.codesExiges(ot);
@@ -145,10 +206,10 @@ Object.assign(Ordres, (() => {
       marquerExige(champOt('compte_rendu', texte(ot.compte_rendu) || compteRenduDOffice(ot), {        // L23 : écrit d'office
         aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
       })),
-      ...Demandes.champsMotOperateur(ot),                         // A4 : mot pour l'opérateur, si l'OT vient d'une demande
+      ...(completer ? [] : Demandes.champsMotOperateur(ot)),      // A4 : mot pour l'opérateur, si l'OT vient d'une demande
       remise,
       ...extensionsCloture(ot, mode),
-      saisiesFacultatives(ot),
+      ...(completer ? [] : [saisiesFacultatives(ot)]),            // T554 : compléter n'écrit ni pièce ni astuce
     ];
   }
 
@@ -172,16 +233,18 @@ Object.assign(Ordres, (() => {
   }
 
   /** Liste de ce qui manque (en haut de la fenêtre) et libellé du bouton, tenus à jour pendant la saisie. */
-  function actualiser(ot, boite, bouton, libelle) {
+  function actualiser(ot, boite, bouton, libelle, mode) {
     const manques = manquesSaisis(ot, saisiesFenetre(boite.closest('form')));
+    const incomplete = clotureIncomplete(ot, manques, mode);            // T554 : réglage du responsable
     boite.textContent = '';
     boite.appendChild(manques.length
       ? UI.bandeau('attention', UI.html`<b>${I18n.t('ordres.cloture.il_manque')}</b>
-          <ul class="ot-manques">${manques.map((manque) => UI.html`<li data-champ="${manque.champ}">${manque.texte}</li>`)}</ul>`)
+          <ul class="ot-manques">${manques.map((manque) => UI.html`<li data-champ="${manque.champ}">${manque.texte}</li>`)}</ul>${
+  incomplete ? UI.html`<p>${I18n.t('ordres.incomplete.permise')}</p>` : ''}`)
       : UI.bandeau('succes', I18n.t('ordres.cloture.rien_ne_manque')));
     if (bouton) {
-      bouton.lastChild.textContent = manques.length && !clotureIncomplete(ot, manques)
-        ? I18n.t('ordres.cloture.bouton_il_manque', { action: libelle, n: manques.length }) : libelle;
+      bouton.lastChild.textContent = !manques.length ? libelle
+        : I18n.t(incomplete ? 'ordres.incomplete.bouton' : 'ordres.cloture.bouton_il_manque', { action: libelle, n: manques.length });
     }
     return manques;
   }
@@ -189,7 +252,8 @@ Object.assign(Ordres, (() => {
   /**
    * La fenêtre de clôture unique (L20). mode 'technique' : « Clôturer » (technicien, responsable : clôture technique,
    * Ordres.cloturerTechniquement) ; mode 'clore' : « Clore » (responsable, Solo : technique + administrative,
-   * Ordres.clore). Les saisies des onglets sont enregistrées d'abord. Renvoie true si l'OT a été clôturé.
+   * Ordres.clore) ; mode 'completer' (T554) : le responsable complète un OT « Clôturé techniquement » incomplet
+   * (Ordres.completerCloture). Les saisies des onglets sont enregistrées d'abord. Renvoie true si l'OT a été écrit.
    */
   async function demanderCloture(ot, mode) {
     const { viderMessage, enregistrerFormulairesModifies, apresEnregistrement } = Ordres.interne;
@@ -199,29 +263,32 @@ Object.assign(Ordres, (() => {
     const actuel = Donnees.trouver('ordres_travail', ot.id) || ot;
     const solo = enSolo();                       // L22 : en Solo, une seule clôture (ni « deux temps » ni « verrouiller »)
     const clore = mode === 'clore';
-    const libelle = !clore ? I18n.t('ordres.cloture_techniquement.cloturer_techniquement')
+    const completer = mode === 'completer';
+    const libelle = completer ? I18n.t('ordres.incomplete.completer') : !clore ? I18n.t('ordres.cloture_techniquement.cloturer_techniquement')
       : solo ? I18n.t('ordres.bouton_clore.clore') : I18n.t('ordres.demander_clore.clore_verrouiller');
     const champs = champsCloture(actuel, mode);
     const boite = champs[0];
     const promesse = UI.fenetreAction({
-      titre: clore ? I18n.t('ordres.demander_clore.clore_actuel_id', { actuelId: actuel.id }) : I18n.t('ordres.cloture.titre', { otId: actuel.id }),
+      titre: clore ? I18n.t('ordres.demander_clore.clore_actuel_id', { actuelId: actuel.id }) : completer
+        ? I18n.t('ordres.incomplete.titre_fenetre', { otId: actuel.id }) : I18n.t('ordres.cloture.titre', { otId: actuel.id }),
       classe: 'ot-fenetre-clore', libelleValider: libelle,
-      introduction: UI.html`<p>${!clore ? I18n.t('ordres.cloture.introduction')
+      introduction: UI.html`<p>${completer ? I18n.t('ordres.incomplete.introduction') : !clore ? I18n.t('ordres.cloture.introduction')
         : solo ? I18n.t('ordres.cloture.solo_introduction') : I18n.t('ordres.demander_clore.cloture_technique_puis_administrative')}</p>`,
       champs,
       verifier: () => {
-        const manques = actualiser(actuel, boite, null, libelle);
-        return clotureIncomplete(actuel, manques) ? [] : manques.map((manque) => ({ nom: manque.champ, message: manque.texte }));
+        const manques = actualiser(actuel, boite, null, libelle, mode);
+        return clotureIncomplete(actuel, manques, mode) ? [] : manques.map((manque) => ({ nom: manque.champ, message: manque.texte }));
       },
       action: (valeurs, contenu) => {
         const saisies = saisiesFenetre(contenu.closest('form'));
+        if (completer) return Ordres.completerCloture(actuel, saisies);
         return clore ? Ordres.clore(actuel, saisies) : Ordres.cloturerTechniquement(actuel, saisies);
       },
     });
     const formulaire = boite.closest('form');                    // la fenêtre est ouverte (UI.fenetre, synchrone)
     const bouton = formulaire && formulaire.querySelector('.fenetre-actions .btn-primaire');
     if (formulaire) {
-      const suivre = () => actualiser(actuel, boite, bouton, libelle);
+      const suivre = () => actualiser(actuel, boite, bouton, libelle, mode);
       formulaire.addEventListener('input', suivre);
       formulaire.addEventListener('change', suivre);
       suivre();
@@ -229,6 +296,7 @@ Object.assign(Ordres, (() => {
     const fait = await promesse;
     if (!fait) { if (sauvegarde.enregistres) await apresEnregistrement(); return false; }
     await apresEnregistrement();
+    if (completer) { UI.toast(I18n.t('ordres.incomplete.completee', { otId: actuel.id }), 'succes'); return true; }
     const avertissementGamme = Ordres.interne.lireAvertissementGamme(actuel.id);
     direApresTransition(actuel.id, clore ? 'Clôturé administrativement' : 'Clôturé techniquement', avertissementGamme,
       avertissementGamme ? [avertissementGamme] : [], clore);
@@ -356,9 +424,10 @@ Object.assign(Ordres, (() => {
 
   // Outils prêtés aux fichiers du module (usage interne) : la fiche, l'onglet Compte rendu et l'onglet Exécution.
   Object.assign(Ordres.interne, {
-    boutonClore, demanderClore, demanderCloture, direApresTransition, compteRenduDOffice, tempsPropose,
+    boutonClore, demanderClore, demanderCloture, direApresTransition, compteRenduDOffice, tempsPropose, bandeauxCloture,
   });
 
-  // Règles de L20 et L23 exposées pour les tests.
-  return { visiteSansAnomalie, messageApresTransition, manquesSaisis };
+  // Règles de L20 et L23 exposées pour les tests ; clôtures incomplètes (T554) : réglage, règle, accueil du responsable.
+  return { visiteSansAnomalie, messageApresTransition, manquesSaisis, cloturesIncompletesAutorisees, manquesQuiBloquent,
+    otsClotureIncomplete, cloturesIncompletesResponsable };
 })());

@@ -321,15 +321,16 @@ const Ordres = (() => {
     return manquesCloture(ot, options).map((manque) => manque.texte);
   }
 
-  /** L20 : les mêmes manques avec le champ de la fenêtre de clôture qui les remplit : [{ champ, texte }]. */
+  /** L20 : les mêmes manques avec le champ de la fenêtre qui les remplit : [{ champ, texte, incoherent }] (T554 : une
+   *  date de fin incohérente n'est pas un champ vide, elle bloque même une clôture incomplète autorisée). */
   function manquesCloture(ot, options) {
     const manques = [];
-    const manque = (champ, cle) => manques.push({ champ, texte: I18n.t(cle) });
+    const manque = (champ, cle, incoherent) => manques.push(Object.assign({ champ, texte: I18n.t(cle) }, incoherent ? { incoherent } : {}));
     const temps = (options && options.temps) || lignesDeLOt('ot_temps', ot.id);
     const compteRendu = texte(ot.compte_rendu);
     if (!texte(ot.date_fin)) manque('date_fin', 'ordres.verifier_cloture.date_fin_travaux');
-    else if (texte(ot.date_debut) && texte(ot.date_fin) < texte(ot.date_debut)) manque('date_fin', 'ordres.verifier_cloture.date_fin_posterieure_date');
-    else if (dateFinDansLeFutur(ot.date_fin)) manque('date_fin', 'ordres.verifier_cloture.date_fin_soit_pas');
+    else if (texte(ot.date_debut) && texte(ot.date_fin) < texte(ot.date_debut)) manque('date_fin', 'ordres.verifier_cloture.date_fin_posterieure_date', true);
+    else if (dateFinDansLeFutur(ot.date_fin)) manque('date_fin', 'ordres.verifier_cloture.date_fin_soit_pas', true);
     if (!temps.some((ligne) => nombre(ligne.heures) > 0)) manque('heures', 'ordres.verifier_cloture.moins_temps_passe_onglet');
     manques.push(...Ordres.manquesDesCodes(ot, true));  // T515 : ordres-codes.js (préventif, « Autre », liste vide)
     if (estCorrectif(ot) && estRienASignaler(compteRendu)) manque('compte_rendu', 'ordres.verifier_cloture.vrai_compte_rendu_ras');
@@ -600,8 +601,9 @@ const Ordres = (() => {
       manquantes.forEach((piece) => erreurs.push(I18n.t('ordres.verifier_passage.stock_insuffisant', { pieceLibelle: piece.libelle, detailManque: detailManque(piece) })));
       habilitation = refusHabilitation(ot, ot.technicien_id, ot.date_prevue);
       if (habilitation) erreurs.push(habilitation.message);
-    } else if (cible === 'Clôturé techniquement') {
-      const manques = verifierCloture(ot);
+    } else if (cible === 'Clôturé techniquement') {        // T554 : clôture incomplète autorisée (ordres-cloture.js)
+      const tous = manquesCloture(ot);
+      const manques = (Ordres.manquesQuiBloquent ? Ordres.manquesQuiBloquent(tous) : tous).map((manque) => manque.texte);
       if (manques.length) erreurs.push(I18n.t('ordres.verifier_passage.manque_join', { join: manques.join(' ; ') }));
     } else if (cible === 'Clôturé administrativement') {
       // RG4 revérifiée : la clôture technique doit être encore complète (aucune saisie ne l'a défaite).
