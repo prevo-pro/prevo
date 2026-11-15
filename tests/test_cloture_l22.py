@@ -100,7 +100,7 @@ class TestEquipe(CasCloture):
         page = self.ouvrir_demo("technicien", "TEC-0001")
         self.assertTrue(page.evaluate("Ordres.interne.estTechnicien()"))
         self.assertEqual(page.evaluate("() => Ordres.messageApresTransition({ id: 'OT-X' }, 'Clôturé techniquement')"),
-                         "OT-X : Clôturé techniquement. " + PART_TERMINEE)
+                         "OT-X : Terminé, à valider. " + PART_TERMINEE)
         # Aucune phrase de plus pour une autre transition.
         self.assertEqual(page.evaluate("() => Ordres.messageApresTransition({ id: 'OT-X' }, 'En attente')"), "OT-X : En attente.")
 
