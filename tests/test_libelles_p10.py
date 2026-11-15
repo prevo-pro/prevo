@@ -5,6 +5,7 @@ Les valeurs stockées dans les CSV ne changent pas (D155) ; seul l'affichage pas
     - « Clôturé techniquement » s'affiche « Terminé, à valider », « Clôturé administrativement » s'affiche « Clôturé » ;
     - « correctif immédiat » s'affiche « Panne », « correctif différé » « Réparation programmée » ;
     - le bandeau d'un OT clôturé dit « OT clôturé le … à … » (une clé sans l'heure si la donnée n'en porte pas) ;
+    - P07 : le champ « Consignes » de l'OT devient « Consignes de sécurité (responsable) » ;
     - les cinq langues portent les mêmes clés et les mêmes paramètres ; les anciens termes restent cités dans l'aide.
 
 Lancer depuis la racine du projet :
@@ -60,6 +61,16 @@ class LibellesP10(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertIn("Terminé, à valider (la clôture technique)", m.group(1))
         self.assertIn("ancienne clôture administrative", m.group(1))
+
+
+class ChampConsignes(unittest.TestCase):
+    """P07 : le champ « Consignes » de l'OT (onglet Préparation, responsable) est renommé ; celui des gammes ne change pas."""
+
+    def test_libelle(self):
+        self.assertEqual(texte_de("fr", "schema.ordres_travail.consignes"), "Consignes de sécurité (responsable)")
+        self.assertEqual(texte_de("fr", "schema.gammes.consignes"), "Consignes")
+        for langue in LANGUES:
+            self.assertTrue(texte_de(langue, "schema.ordres_travail.consignes"), langue)
 
 
 if __name__ == "__main__":

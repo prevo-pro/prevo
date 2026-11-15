@@ -220,7 +220,7 @@ I18n.ajouter('en', {
   'schema.ordres_travail.cause_code': 'Cause code',
   'schema.ordres_travail.cause_precision': 'Cause (details)',
   'schema.ordres_travail.compte_rendu': 'Job report',
-  'schema.ordres_travail.consignes': 'Instructions',
+  'schema.ordres_travail.consignes': 'Safety instructions (manager)',
   'schema.ordres_travail.cout_soustraitance': 'Subcontracting cost',
   'schema.ordres_travail.date_cloture_admin': 'Administrative closure date',
   'schema.ordres_travail.date_cloture_tech': 'Technical closure date',

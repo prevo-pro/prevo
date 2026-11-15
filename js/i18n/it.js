@@ -222,7 +222,7 @@ I18n.ajouter('it', {
   'schema.ordres_travail.cause_code': 'Codice causa',
   'schema.ordres_travail.cause_precision': 'Causa (dettaglio)',
   'schema.ordres_travail.compte_rendu': 'Rapporto di intervento',
-  'schema.ordres_travail.consignes': 'Istruzioni di sicurezza',
+  'schema.ordres_travail.consignes': 'Istruzioni di sicurezza (responsabile)',
   'schema.ordres_travail.cout_soustraitance': 'Costo di subappalto',
   'schema.ordres_travail.date_cloture_admin': 'Data di chiusura amministrativa',
   'schema.ordres_travail.date_cloture_tech': 'Data di chiusura tecnica',

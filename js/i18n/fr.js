@@ -218,7 +218,7 @@ I18n.ajouter('fr', {
   'schema.ordres_travail.cause_code': 'Code cause',
   'schema.ordres_travail.cause_precision': 'Cause (précision)',
   'schema.ordres_travail.compte_rendu': 'Compte rendu',
-  'schema.ordres_travail.consignes': 'Consignes',
+  'schema.ordres_travail.consignes': 'Consignes de sécurité (responsable)',
   'schema.ordres_travail.cout_soustraitance': 'Coût de sous-traitance',
   'schema.ordres_travail.date_cloture_admin': 'Date de clôture administrative',
   'schema.ordres_travail.date_cloture_tech': 'Date de clôture technique',

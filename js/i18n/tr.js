@@ -222,7 +222,7 @@ I18n.ajouter('tr', {
   'schema.ordres_travail.cause_code': 'Neden kodu',
   'schema.ordres_travail.cause_precision': 'Neden (ayrıntı)',
   'schema.ordres_travail.compte_rendu': 'Müdahale raporu',
-  'schema.ordres_travail.consignes': 'Talimatlar',
+  'schema.ordres_travail.consignes': 'Güvenlik talimatları (sorumlu)',
   'schema.ordres_travail.cout_soustraitance': 'Taşeron maliyeti',
   'schema.ordres_travail.date_cloture_admin': 'İdari kapatma tarihi',
   'schema.ordres_travail.date_cloture_tech': 'Teknik kapatma tarihi',
