@@ -196,7 +196,10 @@ class TestEssaiDuRelecteur(CasServeur):
         self.assertEqual(rendue, self.version("technicien"))
 
     def test_ajout_du_technicien_rend_sa_version(self):
-        ligne = ["ART-0002", "ROU-002", "Roulement 6205", "Rouloran", "6205-2RS", "A1-02", "u", "1", "1", "1", "1", "3",
+        # L25 (T541) : le technicien n'ajoute un article que si le responsable l'a permis, et sans stock.
+        parametres = self.serveur.dossier / "parametres.csv"
+        parametres.write_bytes(parametres.read_bytes().rstrip(b"\r\n") + b"\r\ntechniciens_creent_articles;'1\r\n")
+        ligne = ["ART-0002", "ROU-002", "Roulement 6205", "Rouloran", "6205-2RS", "A1-02", "u", "0", "1", "1", "1", "3",
                  "99", "", "0", "1"]
         corps = (";".join(ENTETE) + "\r\n" + ";".join(ligne) + "\r\n").encode("utf-8")
         reponse = self.requete("technicien", "POST", "/api/csv/articles/ajout", corps)
@@ -222,6 +225,12 @@ class TestConflitsToujoursVus(CasServeur):
         lignes[0][ENTETE.index("designation")] = designation
         return lignes
 
+    def stock_modifie(self, stock):
+        """L25 (T541) : le technicien ne réécrit de articles.csv que la colonne stock (copie après une sortie)."""
+        _, lignes = lire_tableau(self.fichier())
+        lignes[0][ENTETE.index("stock")] = stock
+        return lignes
+
     def test_responsable_ecrit_le_technicien_est_en_conflit(self):
         lue = self.version("technicien")
         reponse = self.put("responsable", ecrire_tableau(ENTETE, self.modifie("Par le responsable")),
@@ -229,22 +238,23 @@ class TestConflitsToujoursVus(CasServeur):
         self.assertEqual(reponse.statut, 200, reponse.octets[:300])
         self.assertEqual(reponse.json()["version"], empreinte(self.fichier()))
         apres = self.fichier()
-        refus = self.put("technicien", avec_prix(self.modifie("Par le technicien"), ""), lue)
+        refus = self.put("technicien", avec_prix(self.stock_modifie("7"), ""), lue)
         self.assertEqual(refus.statut, 409, refus.octets[:300])
         self.assertEqual(self.fichier(), apres)
         actuelle = refus.json()["version_actuelle"]
         self.assertNotEqual(actuelle, lue)
         self.assertEqual(actuelle, self.version("technicien"))
-        accepte = self.put("technicien", avec_prix(self.modifie("Par le technicien"), ""), actuelle)
+        accepte = self.put("technicien", avec_prix(self.stock_modifie("7"), ""), actuelle)
         self.assertEqual(accepte.statut, 200, accepte.octets[:300])
         self.assertEqual(accepte.json()["version"], self.version("technicien"))
         ligne = lire_tableau(self.fichier())[1][0]
-        self.assertEqual((ligne[ENTETE.index("designation")], ligne[POSITION_PRIX]), ("Par le technicien", PRIX))
+        self.assertEqual((ligne[ENTETE.index("designation")], ligne[ENTETE.index("stock")], ligne[POSITION_PRIX]),
+                         ("Par le responsable", "7", PRIX))
 
     def test_technicien_ecrit_le_responsable_est_en_conflit(self):
         lue = self.version("responsable")
         self.assertEqual(lue, empreinte(self.fichier()))
-        reponse = self.put("technicien", avec_prix(self.modifie("Par le technicien"), ""), self.version("technicien"))
+        reponse = self.put("technicien", avec_prix(self.stock_modifie("7"), ""), self.version("technicien"))
         self.assertEqual(reponse.statut, 200, reponse.octets[:300])
         apres = self.fichier()
         refus = self.put("responsable", ecrire_tableau(ENTETE, self.modifie("Par le responsable")), lue)
@@ -254,12 +264,12 @@ class TestConflitsToujoursVus(CasServeur):
 
     def test_technicien_version_perimee_ou_absente(self):
         lue = self.version("technicien")
-        premier = self.put("technicien", avec_prix(self.modifie("Premier"), ""), lue)
+        premier = self.put("technicien", avec_prix(self.stock_modifie("7"), ""), lue)
         self.assertEqual(premier.statut, 200, premier.octets[:300])
         self.assertNotEqual(premier.json()["version"], lue)
         apres = self.fichier()
         for attendue in (lue, "aucune", "0" * 16, self.version("responsable")):
-            refus = self.put("technicien", avec_prix(self.modifie("Second"), ""), attendue)
+            refus = self.put("technicien", avec_prix(self.stock_modifie("6"), ""), attendue)
             self.assertEqual(refus.statut, 409, (attendue, refus.octets[:300]))
             self.assertEqual(refus.json()["version_actuelle"], premier.json()["version"], attendue)
         self.assertEqual(self.fichier(), apres)
