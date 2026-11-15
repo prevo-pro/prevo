@@ -320,10 +320,11 @@ class TestReprise(CasRecette):
             page.wait_for_selector("#btn-base-vide", state="visible")
             page.click("#btn-base-vide")
             attendre_pret(page)
-            # Base vide : les paramètres, version_schema et langue_defaut (la langue de Prévo, T296), et depuis le
+            # Base vide : les paramètres, version_schema et langue_defaut (la langue de Prévo, T296), depuis le lot 2
+            # ergonomie (L24, T540) dictee_autorisee (la réponse sur la dictée, « non » sans réponse), et depuis le
             # lot 1 ergonomie (A2, T515) la liste de départ des codes de défaillance.
             self.assertEqual({t: n for t, n in page.evaluate(COMPTES_JS).items() if n},
-                             {"parametres": 2, "codes_defaillance": len(codes_de_depart("fr"))})
+                             {"parametres": 3, "codes_defaillance": len(codes_de_depart("fr"))})
 
             # 1. Les dix fichiers, dans l'ordre du LISEZMOI
             apercus, sauvegardes, bilans = {}, [], []
