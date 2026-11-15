@@ -130,6 +130,7 @@ Object.assign(Ordres, (() => {
     if (texte((equipementDe(ot) || {}).habilitation_requise)) remise.appendChild(UI.element(UI.html`<p class="aide">${Ordres.rappelConsignation()}</p>`));
     return [
       UI.element(UI.html`<div class="ot-cloture-manques" aria-live="polite"></div>`),
+      ...resumeVisite(ot),                                        // L23 : contrôles faits, anomalie
       fin,
       total > 0 ? heures : marquerExige(heures),
       champTechnicien(ot),
@@ -252,6 +253,26 @@ Object.assign(Ordres, (() => {
   /** L23 : compte rendu écrit d'office (langue de l'écran au moment de l'écriture) ; '' s'il est déjà écrit ou s'il faut l'écrire. */
   function compteRenduDOffice(ot) {
     return !texte(ot.compte_rendu) && visiteSansAnomalie(ot) ? I18n.t('ordres.cloture.visite_rien_a_signaler') : '';
+  }
+
+  /**
+   * L23 : en tête de la fenêtre de clôture d'une visite, ce que dit la liste de contrôle : tout coché sans anomalie
+   * (compte rendu rempli d'office, modifiable), anomalie constatée (compte rendu à écrire, OT de réparation proposé
+   * après la clôture), ou contrôles en partie faits. Rien hors visite ou sans liste de contrôle.
+   */
+  function resumeVisite(ot) {
+    if (!estVisite(ot)) return [];
+    const operations = lignesDeLOt('ot_operations', ot.id);
+    const faits = operations.filter((operation) => operation.fait === '1').length;
+    const total = operations.length;
+    let phrase = '';
+    if (ot.anomalie_constatee === '1') phrase = I18n.t('ordres.cloture.visite_anomalie');
+    else if (total && faits === total) phrase = I18n.t('ordres.cloture.visite_tout_coche', { faits, total });
+    else if (total) phrase = I18n.t('ordres.cloture.visite_en_partie', { faits, total });
+    if (!phrase) return [];
+    const bloc = UI.element(UI.html`<p class="ot-cloture-visite"></p>`);
+    bloc.textContent = phrase;
+    return [bloc];
   }
 
   /** L23 : temps passé proposé pour une visite sans temps saisi : temps prévu de l'OT (recopié de la gamme), sinon de la gamme. */

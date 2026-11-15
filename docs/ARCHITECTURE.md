@@ -851,6 +851,11 @@ RG8 ne prévient plus : elle **bloque** (D186, D191, ci-dessous).
   demande liée) tant qu'aucune demande n'est liée à la visite ; sans temps saisi, le temps passé est proposé d'après le
   temps prévu de l'OT (recopié de la gamme : onglet Exécution et fenêtre de clôture) ; `remise_service` reste exigée ;
   le message de clôture dit « Prochaine visite : le … » quand la gamme est périodique (déclencheur date). RG4 inchangée.
+  T553 (L23) : la visite se clôt par la même fenêtre de clôture unique (ci-dessous), qui dit en tête ce que dit la
+  liste de contrôle : « Contrôles : 8 sur 8 faits, aucune anomalie. Le compte rendu est rempli d'office… », « Anomalie
+  constatée : écrivez ce que vous avez vu… Après la clôture, Prévo proposera l'OT de réparation. » ou « Contrôles : 5
+  sur 8 faits. » ; le compte rendu d'office est écrit avec les autres saisies de la fenêtre (plus de ligne de journal
+  à part) ; ni cause exigée ni question de l'arrêt sur une visite.
   Lot 2 ergonomie (T553, L20 ; `ordres-cloture.js`) : **fenêtre de clôture unique**. « Clôturer techniquement »
   (technicien, responsable, où que soit le bouton) et « Clore » (responsable avec `cloture_une_etape`, mode Solo)
   ouvrent la même fenêtre (`Ordres.interne.demanderCloture(ot, 'technique' | 'clore')`), après l'enregistrement des

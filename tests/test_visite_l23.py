@@ -105,6 +105,13 @@ class TestClotureEquipe(CasVisite):
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")
         self.assertEqual(page.input_value("dialog [name='compte_rendu']"), RIEN_A_SIGNALER)
         self.assertEqual(page.input_value("dialog [name='heures']").replace("\u00a0", " "), "1 h 30")
+        # L23 (T553) : la fenêtre dit ce que dit la liste de contrôle ; ni cause, ni question de l'arrêt sur une visite.
+        nombre = page.evaluate("(id) => Donnees.lignes('ot_operations').filter((o) => o.ot_id === id).length", OT)
+        self.assertEqual(page.inner_text("dialog .ot-cloture-visite"),
+                         "Contrôles : %d sur %d faits, aucune anomalie. Le compte rendu est rempli d'office : modifiez-le si besoin."
+                         % (nombre, nombre))
+        self.assertEqual(page.locator("dialog [name='cause_code']").count(), 0)
+        self.assertEqual(page.locator("dialog [name='arret_production']").count(), 0)
         manques = page.locator("dialog .ot-cloture-manques li").all_inner_texts()
         self.assertEqual(len(manques), 1, manques)
         self.assertIn("remis en service", manques[0])
@@ -137,6 +144,8 @@ class TestClotureEquipe(CasVisite):
         self.onglet(page, "compte-rendu", "#form-compte-rendu [data-cible='Clôturé techniquement']")
         page.click("#form-compte-rendu [data-cible='Clôturé techniquement']")
         page.wait_for_selector("dialog [name='compte_rendu']", state="visible")      # L20 : fenêtre de clôture unique
+        self.assertIn("Anomalie constatée : écrivez ce que vous avez vu", page.inner_text("dialog .ot-cloture-visite"))
+        self.assertIn("l'OT de réparation", page.inner_text("dialog .ot-cloture-visite"))
         page.click("dialog .fenetre-actions .btn-primaire")
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'", arg=OT)
         page.wait_for_selector("#ot-reparation")

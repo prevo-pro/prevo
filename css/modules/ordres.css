@@ -73,6 +73,7 @@
 
 /* L20 : fenêtre de clôture unique — ce qui manque reste visible en haut, le bouton en bas, pendant le défilement */
 .ot-fenetre-clore .ot-cloture-manques { position: sticky; top: -18px; z-index: 2; background: var(--carte); box-shadow: 0 -6px 0 var(--carte); }
+.ot-cloture-visite { margin: 0; font-weight: 600; color: var(--texte); }   /* L23 : ce que dit la liste de contrôle */
 .ot-cloture-arret { border: 0; padding: 0; margin: 0; min-width: 0; }
 .ot-cloture-arret legend { padding: 0; margin-bottom: .35rem; font-weight: 600; color: var(--texte-2); }
 .ot-cloture-choix { display: flex; flex-wrap: wrap; gap: .25rem 1.75rem; }
