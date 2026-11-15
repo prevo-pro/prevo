@@ -319,8 +319,10 @@ Object.assign(Import.assistant, (() => {
 
   /** L30 : « Combien d'heures par jour tournent vos machines ? », sans valeur proposée ; vide : question passée. */
   function questionHeures(n) {
-    const bloc = UI.champ({ nom: 'import_heures_jour', type: 'decimal', libelle: I18n.t('import.heures_marche.question') }, '',
-      { aide: I18n.t('import.heures_marche.aide', { n }) });
+    // T559 (P04.1) : la réponse de l'assistant d'installation (heures_marche_proposees) est proposée d'office ; vide : rien.
+    const proposee = texte(Donnees.parametre('heures_marche_proposees', ''));
+    const bloc = UI.champ({ nom: 'import_heures_jour', type: 'decimal', libelle: I18n.t('import.heures_marche.question') }, proposee,
+      { aide: I18n.t('import.heures_marche.aide', { n }) + (proposee ? ' ' + I18n.t('import.heures_marche.proposee') : '') });
     bloc.classList.add('import-heures-marche');
     return bloc;
   }

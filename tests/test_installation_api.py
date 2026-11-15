@@ -1013,6 +1013,94 @@ class TestSeulALaMaintenance(CasAssistant):
 
 
 @unittest.skipUnless(os.name == "nt", "chemins Windows")
+class TestPourChiffrerLeBilan(CasAssistant):
+    """T559 (P04.1, L30) : étape facultative « bilan » (taux horaire moyen du service, heures de marche par jour) : gardée
+    dans le brouillon, écrite à « terminer » ; « Plus tard » (champs vides) n'écrit rien ; les machines sans heures sont
+    complétées, les autres jamais touchées ; sans machine, les heures sont gardées pour la question de l'import."""
+
+    def jusqu_au_bilan(self, source=None):
+        client, instance = self.lancer(source=source)
+        self.ok(client.post("situation", {"situation": "seul"}))
+        self.ok(client.post("portee", {"portee": "ce-pc"}))
+        self.ok(client.post("compte", {"prenom": "Nicolas", "nom": "Briand"}))
+        return client, instance
+
+    def test_l_etape_existe_et_se_passe_sans_rien_ecrire(self):
+        client, instance = self.jusqu_au_bilan()
+        self.assertEqual(self.ok(client.get("etat"))["etapes"]["bilan"], "a_faire")
+        reponse = self.ok(client.post("bilan", {}))                                     # « Plus tard »
+        self.assertEqual(reponse["etapes"]["bilan"], "fait")
+        self.assertNotIn("bilan_taux", reponse["brouillon"])
+        self.assertNotIn("bilan_heures", reponse["brouillon"])
+        self.ok(client.post("bilan", {"taux_horaire_moyen": "", "heures_marche_jour": "  "}))
+        self.ok(client.post("sauvegardes", {"dossier": ""}))
+        self.ok(client.post("terminer"))
+        parametres = parametres_de(instance.config.dossier_donnees)
+        self.assertNotIn("taux_horaire_moyen", parametres)
+        self.assertNotIn("heures_marche_proposees", parametres)
+
+    def test_valeurs_refusees(self):
+        client, _ = self.jusqu_au_bilan()
+        for corps in ({"taux_horaire_moyen": "abc"}, {"taux_horaire_moyen": "-3"}, {"taux_horaire_moyen": "10001"},
+                      {"heures_marche_jour": "25"}, {"heures_marche_jour": "huit"}, {"heures_marche_jour": True},
+                      {"heures_marche_jour": "nan"}, {"taux_horaire_moyen": "inf"}):
+            with self.subTest(corps=corps):
+                reponse = client.post("bilan", corps)
+                self.assertEqual(reponse.statut, 400, reponse.octets)
+                self.assertIn("0 à", reponse.json()["erreur"])
+        self.assertEqual(self.ok(client.get("etat"))["etapes"]["bilan"], "a_faire")
+
+    def test_sans_machine_taux_ecrit_et_heures_gardees_pour_l_import(self):
+        client, instance = self.jusqu_au_bilan()
+        brouillon = self.ok(client.post("bilan", {"taux_horaire_moyen": "45,5", "heures_marche_jour": "7,5"}))["brouillon"]
+        self.assertEqual((brouillon["bilan_taux"], brouillon["bilan_heures"]), ("45.5", "7.5"))
+        self.ok(client.post("sauvegardes", {"dossier": ""}))
+        self.ok(client.post("terminer"))
+        donnees = Path(instance.config.dossier_donnees)
+        parametres = parametres_de(donnees)
+        self.assertEqual((parametres["taux_horaire_moyen"], parametres["heures_marche_proposees"]), ("45.5", "7.5"))
+        self.assertFalse((donnees / "equipements.csv").exists())                         # aucune machine inventée
+
+    def test_machines_sans_heures_completees_les_autres_gardees(self):
+        client, instance = self.jusqu_au_bilan(source=commun.DOSSIER_DEMO)
+        donnees = Path(instance.config.dossier_donnees)
+        entete, lignes = lire_csv(donnees / "equipements.csv")
+        position = entete.index("heures_fonct_jour")
+        vides = {ligne[0] for ligne in lignes if not ligne[position].strip()}
+        avec = {ligne[0]: ligne[position] for ligne in lignes if ligne[position].strip()}
+        self.assertTrue(avec)
+        # Deux machines de plus sans heures : la valeur doit les atteindre, sans toucher aux machines qui en ont.
+        for ligne in lignes[:2]:
+            vides.add(ligne[0])
+            avec.pop(ligne[0], None)
+            ligne[position] = ""
+        serveur.ecrire_table(instance.config, "equipements", entete, lignes)
+        self.ok(client.post("bilan", {"taux_horaire_moyen": "52", "heures_marche_jour": "6"}))
+        self.ok(client.post("sauvegardes", {"dossier": ""}))
+        self.ok(client.post("terminer"))
+        entete, lignes = lire_csv(donnees / "equipements.csv")
+        apres = {ligne[0]: ligne[position] for ligne in lignes}
+        for identifiant in vides:
+            self.assertEqual(apres[identifiant], "6", identifiant)
+        for identifiant, heures in avec.items():
+            self.assertEqual(apres[identifiant], heures, identifiant)
+        parametres = parametres_de(donnees)
+        self.assertEqual(parametres["taux_horaire_moyen"], "52")
+        self.assertNotIn("heures_marche_proposees", parametres)                          # des machines étaient là
+
+    def test_reponses_relues_dans_le_brouillon(self):
+        client, instance = self.jusqu_au_bilan()
+        self.ok(client.post("bilan", {"taux_horaire_moyen": "40"}))
+        relu = self.ok(client.get("etat"))
+        self.assertEqual((relu["brouillon"]["bilan_taux"], relu["etapes"]["bilan"]), ("40", "fait"))
+        self.assertNotIn("bilan_heures", relu["brouillon"])
+        self.ok(client.post("bilan", {"heures_marche_jour": "8"}))                       # une nouvelle réponse remplace tout
+        relu = self.ok(client.get("etat"))["brouillon"]
+        self.assertNotIn("bilan_taux", relu)
+        self.assertEqual(relu["bilan_heures"], "8")
+        self.assertEqual(serveur.nombre_de_l_assistant("12,5", 24, "x"), "12.5")
+
+
 class TestDossierConseille(unittest.TestCase):
 
     def test_c_prevo_et_un_dossier_juste_dessous(self):

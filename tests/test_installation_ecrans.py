@@ -170,9 +170,9 @@ class TestParcours(CasInstallation):
         self.ouvrir_assistant(instance)
         self.assertIn("Tant que l'installation n'est pas terminée, Prévo n'est joignable que sur ce PC.",
                       page.inner_text("#installation-premiere-ligne"))
-        self.assertEqual(page.locator("#installation-contenu .installation-progression li").count(), 8)
+        self.assertEqual(page.locator("#installation-contenu .installation-progression li").count(), 9)
         self.assertEqual(self.etape_courante(), "situation")
-        self.assertIn("Étape 1 sur 8", page.text_content("#installation-contenu h2"))
+        self.assertIn("Étape 1 sur 9", page.text_content("#installation-contenu h2"))
         self.verifier_textes("installation", None)                # avant le choix : les trois conseils
         self.verifier_autrement()
         # Rien de coché : message, aucune étape écrite.
@@ -182,7 +182,7 @@ class TestParcours(CasInstallation):
         self.cocher("situation", "seul")
         self.continuer()
         self.attendre_etape("portee")
-        self.assertIn("Étape 2 sur 8", page.text_content("#installation-contenu h2"))
+        self.assertIn("Étape 2 sur 9", page.text_content("#installation-contenu h2"))
         self.verifier_textes("exterieur", "seul")
         self.verifier_textes("mot_de_passe", "seul")
         self.verifier_autrement()
@@ -198,7 +198,7 @@ class TestParcours(CasInstallation):
         self.continuer()
         # Certificat et Tailscale sans objet : sautés avec la ligne qui le dit.
         self.attendre_etape("demarrage")
-        self.assertIn("Étape 6 sur 8", page.text_content("#installation-contenu h2"))
+        self.assertIn("Étape 6 sur 9", page.text_content("#installation-contenu h2"))
         sautees = self.lignes_sautees()
         self.assertEqual(len(sautees), 2, sautees)
         self.assertTrue(sautees[0].startswith("Étape « Certificat » sautée"), sautees)
@@ -225,8 +225,10 @@ class TestParcours(CasInstallation):
         self.verifier_textes("sauvegardes", "seul")
         self.verifier_autrement()
         page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
-        self.assertIn("Étape 8 sur 8", page.text_content("#installation-contenu h2"))
+        self.assertIn("Étape 9 sur 9", page.text_content("#installation-contenu h2"))
         self.verifier_textes("etiquettes", "seul")
         page.wait_for_selector("#fiche-qr-ouvrir svg")
         self.assertEqual(page.locator("#fiche-qr-confiance").count(), 0)         # pas d'autorité sur « ce PC »
@@ -367,6 +369,8 @@ class TestParcours(CasInstallation):
         nas.mkdir()
         page.fill("#inst-copie_sauvegardes", str(nas))
         self.continuer()
+        self.attendre_etape("bilan")
+        self.page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
         self.sans_defilement_horizontal("étape 8")
         # L02 (lot 2) : Prévo n'écoute encore que ce PC : ni adresse ni QR pour les téléphones, la phrase qui dit quand.
@@ -503,6 +507,55 @@ class TestParcours(CasInstallation):
         self.assertEqual(page.locator("#inst-mot-de-passe").count(), 0)
         self.assertEqual(page.locator("#installation-contenu .installation-direction").count(), 0)
 
+    def test_etape_facultative_pour_chiffrer_votre_bilan(self):
+        """T559 (P04.1) : « Pour chiffrer votre bilan » avant le récapitulatif : deux champs, « Plus tard » n'écrit rien,
+        une valeur fausse est dite sans rien envoyer, les réponses sont gardées dans le brouillon, et l'étape n'est pas
+        exigée pour reprendre l'assistant (rechargé, il revient au récapitulatif)."""
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        page = self.page
+        instance = self.lancer()
+        self.ouvrir_assistant(instance)
+        self.cocher("situation", "seul")
+        self.continuer()
+        self.attendre_etape("portee")
+        self.continuer()
+        self.attendre_etape("compte")
+        page.fill("#inst-prenom", "Nicolas")
+        page.fill("#inst-nom", "Briand")
+        self.continuer()
+        self.attendre_etape("demarrage")
+        self.cocher("demarrage", "aucun")
+        self.continuer()
+        self.attendre_etape("sauvegardes")
+        page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")
+        self.assertIn("Étape 8 sur 9", page.text_content("#installation-contenu h2"))
+        self.assertIn("Pour chiffrer votre bilan", page.text_content("#installation-contenu h2"))
+        self.assertIn("Taux horaire moyen du service", page.inner_text("#installation-contenu"))
+        self.assertIn("Heures de marche par jour de vos machines", page.inner_text("#installation-contenu"))
+        brouillon = self.dossier / "donnees" / "installation.json"
+        page.fill("#inst-bilan_taux", "abc")
+        self.continuer()
+        page.wait_for_selector("#inst-erreur-bilan", state="visible")
+        self.assertEqual(self.etape_courante(), "bilan")
+        page.fill("#inst-bilan_taux", "45,5")
+        page.fill("#inst-bilan_heures", "8")
+        self.continuer()
+        self.attendre_etape("recapitulatif")
+        ecrit = json.loads(brouillon.read_text(encoding="utf-8"))
+        self.assertEqual((ecrit["bilan_taux"], ecrit["bilan_heures"], ecrit["etapes"]["bilan"]), ("45.5", "8", "fait"))
+        page.reload()                                                     # reprise : au récapitulatif, l'étape facultative n'est pas redemandée
+        page.wait_for_function("document.documentElement.dataset.etat === 'installation'")
+        self.attendre_etape("recapitulatif")
+        page.click("#inst-precedent")
+        self.attendre_etape("bilan")
+        self.assertEqual(page.input_value("#inst-bilan_taux"), "45.5")
+        page.click("#inst-bilan-plus-tard")                               # « Plus tard » : rien n'est gardé
+        self.attendre_etape("recapitulatif")
+        ecrit = json.loads(brouillon.read_text(encoding="utf-8"))
+        self.assertNotIn("bilan_taux", ecrit)
+        self.assertNotIn("bilan_heures", ecrit)
+
     def test_informaticien_toutes_les_etapes_sur_une_page(self):
         page = self.page
         instance = self.lancer(source=commun.DOSSIER_DEMO)
@@ -513,9 +566,9 @@ class TestParcours(CasInstallation):
         self.continuer()
         page.wait_for_selector('#installation-contenu[data-formulaire="une-page"]')
         sections = page.locator("#installation-contenu section.installation-etape")
-        self.assertEqual(sections.count(), 7)
+        self.assertEqual(sections.count(), 8)
         self.assertEqual([s.get_attribute("data-etape") for s in sections.all()],
-                         ["portee", "compte", "certificat", "tailscale", "demarrage", "sauvegardes", "recapitulatif"])
+                         ["portee", "compte", "certificat", "tailscale", "demarrage", "sauvegardes", "bilan", "recapitulatif"])
         self.assertEqual(page.locator("#installation-contenu .installation-progression").count(), 0)
         for cle_etape, choix in (("portee", "exterieur"), ("compte", "mot_de_passe"), ("certificat", "certificat"),
                                  ("demarrage", "demarrage"), ("sauvegardes", "sauvegardes"), ("recapitulatif", "etiquettes")):
@@ -524,7 +577,7 @@ class TestParcours(CasInstallation):
                                  {"qui": True, "change": True, "pourquoi": True, "conseil": True, "titre": True})
                 self.verifier_autrement('#installation-contenu section[data-etape="%s"]' % cle_etape)
         self.assertIn("Sans objet", page.inner_text('#installation-contenu section[data-etape="tailscale"]'))   # portée atelier
-        self.assertEqual(page.locator("#installation-contenu [data-enregistrer]").count(), 5)
+        self.assertEqual(page.locator("#installation-contenu [data-enregistrer]").count(), 6)
         self.assertEqual(page.locator("#inst-continuer").count(), 0)
         # Portée : nom DNS interne par « Régler autrement », mis en minuscules par le serveur.
         portee = page.locator('#installation-contenu section[data-etape="portee"]')
@@ -730,6 +783,8 @@ class TestDepuisLaCoque(CasInstallation):
         self.continuer()
         self.attendre_etape("sauvegardes")
         page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
         self.assertEqual(page.locator("#inst-base").count(), 0)  # base créée avant l'assistant : pas de choix
         page.click("#inst-terminer")
@@ -807,6 +862,8 @@ class TestEcranBaseVide(CasInstallation):
         self.continuer()
         self.attendre_etape("sauvegardes")
         page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
         self.assertTrue(page.is_checked('#inst-dictee input[name="dictee"][value="1"]'))
         if page.locator("#inst-dossier-garder").count():
@@ -867,6 +924,8 @@ class TestLangueDePrevo(CasInstallation):
         self.continuer()
         self.attendre_etape("sauvegardes")
         self.page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        self.page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
 
     def terminer_puis_ouvrir(self, instance):

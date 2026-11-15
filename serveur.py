@@ -2935,7 +2935,8 @@ def activer_unattended(executable=None, delai=DELAI_TAILSCALE_S):
 NOM_FICHIER_BROUILLON = 'installation.json'
 ROUTE_INSTALLATION = '#/installation'
 SITUATIONS = ('seul', 'equipe', 'informaticien')
-ETAPES_INSTALLATION = ('situation', 'portee', 'compte', 'certificat', 'tailscale', 'demarrage', 'sauvegardes', 'deplacer')
+ETAPES_INSTALLATION = ('situation', 'portee', 'compte', 'certificat', 'tailscale', 'demarrage', 'sauvegardes', 'bilan',
+                       'deplacer')
 ETAPES_DE_LECTURE = ('etat', 'fiche', 'journal')
 # Paramètres › Accès et installation (T170, D131 dernier point) : « reprendre » (brouillon repris de la configuration
 # en cours), « reglages » (clés simples), « ia » (fournisseur, adresse, IA en ligne ; jamais la clé) et « annuler »
@@ -2989,6 +2990,14 @@ LANGUE_PAR_DEFAUT = 'fr'
 # Aucune règle serveur de plus : la voix ne passe que par le navigateur.
 PARAMETRE_DICTEE = 'dictee_autorisee'
 PARAMETRE_DICTEE_SANS_REPONSE = '0'
+# Étape facultative « Pour chiffrer votre bilan » (T559, P04.1, L30) : taux horaire moyen du service et heures de marche par
+# jour des machines. « terminer » écrit le taux (taux_horaire_moyen) et complète les machines déjà présentes dont
+# heures_fonct_jour est vide ; sans machine encore, les heures sont gardées dans parametres.csv (heures_marche_proposees),
+# proposées d'office à la question de l'import des machines. Aucune valeur n'est jamais inventée : sans réponse, rien.
+PARAMETRE_TAUX_HORAIRE = 'taux_horaire_moyen'
+PARAMETRE_HEURES_PROPOSEES = 'heures_marche_proposees'
+TAUX_HORAIRE_MAX = 10000                # bornes de parametres-reglages.js
+HEURES_PAR_JOUR_MAX = 24                # bornes de parc-regles.js
 PARAMETRE_LANGUE = 'langue_defaut'                                 # ligne de parametres.csv (D149, T295)
 MOTIF_CODE_LANGUE = re.compile(r'[a-z]{2,3}(-[A-Za-z0-9]{2,8})*')   # MOTIF_CODE de js/i18n.js (fr, en, pt-PT…)
 MESSAGE_JEU_DE_DEMO_ILLISIBLE = traduisible('installation.demo_illisible',
@@ -3733,6 +3742,45 @@ def poser_parametres(config, valeurs):
         ligne[position_cle], ligne[position_valeur] = cle, valeur
         lignes.append(ligne)
     ecrire_table(config, 'parametres', entete, lignes)
+
+
+def nombre_de_l_assistant(valeur, maximum, nom):
+    """Nombre saisi dans l'assistant (texte ou nombre, virgule ou point décimal ; vide : None), de 0 à « maximum » ;
+    400 au message clair sinon. Rendu en texte à point décimal (comme l'écrit le navigateur : « 7.5 »)."""
+    if valeur is None or (isinstance(valeur, str) and not valeur.strip()):
+        return None
+    if isinstance(valeur, bool):
+        valeur = None
+    try:
+        nombre = float(valeur.strip().replace(',', '.')) if isinstance(valeur, str) else float(valeur)
+    except (TypeError, ValueError):
+        nombre = float('nan')
+    if not (0 <= nombre <= maximum):             # faux aussi pour nan et l'infini
+        raise ErreurHttp(400, traduisible('installation.bilan_nombre',
+                                          '« {nom} » : un nombre de 0 à {maximum} est attendu.',
+                                          nom=nom, maximum=maximum))
+    return format(nombre, '.10g')
+
+
+def completer_heures_des_machines(config, heures):
+    """Heures de marche par jour (texte) écrites dans les machines (equipements.csv) dont heures_fonct_jour est vide, les
+    autres gardées (T559, P04.1). Rend (machines présentes, machines complétées) ; rien n'est écrit sans colonne
+    heures_fonct_jour ni sans machine à compléter. En tenant VERROU_ECRITURE."""
+    entete, lignes = lire_tableau('equipements', lire_octets(chemin_table(config, 'equipements')))
+    cles = [cle_entete(colonne) for colonne in entete]
+    if 'heuresfonctjour' not in cles:
+        return len(lignes), 0
+    position = cles.index('heuresfonctjour')
+    completees = 0
+    for ligne in lignes:
+        while len(ligne) < len(entete):
+            ligne.append('')
+        if not ligne[position].strip():
+            ligne[position] = heures
+            completees += 1
+    if completees:
+        ecrire_table(config, 'equipements', entete, lignes)
+    return len(lignes), completees
 
 
 def verifier_dossier_de_copie(config, dossier):
@@ -9569,6 +9617,21 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         brouillon['copie_sauvegardes'] = verifier_dossier_de_copie(self.config, dossier) if dossier.strip() else ''
         return self.garder_brouillon(brouillon, 'sauvegardes')
 
+    def installation_bilan(self, brouillon, demande):
+        """{"taux_horaire_moyen": nombre | "", "heures_marche_jour": nombre | ""} (T559, P04.1 ; L30) : étape facultative
+        « Pour chiffrer votre bilan ». Deux champs vides (« Plus tard ») : rien n'est noté, l'étape est passée. Les
+        valeurs sont gardées dans le brouillon (bilan_taux, bilan_heures) ; « terminer » les écrit."""
+        taux = nombre_de_l_assistant(demande.get('taux_horaire_moyen'), TAUX_HORAIRE_MAX,
+                                     'taux_horaire_moyen')
+        heures = nombre_de_l_assistant(demande.get('heures_marche_jour'), HEURES_PAR_JOUR_MAX,
+                                       'heures_marche_jour')
+        for cle, valeur in (('bilan_taux', taux), ('bilan_heures', heures)):
+            if valeur is None:
+                brouillon.pop(cle, None)
+            else:
+                brouillon[cle] = valeur
+        return self.garder_brouillon(brouillon, 'bilan')
+
     def installation_deplacer(self, brouillon, demande):
         """{"vers": chemin} (défaut C:\\Prevo ; Windows seulement, 400 ailleurs) : deplacer_installation — copie du
         dossier de Prévo entier (données et brouillon compris, .git exclu) vers un dossier nouveau ou vide, chaque
@@ -9633,7 +9696,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                               'jamais une base existante. Terminez avec « vide » (vos fichiers sont '
                                               'gardés).'))
         sans_wifi = parametre_du_wifi_atelier(brouillon.get('wifi_atelier'))   # T536 (L11)
-        if base == 'demo' or brouillon.get('mode_solo') or base_neuve or sans_wifi is not None:
+        if (base == 'demo' or brouillon.get('mode_solo') or base_neuve or sans_wifi is not None
+                or brouillon.get('bilan_taux') or brouillon.get('bilan_heures')):
             verifier_ecriture_permise(self.config)          # T185 : tables écrites (lecture seule), avant la config
         reglages = reglages_par_defaut()
         reglages.update({cle: brouillon[cle] for cle in CLES_DU_BROUILLON if cle in brouillon})
@@ -9675,6 +9739,14 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             a_poser[PARAMETRE_DICTEE] = dictee             # L24 : la réponse de l'assistant ; sans réponse, non autorisée
         if sans_wifi is not None:
             a_poser[PARAMETRE_ATELIER_SANS_WIFI] = sans_wifi
+        if brouillon.get('bilan_taux'):                       # T559 (P04.1) : réponse de l'étape « Pour chiffrer votre bilan »
+            a_poser[PARAMETRE_TAUX_HORAIRE] = brouillon['bilan_taux']
+        heures_du_bilan = brouillon.get('bilan_heures')
+        if heures_du_bilan:
+            with VERROU_ECRITURE:
+                machines, _ = completer_heures_des_machines(self.config, heures_du_bilan)
+            if not machines:                                  # aucune machine encore : proposées à l'import des machines
+                a_poser[PARAMETRE_HEURES_PROPOSEES] = heures_du_bilan
         if a_poser:
             with VERROU_ECRITURE:
                 poser_parametres(self.config, a_poser)

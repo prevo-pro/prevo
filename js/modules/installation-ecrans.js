@@ -3,7 +3,7 @@
 // §22.10 ; CDC D131, D132 ; CS130). Écran plein hors de la coque, servi par le serveur et ouvert par App sur le PC
 // serveur seulement (location.hostname 127.0.0.1 ou localhost) quand /api/info rend installation_a_faire.
 // Huit étapes de l'étude §4.1, une par écran (qui utilise, depuis où, compte, certificat, hors de l'atelier,
-// démarrer avec le PC, sauvegardes, récapitulatif) ; chaque étape montre ses quatre textes (qui est concerné, ce que
+// démarrer avec le PC, sauvegardes, récapitulatif), plus (T559, L30) « Pour chiffrer votre bilan » avant le récapitulatif ; chaque étape montre ses quatre textes (qui est concerné, ce que
 // ça change, pourquoi, conseil selon la situation) tirés d'AccesTextes.choix (T169, jamais recopiés ici) et
 // « Régler autrement », qui déplie les réglages fins avec l'aide d'AccesTextes.options. Les étapes « sans objet »
 // (etat.etapes, calculé par le serveur) sont sautées avec une ligne qui le dit. Situation « informaticien » : après
@@ -12,10 +12,10 @@
 // s'affiche telle quelle sous le bouton et l'étape reste ouverte. Le brouillon fait foi : GET etat replace
 // l'assistant à la première étape à faire. « Terminer et ouvrir Prévo » : POST terminer (base « vide » ou « demo »
 // et langue_defaut quand aucun CSV n'était là au départ, T171, T296), puis attente de la relance (/api/info toutes les 2 s, rechargement sur
-// #/accueil ; message au bout de 60 s). Dossier conseillé C:\Prevo (étape 8) : POST deplacer puis attente du serveur
+// #/accueil ; message au bout de 60 s). Dossier conseillé C:\Prevo (dernière étape) : POST deplacer puis attente du serveur
 // relancé depuis la copie (GET etat : dossier), ou « Rester ici » mémorisé dans le brouillon. Un mot de passe n'est
 // jamais mémorisé ni réécrit dans la page. La première ligne (« Tant que l'installation n'est pas terminée… ») est
-// dans index.html, seule source. La fiche d'accès (étape 8, route #/installation/fiche) est mise en page par
+// dans index.html, seule source. La fiche d'accès (dernière étape, route #/installation/fiche) est mise en page par
 // InstallationFiche (installation-fiche.js) ; les formulaires des étapes sont dans InstallationEtapes
 // (installation-etapes.js). Dépendances : UI, AccesTextes, InstallationEtapes, InstallationFiche. Charte :
 // css/modules/installation.css.
@@ -48,6 +48,8 @@ const Installation = (() => {
     { cle: 'tailscale', get court() { return I18n.t('installation.court.hors_atelier'); }, get titre() { return I18n.t('installation.titre.comment_joindre_pc_dehors'); }, choix: ['exterieur'] },
     { cle: 'demarrage', get court() { return I18n.t('installation.court.demarrage'); }, get titre() { return I18n.t('installation.titre.prevo_doit_demarrer_tout'); }, choix: ['demarrage', 'veille'] },
     { cle: 'sauvegardes', get court() { return I18n.t('installation.court.sauvegardes'); }, get titre() { return I18n.t('installation.titre.ou_garder_copie_donnees'); }, choix: ['sauvegardes'] },
+    // T559 (P04.1, L30) : étape facultative, ni exigée pour reprendre l'assistant (premiereEtapeAFaire) ni « à faire » pour le serveur.
+    { cle: 'bilan', facultative: true, get court() { return I18n.t('installation.court.bilan'); }, get titre() { return I18n.t('installation.titre.pour_chiffrer_bilan'); }, choix: [] },
     { cle: 'recapitulatif', get court() { return I18n.t('installation.court.recapitulatif'); }, get titre() { return I18n.t('installation.titre.voila_comment_connecte'); }, choix: ['etiquettes'] },
   ];
 
@@ -56,7 +58,7 @@ const Installation = (() => {
   let index = 0;                   // étape courante (pas à pas)
   let sautees = [];                // étapes sans objet passées depuis la dernière étape montrée
   let resoudre = null;             // termine Installation.ouvrir (l'assistant quitté sans terminer)
-  let fiche = null;                // GET fiche, lue à l'étape 8
+  let fiche = null;                // GET fiche, lue à la dernière étape
   // T520 : accès de la direction créé à l'étape « compte » ({ compte, mot_de_passe_provisoire } ou { erreur }) ;
   // gardé en mémoire de la page seulement, montré en tête des étapes suivantes jusqu'à la fin de l'assistant.
   let accesDirection = null;
@@ -289,6 +291,8 @@ const Installation = (() => {
     if (appliquer) appliquer.addEventListener('click', () => pendant(appliquer, () => appliquerTailscale(etape, section, unePage)));
     const plusTardSauvegardes = UI.$('#inst-sauvegardes-plus-tard', section);
     if (plusTardSauvegardes) plusTardSauvegardes.addEventListener('click', () => pendant(plusTardSauvegardes, () => poster(etape, 'sauvegardes', { dossier: '' }, unePage)));
+    const plusTardBilan = UI.$('#inst-bilan-plus-tard', section);       // P04.1 : passe l'étape sans rien écrire
+    if (plusTardBilan) plusTardBilan.addEventListener('click', () => pendant(plusTardBilan, () => poster(etape, 'bilan', {}, unePage)));
     const deplacer = UI.$('#inst-deplacer', section);
     if (deplacer) deplacer.addEventListener('click', () => pendant(deplacer, () => deplacerPrevo(section)));
     const garder = UI.$('#inst-dossier-garder', section);
@@ -526,7 +530,7 @@ const Installation = (() => {
 
   function premiereEtapeAFaire() {
     for (let i = 1; i < ETAPES.length - 1; i += 1) {
-      if (etatEtape(ETAPES[i].cle) === 'a_faire') return i;
+      if (!ETAPES[i].facultative && etatEtape(ETAPES[i].cle) === 'a_faire') return i;
     }
     return ETAPES.length - 1;
   }

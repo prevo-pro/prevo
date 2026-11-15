@@ -49,6 +49,11 @@ const ParametresReglages = (() => {
       get aide() { return I18n.t(App.modeSolo() ? 'parametres.aide.taux_horaire_moyen_solo' : 'parametres.aide.taux_horaire_moyen'); } },
     { cle: 'heures_fonct_defaut', type: 'decimal', get libelle() { return I18n.t('parametres.libelle.heures_fonctionnement_jour_defaut'); }, defaut: '8', min: 1, max: 24,
       get aide() { return I18n.t('parametres.aide.gammes_compteur_seulement_estime'); } },
+    // T559 (P04.1) : heures de marche par jour données à l'étape « Pour chiffrer votre bilan » de l'assistant quand aucune
+    // machine n'existait encore ; proposées d'office par la question des heures de l'import des machines (import-apercu.js).
+    { cle: 'heures_marche_proposees', type: 'decimal', defaut: '', min: 0, max: 24, horsFormulaire: true,
+      get libelle() { return I18n.t('parametres.libelle.heures_marche_proposees'); },
+      get aide() { return I18n.t('parametres.aide.heures_marche_proposees'); } },
     // Lot 3 bis (ARCHITECTURE.md §16.1) : seuils des suggestions de préventif.
     { cle: 'suggestion_seuil_pannes', type: 'entier', get libelle() { return I18n.t('parametres.libelle.pannes_meme_cause_suggerer'); }, defaut: '3', min: 2, max: 20,
       get section() { return I18n.t('parametres.section.suggestions_preventif'); }, get aide() { return I18n.t('parametres.aide.creer_gamme_revoir_preventif'); } },

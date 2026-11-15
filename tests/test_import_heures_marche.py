@@ -61,6 +61,22 @@ class TestHeuresDeMarche(base.CasImport):
             self.assertEqual(apres[identifiant], attendu, identifiant)
         self.assertEqual(self.page.locator("#contenu .import-heures-marche").count(), 0)
 
+    def test_valeur_de_l_assistant_proposee_d_office(self):
+        """T559 (P04.1) : heures_marche_proposees (posé par l'assistant sans machine) remplit la question, avec sa phrase ;
+        elle s'applique telle quelle à l'import, ou se change."""
+        self.ouvrir_demo()
+        self.page.evaluate("() => Donnees.modifier('parametres', (lignes) => { lignes.push({ cle: 'heures_marche_proposees', valeur: '7.5' }); })")
+        self.jusqu_a_l_apercu("equipements", fichier="equipements.xlsx")
+        self.continuer(5)
+        avant = self.page.evaluate(HEURES_JS)
+        creees, _ = self.importees(avant)
+        self.assertEqual(self.page.input_value(CHAMP).replace(",", "."), "7.5")
+        self.assertIn("Proposé d'après votre réponse à l'installation", self.page.locator("#contenu .import-heures-marche").inner_text())
+        self.importer()
+        apres = self.page.evaluate(HEURES_JS)
+        for identifiant in creees:
+            self.assertEqual(apres[identifiant], "7.5", identifiant)
+
     def test_question_passee_rien_n_est_suppose(self):
         avant = self.jusqu_a_importer()
         creees, _ = self.importees(avant)

@@ -564,6 +564,8 @@ class TestEcran(CasInstallation):
         self.continuer()
         self.attendre_etape("sauvegardes")
         page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
 
     def test_base_1_2_annoncee_sans_choix_et_rester_ici(self):

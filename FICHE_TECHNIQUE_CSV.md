@@ -149,7 +149,7 @@ Ordres de travail (OT) : correctifs, préventifs, réglementaires, amélioration
 | `motif_attente` | Motif de mise en attente | `texte_long` |  |  |  |  |
 | `titre` | Titre | `texte` | oui |  |  |  |
 | `travail_a_faire` | Travail à faire | `texte_long` |  |  |  |  |
-| `consignes` | Consignes | `texte_long` |  |  |  |  |
+| `consignes` | Consignes de sécurité (responsable) | `texte_long` |  |  |  |  |
 | `date_creation` | Date de création | `date_heure` |  |  |  |  |
 | `date_prevue` | Date prévue | `date` |  |  |  |  |
 | `technicien_id` | Technicien | `ref` |  | réf. `techniciens.csv` |  |  |

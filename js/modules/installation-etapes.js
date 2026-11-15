@@ -5,12 +5,12 @@
 // c.etat (GET etat), c.brouillon(), c.situation(), c.etatEtape(cle), c.blocTextes(choix), c.aideOption(cle).
 // Les réglages que l'API n'écrit pas (durées de session, IA, quota) sont montrés avec leur aide et renvoyés à
 // Paramètres › Accès et installation. Migration depuis 1.2 (T171) : les CSV présents sont annoncés dès l'étape 1 et
-// gardés ; sans CSV au départ (brouillon.base_presente faux), l'étape 8 demande par quoi commencer (vide ou démo) et
+// gardés ; sans CSV au départ (brouillon.base_presente faux), l'dernière étape demande par quoi commencer (vide ou démo) et
 // la langue de Prévo (langue_defaut de la base neuve, celle de l'écran « base vide » ou, sans elle, d'après le
 // navigateur : langueDeDepart, UI.langueDuNavigateur, T296 ;
 // appliquée à la fin, quand Prévo s'ouvre sur la base créée) et la dictée vocale (L24 : oui / non, dictee_autorisee ;
 // cochée d'après l'écran « base vide » ou, en Solo, « oui » : dicteeDeDepart ; sans réponse, « non » sauf en Solo) ;
-// dossier conseillé C:\Prevo proposé à l'étape 8 tant que le brouillon n'a pas deplacement_refuse (« Rester ici »).
+// dossier conseillé C:\Prevo proposé à la dernière étape tant que le brouillon n'a pas deplacement_refuse (« Rester ici »).
 // Dépendances : UI, AccesTextes. Chargé avant installation-ecrans.js.
 
 const InstallationEtapes = (() => {
@@ -57,7 +57,7 @@ const InstallationEtapes = (() => {
   const notePlusTard = () => I18n.t('installation.note_plus_tard.reglages_changent_apres_installation');
 
   // L24 (T549) : la réponse « Dictée vocale » donnée sur l'écran « base vide » avant « Installer Prévo » est gardée
-  // pour cet onglet (sessionStorage) et cochée à l'étape 8 ; sans elle, Solo : « oui » (la personne qui installe est
+  // pour cet onglet (sessionStorage) et cochée à la dernière étape ; sans elle, Solo : « oui » (la personne qui installe est
   // celle qui dicte), équipe : rien de coché (sans réponse, non autorisée).
   const CLE_DICTEE_DE_DEPART = 'prevo.installation.dictee';
 
@@ -66,7 +66,7 @@ const InstallationEtapes = (() => {
     try {
       if (valeur === '0' || valeur === '1') window.sessionStorage.setItem(CLE_DICTEE_DE_DEPART, valeur);
       else window.sessionStorage.removeItem(CLE_DICTEE_DE_DEPART);
-    } catch (erreur) { /* sans mémoire d'onglet : l'étape 8 repose la question */ }
+    } catch (erreur) { /* sans mémoire d'onglet : la dernière étape repose la question */ }
   }
 
   // L01 (T549) : la langue de Prévo choisie sur l'écran « base vide » suit de même (sessionStorage de l'onglet) ; sans
@@ -81,14 +81,14 @@ const InstallationEtapes = (() => {
     } catch (erreur) { /* sans mémoire d'onglet : la langue du navigateur */ }
   }
 
-  /** Langue proposée à l'étape 8 : celle notée au départ si elle est déclarée, sinon celle du navigateur. */
+  /** Langue proposée à la dernière étape : celle notée au départ si elle est déclarée, sinon celle du navigateur. */
   function langueDeDepart() {
     let notee = null;
     try { notee = window.sessionStorage.getItem(CLE_LANGUE_DE_DEPART); } catch (erreur) { notee = null; }
     return I18n.langues.some((declaree) => declaree.code === notee) ? notee : UI.langueDuNavigateur();
   }
 
-  /** Réponse à cocher à l'étape 8 : celle notée au départ, sinon « 1 » en Solo (solo vrai), sinon '' (rien de coché). */
+  /** Réponse à cocher à la dernière étape : celle notée au départ, sinon « 1 » en Solo (solo vrai), sinon '' (rien de coché). */
   function dicteeDeDepart(solo) {
     let notee = null;
     try { notee = window.sessionStorage.getItem(CLE_DICTEE_DE_DEPART); } catch (erreur) { notee = null; }
@@ -444,6 +444,39 @@ const InstallationEtapes = (() => {
     };
   }
 
+  // T559 (P04.1, L30) : « Pour chiffrer votre bilan », étape facultative : le taux horaire moyen du service et les heures de
+  // marche par jour des machines. Deux champs vides ou « Plus tard » : rien n'est noté. « Terminer » les écrit (serveur :
+  // installation_bilan, installation_terminer) ; rien n'est jamais supposé.
+  function formulaireBilan(c) {
+    const b = c.brouillon();
+    const champ = (cle, libelle, valeur, aide) => UI.html`<div class="champ">
+      <label class="libelle" for="inst-${cle}">${libelle}</label>
+      <input type="text" inputmode="decimal" id="inst-${cle}" name="${cle}" value="${valeur === undefined ? '' : valeur}" autocomplete="off">
+      <p class="aide">${aide}</p></div>`;
+    return {
+      champs: UI.html`<p class="note">${I18n.t('installation.formulaire_bilan.introduction')}</p>
+        <div class="form-colonne">
+          ${champ('bilan_taux', I18n.t('parametres.libelle.taux_horaire_moyen', { devise: UI.symboleDevise() }), b.bilan_taux, I18n.t('installation.formulaire_bilan.taux_aide'))}
+          ${champ('bilan_heures', I18n.t('installation.formulaire_bilan.heures_libelle'), b.bilan_heures, I18n.t('installation.formulaire_bilan.heures_aide'))}
+        </div>
+        <div class="actions installation-actions-etape"><button type="button" class="btn btn-fantome" id="inst-bilan-plus-tard">${I18n.t('installation.formulaire_tailscale.plus_tard')}</button></div>`,
+      autrement: UI.html`<p class="note">${notePlusTard()}</p>`,
+      lire(section) {
+        const lue = (cle, maximum) => {
+          const brut = UI.$('#inst-' + cle, section).value.trim();
+          if (!brut) return '';
+          const nombre = UI.enNombre(brut);
+          return nombre !== null && nombre >= 0 && nombre <= maximum ? brut : null;
+        };
+        const taux = lue('bilan_taux', 10000);
+        if (taux === null) return { probleme: I18n.t('installation.formulaire_bilan.taux_invalide') };
+        const heures = lue('bilan_heures', 24);
+        if (heures === null) return { probleme: I18n.t('installation.formulaire_bilan.heures_invalide') };
+        return { taux_horaire_moyen: taux, heures_marche_jour: heures };
+      },
+    };
+  }
+
   function formulaireRecapitulatif(c) {
     const b = c.brouillon();
     const lignes = [
@@ -512,7 +545,7 @@ const InstallationEtapes = (() => {
   }
 
   const FORMULAIRES = { situation: formulaireSituation, portee: formulairePortee, compte: formulaireCompte, certificat: formulaireCertificat,
-    tailscale: formulaireTailscale, demarrage: formulaireDemarrage, sauvegardes: formulaireSauvegardes, recapitulatif: formulaireRecapitulatif };
+    tailscale: formulaireTailscale, demarrage: formulaireDemarrage, sauvegardes: formulaireSauvegardes, bilan: formulaireBilan, recapitulatif: formulaireRecapitulatif };
 
   /** Formulaire d'une étape : { champs, autrement, lire(section), message, passer, propresBoutons, reussite, echec, apres }. */
   function formulaire(cle, contexte) {

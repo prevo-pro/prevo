@@ -1,5 +1,5 @@
 'use strict';
-// InstallationFiche : la fiche d'accès imprimable de l'assistant d'installation (étape 8 et route #/installation/fiche ;
+// InstallationFiche : la fiche d'accès imprimable de l'assistant d'installation (dernière étape et route #/installation/fiche ;
 // ARCHITECTURE.md §22.10 ; D131 ; CS130), mise en page d'après GET /api/installation/fiche : adresses de la porte,
 // QR « ouvrir Prévo » (UI.qrSvg sur l'adresse de la porte) ; quand l'autorité locale existe, ce même QR sert aussi à
 // « faire confiance au PC atelier » (la porte guide le téléphone : un seul QR, T527), adresse Tailscale et du mandataire, comment arrêter et

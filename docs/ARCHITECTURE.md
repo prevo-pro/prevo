@@ -4573,7 +4573,7 @@ avec `X-Prevo` : `etat`, `situation` (`seul` \| `equipe` \| `informaticien`), `p
 `tailscale`, `demarrage`, `sauvegardes`, `deplacer` (copie vers `C:\Prevo`, vérification de chaque fichier, puis
 relance depuis la nouvelle place), `terminer` (écrit la configuration, puis le serveur se relance avec elle) ; pour
 Paramètres (T170) : `journal`, `reprendre`, `reglages`, `ia`, `annuler`. Écran
-`installation-ecrans.js` (huit étapes, quatre textes chacune, « Régler autrement »), vue informaticien sur une page ;
+`installation-ecrans.js` (huit étapes, quatre textes chacune, « Régler autrement » ; T559, L30 : une neuvième, facultative, « Pour chiffrer votre bilan » avant le récapitulatif — route `bilan`, brouillon `bilan_taux` et `bilan_heures`, écrits à « terminer » : `taux_horaire_moyen`, heures de marche des machines sans valeur, ou, sans machine, `heures_marche_proposees` proposé à la question de l'import), vue informaticien sur une page ;
 fiche d'accès imprimable. Paramètres › Accès et installation (`parametres-acces.js`) refait chaque étape depuis le PC
 serveur seulement (paragraphe « Paramètres › Accès et installation » ci-dessous). Migration 1.2 : CSV gardés ; profils mémorisés ignorés quand `comptes` est vrai (paragraphe
 « Migration et dossier » ci-dessous, T171).

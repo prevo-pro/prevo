@@ -376,6 +376,8 @@ class TestParcoursSolo(CasRecetteAssistant):
         self.continuer()
         self.attendre_etape("sauvegardes")
         page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("bilan")                       # T559 : étape facultative « Pour chiffrer votre bilan »
+        page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
         self.assertIn("Moi seul", page.inner_text("#installation-contenu .installation-recap"))
         fichier = self.terminer_avec_la_demo()
@@ -902,6 +904,8 @@ class TestParcoursTailscale(CasRecetteAssistant):
         self.assertEqual(self.enregistreur.eleves, [(str(self.dossier / "Installer_demarrage.ps1"), True)])   # notée
         page.fill("#inst-copie_sauvegardes", str(copie))
         self.continuer()
+        self.attendre_etape("bilan")
+        self.page.click("#inst-bilan-plus-tard")
         self.attendre_etape("recapitulatif")
         fichier = self.terminer_avec_la_demo()
         self.comparer_cle_a_cle(fichier, dict(ATTENDU_SOLO_DEHORS, copie_sauvegardes=str(copie)))
