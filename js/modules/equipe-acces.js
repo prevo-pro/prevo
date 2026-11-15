@@ -224,9 +224,25 @@ const EquipeAcces = (() => {
     return bloc;
   }
 
+  // L33 (T549) : en Solo, la fiche liée est cachée (solo.css) et il n'y a qu'un technicien : ni « technicien » ni
+  // « responsable » dans la liste (un compte qui a déjà ce rôle le garde) ; une phrase renvoie à « Passer en équipe ».
+  const rolesProposes = (compte) => (!App.modeSolo() ? ROLES
+    : ROLES.filter((role) => !['technicien', 'responsable'].includes(role) || (compte && compte.role === role)));
+
+  function noteSolo() {
+    const note = UI.element(UI.html`<p class="note" id="acces-solo-equipe">${I18n.html('equipe.creer_compte.solo_passer_equipe', { lien: '#/parametres' })}</p>`);
+    UI.$('a', note).addEventListener('click', () => {      // la fenêtre se ferme, la carte Organisation est montrée
+      note.closest('dialog').querySelector('.fenetre-fermer').click();
+      const montrer = (essais) => { const carte = document.getElementById('carte-solo');
+        if (carte) carte.scrollIntoView({ block: 'start' }); else if (essais) setTimeout(() => montrer(essais - 1), 100); };
+      montrer(30);
+    });
+    return note;
+  }
+
   function champsCompte(compte) {
     const valeur = (nom) => (compte ? compte[nom] : undefined);
-    const champRole = UI.champ(definition('role', 'choix', I18n.t('equipe.champs_compte.role'), { valeurs: ROLES, obligatoire: true }),
+    const champRole = UI.champ(definition('role', 'choix', I18n.t('equipe.champs_compte.role'), { valeurs: rolesProposes(compte), obligatoire: true }),
       valeur('role') || 'demandeur',
       { aide: I18n.t('equipe.champs_compte.responsable_tout_reglages_compris') + ' ' + I18n.t('equipe.champs_compte.role_direction_aide') });
     // Valeurs stockées (D155) : chaque option montre le libellé de son rôle, la valeur reste le code.
@@ -283,7 +299,7 @@ const EquipeAcces = (() => {
     const cree = await UI.fenetreAction({
       titre: I18n.t('equipe.creer_compte.creer_compte'),
       introduction: I18n.t('equipe.creer_compte.identifiant_prenom_nom_donne'),
-      champs: champsCompte(null).concat([caseAutrePersonne()]),
+      champs: (App.modeSolo() ? [noteSolo()] : []).concat(champsCompte(null), [caseAutrePersonne()]),
       libelleValider: I18n.t('equipe.creer_compte.creer_le_compte'),
       verifier: verifierCompte,
       action: async (valeurs, contenu) => {

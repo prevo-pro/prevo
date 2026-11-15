@@ -4575,6 +4575,7 @@ I18n.ajouter('fr', {
   'equipe.creer_compte.creer_compte': 'Créer un compte',
   'equipe.creer_compte.creer_le_compte': 'Créer le compte',
   'equipe.creer_compte.identifiant_prenom_nom_donne': 'L\'identifiant (prénom.nom) est donné par Prévo. Le mot de passe provisoire s\'affiche ensuite, une seule fois.',
+  'equipe.creer_compte.solo_passer_equipe': 'Pour ajouter un technicien, passez en équipe : <a href="{lien}">Paramètres › Organisation</a>.',
   'equipe.creer_compte.titre_compte_cree': 'Compte créé',
   'equipe.desactivation.question': 'Désactiver {nom} ? Il ne sera plus proposé pour les OT, le planning ni le choix du profil ; son historique et ses habilitations sont conservés.',
   'equipe.desactivation.question_ot_ouverts': { one: 'Désactiver {nom} ? Il ne sera plus proposé pour les OT, le planning ni le choix du profil ; son historique et ses habilitations sont conservés. Attention : {n} OT ouvert(s) lui sont encore affectés : réaffectez-les.', other: 'Désactiver {nom} ? Il ne sera plus proposé pour les OT, le planning ni le choix du profil ; son historique et ses habilitations sont conservés. Attention : {n} OT ouvert(s) lui sont encore affectés : réaffectez-les.' },

@@ -4579,6 +4579,7 @@ I18n.ajouter('pt-PT', {
   'equipe.creer_compte.creer_compte': 'Criar uma conta',
   'equipe.creer_compte.creer_le_compte': 'Criar a conta',
   'equipe.creer_compte.identifiant_prenom_nom_donne': 'O nome de utilizador (nome.apelido) é atribuído pelo Prévo. A palavra-passe provisória é mostrada a seguir, uma única vez.',
+  'equipe.creer_compte.solo_passer_equipe': 'Para adicionar um técnico, passe a trabalhar em equipa: <a href="{lien}">Definições › Organização</a>.',
   'equipe.creer_compte.titre_compte_cree': 'Conta criada',
   'equipe.desactivation.question': 'Desativar {nom}? Deixa de ser proposto para as OT, o planeamento e a escolha do perfil; o seu histórico e as suas habilitações são conservados.',
   'equipe.desactivation.question_ot_ouverts': { one: 'Desativar {nom}? Deixa de ser proposto para as OT, o planeamento e a escolha do perfil; o seu histórico e as suas habilitações são conservados. Atenção: {n} OT aberta ainda lhe está atribuída: reatribua-a.', other: 'Desativar {nom}? Deixa de ser proposto para as OT, o planeamento e a escolha do perfil; o seu histórico e as suas habilitações são conservados. Atenção: {n} OT abertas ainda lhe estão atribuídas: reatribua-as.' },

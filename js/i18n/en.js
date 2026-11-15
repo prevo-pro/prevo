@@ -4577,6 +4577,7 @@ I18n.ajouter('en', {
   'equipe.creer_compte.creer_compte': 'Create an account',
   'equipe.creer_compte.creer_le_compte': 'Create the account',
   'equipe.creer_compte.identifiant_prenom_nom_donne': 'The username (first.last) is given by Prévo. The temporary password is then shown, only once.',
+  'equipe.creer_compte.solo_passer_equipe': 'To add a technician, switch to a team: <a href="{lien}">Settings › Organisation</a>.',
   'equipe.creer_compte.titre_compte_cree': 'Account created',
   'equipe.desactivation.question': 'Deactivate {nom}? They will no longer be offered for work orders, the schedule or the profile choice; their history and authorisations are kept.',
   'equipe.desactivation.question_ot_ouverts': { one: 'Deactivate {nom}? They will no longer be offered for work orders, the schedule or the profile choice; their history and authorisations are kept. Warning: {n} open work order is still assigned to them: reassign it.', other: 'Deactivate {nom}? They will no longer be offered for work orders, the schedule or the profile choice; their history and authorisations are kept. Warning: {n} open work orders are still assigned to them: reassign them.' },

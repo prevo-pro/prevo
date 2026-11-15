@@ -4580,6 +4580,7 @@ I18n.ajouter('tr', {
   'equipe.creer_compte.creer_compte': 'Hesap oluştur',
   'equipe.creer_compte.creer_le_compte': 'Hesabı oluştur',
   'equipe.creer_compte.identifiant_prenom_nom_donne': 'Kullanıcı adını (ad.soyad) Prévo verir. Geçici şifre ardından yalnızca bir kez gösterilir.',
+  'equipe.creer_compte.solo_passer_equipe': 'Teknisyen eklemek için ekibe geçin: <a href="{lien}">Ayarlar › Organizasyon</a>.',
   'equipe.creer_compte.titre_compte_cree': 'Hesap oluşturuldu',
   'equipe.desactivation.question': '{nom} devre dışı bırakılsın mı? Artık iş emirlerinde, planlamada ve profil seçiminde önerilmez; geçmişi ve yetkilendirmeleri korunur.',
   'equipe.desactivation.question_ot_ouverts': { one: '{nom} devre dışı bırakılsın mı? Artık iş emirlerinde, planlamada ve profil seçiminde önerilmez; geçmişi ve yetkilendirmeleri korunur. Dikkat: ona atanmış {n} açık iş emri hâlâ var: yeniden atayın.', other: '{nom} devre dışı bırakılsın mı? Artık iş emirlerinde, planlamada ve profil seçiminde önerilmez; geçmişi ve yetkilendirmeleri korunur. Dikkat: ona atanmış {n} açık iş emri hâlâ var: yeniden atayın.' },

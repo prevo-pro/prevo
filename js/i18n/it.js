@@ -4579,6 +4579,7 @@ I18n.ajouter('it', {
   'equipe.creer_compte.creer_compte': 'Crea un account',
   'equipe.creer_compte.creer_le_compte': 'Crea l\'account',
   'equipe.creer_compte.identifiant_prenom_nom_donne': 'Il nome utente (nome.cognome) è assegnato da Prévo. La password provvisoria viene poi mostrata, una sola volta.',
+  'equipe.creer_compte.solo_passer_equipe': 'Per aggiungere un tecnico, passa in squadra: <a href="{lien}">Impostazioni › Organizzazione</a>.',
   'equipe.creer_compte.titre_compte_cree': 'Account creato',
   'equipe.desactivation.question': 'Disattivare {nom}? Non verrà più proposto per gli OdL, la pianificazione né la scelta del profilo; la sua cronologia e le sue abilitazioni vengono conservate.',
   'equipe.desactivation.question_ot_ouverts': { one: 'Disattivare {nom}? Non verrà più proposto per gli OdL, la pianificazione né la scelta del profilo; la sua cronologia e le sue abilitazioni vengono conservate. Attenzione: {n} OdL aperto è ancora a lui assegnato: riassegnalo.', other: 'Disattivare {nom}? Non verrà più proposto per gli OdL, la pianificazione né la scelta del profilo; la sua cronologia e le sue abilitazioni vengono conservate. Attenzione: {n} OdL aperti sono ancora a lui assegnati: riassegnali.' },

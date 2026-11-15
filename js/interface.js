@@ -678,6 +678,12 @@ const UI = (function () {
     function afficherErreurs(erreurs) {
       $$('.champ', contenu).forEach((champ) => erreurChamp(contenu, champ.dataset.champ, ''));
       erreurs.forEach((erreur) => erreurChamp(contenu, erreur.nom, erreur.message));
+      // L33 (T549) : une erreur posée sur un champ caché (mode Solo, solo.css) est dite sous les champs, jamais tue.
+      const cachees = erreurs.filter((erreur) => {
+        const bloc = $$('.champ', contenu).find((b) => b.dataset.champ === erreur.nom);
+        return !bloc || !bloc.getClientRects().length;
+      });
+      if (cachees.length) { zoneErreur.textContent = cachees.map((erreur) => erreur.message).join(' '); zoneErreur.hidden = false; }
       const premier = $('[aria-invalid="true"]', contenu);
       if (premier) premier.focus();
     }

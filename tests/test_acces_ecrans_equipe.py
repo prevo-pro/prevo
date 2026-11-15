@@ -122,10 +122,14 @@ class Client:
         return reponse.cookie
 
 
-def preparer_source(racine):
-    """Copie de la démo avec les comptes ; configuration à « comptes ». Rend (dossier source, fichier de configuration)."""
+def preparer_source(racine, solo=False):
+    """Copie de la démo avec les comptes ; configuration à « comptes ». Rend (dossier source, fichier de configuration).
+    solo : mode_solo = 1 ajouté à parametres.csv (L33)."""
     source = racine / "source"
     shutil.copytree(commun.DOSSIER_DEMO, source)
+    if solo:
+        with open(source / "parametres.csv", "ab") as fichier:
+            fichier.write(b"mode_solo;'1\r\nsolo_technicien_id;TEC-0001\r\n")
     (source / "acces").mkdir()
     (source / "acces" / "comptes.json").write_bytes(COMPTES_JSON)
     configuration = racine / "prevo.config.json"
@@ -136,12 +140,14 @@ def preparer_source(racine):
 class CasEcranAcces(CasNavigateur):
     """Serveur réel en mode comptes pour toute la classe ; la session est posée en cookie avant le chargement."""
 
+    SOLO = False
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.racine = Path(tempfile.mkdtemp(prefix="prevo-ecrans-equipe-"))
         cls.addClassCleanup(shutil.rmtree, cls.racine, True)
-        source, configuration = preparer_source(cls.racine)
+        source, configuration = preparer_source(cls.racine, cls.SOLO)
         cls.serveur = ServeurPrevo(source=source, arguments=["--config", str(configuration)])
         cls.serveur.demarrer()
         cls.addClassCleanup(cls.serveur.arreter)
@@ -290,6 +296,54 @@ class TestComptes(CasEcranAcces):
         self.fermer_dialogue()
         compte = self.comptes_du_serveur()["julien.moreau.2"]
         self.assertEqual((compte["prenom"], compte["nom"], compte["role"]), ("JULIEN", "moreau", "demandeur"))
+
+
+class TestComptesSolo(CasEcranAcces):
+    """L33 (T549) : en Solo, la fiche liée est cachée ; « Créer le compte » d'un technicien ne faisait rien, sans un mot."""
+
+    SOLO = True
+
+    def setUp(self):
+        super().setUp()
+        self.responsable = self.poser_session("nicolas.briand", "responsable", "Nicolas Briand")
+
+    def test_ni_technicien_ni_responsable_a_la_creation_et_le_lien_vers_organisation(self):
+        page = self.page
+        self.ouvrir_acces()
+        page.wait_for_selector("#acces-comptes tbody tr")
+        page.click("#acces-creer-compte")
+        dialogue = self.dialogue()
+        roles = dialogue.locator("select[name=role] option").evaluate_all("(os) => os.map((o) => o.value).filter(Boolean)")
+        self.assertEqual(roles, ["demandeur", "direction"])
+        note = dialogue.locator("#acces-solo-equipe")
+        self.assertEqual(note.inner_text(), "Pour ajouter un technicien, passez en équipe : Paramètres › Organisation.")
+        # Un demandeur se crée toujours.
+        dialogue.locator("input[name=prenom]").fill("Yohann")
+        dialogue.locator("input[name=nom]").fill("Petit")
+        dialogue.locator("button:has-text('Créer le compte')").click()
+        page.wait_for_selector("#acces-mot-de-passe-provisoire")
+        self.fermer_dialogue()
+        page.wait_for_selector("#acces-comptes tbody tr:has(td b:text-is('yohann.petit'))")
+        # Le lien ferme la fenêtre et mène à la carte « Organisation : seul ou en équipe ».
+        page.click("#acces-creer-compte")
+        self.dialogue().locator("#acces-solo-equipe a").click()
+        page.wait_for_selector("dialog[open]", state="detached")
+        page.wait_for_selector("#carte-solo #btn-passer-equipe")
+        self.assertTrue(page.url.endswith("#/parametres"))
+
+    def test_erreur_d_un_champ_cache_dite_dans_la_fenetre(self):
+        # Compte déjà technicien : il garde son rôle ; sa fiche liée (cachée en Solo) vidée : le refus se lit.
+        page = self.page
+        self.ouvrir_acces()
+        page.wait_for_selector("#acces-comptes tbody tr:has(td b:text-is('julien.moreau'))")
+        page.locator("#acces-comptes tbody tr:has(td b:text-is('julien.moreau')) button[data-action=modifier]").click()
+        dialogue = self.dialogue()
+        self.assertFalse(dialogue.locator("[data-champ=technicien_id]").is_visible())
+        dialogue.locator("select[name=technicien_id]").evaluate("(s) => { s.value = ''; }")
+        dialogue.locator("button:has-text('Enregistrer')").click()
+        alerte = dialogue.locator(".fenetre-corps > .form-colonne > p.erreur-champ[role=alert]")
+        alerte.wait_for(state="visible")
+        self.assertIn("fiche", alerte.inner_text())
 
 
 class TestAppareils(CasEcranAcces):
