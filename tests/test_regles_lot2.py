@@ -500,7 +500,7 @@ class TestMagasin(CasRegles):
             {"articleId": "ART-0001", "sorti": 1, "retourne": 0, "net": 1},
         ])
         self.assertEqual(resultat["aucun"], [])
-        self.assertEqual(resultat["types"], ["entrée", "sortie", "inventaire", "retour"])
+        self.assertEqual(resultat["types"], ["entrée", "sortie", "inventaire", "retour", "hors magasin"])   # L25 (T552)
         self.assertEqual(resultat["statuts"], ["demandée", "commandée", "reçue"])
 
 
