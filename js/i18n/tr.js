@@ -4797,6 +4797,7 @@ I18n.ajouter('tr', {
   'connexion.message_nom.indiquez_nom_inscrit_demandes': 'Adınızı girin: taleplerinizde görünür.',
   'connexion.message_serveur_injoignable.serveur_prevo_repond_pas': 'Prévo sunucusu yanıt vermiyor. Sunucu penceresinin PC\'de açık olduğunu kontrol edin.',
   'connexion.montrer_alertes.appareil_plus_autorise_demandez': '<b>Bu cihaz artık yetkili değil.</b> Sorumludan yeni bir davet isteyin: QR kodu veya bağlantısı Prévo\'yu bu cihazda yeniden açacaktır.',
+  'connexion.montrer_alertes.apres_installation': 'Prévo ayarlarınızla yeniden başladı. Az önce seçtiğiniz parolayı girin.',
   'connexion.montrer_alertes.connectez_vous_ouvrir_document': 'Bu belgeyi açmak için oturum açın: belge ardından kendiliğinden açılır.',
   'connexion.montrer_alertes.signaler_panne_telephone_non_autorise': 'Bir arıza mı bildirmek istiyorsunuz? Bu telefon henüz yetkilendirilmedi: bakım ekibinden davet QR kodunu isteyin ya da bir teknisyene haber verin, arızayı yerinde o bildirebilir.',
   'connexion.nouveau_mot_de_passe.trop_court': { one: 'Yeni şifre en az {n} karakter olmalıdır ({longueur} karakter var).', other: 'Yeni şifre en az {n} karakter olmalıdır ({longueur} karakter var).' },

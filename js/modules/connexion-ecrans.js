@@ -162,6 +162,17 @@ const Connexion = (() => {
     zone.hidden = zone.children.length === 0;
   }
 
+  /** P09 : première connexion après « Terminer » (l'identifiant laissé par l'assistant est encore là) : une phrase
+   *  en tête de l'écran dit pourquoi le mot de passe est redemandé. Oubliée avec l'identifiant, à la connexion. */
+  function montrerBandeauApresInstallation() {
+    const zone = $('connexion-alertes');
+    if (UI.$('#connexion-apres-installation', zone)) return;
+    const bandeau = UI.bandeau('info', I18n.t('connexion.montrer_alertes.apres_installation'));
+    bandeau.id = 'connexion-apres-installation';
+    zone.insertBefore(bandeau, zone.firstChild);
+    zone.hidden = false;
+  }
+
   // 429 : le bouton reste désactivé le temps dit par le serveur, avec un compte à rebours à la suite du message.
   function bloquer(bouton, idZone, message, secondes) {
     arreterBlocage();
@@ -446,6 +457,7 @@ const Connexion = (() => {
         $('connexion-identifiant').value = identifiant;
         $('connexion-mot-de-passe').focus();
       }
+      if (identifiant) montrerBandeauApresInstallation();
     }
     return new Promise((fin) => { resoudre = fin; });
   }

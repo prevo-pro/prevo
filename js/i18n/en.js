@@ -4794,6 +4794,7 @@ I18n.ajouter('en', {
   'connexion.message_nom.indiquez_nom_inscrit_demandes': 'Enter your name: it is recorded on your requests.',
   'connexion.message_serveur_injoignable.serveur_prevo_repond_pas': 'The Prévo server is not responding. Check that the server window is open on the PC.',
   'connexion.montrer_alertes.appareil_plus_autorise_demandez': '<b>This device is no longer authorised.</b> Ask the manager for a new invitation: their QR code or link will open Prévo on this device again.',
+  'connexion.montrer_alertes.apres_installation': 'Prévo has restarted with your settings. Enter the password you have just chosen.',
   'connexion.montrer_alertes.connectez_vous_ouvrir_document': 'Sign in to open this document: it will then open by itself.',
   'connexion.montrer_alertes.signaler_panne_telephone_non_autorise': 'Want to report a breakdown? This phone is not authorised yet: ask maintenance for the invitation QR code, or tell a technician, who can report the breakdown on the spot.',
   'connexion.nouveau_mot_de_passe.trop_court': { one: 'The new password must be at least {n} character long (it has {longueur}).', other: 'The new password must be at least {n} characters long (it has {longueur}).' },

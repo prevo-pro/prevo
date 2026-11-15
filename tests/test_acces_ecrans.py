@@ -179,10 +179,19 @@ class TestConnexion(CasConnexion):
         self.attendre_etat("connexion")
         self.assertEqual(page.input_value("#connexion-identifiant"), "nicolas.briand")
         self.assertEqual(page.evaluate("document.activeElement.id"), "connexion-mot-de-passe")
+        # P09 : en tête, pourquoi le mot de passe est redemandé (seulement à cette connexion qui suit l'installation).
+        self.assertIn("Prévo a redémarré avec vos réglages. Entrez le mot de passe que vous venez de choisir.",
+                      page.inner_text("#connexion-apres-installation"))
         page.fill("#connexion-mot-de-passe", MOTS_DE_PASSE["nicolas.briand"])
         page.click("#connexion-valider")
         self.attendre_etat("pret")
         self.assertIsNone(page.evaluate("sessionStorage.getItem('prevo.identifiant.installation')"))
+
+    def test_pas_de_phrase_d_installation_a_la_connexion_ordinaire(self):
+        """P09 : sans identifiant laissé par l'assistant, l'écran de connexion n'a pas la phrase de l'installation."""
+        self.page.goto(self.serveur.url + "/")
+        self.attendre_etat("connexion")
+        self.assertEqual(self.page.locator("#connexion-apres-installation").count(), 0)
 
     def choisir_langue(self, code):
         with self.page.expect_navigation():
