@@ -302,13 +302,15 @@ const StockageServeur = (() => {
       return base + '/api/documents/' + encodeURIComponent(nom);
     }
 
-    // R2 (lot 2 ergonomie, T556) : rôle de la session lue par session() (mode comptes), '' sinon.
-    let roleSession = '';
+    // R2 (lot 2 ergonomie, T556) : rôle de la session, tel que session() l'a lu : '' sans comptes ou pour un appareil,
+    // null tant qu'aucune session n'est connue (avant la connexion : charger relit alors /api/session une fois).
+    let roleSession = null;
 
     async function charger(table) {
       // R2 : le journal est fermé au technicien et à la Direction ; leurs écrans lisent ses seules lignes utiles
       // (dérogation RG8, historique d'un contrôle, attente de pièces) par /api/journal/extraits, tenues pour la table
       // journal. Le demandeur n'y a pas droit : son 403 de /api/csv/journal fait la table absente, ci-dessous.
+      if (table === 'journal' && roleSession === null) await session();
       const extraits = table === 'journal' && ROLES_DES_EXTRAITS.indexOf(roleSession) !== -1;
       const reponse = await appeler(extraits ? base + '/api/journal/extraits' : urlTable(table), { method: 'GET' });
       // 404 = fichier absent, mais seulement pour une table du schéma (sinon : table inconnue). 403 (lot 7, D126,
@@ -480,7 +482,8 @@ const StockageServeur = (() => {
       const reponse = await appelerOuErreur(base + '/api/session', { method: 'GET' });
       const donnees = await lireJson(reponse);
       const identite = donnees.session && typeof donnees.session === 'object' ? donnees.session : null;
-      roleSession = identite === null || identite.appareil ? '' : String(identite.role || '');      // R2 (T556)
+      // R2 (T556) : rôle retenu pour charger('journal') ; sans session en mode comptes, encore inconnu (null).
+      roleSession = !donnees.comptes ? '' : identite === null ? null : identite.appareil ? '' : String(identite.role || '');
       return Object.assign({
         comptes: Boolean(donnees.comptes),
         session: identite === null ? null : {

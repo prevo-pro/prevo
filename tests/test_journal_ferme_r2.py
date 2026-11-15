@@ -160,6 +160,22 @@ class TestEcransTechnicienEtDirection(roles.CasNavigateurComptes):
         self.assertIn("essai R2", page.inner_text(".controles-historique"))
         self.sans_lecture_du_journal()
 
+    def test_technicien_connecte_par_l_ecran_de_connexion(self):
+        # Sans session au chargement : le rôle n'est connu qu'après la connexion (stockage-serveur.js relit la session).
+        self.autoriser_erreur(re.compile(r"status of 401 .*/api/versions:"))     # avant la connexion, comme ailleurs
+        self.reponses = []
+        self.page.on("response", lambda reponse: self.reponses.append(
+            (reponse.request.method, reponse.url, reponse.status)) if "/api/" in reponse.url else None)
+        page = self.page
+        page.goto(self.serveur.url + "/#/controles/" + CONTROLE)
+        page.wait_for_selector("#connexion-identifiant")
+        page.fill("#connexion-identifiant", roles.SESSIONS["technicien"])
+        page.fill("#connexion-mot-de-passe", roles.MOTS_DE_PASSE[roles.SESSIONS["technicien"]])
+        page.click("#connexion-valider")
+        page.wait_for_selector(".controles-historique")
+        self.assertIn("essai R2", page.inner_text(".controles-historique"))
+        self.sans_lecture_du_journal()
+
     def test_direction_derogation_et_attente_de_pieces(self):
         # Tables fermées depuis T520 (habilitations, wiki) : 403 vus comme absents ; le journal, lui, n'est jamais demandé.
         self.autoriser_erreur(re.compile(r"status of 403 .*/api/csv/(?:habilitations|wiki_pages|wiki_journal):"))
