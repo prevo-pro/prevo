@@ -273,7 +273,7 @@ class CalculHistorique:
         raisons = ligne["raisons"]
         type_ot = v.get("type") or "correctif différé"
         if "type" not in v:
-            raisons.append(("Type", "correctif différé", "par défaut"))
+            raisons.append(("Type", "Réparation programmée", "par défaut"))   # P10 : libellé affiché
         priorite = v.get("priorite") or "P3"
         if "priorite" not in v:
             raisons.append(("Priorité", "P3", "par défaut"))
@@ -588,7 +588,7 @@ class TestApercuDuFichier(CasHistorique):
         self.assertTrue(any("Pierre Martel" in r and "introuvable" in r for r in lignes[11]["raisons"]))
         self.assertTrue(any("C04" in r and "symptôme" in r for r in lignes[16]["raisons"]))
         self.assertTrue(any("Usure générale" in r for r in lignes[16]["raisons"]))
-        self.assertTrue(any("correctif différé" in r and "par défaut" in r for r in lignes[17]["raisons"]))
+        self.assertTrue(any("Réparation programmée" in r and "par défaut" in r for r in lignes[17]["raisons"]))
         self.assertTrue(any("Importer quand même" in r for r in lignes[12]["raisons"]))
         self.assertTrue(any("Importer quand même" in r and "OT-2025-0002" in r for r in lignes[18]["raisons"]))
         self.assertTrue(any("XX-99" in r for r in lignes[15]["raisons"]))
