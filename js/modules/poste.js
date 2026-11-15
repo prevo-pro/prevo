@@ -390,7 +390,7 @@ const Poste = (() => {
         <dt>${I18n.t('poste.remplir_serveur.adresse')}</dt><dd id="poste-ia-serveur-url">${serveur.url || I18n.t('poste.remplir_serveur.adresse_invalide')}</dd>
         <dt>${I18n.t('poste.remplir_serveur.cle_acces')}</dt><dd id="poste-ia-serveur-cle">${serveur.cleReglee ? I18n.t('poste.remplir_serveur.reglee_serveur') : I18n.t('poste.remplir_serveur.aucune_cle')}</dd>
       </dl>
-      <p class="aide">${I18n.t('poste.remplir_serveur.fournisseur_adresse_cle_tout')}</p>`);
+      <p class="aide">${I18n.html('poste.remplir_serveur.fournisseur_adresse_cle_tout', { lien: '#/parametres?rubrique=acces' })}</p>`);
   }
 
   // Clé de l'API compatible OpenAI (modes dossier et démo) : champ mot de passe toujours vide (jamais réaffichée).

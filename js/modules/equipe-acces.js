@@ -362,12 +362,14 @@ const EquipeAcces = (() => {
     const groupe = UI.element(UI.html`<span class="acces-actions" data-compte="${compte.identifiant}">
       <button type="button" class="btn btn-secondaire" data-action="modifier">${I18n.t('equipe.actions_compte.modifier')}</button>
       <button type="button" class="btn btn-secondaire" data-action="reinitialiser">${I18n.t('equipe.actions_compte.reinitialiser')}</button>
+      ${compte.a_changer && actif ? UI.html`<button type="button" class="btn btn-secondaire" data-action="qr">${UI.icone('qr')}${I18n.t('equipe.utilisateurs.nouveau_qr')}</button>` : ''}
       ${soiMeme ? '' : UI.html`<button type="button" class="btn ${actif ? 'btn-danger' : 'btn-secondaire'}" data-action="${actif ? 'desactiver' : 'activer'}">${actif ? I18n.t('commun.bouton.desactiver') : I18n.t('equipe.actions_compte.activer')}</button>`}
     </span>`);
     UI.$$('button', groupe).forEach((bouton) => bouton.addEventListener('click', () => {
       const action = bouton.dataset.action;
       if (action === 'modifier') modifierCompte(compte, rafraichir);
       else if (action === 'reinitialiser') reinitialiserCompte(compte, bouton, rafraichir);
+      else if (action === 'qr') pendant(bouton, 'QR de premier accès', async () => { await EquipeUtilisateurs.montrerPremierAcces(await api.changerCompte(compte.identifiant, 'qr')); await rafraichir(); });
       else changerActivation(compte, bouton, rafraichir);
     }));
     return groupe;
@@ -376,7 +378,10 @@ const EquipeAcces = (() => {
   function etatCompte(compte) {
     const actif = compte.actif !== false && texte(compte.actif) !== '0';
     const morceaux = [badge(actif ? I18n.t('equipe.etat_compte.actif') : I18n.t('equipe.etat_compte.desactive'), actif ? 'ok' : 'neutre', !actif)];
-    if (compte.a_changer) morceaux.push(badge(I18n.t('equipe.montrer_mot_de_passe_provisoire.mot_passe_provisoire'), 'attention'));
+    if (compte.a_changer) {     // L05 : un compte créé par QR attend que la personne le flashe
+      morceaux.push(compte.premier_acces_expire_le ? badge(I18n.t('equipe.utilisateurs.qr_en_attente'), 'attention')
+        : badge(I18n.t('equipe.montrer_mot_de_passe_provisoire.mot_passe_provisoire'), 'attention'));
+    }
     return UI.html`<span class="equipe-statut">${morceaux}</span>`;
   }
 
@@ -419,23 +424,9 @@ const EquipeAcces = (() => {
   // 4. Appareils enrôlés et invitations
   // ===========================================================================================
 
-  /** Invitation créée : QR et lien, montrés une seule fois (le jeton n'est écrit nulle part). */
-  function montrerInvitation(resultat) {
-    const invitation = resultat.invitation || {};
-    const lien = lienInvitation(resultat.chemin);
-    // T536 (L11) : invitation d'un poste de déclaration : le lien s'ouvre sur le poste, qui reçoit un nom (« Poste atelier »).
-    const contenu = UI.element(UI.html`<div class="form-colonne acces-invitation">
-      <p>${invitation.poste ? I18n.t('equipe.poste_declaration.invitation_texte', { dateHeure: dateHeure(invitation.expire_le) })
-    : I18n.html('equipe.montrer_invitation.telephone_scanne_qr_ouvre', { dateHeure: dateHeure(invitation.expire_le) })}</p>
-      <div class="acces-qr"><div class="acces-qr-image" id="acces-invitation-qr"></div>
-        <div class="acces-lien champ"><label for="acces-invitation-lien">${I18n.t('equipe.montrer_invitation.lien_invitation')}</label>
-          <input type="text" id="acces-invitation-lien" readonly value="${lien}" spellcheck="false"></div></div>
-      <p class="note">${I18n.t('equipe.montrer_invitation.qr_montre_fois_fermez')}</p>
-    </div>`);
-    UI.remplir(UI.$('#acces-invitation-qr', contenu), UI.qrSvg(lien, 220));
-    return UI.fenetre({ titre: I18n.t('equipe.montrer_invitation.invitation_invitation_id', { invitationId: texte(invitation.id) }), classe: 'equipe-fenetre', contenu: contenu,
-      boutons: [{ libelle: I18n.t('commun.bouton.fermer'), valeur: null, classe: 'btn-primaire', defaut: true }] });
-  }
+  // Invitation créée : QR et lien, montrés une seule fois (le jeton n'est écrit nulle part) ; la fenêtre est celle
+  // d'« Ajouter des utilisateurs » (L05, equipe-utilisateurs.js, chargé après ce fichier).
+  const montrerInvitation = (resultat) => EquipeUtilisateurs.montrerInvitation(resultat);
 
   async function creerInvitation(selecteur, bouton, rafraichir, poste) {
     const heures = Number(selecteur.value) || DUREE_PAR_DEFAUT_H;

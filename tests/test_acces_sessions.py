@@ -517,7 +517,8 @@ class TestTableDesRoutes(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertTrue(callable(getattr(serveur.GestionnaireRequetes, fonction, None)))
         self.assertEqual(set(serveur.ROUTES_PUBLIQUES),
-                         {("GET", "ping"), ("GET", "session"), ("POST", "connexion"), ("POST", "enroler")})
+                         {("GET", "ping"), ("GET", "session"), ("POST", "connexion"), ("POST", "enroler"),
+                          ("POST", "premier-acces")})                        # L05 : QR de premier accès
         self.assertEqual(set(serveur.ROUTES_MOT_DE_PASSE_PROVISOIRE),
                          {("GET", "session"), ("POST", "mot-de-passe"), ("POST", "deconnexion")})
         self.assertTrue(set(serveur.ROUTES_PUBLIQUES) | set(serveur.ROUTES_MOT_DE_PASSE_PROVISOIRE)
@@ -593,6 +594,11 @@ class TestServeurReel(CasServeurReel):
                     self.assertEqual((reponse.statut, reponse.json()),
                                      (401, {"erreur": serveur.MESSAGE_INVITATION_REFUSEE,
                                             "erreur_code": "appareils.invitation_refusee"}), reponse.octets)
+                    continue
+                elif motif == "premier-acces":      # L05 : ouverte sans session, le jeton du QR décide
+                    reponse = self.client.requete("POST", "/api/premier-acces", {"jeton": "x" * 43})
+                    self.assertEqual((reponse.statut, reponse.json()["erreur_code"]),
+                                     (401, "comptes.premier_acces_refuse"), reponse.octets)
                     continue
                 else:                       # POST /api/connexion : ouverte sans session préalable
                     reponse = self.client.connecter("nicolas.briand", MOT_DE_PASSE_RESPONSABLE)

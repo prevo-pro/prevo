@@ -464,21 +464,24 @@ const Accueil = (() => {
     if (!/^#\/accueil/.test(location.hash)) return;
 
     const connexion = adresses === null ? '' : carteConnexion(adresses);
+    // L05 (lot 2) : carte « Ajouter des utilisateurs » (equipe-utilisateurs.js), avant celle du téléphone, partout où
+    // celle-ci est posée (responsable, Solo, technicien).
+    const finAccueil = UI.html`${typeof EquipeUtilisateurs !== 'undefined' ? EquipeUtilisateurs.carteAccueil() : ''}${connexion}`;
     // Responsable : accueil « bento » (accueil-bento.js, chargé après ce fichier : appelé au moment de
     // l'affichage), avec la tuile du rapport du mois écoulé (lot 3, §15.9).
     // T521 : accueil du mode Solo (solo-accueil.js, chargé après ce fichier).
-    if (typeof SoloAccueil !== 'undefined' && App.modeSolo()) { await SoloAccueil.afficher(conteneur, connexion); return; }
+    if (typeof SoloAccueil !== 'undefined' && App.modeSolo()) { await SoloAccueil.afficher(conteneur, finAccueil); return; }
     if (App.estResponsable()) {
       // P12 : en haut tant qu'aucun téléphone ne s'est connecté (seulement quand la carte montre une adresse et un QR,
       // et que les comptes sont exigés : sans eux, le serveur ne tient ni journal ni liste d'appareils).
       const enHaut = Boolean(connexion) && !cePcSeulement && adresses.length > 0 && App.comptesExiges()
         && !(await telephoneDejaConnecte());
       if (!/^#\/accueil/.test(location.hash)) return;
-      Accueil.afficherResponsable(conteneur, connexion, enHaut);
+      Accueil.afficherResponsable(conteneur, finAccueil, enHaut);
       return;
     }
     const contenu = App.estTechnicien() ? accueilTechnicien() : accueilDemandeur();
-    UI.remplir(conteneur, UI.html`${contenu}${connexion}`);
+    UI.remplir(conteneur, UI.html`${contenu}${finAccueil}`);
     // L17 : « Je prends » des demandes de la carte « À prendre » (ordres-prise.js).
     if (App.estTechnicien() && typeof Ordres !== 'undefined' && Ordres.brancherAccueilTechnicien) Ordres.brancherAccueilTechnicien(conteneur);
   }

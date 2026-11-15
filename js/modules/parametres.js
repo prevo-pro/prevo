@@ -358,7 +358,15 @@ const Parametres = (() => {
     </article>`;
   }
 
-  async function afficherParametres(conteneur) {
+  // L05 (lot 2) : « Paramètres › Accès et installation » écrit ailleurs est un vrai lien, #/parametres?rubrique=acces
+  // (rubrique = la fin de l'id d'une carte : acces, solo…) : la carte est montrée une fois l'écran rempli.
+  function montrerRubrique(conteneur, rubrique) {
+    if (!/^[a-z-]+$/.test(rubrique || '')) return;
+    const carte = UI.$('#carte-' + rubrique, conteneur);
+    if (carte) carte.scrollIntoView({ block: 'start' });
+  }
+
+  async function afficherParametres(conteneur, parametres) {
     const [sauvegardes] = await Promise.all([lireSauvegardes(), lireDecisionsDuServeur()]);
     // Si l'utilisateur est parti ailleurs pendant l'attente, on n'écrase pas son nouvel écran.
     if (!/^#\/parametres/.test(location.hash)) return;
@@ -428,6 +436,7 @@ const Parametres = (() => {
     brancherAcces(conteneur);
     brancherImportZip(conteneur);
     brancherDiagnostic(conteneur);
+    montrerRubrique(conteneur, parametres && parametres.requete ? parametres.requete.get('rubrique') : '');
     mettreSurLeBouton(conteneur, '#btn-export-zip', (bouton) => pendant(bouton, 'export ZIP', () => App.exporterZip()));
     mettreSurLeBouton(conteneur, '#btn-export-donnees-seules', (bouton) => pendant(bouton, 'export des données seules',
       () => App.exporterZip({ sansDocuments: true })));

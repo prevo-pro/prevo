@@ -4,7 +4,10 @@
 //   - connexion : identifiant, mot de passe, « rester connecté sur cet appareil » (POST /api/connexion) ;
 //   - enrôlement (page ouverte sur #/enroler/<jeton>, D125) : « Entrez votre nom » (POST /api/enroler) ; 403
 //     (enrôlement désactivé) → le message et les champs de connexion classiques ;
-//   - mot de passe (provisoire, a_changer) : actuel, nouveau, confirmation (POST /api/mot-de-passe), avant tout.
+//   - mot de passe (provisoire, a_changer) : actuel, nouveau, confirmation (POST /api/mot-de-passe), avant tout ;
+//   - premier accès (L05, page ouverte sur #/premier-acces/<jeton>, le QR montré par le responsable) : le même panneau
+//     sans « actuel » : prénom et identifiant lus (POST /api/premier-acces {jeton}), puis nouveau et confirmation
+//     (mêmes règles) → POST /api/premier-acces {jeton, nouveau}, qui ouvre la session.
 // App montre l'écran puis appelle Connexion.demander(options) ; la promesse rend la session (camelCase, comme
 // adaptateur.session()) une fois la personne connectée ET son mot de passe choisi s'il était provisoire.
 // Les appels à l'API d'accès sont faits ici par fetch avec l'en-tête X-Prevo ; le message du serveur est montré tel
@@ -22,6 +25,7 @@ const Connexion = (() => {
   const LONGUEUR_SOLIDE = 20;                   // au-delà : « solide » (phrase de passe)
   const ATTENTE_PAR_DEFAUT_S = 60;              // 429 sans temps lisible
   const MOTIF_ROUTE_ENROLER = /^#\/enroler\/([A-Za-z0-9_-]+)$/;
+  const MOTIF_ROUTE_PREMIER_ACCES = /^#\/premier-acces\/([A-Za-z0-9_-]+)$/;       // L05
   // T527 : #/document/<nom>, où le serveur renvoie un lien de document ouvert sans session ; le nom suit les règles
   // du serveur (MOTIF_NOM_DOCUMENT_ENREGISTRE) : rien d'autre ne peut servir d'adresse de retour.
   const MOTIF_ROUTE_DOCUMENT = /^#\/document\/((?:[0-9]{8}-[0-9]{6}-)?[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/;
@@ -46,6 +50,9 @@ const Connexion = (() => {
     if (nom === 'enrolement') {
       return [I18n.t('connexion.titres.bienvenue'), I18n.t('connexion.titres.appareil_va_etre_reconnu')];
     }
+    if (nom === 'motDePasse' && jetonPremierAcces) {
+      return [I18n.t('connexion.titres.bienvenue'), I18n.t('connexion.premier_acces.sous_titre')];
+    }
     if (nom === 'motDePasse') {
       return [I18n.t('connexion.titres.choisissez_mot_passe'), I18n.t('connexion.titres.mot_passe_provisoire_faut')];
     }
@@ -62,6 +69,7 @@ const Connexion = (() => {
   // --- État -------------------------------------------------------------------------------
   let resoudre = null;             // termine le Connexion.demander en cours (la session)
   let jetonInvitation = '';        // jeton de la route #/enroler/<jeton> pendant l'enrôlement
+  let jetonPremierAcces = '';      // L05 : jeton de la route #/premier-acces/<jeton> (QR d'un compte neuf)
   let minuteurBlocage = null;      // compte à rebours d'un 429
   let ecouteursPoses = false;
 
@@ -268,12 +276,12 @@ const Connexion = (() => {
   }
 
   function problemeDuNouveau(actuel, nouveau, confirmation) {
-    if (!actuel) return messageActuel();
+    if (!actuel && !jetonPremierAcces) return messageActuel();
     if (nouveau.length < LONGUEUR_MIN_MOT_DE_PASSE) {
       return I18n.t('connexion.nouveau_mot_de_passe.trop_court', { n: LONGUEUR_MIN_MOT_DE_PASSE, longueur: nouveau.length });
     }
     if (nouveau.length > LONGUEUR_MAX_MOT_DE_PASSE) return I18n.t('connexion.nouveau_mot_de_passe.trop_long', { n: LONGUEUR_MAX_MOT_DE_PASSE });
-    if (nouveau === actuel) return messageIdentique();
+    if (nouveau === actuel && !jetonPremierAcces) return messageIdentique();
     if (nouveau !== confirmation) return messageConfirmation();
     return '';
   }
@@ -289,7 +297,8 @@ const Connexion = (() => {
       return;
     }
     montrerErreur('connexion-mdp-erreur', '');
-    const reponse = await appeler('/api/mot-de-passe', { actuel: actuel, nouveau: nouveau });
+    const reponse = jetonPremierAcces ? await appeler('/api/premier-acces', { jeton: jetonPremierAcces, nouveau: nouveau })
+      : await appeler('/api/mot-de-passe', { actuel: actuel, nouveau: nouveau });
     viderMotsDePasse();
     if (reponse.statut === 200 && reponse.donnees && reponse.donnees.session) {
       terminer(sessionLue(reponse.donnees.session));
@@ -300,7 +309,34 @@ const Connexion = (() => {
       return;
     }
     montrerErreur('connexion-mdp-erreur', reponse.message);
-    $('connexion-actuel').focus();
+    $(jetonPremierAcces ? 'connexion-nouveau' : 'connexion-actuel').focus();
+  }
+
+  // L05 : premier accès par le QR. Le panneau du mot de passe sans « actuel » ni « Se déconnecter », avec le prénom et
+  // l'identifiant du compte ; un QR qui ne sert plus (déjà utilisé, expiré) : son message, puis la connexion.
+  function modePremierAcces(actif) {
+    $('connexion-actuel').closest('.champ').hidden = actif;
+    $('connexion-mdp-deconnexion').hidden = actif;
+    $('connexion-premier-qui').hidden = true;
+  }
+
+  async function ouvrirPremierAcces() {
+    modePremierAcces(true);
+    montrerPanneau('motDePasse');
+    const reponse = await appeler('/api/premier-acces', { jeton: jetonPremierAcces });
+    const compte = reponse.statut === 200 && reponse.donnees && reponse.donnees.compte;
+    if (!compte) {
+      jetonPremierAcces = '';
+      modePremierAcces(false);
+      montrerPanneau('connexion');
+      montrerErreur('connexion-erreur', reponse.message);
+      return;
+    }
+    const qui = $('connexion-premier-qui');
+    UI.remplir(qui, I18n.html('connexion.premier_acces.qui', { prenom: String(compte.prenom || ''), identifiant: String(compte.identifiant || '') }));
+    qui.hidden = false;
+    $('connexion-identifiant').value = String(compte.identifiant || '');      // pour le gestionnaire de mots de passe
+    $('connexion-nouveau').focus();
   }
 
   // Indication de force, par la longueur seule (D124 : aucune règle de composition, phrase de passe conseillée).
@@ -353,6 +389,7 @@ const Connexion = (() => {
     viderMotsDePasse();
     viderErreurs();
     jetonInvitation = '';
+    if (jetonPremierAcces) { jetonPremierAcces = ''; modePremierAcces(false); }
     const fin = resoudre;
     resoudre = null;
     if (fin) fin(session);
@@ -412,6 +449,11 @@ const Connexion = (() => {
     return jetonDeLaRoute(hash) !== '';
   }
 
+  /** L05 : la page est ouverte sur #/premier-acces/<jeton> (QR d'un compte neuf) ? */
+  function estRoutePremierAcces(hash) {
+    return MOTIF_ROUTE_PREMIER_ACCES.test(hash || '');
+  }
+
   /** L12 : la route est celle d'une machine (#/equipement/<id>, le lien d'un QR) ? Ne lit ni n'expose l'identifiant. */
   function estRouteEquipement(hash) {
     return MOTIF_ROUTE_EQUIPEMENT.test(hash || '');
@@ -446,7 +488,11 @@ const Connexion = (() => {
     viderMotsDePasse();
     viderErreurs();
     montrerAlertes(reglages);
-    if (reglages.sessionProvisoire) {
+    const premier = MOTIF_ROUTE_PREMIER_ACCES.exec(location.hash || '');
+    if (premier) {
+      jetonPremierAcces = premier[1];
+      ouvrirPremierAcces();
+    } else if (reglages.sessionProvisoire) {
       montrerPanneau('motDePasse');
     } else {
       jetonInvitation = jetonDeLaRoute(location.hash);
@@ -482,6 +528,7 @@ const Connexion = (() => {
     changerLangue,
     jetonDeLaRoute,
     estRouteEnrolement,
+    estRoutePremierAcces,
     documentDeLaRoute,
     estRouteEquipement,
     cibleMachineMemorisee,

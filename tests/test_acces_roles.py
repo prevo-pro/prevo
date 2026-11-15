@@ -100,8 +100,9 @@ ATTENDU = {
     ("POST", "erreur-ecran"): TOUS,                     # T547 (L34) : chacun envoie, le responsable seul lit
     ("GET", "diagnostic"): RESPONSABLE,                 # T547 (L34) : fichier de diagnostic (tests/test_journaux_l34.py)
     ("POST", "enroler"): TOUS,
+    ("POST", "premier-acces"): TOUS,                    # L05 : route publique, le jeton du QR décide
     ("GET", "acces/invitations"): RESPONSABLE,
-    ("POST", "acces/invitations"): RESPONSABLE,
+    ("POST", "acces/invitations"): INTERVENANTS,        # L05 : le technicien invite un opérateur
     ("POST", "acces/invitations/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/<id>/revoquer"): RESPONSABLE,
     ("POST", "acces/appareils/revoquer-tous"): RESPONSABLE,
@@ -515,6 +516,8 @@ class JoueurDeCases:
             # désactivé ; serveur du processus (appareil simulé) : 401 invitation inconnue. Ni l'un ni l'autre n'est
             # un refus de rôle (« Accès refusé »).
             corps, statuts = {"invitation": "x" * 43, "nom": "Essai"}, (401, 403)
+        elif route == ("POST", "premier-acces"):
+            corps, statuts = {"jeton": "x" * 43}, (401,)          # L05 : jeton inconnu, pas un refus de rôle
         elif "<id>" in motif:
             statuts = (404,)                    # la route est passée : l'id d'essai est inconnu
         return self.client.requete(methode, chemin, corps, cookie=cookie, entetes=entetes), statuts

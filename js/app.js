@@ -920,12 +920,15 @@ const App = (() => {
       montrer('ecran-installation', 'installation');
       await Installation.ouvrir();
     }
-    if (etat.session && !etat.session.aChanger) {
+    // L05 : une page ouverte sur le QR de premier accès d'un compte (#/premier-acces/<jeton>) passe par l'écran de
+    // connexion même avec une session (téléphone déjà invité comme opérateur) : la personne y choisit son mot de passe.
+    const premierAcces = typeof Connexion !== 'undefined' && Connexion.estRoutePremierAcces(location.hash);
+    if (etat.session && !etat.session.aChanger && !premierAcces) {
       session = etat.session;
       return suivreLangueDuCompte(session);
     }
     if (suivreLangueDuCompte(null)) return true;
-    const options = etat.session ? { sessionProvisoire: etat.session } : await motifSansSession();
+    const options = premierAcces ? {} : etat.session ? { sessionProvisoire: etat.session } : await motifSansSession();
     await demanderConnexion(options);
     return suivreLangueDuCompte(session);
   }
@@ -1010,7 +1013,8 @@ const App = (() => {
       promesseConnexion = Connexion.demander(options || {}).then((nouvelle) => {
         promesseConnexion = null;
         session = nouvelle;
-        if (Connexion.estRouteEnrolement(location.hash)) {
+        if (Connexion.estRoutePremierAcces(location.hash)) remplacerRoute(ROUTE_ACCUEIL);      // L05 : jeton hors de l'adresse
+        else if (Connexion.estRouteEnrolement(location.hash)) {
           // R4 : la machine flashée avant l'invitation (moins d'une heure), sinon l'accueil ; vérifiée à l'ouverture de la coque.
           cibleApresEnrolement = Connexion.cibleMachineMemorisee();
           remplacerRoute(cibleApresEnrolement || ROUTE_ACCUEIL);
@@ -1356,7 +1360,8 @@ const App = (() => {
       if (location.hash === cible && !(identifiant && Donnees.trouver('equipements', identifiant))) remplacerRoute(ROUTE_ACCUEIL);
     }
     if (!location.hash || location.hash === '#' || location.hash === '#/'
-        || (typeof Connexion !== 'undefined' && Connexion.estRouteEnrolement(location.hash))) remplacerRoute(ROUTE_ACCUEIL);
+        || (typeof Connexion !== 'undefined' && (Connexion.estRouteEnrolement(location.hash)
+          || Connexion.estRoutePremierAcces(location.hash)))) remplacerRoute(ROUTE_ACCUEIL);
     construireMenus();
     await afficherRoute(false);
     if (coqueVisible()) document.documentElement.dataset.etat = 'pret';   // T514 : sinon l'assistant est ouvert

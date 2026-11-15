@@ -176,7 +176,7 @@ Object.assign(Parc, (() => {
         'parc.avertissement_reseau.tailscale_solution_1', 'parc.avertissement_reseau.tailscale_solution_2'],
     }[portee];
     const liens = [
-      lienPortee ? UI.html`<a href="#/parametres">${I18n.t('parc.avertissement_reseau.lien_portee')}</a>` : '',
+      lienPortee ? UI.html`<a href="#/parametres?rubrique=acces">${I18n.t('parc.avertissement_reseau.lien_portee')}</a>` : '',
       lienEtiquettes ? UI.html`<a href="#/parc/etiquettes">${I18n.t('parc.avertissement_reseau.lien_etiquettes')}</a>` : '',
     ].filter(Boolean);
     return UI.html`<div class="encadre attention avertissement-reseau" data-portee="${sansWifi ? 'sans-wifi' : portee}" role="note">${UI.icone('alerte')}
@@ -312,7 +312,7 @@ Object.assign(Parc, (() => {
       <p>${t(raison === 'ce-pc' ? 'raison_ce_pc' : 'raison_sans_wifi')}</p>
       <p>${t('solutions')}</p>
       <ul><li>${t('poste')}</li><li>${t('borne')}</li></ul>
-      ${raison === 'ce-pc' ? UI.html`<p>${t('reseau_d_abord')}</p>` : ''}
+      ${raison === 'ce-pc' ? UI.html`<p>${I18n.html('parc.imprimer_sans_telephone.reseau_d_abord', { lien: '#/parametres?rubrique=acces' })}</p>` : ''}
     </div>`);
     const choix = await UI.fenetre({ titre: t('titre'), contenu, boutons: [
       { libelle: I18n.t('commun.bouton.annuler'), valeur: false, classe: 'btn-fantome' },
@@ -399,7 +399,7 @@ Object.assign(Parc, (() => {
         ${I18n.t('parc.carte_adresse.si_adresse_ip_port')}</div>
       ${adresses.length ? '' : UI.html`<p class="note">${I18n.t('parc.carte_adresse.aucune_adresse_reseau_ete')}</p>`}
       ${App.cePcSeulement && App.cePcSeulement() ? UI.html`<div class="encadre info" id="etiquettes-ce-pc">${UI.icone('alerte')}
-        ${I18n.t('parc.carte_adresse.prevo_joignable_pc_instant')}</div>` : ''}
+        ${I18n.html('parc.carte_adresse.prevo_joignable_pc_instant', { lien: '#/parametres?rubrique=acces' })}</div>` : ''}
       <div id="etiquettes-avertissement-reseau" tabindex="-1">${avertissementReseau(base, { lienPortee: true })}</div>
       ${choix}
       ${porteeAdresse(base) === 'locale' ? champWifi() : ''}

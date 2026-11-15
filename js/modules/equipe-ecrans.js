@@ -8,7 +8,8 @@
 // Profils : le responsable a tous les boutons ; le technicien consulte, SANS aucun taux horaire (ni
 // à l'écran ni dans le DOM : la valeur n'est jamais écrite dans la page) ; le demandeur n'a pas accès.
 // Lot 7 : le bouton « Accès » (comptes, appareils, journal des connexions) mène à #/equipe/acces,
-// écran de equipe-acces.js, responsable en mode serveur. Complète l'objet Equipe.
+// écran de equipe-acces.js, responsable en mode serveur. L05 (lot 2) : « Ajouter des utilisateurs » (#/equipe/utilisateurs,
+// equipe-utilisateurs.js), responsable en mode serveur, technicien avec comptes. Complète l'objet Equipe.
 
 Object.assign(Equipe, (() => {
 
@@ -141,6 +142,7 @@ Object.assign(Equipe, (() => {
     return UI.html`<div class="entete-page">
       <div><h1>${I18n.t('equipe.entete.equipe')}</h1><p>${sousTitre}</p></div>
       <div class="actions">${responsable && App.mode === 'serveur' ? UI.html`<a class="btn btn-secondaire" id="equipe-acces" href="#/equipe/acces">${UI.icone('cle')}${I18n.t('equipe.entete.acces')}</a>` : ''}
+        ${App.mode === 'serveur' && (responsable || App.comptesExiges()) ? UI.html`<a class="btn btn-secondaire" id="equipe-ajouter-utilisateurs" href="#/equipe/utilisateurs">${UI.icone('qr')}${I18n.t('equipe.utilisateurs.titre')}</a>` : ''}
         ${responsable ? UI.html`<a class="btn btn-primaire" id="equipe-nouveau" href="#/equipe/nouveau">${UI.icone('ajouter')}${I18n.t('equipe.entete.ajouter_technicien')}</a>` : ''}</div>
     </div>`;
   }
@@ -410,7 +412,7 @@ Object.assign(Equipe, (() => {
       afficher: afficherNouveau,
     });
     App.ecran({
-      id: 'equipe-fiche', route: /^#\/equipe\/(?!nouveau$|acces$)(?<id>[^/?]+)$/, parent: 'equipe',
+      id: 'equipe-fiche', route: /^#\/equipe\/(?!nouveau$|acces$|utilisateurs$)(?<id>[^/?]+)$/, parent: 'equipe',
       get titre() { return I18n.t('equipe.ecran_fiche.titre'); },
       profils: intervenants,
       tables: ['techniciens', 'habilitations', 'ordres_travail'],

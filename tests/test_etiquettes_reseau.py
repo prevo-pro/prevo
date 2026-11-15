@@ -156,7 +156,7 @@ class TestEtiquettesAtelier(CasReseau):
             self.assertIn("Aussi hors de l'atelier", texte)
             self.assertIn("Tailscale", texte)
             self.assertIn("réimprimer les étiquettes", texte)
-            self.assertEqual(avertissement.locator("a[href='#/parametres']").count(), 1)
+            self.assertEqual(avertissement.locator("a[href='#/parametres?rubrique=acces']").count(), 1)      # L05 : la rubrique
             rappel = page.inner_text("#etiquettes-rappel-consigne")
             self.assertIn(CONSIGNE_WIFI, rappel)
             page.click("#etiquettes-voir-avertissement")

@@ -176,7 +176,7 @@ const InstallationFiche = (() => {
       return;
     }
     conteneur.appendChild(brancher(rendre(fiche)));
-    conteneur.appendChild(UI.element(UI.html`<p class="note">${I18n.t('installation.dans_la_coque.reglages_acces_refont_parametres')}</p>`));
+    conteneur.appendChild(UI.element(UI.html`<p class="note">${I18n.html('installation.dans_la_coque.reglages_acces_refont_parametres', { lien: '#/parametres?rubrique=acces' })}</p>`));
   }
 
   document.addEventListener('DOMContentLoaded', () => {

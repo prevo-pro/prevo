@@ -261,7 +261,9 @@ class TestTableDesRoutes(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertIn(route, serveur.ROUTES_API)
                 self.assertTrue(callable(getattr(serveur.GestionnaireRequetes, serveur.ROUTES_API[route], None)))
-                self.assertEqual(serveur.ROLES_PAR_ROUTE[route], serveur.RESPONSABLE)
+                # L05 : le technicien invite un opérateur (tests/test_ajouter_utilisateurs.py) ; le reste au responsable.
+                self.assertEqual(serveur.ROLES_PAR_ROUTE[route], serveur.INTERVENANTS if route == ("POST", "acces/invitations")
+                                 else serveur.RESPONSABLE)
         self.assertEqual(serveur.motif_de_route(["acces", "appareils", "revoquer-tous"]), "acces/appareils/revoquer-tous")
         self.assertEqual(serveur.motif_de_route(["acces", "appareils", "AP-1234", "revoquer"]),
                          "acces/appareils/<id>/revoquer")
@@ -312,7 +314,8 @@ class TestInvitations(CasAppareils):
         demandeur = self.client.connecter("lea.martin", MOT_DE_PASSE_DEMANDEUR)
         cookie_appareil, _ = self.appareil()
         for cookie in (technicien, demandeur, cookie_appareil, None):
-            for methode, chemin in (("POST", "/api/acces/invitations"), ("GET", "/api/acces/invitations"),
+            for methode, chemin in ((("POST", "/api/acces/invitations"),) if cookie != technicien else ()) + (
+                                    ("GET", "/api/acces/invitations"),
                                     ("POST", "/api/acces/invitations/INV-0000/revoquer"),
                                     ("POST", "/api/acces/appareils/AP-0000/revoquer"),
                                     ("POST", "/api/acces/appareils/revoquer-tous")):
@@ -322,7 +325,8 @@ class TestInvitations(CasAppareils):
                         self.assertEqual(reponse.statut, 401, reponse.octets)
                     else:
                         self.assertEqual(reponse.statut, 403, reponse.octets)
-                        self.assertEqual(reponse.json()["erreur"], serveur.MESSAGE_RESERVE_AU_RESPONSABLE)
+                        if chemin != "/api/acces/invitations" or methode == "GET":      # L05 : POST, refus du rôle
+                            self.assertEqual(reponse.json()["erreur"], serveur.MESSAGE_RESERVE_AU_RESPONSABLE)
         self.assertEqual(len(self.fichier_appareils()["invitations"]), 1)
 
 

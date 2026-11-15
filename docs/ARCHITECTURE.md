@@ -1579,6 +1579,7 @@ embarque) ; elle contient `renderToSVGString`, seule fonction du rendu « serveu
   preventif-regles.js  preventif-ecritures.js  preventif-ecrans.js  preventif-calendrier.js
   magasin-regles.js  magasin-ecritures.js  magasin-articles.js  magasin-mouvements.js  magasin-achats.js
   equipe-regles.js  equipe-ecritures.js  equipe-ecrans.js  equipe-habilitations.js  equipe-acces.js
+  equipe-utilisateurs.js
   controles-regles.js  controles-reserves.js  controles-catalogue.js  controles-ecritures.js  controles-ecrans.js
   controles-reserves-ecrans.js
   garanties-regles.js  garanties-ecritures.js  garanties-formulaires.js  garanties-ecrans.js  garanties-encarts.js
@@ -3994,8 +3995,24 @@ Précisions de T153 (appareils enrôlés, D125, CS123) :
   l'envoi (bouton ou 30 s).
 - **Oubli** : à chaque écriture, les invitations finies depuis plus de 30 jours et les appareils révoqués ou expirés
   dont la dernière activité date de plus de 30 jours sont retirés du fichier.
-- **Journal des connexions** : `invitation` (qui = le responsable), `appareil` (qui = `appareil:<id>`, à
-  l'enrôlement), `revocation` (qui = `appareil:<id>` ou `invitation:<id>`, adresse et agent du responsable).
+- **Journal des connexions** : `invitation` (qui = le responsable, ou le technicien qui invite), `appareil` (qui =
+  `appareil:<id>`, à l'enrôlement), `revocation` (qui = `appareil:<id>` ou `invitation:<id>`, adresse et agent du
+  responsable).
+- **Ajouter des utilisateurs** (L05, lot 2 ergonomie ; `js/modules/equipe-utilisateurs.js`, `#/equipe/utilisateurs`,
+  carte de l'accueil et bouton de l'écran Équipe) : les opérateurs par l'invitation d'un appareil ci-dessus, créée par
+  le responsable ou par un **technicien** (seul droit nouveau : `POST /api/acces/invitations` sans `poste`, 403 pour
+  un poste de déclaration ; ni la liste des invitations et des appareils, ni les comptes, ni le journal) ; un
+  technicien (prénom, nom, métier : sa fiche est créée avec le compte) ou la Direction par le responsable seul, avec un
+  **QR de premier accès** au lieu d'un mot de passe provisoire : `POST /api/acces/comptes {…, "qr": true}` crée le
+  compte avec un mot de passe tiré au sort que personne ne voit (`a_changer`) et rend `chemin` =
+  `/#/premier-acces/<jeton>`. Le jeton (32 octets) est rendu une seule fois ; seule son empreinte est écrite, dans le
+  compte (`premier_acces` de `comptes.json`, jamais rendu par `compte_public`, qui n'en donne que
+  `premier_acces_expire_le`) ; valable la durée des invitations (`invitation_heures`, 24 h par défaut) ; lié à ce
+  compte seul ; effacé dès que le mot de passe est choisi, changé ou réinitialisé, refusé pour un compte désactivé ;
+  jamais dans un journal ni sur la console. La page ouverte sur `#/premier-acces/<jeton>` montre le prénom et
+  l'identifiant (`POST /api/premier-acces {jeton}`), puis le mot de passe à choisir deux fois (12 caractères au moins,
+  règles inchangées) : `POST /api/premier-acces {jeton, nouveau}` ouvre la session. Journal : `creation` et
+  `invitation` (qui = le compte), puis `modification` et `connexion`.
 
 ### 22.4 API d'accès (`/api/connexion` et suivantes)
 
@@ -4007,10 +4024,11 @@ Précisions de T153 (appareils enrôlés, D125, CS123) :
 | `POST /api/mot-de-passe` | session | `{"actuel", "nouveau"}` → 200 comme la connexion (session neuve, toutes les autres sessions du compte fermées, « rester » gardé) ; 400 si le nouveau est trop court, trop long ou égal à l'actuel ; 403 si l'actuel est faux (compté comme un échec de connexion) ; 429 pendant un blocage. T298 : `{"langue": code}` **seul** → la langue du compte de la session (jamais un autre), sans mot de passe demandé ni session fermée : 200 `{"comptes": true, "session"}` à jour ; 400 `comptes.langue_inconnue` hors liste (rien d'écrit) ; `langue` avec tout autre champ (`actuel`, `nouveau`…) → 400 `sessions.langue_seule`, rien de changé ni compté ; 403 pour un appareil enrôlé (`sessions.langue_appareil`) et un mot de passe provisoire |
 | `POST /api/enroler` | tous (route publique) | `{"invitation", "nom"}` → 200 `{"comptes": true, "session": {…, "appareil": true}}` + cookie `appareil` (un an) ; 401 invitation inconnue, expirée ou révoquée ; 403 enrôlement désactivé (`demandeurs_avec_compte`) ; 400 corps ou nom invalide |
 | `GET /api/acces/comptes` | responsable | `{"comptes": [ … ]}` par `compte_public` : jamais d'empreinte, de sel ni d'algorithme |
-| `POST /api/acces/comptes` | responsable | `{"prenom", "nom", "role", "technicien_id"}` → 200 `{"compte", "mot_de_passe_provisoire"}` : 16 caractères, `a_changer` vrai, rendu une seule fois (jamais écrit dans un fichier, le journal ni la console) ; 400 champ inconnu ou manquant, rôle inconnu, technicien absent de `techniciens.csv` |
-| `POST /api/acces/comptes/<identifiant>` | responsable | `{"action": "modifier", "prenom", "nom", "role", "technicien_id"}`, `{"action": "reinitialiser"}` (rend `mot_de_passe_provisoire` une seule fois), `{"action": "desactiver"}` ou `{"action": "activer"}` → 200 `{"compte"}` ; 400 action inconnue ou s'il ne restait plus aucun responsable actif, 404 compte inconnu |
+| `POST /api/acces/comptes` | responsable | `{"prenom", "nom", "role", "technicien_id"}` → 200 `{"compte", "mot_de_passe_provisoire"}` : 16 caractères, `a_changer` vrai, rendu une seule fois (jamais écrit dans un fichier, le journal ni la console) ; 400 champ inconnu ou manquant, rôle inconnu, technicien absent de `techniciens.csv`. L05 : `"nouvelle_fiche": true` (technicien sans `technicien_id`, `"metier"` facultatif) crée sa fiche avec le compte (celle à ce nom sans compte, sinon une ligne nouvelle) ; `"qr": true` (technicien ou Direction) → 200 `{"compte", "chemin": "/#/premier-acces/<jeton>", "expire_le"}`, aucun mot de passe rendu |
+| `POST /api/acces/comptes/<identifiant>` | responsable | `{"action": "modifier", "prenom", "nom", "role", "technicien_id"}`, `{"action": "reinitialiser"}` (rend `mot_de_passe_provisoire` une seule fois), `{"action": "desactiver"}`, `{"action": "activer"}` ou (L05) `{"action": "qr"}` (nouveau QR de premier accès d'un compte actif au mot de passe pas encore choisi, l'ancien ne sert plus : `chemin`, `expire_le`) → 200 `{"compte"}` ; 400 action inconnue ou s'il ne restait plus aucun responsable actif, 404 compte inconnu |
+| `POST /api/premier-acces` | tous (route publique, L05) | `{"jeton"}` → 200 `{"compte": {"identifiant", "prenom", "nom"}}` ; `{"jeton", "nouveau"}` → 200 comme la connexion (session sans « rester ») ; 401 `comptes.premier_acces_refuse` pour un jeton inconnu, expiré, déjà servi ou d'un compte désactivé ; 400 corps ou mot de passe refusé |
 | `GET /api/acces/invitations` | responsable | `{"invitations": [{"id", "cree_le", "expire_le", "revoquee", "valide"}], "appareils": [{"id", "libelle", "nom_demandeur", "cree_le", "vu_le", "revoque", "valide"}], "enrolement_actif": bool}`, jamais d'empreinte |
-| `POST /api/acces/invitations` | responsable | sans corps, `{}` ou `{"heures": 1..168}` → 200 `{"invitation": {…}, "jeton", "chemin": "/#/enroler/<jeton>"}`, le jeton rendu une seule fois ; 400 heures hors bornes ou champ inconnu |
+| `POST /api/acces/invitations` | responsable, technicien (L05 : pas `poste`, 403) | sans corps, `{}` ou `{"heures": 1..168}` → 200 `{"invitation": {…}, "jeton", "chemin": "/#/enroler/<jeton>"}`, le jeton rendu une seule fois ; 400 heures hors bornes ou champ inconnu |
 | `POST /api/acces/invitations/<id>/revoquer` | responsable | 200 `{"invitation", "revoquee": true}` ; 404 inconnue |
 | `POST /api/acces/appareils/<id>/revoquer` | responsable | 200 `{"appareil", "revoque": true}` : 401 dès la requête suivante de l'appareil ; 404 inconnu |
 | `POST /api/acces/appareils/revoquer-tous` | responsable | 200 `{"appareils_revoques": [ids]}` |
@@ -4150,8 +4168,9 @@ ce tableau dit la même chose : une route ajoutée à `ROUTES_API` sans sa ligne
 | `POST /api/erreur-ecran` | oui | oui | oui | oui | oui |
 | `GET /api/diagnostic` | non | non | non | oui | non |
 | `POST /api/enroler` | oui | oui | oui | oui | oui |
+| `POST /api/premier-acces` | oui | oui | oui | oui | oui |
 | `GET /api/acces/invitations` | non | non | non | oui | non |
-| `POST /api/acces/invitations` | non | non | non | oui | non |
+| `POST /api/acces/invitations` | non | non | oui | oui | non |
 | `POST /api/acces/invitations/<id>/revoquer` | non | non | non | oui | non |
 | `POST /api/acces/appareils/<id>/revoquer` | non | non | non | oui | non |
 | `POST /api/acces/appareils/revoquer-tous` | non | non | non | oui | non |

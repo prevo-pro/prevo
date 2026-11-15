@@ -1268,8 +1268,13 @@ def creer_compte(config, prenom, nom, role, mot_de_passe, technicien_id='', a_ch
 
 
 def compte_public(compte):
-    """Le compte sans son sel ni son empreinte (ce qui peut partir vers un navigateur)."""
-    return {cle: valeur for cle, valeur in compte.items() if cle not in ('sel', 'empreinte', 'algo')}
+    """Le compte sans son sel ni son empreinte (ce qui peut partir vers un navigateur). L05 : du QR de premier accès,
+    sa fin de validité seulement (premier_acces_expire_le), jamais son empreinte."""
+    public = {cle: valeur for cle, valeur in compte.items() if cle not in ('sel', 'empreinte', 'algo', 'premier_acces')}
+    premier = compte.get('premier_acces')
+    if isinstance(premier, dict) and premier.get('expire_le'):
+        public['premier_acces_expire_le'] = str(premier['expire_le'])
+    return public
 
 
 # Langue d'un compte (T298 ; D148) : champ facultatif « langue » de comptes.json, vide ou absent = la langue de
@@ -1351,6 +1356,7 @@ def changer_mot_de_passe(config, identifiant, nouveau, a_changer=False, journal=
         compte['algo'], compte['sel'], compte['empreinte'] = hacher_mot_de_passe(nouveau)
         compte['a_changer'] = bool(a_changer)
         compte['modifie_le'] = compte['mot_de_passe_le'] = maintenant_iso(config)
+        compte.pop('premier_acces', None)               # L05 : un QR de premier accès en attente ne sert plus
         ecrire_comptes(config, comptes)
     fermer_sessions_apres_changement(config, compte['identifiant'])
     ecrire_journal_acces(config, compte['identifiant'], origine[0], origine[1], journal, origine[2])
@@ -1365,6 +1371,97 @@ def reinitialiser_compte(config, identifiant, origine=('', '', '')):
     provisoire = mot_de_passe_provisoire()
     changer_mot_de_passe(config, identifiant, provisoire, a_changer=True, journal='reinitialisation', origine=origine)
     return provisoire
+
+
+# QR de premier accès (L05, lot 2) : le responsable ajoute un technicien ou la Direction, Prévo montre un QR ; la
+# personne le flashe et choisit son mot de passe (règles inchangées : 12 caractères au moins, saisi deux fois à
+# l'écran), sans mot de passe provisoire à recopier. Le compte est créé avec un mot de passe tiré au sort que personne
+# ne voit (a_changer : aucune connexion possible avant). Le jeton du QR : 32 octets tirés au sort, rendu une seule
+# fois au responsable ; seule son empreinte est écrite, dans le compte (premier_acces), jamais dans un journal ;
+# valable la durée des invitations d'appareils (invitation_heures, 24 h par défaut) ; lié à ce compte seul ; effacé
+# dès que le mot de passe est choisi, changé ou réinitialisé ; refusé pour un compte désactivé.
+CHEMIN_PREMIER_ACCES = '/#/premier-acces/'
+MESSAGE_PREMIER_ACCES_REFUSE = traduisible('comptes.premier_acces_refuse',
+                                           'Ce QR ne sert plus (déjà utilisé, expiré ou remplacé) : demandez-en un '
+                                           'nouveau au responsable.')
+
+
+def duree_premier_acces_heures(config):
+    """Durée de validité d'un QR de premier accès : celle des invitations d'appareils (invitation_heures, 1 à 168 ;
+    24 h par défaut ou pour une valeur hors bornes)."""
+    heures = (getattr(config, 'reglages', None) or {}).get('invitation_heures', 24)
+    if isinstance(heures, bool) or not isinstance(heures, int) or not 1 <= heures <= 168:
+        return 24
+    return heures
+
+
+def poser_premier_acces(config, identifiant, origine=('', '', '')):
+    """Jeton neuf du QR de premier accès de ce compte (actif, mot de passe jamais choisi : a_changer), qui remplace
+    l'ancien ; rend (jeton, expire_le). Seule l'empreinte est écrite. Une ligne « invitation » au journal des
+    connexions (le compte, jamais le jeton)."""
+    jeton = secrets.token_urlsafe(32)
+    maintenant = maintenant_s(config)
+    expire_le = instant_iso(maintenant + duree_premier_acces_heures(config) * 3600)
+    with VERROU_ACCES:
+        comptes = lire_comptes(config)
+        compte = trouver_compte(comptes, identifiant)
+        if compte is None:
+            raise erreur_compte_introuvable(comptes, identifiant)
+        if not compte.get('actif'):
+            raise ErreurCompte(traduisible('comptes.premier_acces_desactive',
+                                           'Compte désactivé : activez-le d\'abord.'))
+        if not compte.get('a_changer'):
+            raise ErreurCompte(traduisible('comptes.premier_acces_deja_choisi',
+                                           'Cette personne a déjà choisi son mot de passe. S\'il est oublié : '
+                                           '« Réinitialiser », puis le QR.'))
+        compte['premier_acces'] = {'empreinte': empreinte_jeton(jeton), 'expire_le': expire_le}
+        ecrire_comptes(config, comptes)
+    ecrire_journal_acces(config, compte['identifiant'], origine[0], origine[1], 'invitation', origine[2])
+    return jeton, expire_le
+
+
+def compte_du_premier_acces(comptes, jeton, maintenant):
+    """Le compte de ce jeton de QR, s'il sert encore (actif, mot de passe pas encore choisi, pas expiré), sinon None."""
+    if not isinstance(jeton, str) or not MOTIF_JETON.fullmatch(jeton):
+        return None
+    cle = empreinte_jeton(jeton)
+    for compte in comptes:
+        premier = compte.get('premier_acces')
+        if (isinstance(premier, dict) and hmac.compare_digest(str(premier.get('empreinte', '')), cle)
+                and compte.get('actif') and compte.get('a_changer')
+                and maintenant <= secondes_de(premier.get('expire_le'))):
+            return compte
+    return None
+
+
+def lire_premier_acces(config, jeton):
+    """Prénom, nom et identifiant du compte de ce QR (ce que la personne voit avant de choisir son mot de passe) ;
+    ErreurHttp 401 au même message pour un jeton inconnu, expiré, déjà servi ou d'un compte désactivé."""
+    with VERROU_ACCES:
+        compte = compte_du_premier_acces(lire_comptes(config), jeton, maintenant_s(config))
+    if compte is None:
+        raise ErreurHttp(401, MESSAGE_PREMIER_ACCES_REFUSE)
+    return {'identifiant': compte['identifiant'], 'prenom': compte.get('prenom', ''), 'nom': compte.get('nom', '')}
+
+
+def choisir_premier_mot_de_passe(config, jeton, nouveau, origine=('', '', '')):
+    """Le mot de passe choisi par la personne qui a flashé le QR (règles de verifier_mot_de_passe_choisi) : vérifié,
+    écrit et le jeton effacé sous un seul verrou (usage unique, même pour deux envois croisés) ; les autres sessions
+    du compte fermées ; une ligne « modification » au journal. Rend le compte. 401 si le jeton ne sert plus."""
+    verifier_mot_de_passe_choisi(nouveau)
+    with VERROU_ACCES:
+        comptes = lire_comptes(config)
+        compte = compte_du_premier_acces(comptes, jeton, maintenant_s(config))
+        if compte is None:
+            raise ErreurHttp(401, MESSAGE_PREMIER_ACCES_REFUSE)
+        compte['algo'], compte['sel'], compte['empreinte'] = hacher_mot_de_passe(nouveau)
+        compte['a_changer'] = False
+        compte.pop('premier_acces', None)
+        compte['modifie_le'] = compte['mot_de_passe_le'] = maintenant_iso(config)
+        ecrire_comptes(config, comptes)
+    fermer_sessions_apres_changement(config, compte['identifiant'])
+    ecrire_journal_acces(config, compte['identifiant'], origine[0], origine[1], 'modification', origine[2])
+    return compte
 
 
 def modifier_compte(config, identifiant, origine=('', '', ''), **champs):
@@ -3429,11 +3526,12 @@ def ecrire_table(config, table, entete, lignes):
     ecrire_fichier_de_donnees(config, table, ecrire_tableau_csv(entete, lignes), sauvegarde_du_jour=True)
 
 
-def technicien_moi(config, prenom, nom, exclus=()):
+def technicien_moi(config, prenom, nom, exclus=(), metier=''):
     """Technicien de la personne seule (D132, §22.11) : celui de techniciens.csv qui porte déjà ce prénom et ce nom
     (actif ; casse et accents ignorés), sinon une ligne nouvelle (TEC-nnnn suivant, métier vide, actif), les colonnes
     du fichier gardées telles quelles. Rend son identifiant. En tenant VERROU_ECRITURE. L06 (lot 2) : exclus, les
-    fiches déjà liées à un autre compte (jamais deux comptes sur une même fiche)."""
+    fiches déjà liées à un autre compte (jamais deux comptes sur une même fiche). L05 : metier, écrit sur une ligne
+    nouvelle seulement (une fiche existante n'est jamais modifiée)."""
     octets = lire_octets(chemin_table(config, 'techniciens'))
     entete, lignes = lire_tableau('techniciens', octets)
     if not entete:
@@ -3462,6 +3560,8 @@ def technicien_moi(config, prenom, nom, exclus=()):
     nouvelle = [''] * len(entete)
     nouvelle[colonnes['id']], nouvelle[colonnes['nom']], nouvelle[colonnes['prenom']] = identifiant, nom, prenom
     nouvelle[colonnes['actif']] = '1'
+    if metier and 'metier' in cles:
+        nouvelle[cles.index('metier')] = metier
     ecrire_table(config, 'techniciens', entete, lignes + [nouvelle])
     return identifiant
 
@@ -7072,6 +7172,7 @@ ROUTES_API = {
     ('POST', 'erreur-ecran'): 'api_erreur_ecran',
     ('GET', 'diagnostic'): 'api_diagnostic',
     ('POST', 'enroler'): 'api_enroler',
+    ('POST', 'premier-acces'): 'api_premier_acces',               # L05 : QR de premier accès (route publique)
     ('GET', 'acces/invitations'): 'api_invitations',
     ('POST', 'acces/invitations'): 'api_invitation_creer',
     ('POST', 'acces/invitations/<id>/revoquer'): 'api_invitation_revoquer',
@@ -7092,7 +7193,8 @@ ROUTES_API = {
     ('POST', 'installation/<etape>'): 'api_installation_ecrire',
 }
 # Ouvertes sans session : le navigateur détecte le serveur (/api/ping) et demande qui il est avant toute connexion.
-ROUTES_PUBLIQUES = (('GET', 'ping'), ('GET', 'session'), ('POST', 'connexion'), ('POST', 'enroler'))
+ROUTES_PUBLIQUES = (('GET', 'ping'), ('GET', 'session'), ('POST', 'connexion'), ('POST', 'enroler'),
+                    ('POST', 'premier-acces'))
 # Seules routes d'une session au mot de passe provisoire (« a_changer ») : 403 partout ailleurs.
 ROUTES_MOT_DE_PASSE_PROVISOIRE = (('GET', 'session'), ('POST', 'mot-de-passe'), ('POST', 'deconnexion'))
 # Motifs à essayer : les chemins fixes avant ceux qui ont un segment variable.
@@ -7213,8 +7315,11 @@ ROLES_PAR_ROUTE = {
     ('POST', 'erreur-ecran'): TOUS,             # T547 (L34) : chacun envoie, le responsable seul lit le journal
     ('GET', 'diagnostic'): RESPONSABLE,         # T547 (L34) : fichier de diagnostic (sans comptes : ce PC, Q5)
     ('POST', 'enroler'): TOUS,
+    ('POST', 'premier-acces'): TOUS,            # L05 : route publique, le jeton du QR décide
     ('GET', 'acces/invitations'): RESPONSABLE,
-    ('POST', 'acces/invitations'): RESPONSABLE,
+    # L05 : le technicien invite un opérateur (téléphone, pas un poste de déclaration : api_invitation_creer) ; ni la
+    # liste des invitations et des appareils, ni les comptes, ni le journal des connexions.
+    ('POST', 'acces/invitations'): INTERVENANTS,
     ('POST', 'acces/invitations/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/<id>/revoquer'): RESPONSABLE,
     ('POST', 'acces/appareils/revoquer-tous'): RESPONSABLE,
@@ -8051,7 +8156,11 @@ def controle_d_ajout(identite, table, config=None):
 # --- Comptes gérés par le responsable (GET/POST /api/acces/comptes…, §22.4) ----------------------------------------
 
 CHAMPS_COMPTE_MODIFIABLES = ('prenom', 'nom', 'role', 'technicien_id', 'langue')       # langue : T298
-ACTIONS_COMPTE = ('modifier', 'reinitialiser', 'desactiver', 'activer')
+ACTIONS_COMPTE = ('modifier', 'reinitialiser', 'desactiver', 'activer', 'qr')       # qr : L05
+# L05 : rôles d'un compte créé « par QR » (la personne choisit son mot de passe en flashant le QR) ; les opérateurs
+# sont invités par l'invitation d'un appareil (POST /api/acces/invitations).
+ROLES_PAR_QR = ('technicien', 'direction')
+LONGUEUR_MAX_METIER = 60
 
 
 def technicien_existe(config, technicien_id):
@@ -8580,6 +8689,31 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                           {'Set-Cookie': entete_cookie_session(jeton, self.en_https(), DUREE_APPAREIL_JOURS * 86400,
                                                                NOM_COOKIE_APPAREIL)})
 
+    def api_premier_acces(self, segment, corps):
+        """POST /api/premier-acces (route publique, L05) : {jeton} → le prénom, le nom et l'identifiant du compte du QR
+        (rien n'est changé) ; {jeton, nouveau} → le mot de passe choisi (choisir_premier_mot_de_passe : 12 caractères
+        au moins, jeton à usage unique), puis une session ouverte pour ce compte (sans « rester connecté »), comme une
+        connexion. 401 au même message pour un jeton qui ne sert plus ; 400 corps ou mot de passe refusé."""
+        self.exiger_comptes()
+        demande = lire_objet_json(corps)
+        jeton, nouveau = demande.get('jeton'), demande.get('nouveau')
+        if set(demande) - {'jeton', 'nouveau'} or not isinstance(jeton, str) or not isinstance(nouveau, (str, type(None))):
+            raise ErreurHttp(400, traduisible('comptes.premier_acces_champs',
+                                              'Premier accès : « jeton » (texte) est attendu, et « nouveau » (texte) '
+                                              'pour choisir le mot de passe.'))
+        if nouveau is None:
+            self.envoyer_json(200, {'compte': lire_premier_acces(self.config, jeton)})
+            return
+        origine = self.origine()
+        try:
+            compte = choisir_premier_mot_de_passe(self.config, jeton, nouveau, origine)
+        except ErreurCompte as erreur:
+            raise ErreurHttp(400, traduisible_de(erreur))
+        if self.session is not None and not self.session.get('appareil'):
+            fermer_session(self.config, self.session['cle'])
+        ecrire_journal_acces(self.config, compte['identifiant'], origine[0], origine[1], 'connexion', origine[2])
+        self.repondre_avec_session(compte, False)
+
     def api_deconnecter_partout(self, segment, corps):
         """POST /api/acces/deconnecter-partout : sans corps (ou {}), toutes les sessions de la personne connectée, la
         sienne comprise ; {"identifiant": X} pour un autre compte : responsable seulement (403), 404 compte inconnu."""
@@ -8614,14 +8748,33 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         """POST /api/acces/comptes (responsable) {prenom, nom, role, technicien_id, langue, autre_personne} : compte créé
         avec un mot de passe provisoire de 16 caractères, à changer à la première connexion (a_changer), rendu une seule
         fois dans la réponse : jamais écrit dans un fichier, le journal ou la console. T301 : même prénom et même nom
-        qu'un compte existant → 400 comptes.meme_personne, sauf autre_personne vrai. T298 : langue facultative."""
+        qu'un compte existant → 400 comptes.meme_personne, sauf autre_personne vrai. T298 : langue facultative.
+        L05 : « nouvelle_fiche » vrai (technicien seulement, sans technicien_id) : sa fiche de technicien est créée avec
+        le compte (celle qui porte déjà ce prénom et ce nom, sans compte, sinon une ligne nouvelle avec « metier ») ;
+        « qr » vrai (technicien ou Direction) : aucun mot de passe rendu, le chemin d'un QR de premier accès à la place
+        (chemin, expire_le : poser_premier_acces)."""
         self.exiger_comptes()
         demande = lire_objet_json(corps)
         autre_personne = demande.pop('autre_personne', False)       # T301 : case « C'est une autre personne »
-        if not isinstance(autre_personne, bool):
+        nouvelle_fiche, par_qr = demande.pop('nouvelle_fiche', False), demande.pop('qr', False)
+        metier = demande.pop('metier', '')
+        if not all(isinstance(valeur, bool) for valeur in (autre_personne, nouvelle_fiche, par_qr)):
             raise ErreurHttp(400, traduisible('comptes.autre_personne_booleen',
                                               '« autre_personne » vaut vrai ou faux.'))
+        if not isinstance(metier, str) or len(metier.strip()) > LONGUEUR_MAX_METIER or (metier.strip() and not nouvelle_fiche):
+            raise ErreurHttp(400, traduisible('comptes.metier_invalide',
+                                              '« metier » : un texte de {n} caractères au plus, avec une fiche '
+                                              'nouvelle seulement.', n=LONGUEUR_MAX_METIER))
         champs = champs_de_compte(self.config, demande, obligatoires=('prenom', 'role'))
+        if nouvelle_fiche and (champs['role'] != 'technicien' or champs.get('technicien_id')):
+            raise ErreurHttp(400, traduisible('comptes.nouvelle_fiche_technicien',
+                                              'Une fiche nouvelle se crée pour un compte de technicien, sans '
+                                              'technicien lié.'))
+        if par_qr and champs['role'] not in ROLES_PAR_QR:
+            raise ErreurHttp(400, traduisible('comptes.qr_roles',
+                                              'Un compte par QR est un compte de technicien ou de Direction.'))
+        if nouvelle_fiche:
+            champs['technicien_id'] = self.fiche_pour_le_compte(champs, metier.strip(), autre_personne)
         provisoire = mot_de_passe_provisoire()
         try:
             compte = creer_compte(self.config, champs['prenom'], champs.get('nom', ''), champs['role'], provisoire,
@@ -8629,9 +8782,33 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
                                   origine=self.origine(), autre_personne=autre_personne,
                                   langue=champs.get('langue', ''))
             compte = self.relier_fiche_si_responsable(compte)
+            if par_qr:
+                jeton, expire_le = poser_premier_acces(self.config, compte['identifiant'], self.origine())
         except ErreurCompte as erreur:
             raise ErreurHttp(400, traduisible_de(erreur))
+        if par_qr:
+            compte = compte_public(trouver_compte(comptes_du_serveur(self.config), compte['identifiant']))
+            self.envoyer_json(200, {'compte': compte, 'chemin': CHEMIN_PREMIER_ACCES + jeton, 'expire_le': expire_le})
+            return
         self.envoyer_json(200, {'compte': compte, 'mot_de_passe_provisoire': provisoire})
+
+    def fiche_pour_le_compte(self, champs, metier, autre_personne):
+        """L05 : fiche de technicien du compte à créer (technicien_moi : celle qui porte ce prénom et ce nom sans être
+        liée à un compte, sinon une ligne nouvelle avec son métier). Le refus « même personne » (T301) est dit AVANT
+        d'écrire la fiche ; lecture seule (D169) : 409."""
+        comptes = comptes_du_serveur(self.config)
+        meme = None if autre_personne else meme_personne(comptes, champs['prenom'], champs.get('nom', ''))
+        if meme is not None:
+            raise ErreurHttp(400, traduisible('comptes.meme_personne',
+                                              'Un compte existe déjà pour {personne} : « {identifiant} ». Réactivez-le '
+                                              'ou donnez un autre nom ; si c\'est une autre personne, cochez « C\'est '
+                                              'une autre personne ».',
+                                              personne=(champs['prenom'] + ' ' + champs.get('nom', '')).strip(),
+                                              identifiant=meme['identifiant']))
+        verifier_ecriture_permise(self.config)
+        exclus = {c.get('technicien_id') for c in comptes if c.get('technicien_id')}
+        with VERROU_ECRITURE:
+            return technicien_moi(self.config, champs['prenom'], champs.get('nom', ''), exclus=exclus, metier=metier)
 
     def relier_fiche_si_responsable(self, compte):
         """L06 : après une création ou un changement par Équipe › Accès, un responsable actif sans fiche reçoit la
@@ -8667,7 +8844,11 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             champs['technicien_id'] = ''
         reponse = {}
         try:
-            if action == 'reinitialiser':
+            if action == 'qr':                          # L05 : nouveau QR de premier accès (l'ancien ne sert plus)
+                jeton, reponse['expire_le'] = poser_premier_acces(self.config, cible['identifiant'], self.origine())
+                reponse['chemin'] = CHEMIN_PREMIER_ACCES + jeton
+                compte = compte_public(trouver_compte(comptes_du_serveur(self.config), cible['identifiant']))
+            elif action == 'reinitialiser':
                 reponse['mot_de_passe_provisoire'] = reinitialiser_compte(self.config, cible['identifiant'],
                                                                           origine=self.origine())
                 compte = compte_public(trouver_compte(comptes_du_serveur(self.config), cible['identifiant']))
@@ -8738,6 +8919,10 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         poste = demande.get('poste', False)
         if not isinstance(poste, bool):
             raise ErreurHttp(400, traduisible('appareils.poste_booleen', '« poste » : vrai ou faux est attendu.'))
+        if poste and role_effectif(self.session) != 'responsable':
+            # L05 : le technicien invite un opérateur (son téléphone), jamais un poste de déclaration.
+            raise ErreurHttp(403, traduisible('appareils.poste_responsable',
+                                              'Un poste de déclaration est invité par le responsable.'))
         jeton, invitation = creer_invitation(self.config, demande.get('heures'), poste)
         adresse, agent, tailscale = self.origine()
         ecrire_journal_acces(self.config, self.session['identifiant'], adresse, agent, 'invitation', tailscale)

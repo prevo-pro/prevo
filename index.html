@@ -274,6 +274,7 @@
 
     <!-- Mot de passe provisoire : à choisir avant tout (POST /api/mot-de-passe) -->
     <form id="connexion-mot-de-passe-panneau" class="carte form-colonne connexion-panneau" novalidate hidden>
+      <p id="connexion-premier-qui" hidden></p>
       <p class="note connexion-regles" data-i18n="socle.connexion_mot_de_passe_panneau.12_caracteres_moins_256">12 caractères au moins, 256 au plus, aucune règle de composition : une phrase de passe de plusieurs mots est conseillée.</p>
       <div class="champ">
         <label class="libelle" for="connexion-actuel" data-i18n="socle.connexion_mot_de_passe_panneau.mot_passe_actuel_provisoire">Mot de passe actuel (provisoire)</label>
@@ -467,6 +468,7 @@
 <script src="js/modules/equipe-ecrans.js"></script>
 <script src="js/modules/equipe-habilitations.js"></script>
 <script src="js/modules/equipe-acces.js"></script>
+<script src="js/modules/equipe-utilisateurs.js"></script>
 <script src="js/modules/controles-regles.js"></script>
 <script src="js/modules/controles-reserves.js"></script>
 <script src="js/modules/controles-catalogue.js"></script>
