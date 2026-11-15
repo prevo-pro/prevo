@@ -6,7 +6,8 @@ de la même façon (Ordres.cout, indicateurs, bilan) ; sans prix, elle est « no
 Le technicien saisit désignation et quantité, jamais de prix (D126 : le serveur le lui cache) ; le responsable oui.
     coût        mois d'essai de tests/test_rapport_bilan_mois.py (173,50 € chiffrés) plus deux pièces hors magasin :
                 2 courroies à 12,50 € sur OT-2026-0001 (+ 25 €) et 1 joint spi sans prix sur OT-2026-0003 (manque) ;
-    saisie      onglet Exécution de l'OT (responsable avec prix, technicien sans le champ) ; fenêtre de clôture unique.
+    saisie      onglet Exécution de l'OT (responsable avec prix, technicien sans le champ) ; fenêtre de clôture unique ;
+    liste       Magasin > « Hors magasin » du responsable : prix, « Créer l'article » pré-rempli, ligne reliée (traitée).
 
 Lancer depuis la racine du projet (navigateur : au travers du verrou) :
     py -X utf8 -m unittest discover -s tests -p "test_hors_magasin_l25.py" -v
@@ -165,6 +166,67 @@ class TestFenetreDeCloture(CasOt):
         page.wait_for_function("(id) => Donnees.trouver('ordres_travail', id).statut === 'Clôturé techniquement'", arg=OT)
         self.assertEqual(self.lignes_hors_magasin(page),
                          [{"article_id": "", "designation": "Courroie SPA 1250", "quantite": "1", "prix_unitaire": "12.5"}])
+
+
+class TestListeDuResponsable(CasOt):
+    """Point 2 : Magasin > « Hors magasin » (responsable) : à traiter en tête, « Saisir le prix », « Créer l'article »
+    pré-rempli ; l'article créé est relié à la ligne (traitée), qui reste hors du stock."""
+
+    NOTER = """(id) => Magasin.noterHorsMagasin(id, { designation: 'Courroie SPA 1250', quantite: '2', prix: '' })"""
+
+    def test_creer_l_article_depuis_la_liste(self):
+        page = self.ouvrir_demo("responsable")
+        page.evaluate(self.NOTER, OT)
+        page.evaluate("location.hash = '#/magasin?onglet=hors-magasin'")
+        page.wait_for_selector(".magasin-hors-magasin a.magasin-hm-creer")
+        self.assertIn("1 pièce à traiter", page.inner_text(".magasin-compteur"))
+        self.assertIn("non chiffré", page.inner_text(".magasin-hors-magasin"))
+        # Prix saisi dans la liste
+        page.click(".magasin-hors-magasin button.magasin-hm-prix")
+        page.fill("dialog [name='prix']", "12,5")
+        page.click("dialog .fenetre-actions .btn-primaire")
+        page.wait_for_function("() => Donnees.lignes('mouvements_stock').some((m) => m.type === 'hors magasin' && m.prix_unitaire === '12.5')")
+        # « Créer l'article » : désignation et prix pré-remplis
+        page.wait_for_selector(".magasin-hors-magasin a.magasin-hm-creer")
+        page.click(".magasin-hors-magasin a.magasin-hm-creer")
+        page.wait_for_selector("#form-article [name='designation']")
+        self.assertEqual(page.input_value("#form-article [name='designation']"), "Courroie SPA 1250")
+        self.assertIn("12", page.input_value("#form-article [name='prix_unitaire']"))
+        self.assertIn(OT, page.inner_text(".magasin-depuis-hors-magasin"))
+        page.fill("#form-article [name='reference']", "CRO-SPA1250")
+        page.click("#form-article button[type=submit]")
+        page.wait_for_function("() => location.hash === '#/magasin?onglet=hors-magasin'")
+        ligne = page.evaluate("() => Donnees.lignes('mouvements_stock').find((m) => m.type === 'hors magasin')")
+        article = page.evaluate("(id) => Donnees.trouver('articles', id)", ligne["article_id"])
+        self.assertEqual((article["reference"], article["designation"]), ("CRO-SPA1250", "Courroie SPA 1250"))
+        self.assertEqual(ligne["prix_unitaire"], "12.5")
+        # Traitée : plus de bouton, lien vers l'article ; le stock de l'article nouveau reste 0 ; le coût ne change pas.
+        page.wait_for_selector(".magasin-hors-magasin a[href^='#/magasin/article/ART-']")
+        self.assertEqual(page.locator(".magasin-hors-magasin a.magasin-hm-creer").count(), 0)
+        self.assertIn("0 pièce à traiter", page.inner_text(".magasin-compteur"))
+        self.assertEqual(page.evaluate("(id) => Donnees.stockArticle(id)", ligne["article_id"]), 0)
+        self.assertAlmostEqual(page.evaluate("(id) => Ordres.cout(Donnees.trouver('ordres_travail', id)).detail.pieces"
+                                             ".filter((p) => p.horsMagasin)[0].montant", OT), 25, places=2)
+
+    def test_prix_de_l_article_repris_si_la_piece_n_en_avait_pas(self):
+        page = self.ouvrir_demo("responsable")
+        page.evaluate(self.NOTER, OT)
+        mvt = page.evaluate("() => Donnees.lignes('mouvements_stock').find((m) => m.type === 'hors magasin').id")
+        page.evaluate("location.hash = %r" % ("#/magasin/article/nouveau?hors=" + mvt))
+        page.wait_for_selector("#form-article [name='designation']")
+        page.fill("#form-article [name='reference']", "CRO-SPA1250")
+        page.fill("#form-article [name='prix_unitaire']", "11")
+        page.click("#form-article button[type=submit]")
+        page.wait_for_function("() => location.hash === '#/magasin?onglet=hors-magasin'")
+        ligne = page.evaluate("() => Donnees.lignes('mouvements_stock').find((m) => m.type === 'hors magasin')")
+        self.assertTrue(ligne["article_id"].startswith("ART-"))
+        self.assertEqual(ligne["prix_unitaire"], "11")
+
+    def test_onglet_reserve_au_responsable(self):
+        page = self.ouvrir_demo("technicien", "TEC-0001")
+        page.evaluate("location.hash = '#/magasin'")
+        page.wait_for_selector(".magasin-onglets .onglet")
+        self.assertNotIn("Hors magasin", " ".join(page.locator(".magasin-onglets .onglet").all_inner_texts()))
 
 
 if __name__ == "__main__":

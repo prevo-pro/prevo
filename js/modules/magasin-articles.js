@@ -173,6 +173,8 @@ Object.assign(Magasin, (() => {
       { id: 'articles', libelle: I18n.t('magasin.onglets_du_profil.articles') },
       { id: 'mouvements', libelle: I18n.t('magasin.onglets_du_profil.mouvements') },
       App.estResponsable() && { id: 'inventaire', libelle: I18n.t('magasin.onglets_du_profil.inventaire') },
+      App.estResponsable() && { id: 'hors-magasin', libelle: I18n.t('magasin.onglets_du_profil.hors_magasin'),         // L25
+        compteur: Donnees.lignes('mouvements_stock').filter((m) => m.type === 'hors magasin' && !texte(m.article_id)).length },
       { id: 'a-commander', libelle: I18n.t('magasin.badges_article.commander'), compteur: Magasin.aCommander().length },
       { id: 'achats', libelle: I18n.t('magasin.onglets_du_profil.achats'), compteur: enCours },
       { id: 'fournisseurs', libelle: I18n.t('magasin.onglets_du_profil.fournisseurs') },
@@ -184,6 +186,7 @@ Object.assign(Magasin, (() => {
     articles: (panneau, requete) => afficherOngletArticles(panneau, requete),
     mouvements: (panneau, requete) => Magasin.interne.afficherOngletMouvements(panneau, requete),
     inventaire: (panneau) => Magasin.interne.afficherOngletInventaire(panneau),
+    'hors-magasin': (panneau) => Magasin.interne.afficherOngletHorsMagasin(panneau),
     'a-commander': (panneau) => Magasin.interne.afficherOngletACommander(panneau),
     achats: (panneau, requete) => Magasin.interne.afficherOngletAchats(panneau, requete),
     fournisseurs: (panneau) => Magasin.interne.afficherOngletFournisseurs(panneau),
@@ -397,9 +400,11 @@ Object.assign(Magasin, (() => {
 
   /** Formulaire d'un article (création si `article` est null) ; le responsable l'affiche, le technicien pour une
    *  création seulement quand le réglage le permet (L25 : sans stock initial, qui serait un inventaire). */
-  function formulaireArticle(article) {
+  function formulaireArticle(article, horsMagasin) {
     const formulaire = UI.element(UI.html`<form class="form-grille" id="form-article" novalidate></form>`);
-    const valeur = (nom) => (article ? article[nom] : undefined);
+    // L25 : création depuis une pièce hors magasin, pré-remplie (désignation, prix).
+    const prerempli = horsMagasin ? { designation: horsMagasin.designation, prix_unitaire: horsMagasin.prix_unitaire } : {};
+    const valeur = (nom) => (article ? article[nom] : prerempli[nom]);
     const ajouter = (bloc, large) => { if (large) bloc.classList.add('large'); formulaire.appendChild(bloc); return bloc; };
     const champ = (nom, options) => ajouter(UI.champ(definitionChamp('articles', nom), valeur(nom), options));
     champ('reference', { aide: I18n.t('magasin.formulaire_article.unique_parmi_articles_actifs'), attributs: { maxlength: '40' } });
@@ -432,11 +437,11 @@ Object.assign(Magasin, (() => {
         UI.toast(I18n.t('magasin.formulaire_article.suggestion_reprise_cliquez_enregistrer'), 'info');
       });
     }
-    formulaire.addEventListener('submit', (evenement) => { evenement.preventDefault(); enregistrerArticle(formulaire, article); });
+    formulaire.addEventListener('submit', (evenement) => { evenement.preventDefault(); enregistrerArticle(formulaire, article, horsMagasin); });
     return formulaire;
   }
 
-  async function enregistrerArticle(formulaire, article) {
+  async function enregistrerArticle(formulaire, article, horsMagasin) {
     const bouton = UI.$('button[type=submit]', formulaire);
     if (bouton.disabled) return;
     const valeurs = lireChamps(formulaire);
@@ -460,6 +465,13 @@ Object.assign(Magasin, (() => {
       }
       const id = await Magasin.creerArticle(valeurs);
       if (stockInitial) await Magasin.inventorier([{ articleId: id, quantite: stockInitial }], I18n.donnees('magasin.formulaire_article.stock_initial'));   // commentaire du mouvement (D156)
+      if (horsMagasin) {          // L25 : la pièce est reliée à l'article (traitée) ; son prix vide prend celui saisi ici
+        await Magasin.completerHorsMagasin(horsMagasin.id, { articleId: id, prix: texte(horsMagasin.prix_unitaire) ? undefined : texte(valeurs.prix_unitaire) });
+        App.marquerSaisie(false);
+        UI.toast(I18n.t('magasin.onglet_hors_magasin.article_cree_relie'), 'succes');
+        App.naviguer('#/magasin?onglet=hors-magasin');
+        return;
+      }
       App.marquerSaisie(false);
       UI.toast(I18n.t('magasin.enregistrer_article.article_cree'), 'succes');
       App.naviguer('#/magasin/article/' + encodeURIComponent(id));
@@ -593,7 +605,7 @@ Object.assign(Magasin, (() => {
   }
 
   // L25 (T541) : écran ouvert au technicien (route), mais sans le réglage il ne montre que le refus.
-  function afficherNouvelArticle(conteneur) {
+  function afficherNouvelArticle(conteneur, parametres) {
     App.definirTitre(I18n.t('magasin.magasin.nouvel_article'));
     if (!Magasin.peutCreerArticle()) {
       UI.remplir(conteneur, UI.html`<div class="magasin"><div class="entete-page"><div><div class="fil">${I18n.html('magasin.nouvel_article.magasin_nouvel_article')}</div>
@@ -606,7 +618,13 @@ Object.assign(Magasin, (() => {
       <div class="entete-page"><div><div class="fil">${I18n.html('magasin.nouvel_article.magasin_nouvel_article')}</div>
         <h1>${I18n.t('magasin.magasin.nouvel_article')}</h1><p>${I18n.t(aide)}</p></div></div>
       <article class="carte magasin-zone-article"></article></div>`);
-    UI.$('.magasin-zone-article', conteneur).appendChild(formulaireArticle(null));
+    const hors = parametres && parametres.requete ? parametres.requete.get('hors') : '';
+    const horsMagasin = hors && App.estResponsable() ? Donnees.lignes('mouvements_stock')
+      .find((m) => m.id === hors && m.type === 'hors magasin' && !texte(m.article_id)) : null;
+    if (horsMagasin) {
+      UI.$('.magasin-zone-article', conteneur).appendChild(UI.element(UI.html`<p class="note magasin-depuis-hors-magasin">${I18n.t('magasin.onglet_hors_magasin.depuis_piece', { designation: horsMagasin.designation, otId: horsMagasin.ot_id })}</p>`));
+    }
+    UI.$('.magasin-zone-article', conteneur).appendChild(formulaireArticle(null, horsMagasin));
   }
 
   // Outils et écrans prêtés aux fichiers suivants du module (usage interne).

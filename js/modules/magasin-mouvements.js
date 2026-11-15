@@ -54,7 +54,7 @@ Object.assign(Magasin, (() => {
     return [
       { cle: 'date', libelle: I18n.t('commun.champ.date'), classe: 'sans-coupure', rendu: (m) => UI.dateHeureFr(m.date) },
       { cle: 'article_id', libelle: I18n.t('commun.champ.article'), valeurTri: (m) => texte((articleDe(m) || {}).reference),
-        rendu: (m) => (articleDe(m) ? UI.html`${lienArticle(articleDe(m))} <span class="muted">${articleDe(m).designation}</span>` : m.article_id) },
+        rendu: (m) => (articleDe(m) ? UI.html`${lienArticle(articleDe(m))} <span class="muted">${articleDe(m).designation}</span>` : m.designation || m.article_id) },
       { cle: 'type', libelle: I18n.t('magasin.colonnes_mouvements.type'), rendu: (m) => badgeMouvement(m.type) },
       { cle: 'quantite', libelle: I18n.t('commun.champ.quantite'), type: 'nombre', rendu: (m) => UI.nombreFr(m.quantite) },
       { cle: 'ot_id', libelle: I18n.t('magasin.colonnes_mouvements.ot'), classe: 'sans-coupure', rendu: (m) => lienOt(m.ot_id) },
@@ -229,6 +229,66 @@ Object.assign(Magasin, (() => {
   }
 
   // ===========================================================================================
+  // 12 bis. Onglet « Hors magasin » (responsable, L25) : pièces notées sur les OT hors du magasin, à traiter en tête ;
+  // « Saisir le prix » ; « Créer l'article » ouvre la création pré-remplie, et l'article créé est relié à la ligne
+  // (article_id rempli = traitée ; la ligne reste hors du stock et garde son prix dans le coût de l'OT).
+  // ===========================================================================================
+
+  const traitee = (m) => Boolean(texte(m.article_id));
+
+  function colonnesHorsMagasin() {
+    const prix = (m) => (texte(m.prix_unitaire) === '' ? I18n.t('ordres.cout.prix_non_saisi') : UI.euro(Donnees.nombre(m.prix_unitaire) || 0));
+    return [
+      { cle: 'date', libelle: I18n.t('commun.champ.date'), classe: 'sans-coupure', rendu: (m) => UI.dateHeureFr(m.date) },
+      { cle: 'ot_id', libelle: I18n.t('magasin.colonnes_mouvements.ot'), classe: 'sans-coupure', rendu: (m) => lienOt(m.ot_id) },
+      { cle: 'designation', libelle: I18n.t('commun.champ.designation') },
+      { cle: 'quantite', libelle: I18n.t('commun.champ.quantite'), type: 'nombre', rendu: (m) => UI.nombreFr(m.quantite) },
+      { cle: 'prix_unitaire', libelle: I18n.t('commun.champ.prix_unitaire'), rendu: (m) => UI.html`${prix(m)}
+        <button type="button" class="lien-bouton magasin-hm-prix" data-mouvement="${m.id}">${I18n.t('ordres.hors_magasin.saisir_prix')}</button>` },
+      { cle: 'utilisateur', libelle: I18n.t('magasin.colonnes_mouvements.par') },
+      { cle: 'article_id', libelle: I18n.t('commun.champ.article'), rendu: (m) => (traitee(m)
+        ? (Donnees.trouver('articles', m.article_id) ? lienArticle(Donnees.trouver('articles', m.article_id)) : m.article_id)
+        : UI.html`<a class="btn btn-secondaire magasin-hm-creer" href="#/magasin/article/nouveau?hors=${encodeURIComponent(m.id)}">${UI.icone('ajouter')}${I18n.t('magasin.onglet_hors_magasin.creer_article')}</a>`) },
+    ];
+  }
+
+  function carteHorsMagasin(m) {
+    const colonnes = colonnesHorsMagasin();
+    const cellule = (cle) => colonnes.find((c) => c.cle === cle).rendu(m);
+    return UI.html`<div class="carte-ligne">
+      <div class="carte-tete"><b>${m.designation}</b>${lienOt(m.ot_id)}</div>
+      <div class="carte-meta">${I18n.html('magasin.carte_mouvement.date_quantite_quantite', { date: UI.dateHeureFr(m.date), quantite: UI.nombreFr(m.quantite) })}
+        ${m.utilisateur ? UI.html`<span>${m.utilisateur}</span>` : ''}</div>
+      <div class="carte-meta">${cellule('prix_unitaire')}</div><div class="carte-meta">${cellule('article_id')}</div></div>`;
+  }
+
+  function afficherOngletHorsMagasin(panneau) {
+    const lignes = Donnees.lignes('mouvements_stock').filter((m) => m.type === 'hors magasin')
+      .sort((a, b) => Number(traitee(a)) - Number(traitee(b)) || texte(b.date).localeCompare(texte(a.date)));
+    const aTraiter = lignes.filter((m) => !traitee(m)).length;
+    UI.remplir(panneau, UI.html`<p class="note">${I18n.t('magasin.onglet_hors_magasin.aide')}</p>
+      <p class="note magasin-compteur" role="status">${I18n.t('magasin.onglet_hors_magasin.a_traiter', { n: aTraiter })}</p>
+      <div class="carte magasin-liste magasin-hors-magasin"></div>`);
+    UI.remplir(UI.$('.magasin-liste', panneau), listeAdaptative({
+      colonnes: colonnesHorsMagasin(), lignes, carte: carteHorsMagasin, libelle: I18n.t('ordres.hors_magasin.titre'),
+      vide: I18n.t('magasin.onglet_hors_magasin.vide'),
+    }));
+    panneau.addEventListener('click', (evenement) => {
+      const bouton = evenement.target.closest('button.magasin-hm-prix');
+      const ligne = bouton && lignes.find((m) => m.id === bouton.dataset.mouvement);
+      if (ligne) saisirPrixHorsMagasin(ligne);
+    });
+  }
+
+  async function saisirPrixHorsMagasin(ligne) {
+    const champs = [UI.champ({ nom: 'prix', type: 'decimal', libelle: I18n.t('ordres.hors_magasin.prix_de', { designation: ligne.designation }) },
+      texte(ligne.prix_unitaire).replace('.', ','))];
+    const id = await fenetreSaisie({ titre: I18n.t('ordres.hors_magasin.saisir_prix'), champs,
+      action: (valeurs) => Magasin.completerHorsMagasin(ligne.id, { prix: texte(valeurs.prix) }) });
+    if (id) await apresEcriture(I18n.t('magasin.onglet_hors_magasin.prix_enregistre'));
+  }
+
+  // ===========================================================================================
   // 13. Fenêtre « Entrée en stock » (fiche article, responsable)
   // ===========================================================================================
 
@@ -247,7 +307,7 @@ Object.assign(Magasin, (() => {
   }
 
   // Outils prêtés aux autres fichiers du module (usage interne).
-  Object.assign(Magasin.interne, { badgeMouvement, afficherOngletMouvements, afficherOngletInventaire, ouvrirEntree });
+  Object.assign(Magasin.interne, { badgeMouvement, afficherOngletMouvements, afficherOngletInventaire, afficherOngletHorsMagasin, ouvrirEntree });
 
   return {};
 })());
