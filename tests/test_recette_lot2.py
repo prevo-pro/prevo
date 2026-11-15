@@ -298,7 +298,7 @@ class OutilsLot2:
         page.select_option("#form-compte-rendu [name=remede_code]", remede)
         page.fill("#form-compte-rendu [name=compte_rendu]", "Contrôle mensuel réalisé : tension de bande réglée, rouleaux graissés.")
         page.check("#form-compte-rendu [name=remise_service]")
-        self.avec_toast("^" + re.escape(ot_id + " : Clôturé techniquement."),
+        self.avec_toast("^" + re.escape(ot_id + " : Terminé, à valider."),
                         lambda: self.transition("Clôturé techniquement", "#form-compte-rendu"))
         self.attendre_statut("Clôturé techniquement")
         # L23 (T539) : un message de succès dit la prochaine visite ; aucun avertissement (gamme mise à jour).

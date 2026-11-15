@@ -557,7 +557,7 @@ class TestGamme(CasOrdresLot2):
         la mise à jour de la gamme (Ordres.changerStatut l'attend)."""
         self.onglet("compte-rendu")
         # L23 (T539) : le toast dit ensuite « Prochaine visite : le … » (gamme périodique).
-        self.avec_toast(ot_id + " : Clôturé techniquement.",
+        self.avec_toast(ot_id + " : Terminé, à valider.",
                         lambda: self.transition("Clôturé techniquement", "#form-compte-rendu"), debut=True)
         self.attendre_statut("Clôturé techniquement")
 
@@ -594,7 +594,7 @@ class TestGamme(CasOrdresLot2):
             self.onglet("compte-rendu")
             self.transition("Clôturé techniquement", "#form-compte-rendu")
             self.attendre_statut("Clôturé techniquement")
-            self.attendre_toast_note("^%s : Clôturé techniquement\\. Prochaine visite : le \\d{2}/\\d{2}/\\d{4}\\.$" % ot_id)  # L23
+            self.attendre_toast_note("^%s : Terminé, à valider\\. Prochaine visite : le \\d{2}/\\d{2}/\\d{4}\\.$" % ot_id)  # L23
             self.assertEqual(page.locator("#ot-message .alerte.attention, #ot-message .alerte.important").count(), 0)
             self.assertIn("Prochaine visite : le ", page.inner_text("#ot-message"))
 

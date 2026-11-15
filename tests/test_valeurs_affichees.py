@@ -35,6 +35,15 @@ TYPES_OT = ["correctif immédiat", "correctif différé", "préventif systémati
             "amélioration", "réglementaire"]
 
 
+# P10 (T560) : libellés français affichés pour les valeurs que le français ne montre plus telles que stockées.
+AFFICHE_FR = {"Clôturé techniquement": "Terminé, à valider", "Clôturé administrativement": "Clôturé",
+              "correctif immédiat": "Panne", "correctif différé": "Réparation programmée"}
+
+
+def affiche_fr(valeur):
+    return AFFICHE_FR.get(valeur, valeur)
+
+
 def libelle_essai(valeur):
     """Libellé de la langue d'essai : visible et différent de toute valeur française."""
     return "xx[" + valeur + "]"
@@ -113,7 +122,7 @@ class TestValeursAffichees(CasNavigateur):
         self.assertIn("cyan", self.page.get_attribute(badge, "class"))
         priorite = self.page.evaluate("Donnees.trouver('ordres_travail', %r).priorite" % OT_EN_COURS)
         entete_francais = self.texte(".ot-entete")
-        self.assertIn(type_ot, entete_francais)
+        self.assertIn(affiche_fr(type_ot), entete_francais)
 
         self.choisir_essai()
         self.page.wait_for_function("document.querySelector(%r).textContent === %r" % (badge, libelle_essai("En cours")))
@@ -138,7 +147,8 @@ class TestValeursAffichees(CasNavigateur):
                    for ligne in francais}
         for ligne in francais:
             with self.subTest(ot=ligne["id"], langue="fr"):
-                self.assertEqual((ligne["statut"], ligne["type"]), (donnees[ligne["id"]]["statut"], donnees[ligne["id"]]["type"]))
+                self.assertEqual((ligne["statut"], ligne["type"]),
+                                 (affiche_fr(donnees[ligne["id"]]["statut"]), affiche_fr(donnees[ligne["id"]]["type"])))
         tableau_francais = self.texte(".ot-liste-tableau")
 
         self.choisir_essai()

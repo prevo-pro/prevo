@@ -380,7 +380,7 @@ class TestRecettePompe(CasRecette):
                                arg=REPERE_POMPE)
         page.wait_for_selector("#contenu a[href='#/ot/%s']" % ot_id)
         ligne_historique = page.locator("#contenu tr", has_text=ot_id).first.inner_text()
-        self.assertIn("Clôturé administrativement", ligne_historique)
+        self.assertIn("Clôturé", ligne_historique)
         self.assertIn("P2", ligne_historique)
         return numero, ot_id
 

@@ -490,7 +490,7 @@ class TestDeuxPostes(CasOrdres):
             self.assertEqual(poste_b.evaluate("Ordres.changerStatut(%r, 'En cours', 'Clôturé techniquement')" % OT_P1),
                              "Clôturé techniquement")
             page.click("#form-compte-rendu button[type=submit]")
-            page.wait_for_function("document.getElementById('toast').textContent.includes('Clôturé techniquement')")
+            page.wait_for_function("document.getElementById('toast').textContent.includes('Terminé, à valider')")
             ligne = self.ligne(serveur, "ordres_travail.csv", OT_P1)
             self.assertEqual((ligne["compte_rendu"], ligne["cause_code"]), ("Filtre à huile remplacé, radiateur nettoyé.", "C01"))
             # La clôture administrative reste possible (l'OT est intact) et le compte rendu est le bon

@@ -306,7 +306,11 @@ Object.assign(Ordres, (() => {
     if (ot.statut === 'En attente') return UI.bandeau('attention', UI.html`${I18n.html('ordres.bandeau_etat.attente', { motif: ot.motif_attente || I18n.t('ordres.bandeau_etat.motif_non_renseigne') })}`);
     if (ot.statut === 'Annulé') return UI.bandeau('important', UI.html`${I18n.html('ordres.bandeau_etat.ot_annule_reste_consultable', { motif: ot.motif_annulation || I18n.t('ordres.bandeau_etat.motif_non_renseigne') })}`);
     if (ot.statut === 'Clôturé administrativement') {
-      return UI.bandeau('info', UI.html`${I18n.html('ordres.bandeau_etat.ot_verrouille_cloture_administrativement', { date_cloture_admin: UI.dateHeureFr(ot.date_cloture_admin) })}`);
+      // P10 : « OT clôturé le 16/11/2026 à 05:12. » (sans l'heure si la donnée n'en porte pas)
+      const [date, heure] = UI.dateHeureFr(ot.date_cloture_admin).split(' ');
+      return UI.bandeau('info', UI.html`${heure
+        ? I18n.html('ordres.bandeau_etat.ot_verrouille_cloture_administrativement', { date, heure })
+        : I18n.html('ordres.bandeau_etat.ot_verrouille_cloture_administrativement_sans_heure', { date })}`);
     }
     return null;
   }
