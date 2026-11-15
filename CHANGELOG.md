@@ -114,15 +114,69 @@ listée en fin de section.
   d'une réinitialisation ne va qu'à l'écran.
 - Le taux horaire moyen n'est servi ni au technicien, ni au demandeur, ni à l'appareil.
 
-#### Pas encore fait (livraison 2)
+#### Livraison 2 (même proposition 2.4.0-beta.1)
 
-- La page d'attente du téléphone pendant l'installation (pour l'instant, la fiche dit d'attendre « Terminer »).
-- Les utilisateurs ajoutés par QR, et le technicien qui invite des opérateurs.
-- « Passer la main » et « Journée terminée ».
-- Les habilitations BR, B1, B2, BC, H0, H1, H2 et HC.
-- L'écran de clôture unique, et les clôtures incomplètes.
-- La pièce hors magasin.
-- Le journal des modifications fermé au technicien et à la direction.
+Les frictions du rejeu de la livraison 1 (15/11/2026) ont été reprises une à une avec le responsable du projet ;
+cette livraison fait les quatre grosses décisions restantes et les précisions de cette revue.
+
+Ajouté :
+
+- **Fenêtre de clôture unique.** « Clôturer » et « Clore » ouvrent la même fenêtre : tout ce qui est exigé est marqué
+  d'une étoile et rempli d'avance (fin à maintenant, temps proposé, compte rendu repris, case de sécurité) ; ce qui
+  manque est listé en haut, à jour pendant la saisie, et le bouton dit « il manque N éléments » au lieu de refuser
+  après coup. « Autre (préciser) » en tête des codes cause et remède. Pour une panne : « La machine était-elle
+  arrêtée ? » (le bilan compte les arrêts). Visite préventive : la fenêtre dit les contrôles faits ou l'anomalie,
+  propose le temps de la gamme et donne la prochaine visite.
+- **Clôtures incomplètes** (réglage du responsable, désactivé par défaut) : le technicien clôture malgré un champ
+  vide ; le responsable retrouve ces OT sur son accueil (« Clôtures à compléter ») et les complète ; la validation
+  exige toujours une clôture complète.
+- **Dépannage provisoire** : case et mot à la clôture d'une panne ; à la validation, « Créer l'OT de remise en
+  état » crée en un clic la réparation programmée, remplie et liée à la panne.
+- **Ajouter des utilisateurs** : carte sur l'accueil (Solo compris) et dans Équipe ; opérateurs invités par QR (par
+  le responsable ou un technicien) ; techniciens et Direction par un QR où la personne choisit son mot de passe (fiche
+  du technicien créée avec le compte, plus de mot de passe provisoire). « Créer un compte » propose « Nouvelle fiche
+  à ce nom » par défaut. « Paramètres › Accès et installation » devient un lien.
+- **Passer la main** : motif, collègue ou « à qui est disponible », mot de relève (dictée possible) affiché en tête
+  de l'OT et sur l'accueil du collègue ; **« Journée terminée »** sur l'accueil du technicien ; **renforts** (« Ajouter
+  un technicien ») : l'OT apparaît chez chacun, chacun saisit son temps, les temps manquants sont rappelés à la
+  clôture sans bloquer.
+- **Habilitations simplifiées** : liste fixe à cocher (BR ; B1, B1V, B2, B2V, BC ; H0 ; H1, H2, HC), « Risque
+  électrique » sur la machine, habilitation attendue déduite selon dépannage ou travail planifié ; autres
+  autorisations jamais bloquantes. Réglage « signalée seulement » (par défaut) ou « bloquante » ; jamais de blocage
+  tant qu'aucune habilitation n'est saisie ; « À prendre » montre l'habilitation attendue et, en bloquant, qui peut
+  prendre l'OT. Solo : plus de rappel tant qu'aucune n'est saisie sur sa fiche.
+- **Pièce hors magasin** sur l'OT (onglet Exécution et fenêtre de clôture) : désignation, quantité, prix facultatif ;
+  comptée dans le coût, « non chiffrée » sans prix, jamais dans le stock. Magasin, onglet « Hors magasin »
+  (responsable) : « Saisir le prix », « Créer l'article » prérempli. Réglage « Les techniciens peuvent saisir le prix
+  des pièces hors magasin » (désactivé par défaut).
+- **Bilan chiffré** : étape facultative « Pour chiffrer votre bilan » dans l'assistant (taux horaire moyen, heures de
+  marche par jour) ; bouton « Renseigner » sur les cartes « non chiffré » et « à compléter » ; en bas du bilan, une
+  ligne renvoie au détail de l'écran Indicateurs.
+- **Page d'attente du téléphone** pendant l'installation : « Téléphone connecté. Prévo s'ouvrira quand l'installation
+  sera terminée », dans la langue du téléphone ; l'assistant redonne l'adresse et le QR.
+
+Modifié :
+
+- Statuts d'OT affichés « Terminé, à valider » et « Clôturé », types « Panne » et « Réparation programmée »
+  (affichage seulement, données inchangées) ; bandeau d'un OT clôturé plus clair ; « Clore » dit « OT-… : clôturé. ».
+- L'écran de connexion qui suit l'installation explique pourquoi le mot de passe est redemandé.
+- L'accueil du responsable met « Connecter un téléphone » en haut tant qu'aucun téléphone ne s'est connecté.
+- Le champ « Consignes » de l'OT devient « Consignes de sécurité (responsable) ».
+
+Format de données 6 : colonnes de l'OT pour les renforts, la relève (mot, qui, quand, motif) et la remise en état ;
+risque électrique de la machine ; pièce hors magasin (désignation, prix, type de mouvement « hors magasin »). Passage
+automatique au format 6 après une sauvegarde « avant-format-v6 » ; un ZIP au format 5 est migré à l'import.
+
+Sécurité (mode serveur avec comptes) :
+
+- Le seul droit nouveau du technicien est d'inviter un opérateur. Le QR de premier accès est à usage unique, valable
+  24 h, lié à un compte ; seule son empreinte est écrite.
+- Journal des modifications fermé au technicien et à la Direction ; leurs écrans n'en reçoivent que les lignes utiles
+  (`/api/journal/extraits`).
+- Avant « Terminer », les adresses réseau du PC ne servent que la page d'attente, sans aucune donnée ; tout le reste
+  répond 404 sans contenu.
+- Le prix d'une pièce hors magasin n'est montré au technicien que si le responsable l'a autorisé ; le serveur tient
+  la règle.
 
 ### Lot 1 d'ergonomie et mode Solo (proposé pour la 2.3.0-beta.1)
 
