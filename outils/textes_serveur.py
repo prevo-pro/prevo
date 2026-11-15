@@ -97,6 +97,9 @@ CONSTANTES_HORS_CODES = {
     'STATUT_DEMANDE_REPAREE': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
     'POLITIQUE_CONTENU': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_PORTE': 'technique : en-tête Content-Security-Policy',
+    'POLITIQUE_ATTENTE': 'technique : en-tête Content-Security-Policy (page d\'attente du téléphone, R1)',
+    'PAGE_ATTENTE': 'technique : gabarit HTML de la page d\'attente du téléphone (R1) ; ses textes sont les '
+                    'traduisible(…) de TEXTES_ATTENTE',
 }
 # Commandes à taper ou à lancer (technique : jamais traduites).
 RE_COMMANDE = re.compile(r'^(sudo|launchctl|systemctl|tailscale|schtasks|netsh|powercfg) ')

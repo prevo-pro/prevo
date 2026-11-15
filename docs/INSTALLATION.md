@@ -105,6 +105,9 @@ cd /opt/prevo && ./lancer.sh --sans-navigateur
 ### 3.3 A server with no screen
 
 The wizard answers only to the PC itself (`127.0.0.1`): from the network, its addresses do not exist (404).
+Single exception (decision R1): while the wizard shows the access sheet for a network scope, the PC's network
+addresses serve a static waiting page, “Phone connected. Prévo will open once the installation is finished”, with
+no data at all; everything else answers 404 there until “Finish” (ARCHITECTURE.md §22.1).
 On a server with no browser, open an SSH tunnel from your workstation:
 
 ```sh

@@ -103,6 +103,7 @@ class CasInstallation(CasNavigateur):
         self.enregistreur = Enregistreur()
         config.lancer_eleve = self.enregistreur.lancer_eleve
         config.relancer = self.enregistreur.relancer
+        config.ouvrir_page_attente = lambda port: []     # R1 : aucun écouteur réseau ici (test_telephone_installation)
         instance = ServeurDuProcessus(config, hote)
         self.serveurs.append(instance)
         return instance
@@ -646,6 +647,21 @@ class TestFicheAdresses(CasInstallation):
         self.assertIn("Les téléphones pourront se connecter dès que vous aurez cliqué sur « Terminer et ouvrir Prévo »",
                       fiche.locator("#fiche-telephones-apres-terminer").inner_text())
         self.assertIn("http://127.0.0.1:8600/", fiche.inner_text())                      # le PC lui-même, oui
+
+    def test_page_d_attente_ouverte_l_adresse_et_le_qr_reviennent(self):
+        """R1 : la page d'attente du téléphone ouverte, la fiche redonne l'adresse et le QR « Ouvrir Prévo » (jamais
+        « faire confiance » : la page d'attente ne sert pas le certificat) et dit ce que le téléphone affichera."""
+        page = self.page
+        instance = self.lancer(source=commun.DOSSIER_DEMO)
+        page.goto(instance.url + "/")
+        page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
+        fiche = self.rendre(adresse_confiance=None, telephones_apres_terminer=False, page_attente=True)
+        self.assertEqual(fiche.locator("#fiche-telephones-apres-terminer").count(), 0)
+        self.assertEqual(fiche.locator("#fiche-adresse-principale").inner_text(), self.WIFI)
+        self.assertEqual(fiche.locator("#fiche-qr-ouvrir .fiche-adresse").inner_text(), self.WIFI)
+        self.assertEqual(fiche.locator("#fiche-qr-ouvrir svg").count(), 1)
+        self.assertNotIn("faire confiance", fiche.locator("#fiche-qr-ouvrir figcaption").inner_text())
+        self.assertIn("le téléphone affichera « Téléphone connecté »", fiche.locator("#fiche-page-attente").inner_text())
 
 
 class TestDepuisLaCoque(CasInstallation):

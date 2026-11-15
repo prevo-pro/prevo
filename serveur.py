@@ -33,6 +33,7 @@ import csv
 import datetime
 import hashlib
 import hmac
+import html
 import http.client
 import http.server
 import io
@@ -705,6 +706,33 @@ POLITIQUE_PORTE = ("default-src 'self'; script-src 'self'; style-src 'self' 'uns
 MESSAGE_SANS_AUTORITE = traduisible('porte.sans_autorite',
                                     'Aucune autorité locale sur ce serveur : le certificat a été fourni par votre '
                                     'informaticien, demandez-lui comment le faire reconnaître par le téléphone.')
+# Lot 2 ergonomie (R1, suite de L02) : page d'attente du téléphone pendant l'installation. Nicolas lève D122 / CS120
+# (jamais d'écoute réseau sans compte responsable ni certificat) pour CETTE SEULE page : tant que l'installation n'est
+# pas terminée et qu'elle sera ouverte au réseau, la fiche de l'assistant ouvre des écouteurs « attente » sur les
+# adresses réseau du PC (jamais 0.0.0.0, jamais 127.0.0.1), au port de la future porte ; ils ne servent que cette page,
+# écrite ici (HTML en ligne, sans script, sans lien, sans aucune donnée de l'installation), pour « / » ; toute autre
+# adresse ou méthode : 404 sans corps ; jamais un corps lu, jamais une connexion gardée. Fermés par « Terminer ».
+SECONDES_RECHARGEMENT_ATTENTE = 5
+POLITIQUE_ATTENTE = ("default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; "
+                     "form-action 'none'")
+TEXTES_ATTENTE = (traduisible('attente.titre', 'Téléphone connecté'),
+                  traduisible('attente.texte', 'Prévo s\'ouvrira quand l\'installation sera terminée.'),
+                  traduisible('attente.recharger', 'Cette page se recharge toute seule. Si elle affiche une erreur, '
+                                                   'rechargez-la.'))
+PAGE_ATTENTE = ('<!doctype html>\n<html lang="{langue}"><head><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                '<meta http-equiv="refresh" content="{secondes}"><meta name="robots" content="noindex">'
+                '<title>{titre}</title><style>'
+                'body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
+                'font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#eef2f5;color:#1d2733}}'
+                'main{{max-width:26rem;margin:16px;padding:28px 24px;background:#fff;border-radius:14px;'
+                'box-shadow:0 1px 4px rgba(0,0,0,.15);text-align:center}}'
+                '.ok{{font-size:2.6rem;line-height:1;color:#1b7f3b}}h1{{font-size:1.5rem;margin:.6rem 0 .8rem}}'
+                'p{{font-size:1.15rem;line-height:1.45;margin:.5rem 0}}.aide{{font-size:.95rem;color:#56626e}}'
+                '@media (prefers-color-scheme:dark){{body{{background:#14191f;color:#e6ebf0}}main{{background:#1f262e}}'
+                '.aide{{color:#a8b3be}}.ok{{color:#5cc77f}}}}'
+                '</style></head><body><main><div class="ok" aria-hidden="true">&#10003;</div><h1>{titre}</h1>'
+                '<p>{texte}</p><p class="aide">{recharger}</p></main></body></html>\n')
 
 # T250 : 4 Go par défaut, comme l'import ZIP (4 Go) : tout ce que Prévo exporte, Prévo peut le réimporter, d'un mode
 # à l'autre (un export du mode dossier, qui n'a pas de plafond, entre dans le dossier des documents du serveur).
@@ -3327,7 +3355,10 @@ def fiche_acces(config):
     fichier lisible, les réglages du serveur.
     L02 (lot 2) : tant que l'installation n'est pas terminée, le serveur n'écoute que ce PC (D122, CS120 : jamais
     d'écoute réseau avant « Terminer », ni sans compte responsable ni certificat) ; aucune adresse pour les autres
-    appareils n'est alors donnée (elle ne répondrait pas) : « telephones_apres_terminer » vrai, la fiche le dit."""
+    appareils n'est alors donnée (elle ne répondrait pas) : « telephones_apres_terminer » vrai, la fiche le dit.
+    R1 (lot 2, D122 levée pour cette seule page) : pendant l'assistant, la fiche ouvre la page d'attente du téléphone
+    (config.ouvrir_page_attente) et rend ses adresses (« page_attente » vrai, « telephones_apres_terminer » faux) ;
+    rien d'autre n'y répond. Elle la ferme quand elle n'a plus lieu d'être (portée « ce PC », installation finie)."""
     brouillon = lire_brouillon(config)
     reglages = brouillon
     if reglages is None:
@@ -3347,8 +3378,18 @@ def fiche_acces(config):
     installation_en_cours = brouillon is not None or not config.reglages.get('_present')
     telephones_apres_terminer = bool(installation_en_cours and config.ce_pc_seulement
                                      and (adresses or tailscale or adresses_mandataire))
+    page_attente = False
     if telephones_apres_terminer:
-        adresses, tailscale, adresses_mandataire = [], None, []
+        # R1 (lot 2) : pendant l'assistant (brouillon présent), la page d'attente sur les adresses réseau du PC, au port
+        # de la future porte ; le QR y mène dès maintenant. Sans elle (aucune adresse ouverte) : L02, aucune adresse.
+        ouvertes = config.ouvrir_page_attente(port) if brouillon is not None and reseau else []
+        page_attente = bool(ouvertes)
+        adresses = ['http://%s:%d/' % (ip, port) for ip in ouvertes]
+        adresses += ['http://%s:%d/' % (nom, port) for nom in noms if page_attente and not nom.endswith('.ts.net')]
+        tailscale, adresses_mandataire = None, []
+        telephones_apres_terminer = not page_attente
+    if not page_attente:
+        fermer_page_attente(config)
     windows = config.systeme.startswith('win')
     responsables = [compte['identifiant'] for compte in comptes_du_serveur(config)
                     if compte.get('role') == 'responsable' and compte.get('actif')]
@@ -3360,8 +3401,10 @@ def fiche_acces(config):
             'adresse_tailscale': tailscale,
             'adresses_mandataire': adresses_mandataire,
             'telephones_apres_terminer': telephones_apres_terminer,
+            'page_attente': page_attente,
             'autorite_presente': certificat_de_l_autorite(config) is not None,
-            'adresse_confiance': adresses[0] if adresses else None,
+            # R1 : la page d'attente ne sert pas /acces/ca.crt ; la porte le servira après « Terminer ».
+            'adresse_confiance': adresses[0] if adresses and not page_attente else None,
             'lanceur': NOM_LANCEUR_WINDOWS if windows else NOM_LANCEUR_AUTRE,
             'demarrage': reglages.get('demarrage', 'aucun'),
             'dossier': os.path.abspath(config.dossier_application),
@@ -3494,6 +3537,55 @@ def poser_langue_de_l_installation(octets, code):
         return octets
     attribut = 'data-langue-installation="%s"' % code
     return octets.replace(ATTRIBUT_LANGUE_INSTALLATION.encode('ascii'), attribut.encode('ascii'), 1)
+
+
+def langue_du_navigateur(entete, declarees):
+    """R1 (lot 2) : la langue de « declarees » que demande l'en-tête Accept-Language (ordre des q, à q égal l'ordre
+    de l'en-tête ; « pt-BR » prend « pt-PT », « en-GB » « en ») ; « fr » sans en-tête ou sans langue connue."""
+    demandes = []
+    for rang, morceau in enumerate(str(entete or '')[:500].split(',')):
+        parties = [partie.strip() for partie in morceau.split(';')]
+        etiquette, poids = parties[0].lower(), 1.0
+        for partie in parties[1:]:
+            if partie.startswith('q='):
+                try:
+                    poids = float(partie[2:])
+                except ValueError:
+                    poids = 0.0
+        if etiquette and etiquette != '*' and poids > 0:
+            demandes.append((-poids, rang, etiquette))
+    for _, _, etiquette in sorted(demandes):
+        for code in declarees:
+            if code.lower() == etiquette:
+                return code
+        for code in declarees:
+            if code.lower().split('-')[0] == etiquette.split('-')[0]:
+                return code
+    return LANGUE_PAR_DEFAUT
+
+
+TEXTES_SERVEUR_PAR_LANGUE = {}          # R1 : {code: section serveur de js/i18n/<code>.js}, lue au premier besoin
+
+
+def texte_dans_la_langue(message, code):
+    """R1 (lot 2) : le message (Traduisible) dans la langue « code » (une langue déclarée) : sa clé serveur.<code> du
+    fichier de textes de cette langue, le français sinon."""
+    if code == LANGUE_PAR_DEFAUT or not MOTIF_CODE_LANGUE.fullmatch(code) or code not in langues_declarees():
+        return str(message)
+    if code not in TEXTES_SERVEUR_PAR_LANGUE:
+        TEXTES_SERVEUR_PAR_LANGUE[code] = lire_textes_anglais(os.path.join(DOSSIER_APPLICATION, 'js', 'i18n',
+                                                                           code + '.js'))
+    return texte_en_anglais(message, TEXTES_SERVEUR_PAR_LANGUE[code])
+
+
+def page_d_attente(entete_langue):
+    """R1 (lot 2) : octets de la page d'attente du téléphone (PAGE_ATTENTE) dans la langue du navigateur, parmi les
+    langues déclarées ; aucune donnée de l'installation, aucun script, aucun lien, rechargée seule (meta refresh)."""
+    code = langue_du_navigateur(entete_langue, langues_declarees())
+    titre, texte, recharger = (html.escape(texte_dans_la_langue(message, code), quote=False)
+                                  for message in TEXTES_ATTENTE)
+    return PAGE_ATTENTE.format(langue=code, secondes=SECONDES_RECHARGEMENT_ATTENTE, titre=titre, texte=texte,
+                               recharger=recharger).encode('utf-8')
 
 
 def valeurs_du_mode_solo(technicien_id=''):
@@ -3847,6 +3939,10 @@ class Configuration:
         self.systeme = sys.platform
         self.lancer_eleve = lancer_script_powershell
         self.relancer = lambda dossier=None: relancer_prevo(self, dossier)
+        # R1 (lot 2) : page d'attente du téléphone pendant l'assistant — écouteurs ouverts (ouvrir_page_attente, que les
+        # tests remplacent), fermés par « Terminer » ; aucun au démarrage.
+        self.ecouteurs_attente = []
+        self.ouvrir_page_attente = lambda port: ouvrir_page_attente(self, port)
         # T185 (D168, D169) : état du format des données, posé par migrer_donnees_au_demarrage (main, avant les
         # écouteurs) ; rendu par GET /api/info, lu par verifier_ecriture_permise (lecture seule). None hors de main.
         self.format_donnees = None
@@ -8085,6 +8181,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         self.corps_lu = methode not in ('PUT', 'POST')
         self.lecture_commencee = False
         self.session = None
+        if self.server.attente:
+            self.servir_page_attente(methode)       # R1 : écouteur de la page d'attente, rien d'autre, aucun contrôle
+            return
         self.mandat = origine_mandatee(self)        # §22.7 : None pour un client direct
         try:
             if not hote_autorise(self.headers.get('Host'), self.config):
@@ -8232,6 +8331,18 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
     def sur_la_porte(self):
         """Requête d'un client du réseau arrivée sur la porte (port_http hors de « ce PC ») : seule la page de porte."""
         return self.server.porte and not self.client_de_confiance()
+
+    def servir_page_attente(self, methode):
+        """R1 (lot 2) : sur un écouteur « attente » (pendant l'installation), GET / (requête comprise) rend la page
+        d'attente du téléphone, 200, dans la langue du navigateur ; toute autre adresse — fichiers, /api/, /acces/,
+        /favicon.ico — et toute autre méthode : 404 sans corps. Rien n'est lu (ni corps, ni données, ni configuration) ;
+        la connexion est fermée après chaque réponse (rien ne reste ouvert après « Terminer »)."""
+        self.close_connection = True
+        if methode == 'GET' and self.path.split('?', 1)[0] == '/':
+            entetes = dict(ENTETES_SECURITE, **{'Content-Security-Policy': POLITIQUE_ATTENTE})
+            self.envoyer(200, page_d_attente(self.headers.get('Accept-Language')), TYPES_STATIQUES['html'], entetes)
+        else:
+            self.envoyer(404, b'', 'text/plain; charset=utf-8', ENTETES_SECURITE)
 
     def servir_porte(self, methode, morceaux):
         """Porte d'entrée pour un client du réseau : ses propres fichiers (acces/, le favicon, les polices de la
@@ -8919,6 +9030,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
     def installation_annuler(self, brouillon, demande):
         """{} : le brouillon est supprimé, rien d'autre ne change (la configuration en cours reste celle du fichier)."""
         supprimer_brouillon(self.config)
+        fermer_page_attente(self.config)          # R1 : plus d'installation en cours, plus de page d'attente
         return {'brouillon': None, 'etapes': {etape: ETAT_A_FAIRE for etape in ETAPES_INSTALLATION}}
 
     def installation_portee(self, brouillon, demande):
@@ -8947,6 +9059,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if portee == 'ce-pc':
             brouillon['comptes'] = False
             brouillon['mandataire'] = False
+            fermer_page_attente(self.config)      # R1 : « ce PC » choisi, plus de page d'attente pour les téléphones
         else:
             brouillon['comptes'] = True
         return self.garder_brouillon(brouillon, 'portee')
@@ -9310,6 +9423,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             with VERROU_ECRITURE:
                 installer_codes_de_depart(self.config, langue)
         supprimer_brouillon(self.config)
+        fermer_page_attente(self.config)          # R1 : la page d'attente n'est plus servie, rien n'écoute le réseau
         relance = bool(self.config.relancer(None))
         return {'configuration': a_ecrire, 'fichier': chemin, 'relance': relance, 'base': base}
 
@@ -9454,13 +9568,15 @@ class ServeurPrevo(http.server.ThreadingHTTPServer):
     # on le désactive et on demande l'usage exclusif du port.
     allow_reuse_address = (os.name != 'nt')
 
-    def __init__(self, adresse, config, porte=False):
+    def __init__(self, adresse, config, porte=False, attente=False):
         """« porte » (lot 7, §22.6) : cet écouteur est la porte d'entrée, en http ; un client du réseau n'y reçoit que
-        la page de porte, le PC serveur lui-même y reçoit l'application. Sinon : l'application (https avec un
-        certificat, http en portée « ce PC »)."""
+        la page de porte, le PC serveur lui-même y reçoit l'application. « attente » (R1, lot 2) : écouteur de la page
+        d'attente du téléphone pendant l'installation, en http, sur une adresse réseau du PC ; quel que soit le client,
+        rien d'autre que cette page. Sinon : l'application (https avec un certificat, http en portée « ce PC »)."""
         self.config = config
         self.porte = porte
-        self.contexte_ssl = None if porte else config.contexte_ssl
+        self.attente = attente
+        self.contexte_ssl = None if porte or attente else config.contexte_ssl
         super().__init__(adresse, GestionnaireRequetes)
 
     def get_request(self):
@@ -9537,6 +9653,45 @@ def demarrer_serveur(port_demande, config):
         raise
     config.porte = True
     return [porte, application], port
+
+
+VERROU_PAGE_ATTENTE = threading.RLock()
+
+
+def ouvrir_page_attente(config, port):
+    """R1 (lot 2, suite de L02 ; D122 / CS120 levées par Nicolas pour cette seule page) : pendant l'assistant, un
+    écouteur « attente » par adresse réseau du PC (adresses_ip_reseau : jamais 0.0.0.0 ni 127.0.0.1, qui garde
+    l'assistant), au port de la future porte, chacun dans son fil ; il ne sert que la page d'attente
+    (GestionnaireRequetes.servir_page_attente). Déjà ouverts sur ce port : rien de plus. Rend les adresses IP ouvertes
+    (une adresse qu'on ne peut pas ouvrir — port pris par un autre programme — est sautée, en silence)."""
+    with VERROU_PAGE_ATTENTE:
+        if config.ecouteurs_attente and all(ecouteur.server_address[1] == port for ecouteur in config.ecouteurs_attente):
+            return [ecouteur.server_address[0] for ecouteur in config.ecouteurs_attente]
+        fermer_page_attente(config)
+        for ip in adresses_ip_reseau():
+            try:
+                ecouteur = ServeurPrevo((ip, port), config, attente=True)
+            except OSError:
+                continue
+            threading.Thread(target=ecouteur.serve_forever, kwargs={'poll_interval': 0.2}, name='attente',
+                             daemon=True).start()
+            config.ecouteurs_attente.append(ecouteur)
+        ouvertes = [ecouteur.server_address[0] for ecouteur in config.ecouteurs_attente]
+    if ouvertes:
+        afficher(traduisible('console.attente.ouverte', '  Page d\'attente des téléphones : {adresses} (rien d\'autre '
+                             'jusqu\'à « Terminer »).', adresses=' · '.join('http://%s:%d/' % (ip, port)
+                                                                              for ip in ouvertes)))
+    return ouvertes
+
+
+def fermer_page_attente(config):
+    """R1 : ferme les écouteurs de la page d'attente (« Terminer », portée « ce PC », installation finie) ; plus rien
+    ne répond sur le réseau. Sans écouteur : rien."""
+    with VERROU_PAGE_ATTENTE:
+        ecouteurs, config.ecouteurs_attente = config.ecouteurs_attente, []
+        for ecouteur in ecouteurs:
+            ecouteur.shutdown()
+            ecouteur.server_close()
 
 
 def afficher_accueil(config, port_demande, avertissements=()):

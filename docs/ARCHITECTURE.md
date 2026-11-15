@@ -3793,6 +3793,29 @@ compte responsable actif ⇒ démarrage en portée « ce PC » avec l'assistant 
 message en français sur la console et dans `journal-serveur.log`, code de sortie **2**. Il n'existe aucune option
 qui contourne ces règles.
 
+**Seule exception : la page d'attente du téléphone pendant l'installation (lot 2 ergonomie, décision R1 de Nicolas,
+15/11, suite de L02).** Nicolas lève D122 / CS120 pour CETTE SEULE page. Surface réseau avant « Terminer » :
+- au démarrage, rien de plus qu'avant : un seul écouteur, `127.0.0.1:<port_http>`, qui sert l'assistant au PC ;
+- quand l'assistant montre la fiche d'accès (`GET /api/installation/fiche`, PC seulement) avec un brouillon dont la
+  portée écoutera le réseau (`ecoute_du_brouillon` = `0.0.0.0` : Wi-Fi de l'atelier, hors de l'atelier avec
+  certificat local) et que le serveur n'écoute encore que ce PC, `ouvrir_page_attente` ouvre un écouteur http
+  « attente » par adresse IPv4 réseau du PC (`adresses_ip_reseau` ; jamais `0.0.0.0` ni `127.0.0.1`), au port de
+  la future porte (`port_http` du brouillon) ; une adresse dont le port est pris est sautée (sans aucune, la fiche
+  revient au cas L02 : ni adresse ni QR) ;
+- sur ces écouteurs, quel que soit le client et avant tout autre contrôle (`GestionnaireRequetes.servir_page_attente`) :
+  `GET /` (requête comprise) → 200, page HTML écrite dans `serveur.py` (`PAGE_ATTENTE`) : « Téléphone connecté.
+  Prévo s'ouvrira quand l'installation sera terminée », dans la langue du navigateur (`Accept-Language`, parmi les
+  langues déclarées, sinon le français ; textes `serveur.attente.*`), rechargée toutes les 5 s par
+  `<meta http-equiv="refresh">` ; aucun script, aucun lien, aucune ressource, aucune donnée de l'installation ;
+  en-têtes de §22.13 et `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; …` ;
+  toute autre adresse (fichiers, `/api/*`, assistant, `/acces/*`, `/favicon.*`, `/donnees/*`) et tout `PUT`/`POST`
+  → 404 sans corps, le corps jamais lu ; une autre méthode → la réponse 501 standard de `http.server` ; connexion
+  fermée après chaque réponse (aucune connexion gardée) ; rien n'est lu (ni données, ni configuration, ni comptes) ;
+- fermés par `fermer_page_attente` à « Terminer » (avant la relance), à « Annuler » (Paramètres), quand la portée
+  « ce PC » est choisie, et quand la fiche n'a plus lieu de l'ouvrir. Après la relance : la porte (§22.6),
+  comptes et certificat, comme avant ; le téléphone qui recharge la page arrive à la porte sur la même adresse.
+Tests : `tests/test_telephone_installation.py`.
+
 ### 22.2 Configuration (`prevo.config.json`, D123)
 
 Fichier à côté de `serveur.py` (jamais dans `donnees/`, jamais sauvegardé ni exporté), JSON UTF-8, écrit de façon
@@ -4641,14 +4664,19 @@ Contrat de l'API (T167, `serveur.py` section « Assistant d'installation ») —
   "autorite_presente", "adresse_confiance" (la porte, qui sert `/acces/ca.crt` : la même adresse que le QR « Ouvrir Prévo », T527),
   "lanceur" (`Lancer_GMAO.bat` | `lancer.sh`), "demarrage", "dossier", "dossier_donnees", "copie_sauvegardes",
   "reinitialisation" `{"script": Reinitialiser_mot_de_passe.bat, "commande"}`, "responsables" (identifiants),
-  "telephones_apres_terminer"}`. Lot 2 ergonomie (L02) : tant que l'installation n'est pas terminée (brouillon
+  "telephones_apres_terminer", "page_attente"}`. Lot 2 ergonomie (L02) : tant que l'installation n'est pas terminée (brouillon
   présent ou configuration absente) et que le serveur n'écoute que ce PC (`ce_pc_seulement` : D122, CS120, aucune
   écoute réseau avant « Terminer »), « adresses », « adresse_tailscale », « adresses_mandataire » et
   « adresse_confiance » sont vides et `telephones_apres_terminer` vrai : la fiche ne montre ni adresse ni QR pour
   les téléphones (elles ne répondraient pas) mais « Les téléphones pourront se connecter dès que vous aurez cliqué
   sur « Terminer et ouvrir Prévo » » ; après la relance, l'accueil montre la carte « Connecter un téléphone ». Voie
-  retenue plutôt qu'une page d'attente ouverte au réseau pendant l'installation : elle contredirait D122/CS120
-  (écoute réseau sans responsable ni certificat). Tests : `tests/test_telephone_installation.py`.
+  retenue d'abord plutôt qu'une page d'attente ouverte au réseau (D122/CS120). R1 (livraison 2, D122 levée par
+  Nicolas pour cette seule page, §22.1) : pendant l'assistant (brouillon présent) et pour une portée qui écoutera le
+  réseau, la fiche ouvre la page d'attente du téléphone ; « adresses » redonne alors ses adresses
+  (`http://<ip>:<port_http>/` et les noms), `page_attente` vrai, `telephones_apres_terminer` faux, « adresse_confiance »
+  vide (la page d'attente ne sert pas `/acces/ca.crt`) : la fiche montre l'adresse, le QR « Ouvrir Prévo » et
+  « le téléphone affichera « Téléphone connecté », puis Prévo s'y ouvrira quand vous aurez cliqué sur « Terminer et
+  ouvrir Prévo » ». Sans adresse ouverte : le cas L02. Tests : `tests/test_telephone_installation.py`.
 - **Paramètres › Accès et installation** (T170 ; D130 « Paramètres montre l'état », D131 dernier point, CS129,
   CS130) — mêmes routes `installation/<etape>`, même garde (PC serveur, et la session du responsable avec comptes) ;
   rien de nouveau dans `ROUTES_API` ni `ROLES_PAR_ROUTE` :

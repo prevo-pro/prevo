@@ -259,6 +259,10 @@ class CasAssistant(unittest.TestCase):
         self.enregistreur = Enregistreur()
         config.lancer_eleve = self.enregistreur.lancer_eleve
         config.relancer = self.enregistreur.relancer
+        # R1 (lot 2) : page d'attente du téléphone remplacée (aucun écouteur réseau ici ; tests/test_telephone_installation.py
+        # essaie la vraie) : rend self.ips_attente, note le port demandé.
+        self.ips_attente, self.ports_attente = [], []
+        config.ouvrir_page_attente = lambda port: self.ports_attente.append(port) or list(self.ips_attente)
         instance = ServeurDuProcessus(config, hote)
         self.serveurs.append(instance)
         return Client(instance.url), instance
@@ -457,7 +461,11 @@ class TestParcours(CasAssistant):
         reponse = self.ok(client.post("demarrage", {"demarrage": "systeme", "veille_desactivee": False}))
         self.assertNotIn("powercfg", Path(reponse["scripts"]["Installer_demarrage.ps1"]).read_text(encoding="utf-8-sig"))
         self.ok(client.post("sauvegardes", {"dossier": ""}))
+        ecouteur = mock.Mock()                          # R1 : une page d'attente ouverte est fermée par « terminer »
+        instance.config.ecouteurs_attente = [ecouteur]
         self.ok(client.post("terminer"))
+        self.assertEqual((ecouteur.shutdown.call_count, ecouteur.server_close.call_count,
+                          instance.config.ecouteurs_attente), (1, 1, []))
         self.comparer_cle_a_cle(self.configuration_ecrite(instance), ATTENDU_INTRANET)
         # L02 (lot 2) : avant la relance, le serveur n'écoute que ce PC : aucune adresse pour les autres appareils.
         fiche = self.ok(client.get("fiche"))
@@ -739,7 +747,16 @@ class TestDeplacerEtBrouillon(CasAssistant):
         # L02 (lot 2) : installation pas terminée, le serveur n'écoute que ce PC : ni adresse ni QR pour les téléphones.
         fiche = self.ok(client.get("fiche"))
         self.assertEqual((fiche["adresses"], fiche["adresse_tailscale"], fiche["adresse_confiance"],
-                          fiche["telephones_apres_terminer"]), ([], None, None, True))
+                          fiche["telephones_apres_terminer"], fiche["page_attente"]), ([], None, None, True, False))
+        # R1 (lot 2) : la page d'attente ouverte (ici simulée) au port de la future porte : son adresse et le QR
+        # reviennent, jamais l'adresse de confiance (la page d'attente ne sert pas /acces/ca.crt).
+        self.ips_attente = ["192.0.2.10"]
+        fiche = self.ok(client.get("fiche"))
+        self.assertEqual(self.ports_attente[-1], 8090)
+        self.assertEqual((fiche["adresses"], fiche["adresse_tailscale"], fiche["adresse_confiance"],
+                          fiche["telephones_apres_terminer"], fiche["page_attente"]),
+                         (["http://192.0.2.10:8090/", "http://pc-atelier.lan:8090/"], None, None, False, True))
+        self.ips_attente = []
         # Le même brouillon sur un serveur déjà ouvert au réseau (Paramètres rejoue l'assistant) : les adresses de la porte.
         second.config.ecoute = "0.0.0.0"
         fiche = self.ok(client.get("fiche"))

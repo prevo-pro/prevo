@@ -74,7 +74,9 @@ const InstallationFiche = (() => {
 
   /** Élément de la fiche d'accès (données de GET /api/installation/fiche). L02 (lot 2) : tant que l'installation n'est
    *  pas terminée hors de « ce PC » (telephones_apres_terminer), ni adresse ni QR pour les téléphones — Prévo n'écoute
-   *  encore que ce PC (D122) — mais la phrase qui dit quand ils pourront se connecter. */
+   *  encore que ce PC (D122) — mais la phrase qui dit quand ils pourront se connecter. R1 (lot 2) : quand le serveur a
+   *  ouvert la page d'attente du téléphone (page_attente), l'adresse et le QR reviennent, avec ce que le téléphone
+   *  affichera jusqu'à « Terminer ». */
   function rendre(fiche) {
     const principale = adressePrincipale(fiche);
     const reseau = (fiche.adresses || []).concat(fiche.adresses_mandataire || []);
@@ -98,6 +100,7 @@ const InstallationFiche = (() => {
           ${qr(principale, confiance ? I18n.t('installation.rendre.ouvrir_prevo_et_confiance') : I18n.t('installation.rendre.ouvrir_prevo'), 'fiche-qr-ouvrir')}
         </div>
         ${confiance ? UI.html`<p class="aide">${I18n.t('installation.rendre.meme_qr_confiance')}</p>` : ''}
+        ${fiche.page_attente ? UI.html`<p class="aide" id="fiche-page-attente">${I18n.t('installation.rendre.page_attente')}</p>` : ''}
         ${avertissementReseau(principale)}`}
       </section>
       <section class="fiche-bloc">

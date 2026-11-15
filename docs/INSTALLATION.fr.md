@@ -106,6 +106,10 @@ cd /opt/prevo && ./lancer.sh --sans-navigateur
 ### 3.3 Un serveur sans écran
 
 L'assistant ne répond qu'à ce PC lui-même (`127.0.0.1`) : vu du réseau, ses adresses n'existent pas (404).
+Seule exception (décision R1) : quand la fiche d'accès de l'assistant est affichée pour une portée réseau, les
+adresses réseau du PC servent une page d'attente statique, « Téléphone connecté. Prévo s'ouvrira quand
+l'installation sera terminée », sans aucune donnée ; tout le reste y répond 404 jusqu'à « Terminer »
+(ARCHITECTURE.md §22.1).
 Sur un serveur sans navigateur, ouvrez un tunnel SSH depuis votre poste :
 
 ```sh
