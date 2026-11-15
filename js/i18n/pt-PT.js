@@ -1082,7 +1082,7 @@ I18n.ajouter('pt-PT', {
   'ordres.provisoire.a_la_validation': 'Na validação, o responsável cria a OT de reposição em estado com um clique.',
   'ordres.provisoire.deja_cree': 'OT de reposição em estado:',
   'ordres.provisoire.creer': 'Criar a OT de reposição em estado',
-  'ordres.provisoire.cree': 'OT {id} criada: reposição em estado após {otId}.',
+  'ordres.provisoire.cree': '{id} criada: reposição em estado após {otId}.',
   'ordres.provisoire.creation': 'criação da OT de reposição em estado',
   'ordres.provisoire.rien_a_prevoir': '{otId} não tem reposição em estado a prever.',
   'ordres.cloture_administrativement.cloturer_administrativement': 'Encerrar administrativamente',

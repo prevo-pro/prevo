@@ -1082,7 +1082,7 @@ I18n.ajouter('tr', {
   'ordres.provisoire.a_la_validation': 'Onay sırasında sorumlu, kalıcı onarım iş emrini tek tıkla oluşturur.',
   'ordres.provisoire.deja_cree': 'Kalıcı onarım iş emri:',
   'ordres.provisoire.creer': 'Kalıcı onarım iş emrini oluştur',
-  'ordres.provisoire.cree': '{id} iş emri oluşturuldu: {otId} sonrası kalıcı onarım.',
+  'ordres.provisoire.cree': '{id} oluşturuldu: {otId} sonrası kalıcı onarım.',
   'ordres.provisoire.creation': 'kalıcı onarım iş emrinin oluşturulması',
   'ordres.provisoire.rien_a_prevoir': '{otId} için planlanacak kalıcı onarım yok.',
   'ordres.cloture_administrativement.cloturer_administrativement': 'İdari olarak kapat',

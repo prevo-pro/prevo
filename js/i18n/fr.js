@@ -1078,7 +1078,7 @@ I18n.ajouter('fr', {
   'ordres.provisoire.a_la_validation': 'À la validation, le responsable crée l\'OT de remise en état en un clic.',
   'ordres.provisoire.deja_cree': 'OT de remise en état :',
   'ordres.provisoire.creer': 'Créer l\'OT de remise en état',
-  'ordres.provisoire.cree': 'OT {id} créé : remise en état après {otId}.',
+  'ordres.provisoire.cree': '{id} créé : remise en état après {otId}.',
   'ordres.provisoire.creation': 'création de l\'OT de remise en état',
   'ordres.provisoire.rien_a_prevoir': '{otId} n\'a pas de remise en état à prévoir.',
   'ordres.cloture_administrativement.cloturer_administrativement': 'Clôturer administrativement',

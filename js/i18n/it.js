@@ -1082,7 +1082,7 @@ I18n.ajouter('it', {
   'ordres.provisoire.a_la_validation': 'Alla convalida, il responsabile crea l\'OdL di ripristino con un clic.',
   'ordres.provisoire.deja_cree': 'OdL di ripristino:',
   'ordres.provisoire.creer': 'Crea l\'OdL di ripristino',
-  'ordres.provisoire.cree': 'OdL {id} creato: ripristino dopo {otId}.',
+  'ordres.provisoire.cree': '{id} creato: ripristino dopo {otId}.',
   'ordres.provisoire.creation': 'creazione dell\'OdL di ripristino',
   'ordres.provisoire.rien_a_prevoir': '{otId} non ha alcun ripristino da prevedere.',
   'ordres.cloture_administrativement.cloturer_administrativement': 'Chiudi amministrativamente',

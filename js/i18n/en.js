@@ -1080,7 +1080,7 @@ I18n.ajouter('en', {
   'ordres.provisoire.a_la_validation': 'When validating, the manager creates the repair work order in one click.',
   'ordres.provisoire.deja_cree': 'Repair work order:',
   'ordres.provisoire.creer': 'Create the repair work order',
-  'ordres.provisoire.cree': 'Work order {id} created: proper repair after {otId}.',
+  'ordres.provisoire.cree': '{id} created: proper repair after {otId}.',
   'ordres.provisoire.creation': 'creating the repair work order',
   'ordres.provisoire.rien_a_prevoir': '{otId} has no proper repair to plan.',
   'ordres.cloture_administrativement.cloturer_administrativement': 'Close administratively',
