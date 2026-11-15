@@ -1795,6 +1795,9 @@ const App = (() => {
     }));
     // L01 : « Installer Prévo » de l'écran « base vide », de même (l'assistant crée la base à « Terminer »).
     UI.$('#btn-base-installer').addEventListener('click', () => {
+      // L24 (T549) : la réponse « Dictée vocale » de cet écran suit dans l'assistant (cochée à l'étape 8).
+      const reponseDictee = document.querySelector('input[name="base-vide-dictee"]:checked');
+      if (typeof InstallationEtapes !== 'undefined') InstallationEtapes.noterDicteeDeDepart(reponseDictee ? reponseDictee.value : '');
       location.hash = ROUTE_INSTALLATION;
       location.reload();
     });

@@ -2856,7 +2856,8 @@ REPERE_DEBUT_CODES_DE_DEPART, REPERE_FIN_CODES_DE_DEPART = '\n// <json>\n', '\n/
 FICHIER_LANGUES = os.path.join(DOSSIER_APPLICATION, 'js', 'i18n', 'langues.js')
 MOTIF_LANGUE_DECLAREE = re.compile(r"^I18n\.declarer\(\{\s*code:\s*'([^'\\]+)'", re.MULTILINE)
 LANGUE_PAR_DEFAUT = 'fr'
-# Dictée vocale d'une base neuve (T540, L24) : « terminer » reçoit dictee_autorisee (« 1 » ou « 0 ») ; sans réponse, « 0 ».
+# Dictée vocale d'une base neuve (T540, L24) : « terminer » reçoit dictee_autorisee (« 1 » ou « 0 ») ; sans réponse, « 0 »
+# (Solo : « 1 », T549).
 # Une base présente au départ n'est jamais touchée (sans la ligne, la dictée y est autorisée : Dictee.autorisee, js/).
 # Aucune règle serveur de plus : la voix ne passe que par le navigateur.
 PARAMETRE_DICTEE = 'dictee_autorisee'
@@ -9247,7 +9248,8 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
             raise ErreurHttp(400, traduisible('installation.langue_inconnue',
                                               'Langue de Prévo inconnue : une langue déclarée est attendue '
                                               '({langues}).', langues=declarees))
-        dictee = demande.get('dictee_autorisee', PARAMETRE_DICTEE_SANS_REPONSE)
+        # L24 (T549) : sans réponse, Solo : autorisée (la personne qui installe est celle qui dicte) ; équipe : non.
+        dictee = demande.get('dictee_autorisee', '1' if brouillon.get('mode_solo') else PARAMETRE_DICTEE_SANS_REPONSE)
         if dictee not in ('0', '1'):
             raise ErreurHttp(400, traduisible('installation.dictee_inconnue',
                                               'Dictée vocale : « 1 » (autorisée) ou « 0 » (non autorisée) est '

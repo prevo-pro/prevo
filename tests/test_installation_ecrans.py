@@ -758,6 +758,49 @@ class TestEcranBaseVide(CasInstallation):
         page.wait_for_function("document.documentElement.dataset.etat === 'profil'")
         self.assertTrue((Path(instance.config.dossier_donnees) / "equipements.csv").is_file())
 
+    def test_dictee_repondue_avant_installer_prevo_gardee_jusqu_a_terminer(self):
+        """T549 (L24) : la réponse « Dictée vocale » de l'écran « base vide » suit dans l'assistant (même onglet) : cochée
+        au récapitulatif et écrite à « Terminer ». « Non » d'abord (elle l'emporte sur le « oui » par défaut du Solo et
+        vaudrait pour une équipe), puis « Oui, autoriser » jusqu'au bout."""
+        page = self.page
+        self.autoriser_erreur(ERREUR_404_TABLES)
+        instance = self.lancer()
+        page.goto(instance.url + "/")
+        page.wait_for_selector("#btn-base-installer", state="visible")
+        page.check('input[name="base-vide-dictee"][value="0"]')
+        page.click("#btn-base-installer")
+        page.wait_for_selector('#installation-contenu section[data-etape="situation"]')
+        self.assertEqual(page.evaluate("[InstallationEtapes.dicteeDeDepart(false), InstallationEtapes.dicteeDeDepart(true)]"),
+                         ["0", "0"])
+        page.click("#installation-quitter")
+        page.wait_for_selector("#btn-base-installer", state="visible")
+        page.check('input[name="base-vide-dictee"][value="1"]')
+        page.click("#btn-base-installer")
+        page.wait_for_selector('#installation-contenu section[data-etape="situation"]')
+        self.assertEqual(page.evaluate("InstallationEtapes.dicteeDeDepart(false)"), "1")    # une équipe aussi
+        self.cocher("situation", "seul")
+        self.continuer()
+        self.attendre_etape("portee")
+        self.continuer()
+        self.attendre_etape("compte")
+        page.fill("#inst-prenom", "Julien")
+        page.fill("#inst-nom", "Moreau")
+        self.continuer()
+        self.attendre_etape("demarrage")
+        self.cocher("demarrage", "aucun")
+        self.continuer()
+        self.attendre_etape("sauvegardes")
+        page.click("#inst-sauvegardes-plus-tard")
+        self.attendre_etape("recapitulatif")
+        self.assertTrue(page.is_checked('#inst-dictee input[name="dictee"][value="1"]'))
+        if page.locator("#inst-dossier-garder").count():
+            page.click("#inst-dossier-garder")
+            page.wait_for_selector("#inst-dossier", state="hidden")
+        page.click("#inst-terminer")
+        page.wait_for_selector("#inst-attente", state="visible")
+        page.wait_for_function("document.getElementById('inst-terminer').disabled")
+        self.assertEqual(parametres_de(instance.config.dossier_donnees)["dictee_autorisee"], "1")
+
     def test_installation_faite_la_demo_et_la_base_vide_seules(self):
         page = self.page
         self.autoriser_erreur(ERREUR_404_TABLES)

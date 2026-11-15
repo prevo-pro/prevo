@@ -7,8 +7,8 @@
 // Paramètres › Accès et installation. Migration depuis 1.2 (T171) : les CSV présents sont annoncés dès l'étape 1 et
 // gardés ; sans CSV au départ (brouillon.base_presente faux), l'étape 8 demande par quoi commencer (vide ou démo) et
 // la langue de Prévo (langue_defaut de la base neuve, proposée d'après le navigateur : UI.langueDuNavigateur, T296 ;
-// appliquée à la fin, quand Prévo s'ouvre sur la base créée) et la dictée vocale (L24 : oui / non, dictee_autorisee ; sans
-// réponse, « non autorisée » côté serveur) ;
+// appliquée à la fin, quand Prévo s'ouvre sur la base créée) et la dictée vocale (L24 : oui / non, dictee_autorisee ;
+// cochée d'après l'écran « base vide » ou, en Solo, « oui » : dicteeDeDepart ; sans réponse, « non » sauf en Solo) ;
 // dossier conseillé C:\Prevo proposé à l'étape 8 tant que le brouillon n'a pas deplacement_refuse (« Rester ici »).
 // Dépendances : UI, AccesTextes. Chargé avant installation-ecrans.js.
 
@@ -54,6 +54,27 @@ const InstallationEtapes = (() => {
   }
 
   const notePlusTard = () => I18n.t('installation.note_plus_tard.reglages_changent_apres_installation');
+
+  // L24 (T549) : la réponse « Dictée vocale » donnée sur l'écran « base vide » avant « Installer Prévo » est gardée
+  // pour cet onglet (sessionStorage) et cochée à l'étape 8 ; sans elle, Solo : « oui » (la personne qui installe est
+  // celle qui dicte), équipe : rien de coché (sans réponse, non autorisée).
+  const CLE_DICTEE_DE_DEPART = 'prevo.installation.dictee';
+
+  /** Note la réponse de l'écran « base vide » (« 1 », « 0 », ou rien : oubliée). Sans sessionStorage, rien. */
+  function noterDicteeDeDepart(valeur) {
+    try {
+      if (valeur === '0' || valeur === '1') window.sessionStorage.setItem(CLE_DICTEE_DE_DEPART, valeur);
+      else window.sessionStorage.removeItem(CLE_DICTEE_DE_DEPART);
+    } catch (erreur) { /* sans mémoire d'onglet : l'étape 8 repose la question */ }
+  }
+
+  /** Réponse à cocher à l'étape 8 : celle notée au départ, sinon « 1 » en Solo (solo vrai), sinon '' (rien de coché). */
+  function dicteeDeDepart(solo) {
+    let notee = null;
+    try { notee = window.sessionStorage.getItem(CLE_DICTEE_DE_DEPART); } catch (erreur) { notee = null; }
+    if (notee === '0' || notee === '1') return notee;
+    return solo ? '1' : '';
+  }
 
   function choixRadio(nom, valeur, coche, titre, detail) {
     return UI.html`<label class="installation-choix">
@@ -419,6 +440,7 @@ const InstallationEtapes = (() => {
     const deplacer = c.etatEtape('deplacer') === 'a_faire' && !b.deplacement_refuse;
     // Sans CSV au départ de l'assistant (T171) : par quoi commencer ; avec (migration 1.2) : rien à demander, tout est gardé.
     const choixBase = b.base_presente === false;
+    const dictee = dicteeDeDepart(Boolean(b.mode_solo) || c.situation() === 'seul');
     return {
       champs: UI.html`
         <dl class="installation-recap">${lignes.map(([titre, valeur]) => UI.html`<div><dt>${titre}</dt><dd>${valeur}</dd></div>`)}</dl>
@@ -437,8 +459,8 @@ const InstallationEtapes = (() => {
             <h3>${I18n.t('installation.formulaire_recapitulatif.dictee_titre')}</h3>
             <p>${I18n.t('installation.formulaire_recapitulatif.dictee_voix')}</p>
             <div class="installation-choix-liste">
-              ${choixRadio('dictee', '1', false, I18n.t('installation.formulaire_recapitulatif.dictee_oui'), I18n.t('installation.formulaire_recapitulatif.dictee_oui_detail'))}
-              ${choixRadio('dictee', '0', false, I18n.t('installation.formulaire_recapitulatif.dictee_non'), I18n.t('installation.formulaire_recapitulatif.dictee_non_detail'))}
+              ${choixRadio('dictee', '1', dictee === '1', I18n.t('installation.formulaire_recapitulatif.dictee_oui'), I18n.t('installation.formulaire_recapitulatif.dictee_oui_detail'))}
+              ${choixRadio('dictee', '0', dictee === '0', I18n.t('installation.formulaire_recapitulatif.dictee_non'), I18n.t('installation.formulaire_recapitulatif.dictee_non_detail'))}
             </div>
             <p class="aide">${I18n.t('installation.formulaire_recapitulatif.dictee_aide')}</p>
           </div>
@@ -477,5 +499,5 @@ const InstallationEtapes = (() => {
     return FORMULAIRES[cle](contexte);
   }
 
-  return { formulaire, indicationForce, LIBELLES_PORTEE, LIBELLES_DEMARRAGE };
+  return { formulaire, indicationForce, noterDicteeDeDepart, dicteeDeDepart, LIBELLES_PORTEE, LIBELLES_DEMARRAGE };
 })();

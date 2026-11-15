@@ -286,6 +286,7 @@ class TestBaseDeDepart(CasAssistant):
         self.assertEqual((parametres["mode_solo"], parametres["solo_technicien_id"], parametres["version_schema"]),
                          ("1", "TEC-0001", str(commun.FORMAT_COURANT)))
         self.assertEqual(parametres["langue_defaut"], "fr")                  # T296 : sans langue_defaut reçue, le français
+        self.assertEqual(parametres["dictee_autorisee"], "1")                # T549 (L24) : Solo sans réponse, autorisée
 
     def test_base_absente_vide_hors_solo_parametres_avec_la_langue(self):
         # T296 : hors Solo, « vide » crée parametres.csv (format courant et langue de Prévo) et, depuis le lot 1
@@ -601,12 +602,12 @@ class TestEcran(CasInstallation):
         self.assertIn("Par quoi commencer", page.inner_text("#inst-base"))
         self.assertTrue(page.is_checked('#inst-base input[name="base"][value="vide"]'))
         self.cocher("base", "demo")
-        # T540 (L24) : la question de la dictée, sans réponse d'avance ; « Oui » est envoyé et écrit.
+        # T540 (L24) : la question de la dictée ; en Solo (T549), « Oui » coché d'avance (la personne qui installe est
+        # celle qui dicte), envoyé et écrit.
         self.assertIn("Dictée vocale", page.inner_text("#inst-dictee"))
         self.assertIn("Google ou Microsoft", page.inner_text("#inst-dictee"))
         self.assertEqual(page.locator('#inst-dictee input[name="dictee"]').count(), 2)
-        self.assertEqual(page.locator('#inst-dictee input[name="dictee"]:checked').count(), 0)
-        self.cocher("dictee", "1")
+        self.assertTrue(page.is_checked('#inst-dictee input[name="dictee"][value="1"]'))
         page.click("#inst-dossier-garder")
         page.wait_for_selector("#inst-dossier", state="hidden")
         page.click("#inst-terminer")
