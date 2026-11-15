@@ -14,7 +14,7 @@ Lancer depuis la racine du projet :
 """
 import unittest
 
-from commun import ServeurPrevo
+from commun import ServeurPrevo, demo_rg8_bloquante
 from test_ordres_prise import CasPrise, KARIM, JULIEN, THOMAS, LIGNE_PRISE, ot_sur_disque
 
 PRINCIPAL = ".ot-actions > .actions > .ot-bouton-principal"
@@ -139,7 +139,7 @@ class TestSuite(CasActions):
             self.assertEqual(ligne["technicien_id"], KARIM)
 
     def test_prendre_la_suite_d_un_collegue(self):
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:          # L19 (T556) : RG8 réglée « bloquante »
             self.ouvrir(serveur, "#/ot")
             panne = self.creer_ot({"equipement_id": "EQ-0005", "titre": "L18 panne de Julien", "technicien_id": JULIEN})
             self.passer(panne, "Créé", "En cours")
@@ -168,16 +168,18 @@ class TestSuite(CasActions):
             self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
             self.aller_fiche(panne)
             self.assertEqual(self.principal(), "suite")
-            # RG8 : Thomas (sans BR valide) est refusé comme à l'affectation ; rien n'est écrit, pas même le statut
+            # RG8 : Thomas (sans BR valide) est refusé comme à l'affectation ; rien n'est écrit, pas même le statut.
+            # L19 (T556) : ceux qui ont l'habilitation sont nommés à la place de « Prendre la suite »
             self.changer_profil(serveur, "#/accueil", "technicien", THOMAS, "Thomas Garnier")
             self.autoriser_erreur("BR")
             self.aller_fiche(exige)
             avant = ot_sur_disque(serveur.dossier, exige)
-            self.page.click(PRINCIPAL)
-            self.page.wait_for_selector("dialog.dialogue[open]")
-            self.page.click("dialog.dialogue[open] .fenetre-actions .btn-primaire")
-            self.page.wait_for_selector("#toast")
-            self.assertIn("BR", self.page.inner_text("#toast"))
+            self.page.wait_for_selector(".ot-actions .ot-habilites")
+            self.assertIn("BR", self.page.inner_text(".ot-actions .ot-habilites"))
+            self.assertEqual(self.page.locator(".ot-actions button[data-action=prendre-ot]").count(), 0)
+            refus = self.page.evaluate("""([ot, tec, avant]) => Ordres.prendre(ot, tec, avant).then(() => 'écrit', (e) => e.message)""",
+                                       [exige, THOMAS, JULIEN])
+            self.assertIn("BR", refus)
             self.assertEqual(ot_sur_disque(serveur.dossier, exige), avant)
 
 

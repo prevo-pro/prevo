@@ -41,8 +41,8 @@ import unittest
 from pathlib import Path
 
 from atelier import ServeurAtelier, connecter, enroler_appareil, motif_refus_du_demandeur
-from commun import (CasNavigateur, DOSSIER_DEMO, RACINE, ServeurPrevo, attendre_pret, preregler_profil,
-                    scenarios_demo, url_fichier)
+from commun import (CasNavigateur, DOSSIER_DEMO, RACINE, ServeurPrevo, attendre_pret, demo_rg8_bloquante,
+                    preregler_profil, scenarios_demo, url_fichier)
 from test_demandes import dimensions_jpeg, fichier_png
 
 # Identifiants des objets de scénario du jeu de démo (outils/generer_demo.py, ARCHITECTURE.md §14.8).
@@ -663,7 +663,7 @@ class TestRecetteHabilitation(CasRecette):
         return ot_id
 
     def test_habilitation_serveur(self):
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:          # L19 (T556) : RG8 réglée « bloquante »
             self.demarrer_serveur_sans_profil(serveur)
             ot_id = self.jouer()
             _, journal = lire_csv(serveur.dossier / "journal.csv")
@@ -672,6 +672,9 @@ class TestRecetteHabilitation(CasRecette):
 
     def test_habilitation_demo(self):
         self.demarrer_demo_sans_profil()
+        # L19 (T556) : le blocage RG8 est un réglage du responsable (défaut : signalée seulement, P06 B).
+        self.page.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+          lignes.push({ cle: 'habilitation_absente', valeur: 'bloquante' }); })""")
         ot_id = self.jouer()
         etat = self.page.evaluate("""async (id) => { await Donnees.rechargerTable('journal');
             await Donnees.rechargerTable('ordres_travail');

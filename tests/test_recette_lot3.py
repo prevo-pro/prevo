@@ -32,7 +32,7 @@ import time
 import unittest
 from pathlib import Path
 
-from commun import RACINE, CasNavigateur, ServeurPrevo, attendre_pret, scenarios_demo, url_fichier
+from commun import RACINE, demo_rg8_bloquante, CasNavigateur, ServeurPrevo, attendre_pret, scenarios_demo, url_fichier
 from test_rapport_bilan_mois import preregler_profil       # L30 (T544) : familles du tableau de bord dépliées
 from test_regles_indicateurs import CalculPython, date_reference
 
@@ -89,8 +89,8 @@ class CasRecette(CasNavigateur):
         super().setUp()
         self.scenarios = scenarios_demo()
 
-    def serveur(self):
-        serveur = ServeurPrevo()
+    def serveur(self, *source):
+        serveur = ServeurPrevo(*source)
         serveur.demarrer()
         self.addCleanup(serveur.arreter)
         return serveur
@@ -162,7 +162,7 @@ class TestRecetteServeur(CasRecette):
 
     def test_planning_serveur_habilitation_refusee(self):
         # RG8 bloquante depuis la 2.2 (T437, D186) : refus expliqué, l'OT reste « Préparé » (passer outre : T439).
-        serveur = self.serveur()
+        serveur = self.serveur(demo_rg8_bloquante())          # L19 (T556) : RG8 réglée « bloquante »
         ot_id = self.scenarios["ot_a_planifier_br"]
         ot = next(o for o in lire_csv(serveur.dossier, "ordres_travail.csv") if o["id"] == ot_id)
         date = datetime.date.fromisoformat(ot["date_prevue"][:10])

@@ -17,7 +17,7 @@ Lancer depuis la racine du projet :
 import time
 import unittest
 
-from commun import ServeurPrevo
+from commun import ServeurPrevo, demo_rg8_bloquante
 import test_acces_roles as roles
 from test_ordres_prise import CasPrise, ot_sur_disque, lire_csv, KARIM, JULIEN, THOMAS
 
@@ -134,7 +134,7 @@ class TestParcoursPassation(CasPassation):
             self.assertIn("Passé par Julien (fin de journée)", carte)
 
     def test_rg8_journee_terminee_et_attente_equipe(self):
-        with ServeurPrevo() as serveur:
+        with ServeurPrevo(demo_rg8_bloquante()) as serveur:          # L19 (T556) : RG8 réglée « bloquante »
             self.ouvrir(serveur, "#/ot")
             exige = self.creer_ot({"equipement_id": "EQ-0012", "titre": "Armoire L16", "technicien_id": JULIEN,
                                    "date_prevue": "2026-10-21"})
