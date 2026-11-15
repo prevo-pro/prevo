@@ -229,5 +229,52 @@ class TestListeDuResponsable(CasOt):
         self.assertNotIn("Hors magasin", " ".join(page.locator(".magasin-onglets .onglet").all_inner_texts()))
 
 
+class TestReglagePrixDuTechnicien(CasOt):
+    """Réglage « Les techniciens peuvent saisir le prix des pièces hors magasin » (désactivé par défaut) : dans
+    Paramètres ; activé, le technicien voit et saisit le prix (sur l'OT et dans la fenêtre de clôture)."""
+
+    def page_technicien(self, actif):
+        page = self.ouvrir_demo("responsable")
+        technicien = page.evaluate("(id) => Donnees.trouver('ordres_travail', id).technicien_id", OT)
+        self.assertEqual(page.evaluate("() => Donnees.parametre('techniciens_prix_hors_magasin', '0')"), "0")
+        page.evaluate("location.hash = '#/parametres'")
+        case = page.locator("#form-parametres [name='techniciens_prix_hors_magasin']")
+        case.wait_for()
+        self.assertFalse(case.is_checked())
+        if actif:
+            case.click()
+            page.click("#form-parametres button[type=submit]")
+            page.wait_for_function("() => Donnees.parametre('techniciens_prix_hors_magasin', '') === '1'")
+        contexte = self.navigateur.new_context(locale="fr-FR", viewport={"width": 1280, "height": 800})
+        self.addCleanup(contexte.close)
+        preregler_profil(contexte, "technicien", "Essai", technicien)
+        autre = contexte.new_page()
+        self.surveiller(autre)
+        autre.goto(url_fichier("index.html"))
+        autre.click("#btn-demo")
+        attendre_pret(autre)
+        if actif:          # la démo est propre à chaque page : le réglage est posé ici comme le responsable l'a fait
+            autre.evaluate("""() => Donnees.modifier('parametres', (lignes) => {
+              const l = lignes.find((x) => x.cle === 'techniciens_prix_hors_magasin');
+              if (l) l.valeur = '1'; else lignes.push({ cle: 'techniciens_prix_hors_magasin', valeur: '1' }); }, { action: 'essai' })""")
+        self.ouvrir_execution(autre)
+        return autre
+
+    def test_desactive_par_defaut(self):
+        page = self.page_technicien(False)
+        self.assertEqual(page.locator("#ot-hm-prix").count(), 0)
+
+    def test_active_le_technicien_saisit_le_prix(self):
+        page = self.page_technicien(True)
+        page.fill("#ot-hm-designation", "Courroie SPA 1250")
+        page.fill("#ot-hm-prix", "12,5")
+        page.click(".ot-hors-magasin-form button[type=submit]")
+        page.wait_for_selector("#ot-bloc-sorties button.ot-prix-hors-magasin")
+        self.assertEqual([l["prix_unitaire"] for l in self.lignes_hors_magasin(page)], ["12.5"])
+        page.click(".ot-actions [data-cible='Clôturé techniquement']")
+        page.wait_for_selector("dialog.dialogue[open] [name='compte_rendu']", state="visible")
+        self.assertEqual(page.locator("dialog.dialogue[open] [name='prix_hm']").count(), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

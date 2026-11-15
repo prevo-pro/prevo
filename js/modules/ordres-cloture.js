@@ -94,10 +94,10 @@ Object.assign(Ordres, (() => {
     UI.$('.form-colonne', bloc).append(
       UI.champ({ nom: 'article_id', type: 'ref', libelle: I18n.t('ordres.champs_clore.piece_sortie_magasin_facultatif') }, '', { liste: articles }),
       UI.champ({ nom: 'quantite', type: 'decimal', libelle: I18n.t('ordres.champs_clore.quantite_sortie') }, '1'),
-      // L25 : pièce hors magasin (le prix, jamais pour le technicien : D126)
+      // L25 : pièce hors magasin (le prix : pas pour le technicien sans le réglage T558, D126)
       UI.champ({ nom: 'designation_hm', type: 'texte', libelle: I18n.t('ordres.champs_clore.piece_hors_magasin') }, '', { attributs: { maxlength: '120' } }),
       UI.champ({ nom: 'quantite_hm', type: 'decimal', libelle: I18n.t('ordres.champs_clore.quantite_hors_magasin') }, '1'),
-      ...(estTechnicien() ? [] : [UI.champ({ nom: 'prix_hm', type: 'decimal', libelle: I18n.t('ordres.hors_magasin.prix_facultatif') }, '')]),
+      ...(!Magasin.prixHorsMagasinVisible() ? [] : [UI.champ({ nom: 'prix_hm', type: 'decimal', libelle: I18n.t('ordres.hors_magasin.prix_facultatif') }, '')]),
       champOt('astuce', ot.astuce, { aide: aideAstuce() }));
     return bloc;
   }

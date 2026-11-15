@@ -7428,7 +7428,7 @@ def voile_des_versions(config, identite, table):
     demandeur ne reçoit pas certaines pages, garde sa version). À appeler en tenant VERROU_ECRITURE."""
     role = role_effectif(identite) if identite is not None else ''
     lignes_secretes = table == 'parametres' and LIGNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
-    if identite is None or not (COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table) or lignes_secretes):
+    if identite is None or not (colonnes_cachees(role, table, config) or lignes_secretes):
         return lambda version: version
     chemin = os.path.join(dossier_acces(config), '.cle-versions')
     cle = lire_octets(chemin)
@@ -7655,7 +7655,7 @@ def forme_comparable(valeur):
     return texte
 
 
-def filtrer_csv_pour(identite, table, octets):
+def filtrer_csv_pour(identite, table, octets, config=None):
     """Octets de GET /api/csv/<table> pour cette session : sans les colonnes ni les lignes que son rôle ne reçoit pas
     (COLONNES_CACHEES_PAR_ROLE, LIGNES_CACHEES_PAR_ROLE ; en-têtes et valeurs comparés comme Prévo les lit), CSV
     réécrit au format §3.1 ; inchangés sinon (sans comptes, responsable). Colonne cachée d'un format suivant
@@ -7663,7 +7663,7 @@ def filtrer_csv_pour(identite, table, octets):
     if identite is None:
         return octets
     role = role_effectif(identite)
-    cachees = {cle_entete(colonne) for colonne in COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table, ())}
+    cachees = {cle_entete(colonne) for colonne in colonnes_cachees(role, table, config)}       # T558 : config, réglage
     lignes_cachees = LIGNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
     if not cachees and not lignes_cachees:
         return octets
@@ -8008,18 +8008,66 @@ PARAMETRE_TECHNICIENS_CREENT_ARTICLES = 'techniciens_creent_articles'
 COLONNES_ARTICLES_DU_TECHNICIEN = ('stock',)
 
 
-def techniciens_creent_articles(config):
-    """Vrai si parametres.csv porte techniciens_creent_articles = 1 (apostrophe de protection retirée) ; faux sans la
-    ligne, sans le fichier ou sans config. Appelé par controle_d_ecriture et controle_d_ajout, SOUS VERROU_ECRITURE
-    (api_csv_ecrire, api_ajout) : lecture directe, sans reprendre le verrou."""
+def reglage_actif(config, cle):
+    """Vrai si parametres.csv porte la clé donnée à 1 (apostrophe de protection retirée) ; faux sans la ligne, sans le
+    fichier ou sans config. Appelé SOUS VERROU_ECRITURE (api_csv_lire, api_csv_ecrire, api_ajout) : lecture directe."""
     if config is None:
         return False
     octets = lire_octets(chemin_table(config, 'parametres'))
     for ligne in dictionnaires_csv(octets, 'parametres'):
-        if ligne.get('cle', '').strip() == PARAMETRE_TECHNICIENS_CREENT_ARTICLES:
+        if ligne.get('cle', '').strip() == cle:
             valeur = ligne.get('valeur', '').strip()
             return (valeur[1:] if valeur.startswith("'") else valeur).strip() == '1'
     return False
+
+
+def techniciens_creent_articles(config):
+    """Vrai si parametres.csv porte techniciens_creent_articles = 1 (reglage_actif) ; appelé par controle_d_ecriture et
+    controle_d_ajout, sous VERROU_ECRITURE."""
+    return reglage_actif(config, PARAMETRE_TECHNICIENS_CREENT_ARTICLES)
+
+
+# T558 (L25) : réglage du responsable « Les techniciens peuvent saisir le prix des pièces hors magasin » (parametres.csv,
+# désactivé par défaut ; lu côté écran par Magasin.techniciensPrixHorsMagasin). Désactivé : mouvements_stock.
+# prix_unitaire reste caché au technicien (COLONNES_CACHEES_PAR_ROLE, D126). Activé : le technicien lit et écrit cette
+# colonne, et elle seule (articles.prix_unitaire reste caché), sur les seules lignes « hors magasin » : sur une autre
+# ligne, le prix reprend la valeur du fichier (vide pour une ligne nouvelle).
+PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN = 'techniciens_prix_hors_magasin'
+TYPE_HORS_MAGASIN = 'hors magasin'
+CLE_PRIX_UNITAIRE = cle_entete('prix_unitaire')
+
+
+def prix_hors_magasin_permis(role, table, config):
+    """Vrai pour le technicien, sur mouvements_stock, quand le réglage techniciens_prix_hors_magasin est actif."""
+    return role == 'technicien' and table == 'mouvements_stock' and reglage_actif(config, PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN)
+
+
+def colonnes_cachees(role, table, config):
+    """Colonnes cachées de la table pour ce rôle (COLONNES_CACHEES_PAR_ROLE), sans mouvements_stock.prix_unitaire quand
+    le technicien peut saisir le prix des pièces hors magasin (T558) ; tuple vide si aucune."""
+    colonnes = tuple(COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table, ()))
+    if colonnes and prix_hors_magasin_permis(role, table, config):
+        colonnes = tuple(colonne for colonne in colonnes if colonne != 'prix_unitaire')
+    return colonnes
+
+
+def prix_sur_les_hors_magasin_seulement(octets_recus, octets_actuels):
+    """PUT de mouvements_stock par le technicien quand il peut saisir le prix hors magasin (T558) : sur une ligne qui
+    n'est pas « hors magasin », prix_unitaire reprend la valeur du fichier actuel (vide pour une ligne nouvelle)."""
+    table = 'mouvements_stock'
+    entete, lignes = lire_tableau(table, octets_recus)
+    cles = [cle_entete(nom) for nom in entete]
+    if CLE_PRIX_UNITAIRE not in cles or 'type' not in cles:
+        return octets_recus
+    actuelles = valeurs_actuelles_par_id(table, octets_actuels, ('prix_unitaire',))
+    p_prix, p_type = cles.index(CLE_PRIX_UNITAIRE), cles.index('type')
+    p_id = cles.index('id') if 'id' in cles else None
+    for ligne in lignes:
+        ligne.extend([''] * (max(p_prix, p_type) + 1 - len(ligne)))
+        if forme_comparable(ligne[p_type]) != forme_comparable(TYPE_HORS_MAGASIN):
+            identifiant = ligne[p_id].strip() if p_id is not None and p_id < len(ligne) else ''
+            ligne[p_prix] = actuelles.get(identifiant, {}).get('prix_unitaire', '')
+    return ecrire_tableau_csv(entete, lignes)
 
 
 def refus_articles_du_technicien(raison):
@@ -8089,7 +8137,8 @@ def controle_d_ecriture(identite, table, config=None):
     role = role_effectif(identite)
     if role == 'responsable':
         return None
-    colonnes = COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
+    colonnes = colonnes_cachees(role, table, config)                 # T558 : sans le prix hors magasin si permis
+    prix_permis = prix_hors_magasin_permis(role, table, config)
     # T541 (L25) : réglage lu une fois par requête (déjà sous VERROU_ECRITURE).
     creation_permise = role == 'technicien' and table == 'articles' and techniciens_creent_articles(config)
 
@@ -8099,6 +8148,8 @@ def controle_d_ecriture(identite, table, config=None):
             return garder_le_journal_actuel(recus, actuels, profil_au_journal(identite, config))
         if role == 'technicien' and table == 'articles':    # T541 (L25) : stock seul ; article nouveau si permis
             recus = garder_les_articles_actuels(recus, actuels, creation_permise, colonnes)
+        if prix_permis:                     # T558 : prix sur les lignes « hors magasin » seulement
+            recus = prix_sur_les_hors_magasin_seulement(recus, actuels)
         if colonnes:
             return remettre_colonnes_cachees(table, recus, actuels, colonnes)
         if role == 'demandeur' and table == 'demandes':
@@ -8120,7 +8171,8 @@ def controle_d_ajout(identite, table, config=None):
     role = role_effectif(identite)
     if role == 'responsable':
         return None
-    colonnes = COLONNES_CACHEES_PAR_ROLE.get(role, {}).get(table)
+    colonnes = colonnes_cachees(role, table, config)                 # T558 : sans le prix hors magasin si permis
+    prix_permis = prix_hors_magasin_permis(role, table, config)
     creation_permise = role == 'technicien' and table == 'articles' and techniciens_creent_articles(config)
 
     def controler(entete, lignes, actuels):
@@ -8135,7 +8187,7 @@ def controle_d_ajout(identite, table, config=None):
                 if any(cellule.strip() for cellule in rangee):
                     verifier_article_nouveau_du_technicien(ligne_en_dictionnaire(cles_ajout, rangee),
                                                            creation_permise, pris)
-        if not colonnes and table != 'demandes':
+        if not colonnes and table != 'demandes' and not prix_permis:
             return lignes
         cles = [cle_entete(nom) for nom in noms]
         rangees = [rangee for rangee in csv.reader(io.StringIO(lignes.decode('utf-8'), newline=''), delimiter=';')
@@ -8150,6 +8202,13 @@ def controle_d_ajout(identite, table, config=None):
                                                                 'pas ici.', numero=ligne.get('id', '').strip()))
                 verifier_demande_ajoutee_par_le_technicien(ligne)
             return lignes
+        if prix_permis and CLE_PRIX_UNITAIRE in cles and 'type' in cles:      # T558 : prix des lignes « hors magasin » seules
+            for rangee in rangees:
+                ligne = ligne_en_dictionnaire(cles, rangee)
+                if forme_comparable(ligne.get('type', '')) != forme_comparable(TYPE_HORS_MAGASIN) and cles.index(CLE_PRIX_UNITAIRE) < len(rangee):
+                    rangee[cles.index(CLE_PRIX_UNITAIRE)] = ''
+            return ''.join(';'.join(cellule_csv(cellule) for cellule in rangee) + '\r\n'
+                           for rangee in rangees).encode('utf-8')
         if role != 'demandeur' and not colonnes:
             return lignes
         if colonnes:
@@ -9023,7 +9082,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if octets is None:
             raise ErreurHttp(404, traduisible('csv.absent',
                                               'Le fichier {table}.csv n\'existe pas encore.', table=table))
-        self.envoyer(200, filtrer_csv_pour(self.session, table, octets), 'text/csv; charset=utf-8',
+        self.envoyer(200, filtrer_csv_pour(self.session, table, octets, self.config), 'text/csv; charset=utf-8',
                      {'X-Version': voiler(empreinte(octets))})
 
     def api_csv_ecrire(self, table, corps):

@@ -255,15 +255,31 @@ const Magasin = (() => {
     return texte(Donnees.parametre(PARAMETRE_TECHNICIENS_CREENT_ARTICLES, '0')) === '1';
   }
 
+  // T558 (L25) : réglage du responsable « Les techniciens peuvent saisir le prix des pièces hors magasin » (parametres.csv,
+  // clé PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN, désactivé par défaut), lu ici seulement. Désactivé : le prix d'une pièce
+  // hors magasin est caché au technicien (D126). Le serveur tient la même règle (serveur.py, colonnes_cachees).
+  const PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN = 'techniciens_prix_hors_magasin';
+
+  function techniciensPrixHorsMagasin() {
+    return texte(Donnees.parametre(PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN, '0')) === '1';
+  }
+
+  /** Vrai si le profil ouvert voit et saisit le prix d'une pièce hors magasin : tout profil sauf le technicien, ou
+   *  le technicien quand le réglage est actif. */
+  function prixHorsMagasinVisible() {
+    return !App.estTechnicien() || techniciensPrixHorsMagasin();
+  }
+
   /** Vrai si le profil ouvert peut créer un article : le responsable, ou un technicien quand le réglage est actif. */
   function peutCreerArticle() {
     return App.estResponsable() || (App.estTechnicien() && techniciensCreentArticles());
   }
 
   return {
-    TYPES_MOUVEMENT, STATUTS_ACHAT, PARAMETRE_TECHNICIENS_CREENT_ARTICLES,
+    TYPES_MOUVEMENT, STATUTS_ACHAT, PARAMETRE_TECHNICIENS_CREENT_ARTICLES, PARAMETRE_TECHNICIENS_PRIX_HORS_MAGASIN,
     // règles pures (ARCHITECTURE.md §14.4) ; le stock d'un article est Donnees.stockArticle(id)
     suggestionPointCommande, aCommander, sortiesDeLOt, techniciensCreentArticles, peutCreerArticle,
+    techniciensPrixHorsMagasin, prixHorsMagasinVisible,
     // Usage interne au module : outils prêtés aux fichiers magasin-*.js, qui y ajoutent les leurs
     // par Object.assign(Magasin.interne, …). Pas une API : son contenu peut changer à tout moment.
     interne: {

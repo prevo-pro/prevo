@@ -101,6 +101,11 @@ const ParametresReglages = (() => {
     { cle: 'techniciens_creent_articles', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },
       get libelle() { return I18n.t('parametres.libelle.techniciens_creent_articles'); },
       get aide() { return I18n.t('parametres.aide.techniciens_creent_articles'); } },
+    // T558 (L25) : le technicien saisit le prix d'une pièce hors magasin ; lu par Magasin.techniciensPrixHorsMagasin seul
+    // (magasin-regles.js) ; tenu aussi par le serveur (mouvements_stock.prix_unitaire, colonnes_cachees).
+    { cle: 'techniciens_prix_hors_magasin', type: 'booleen', valeurs: ['0', '1'], defaut: '0', large: true, get section() { return I18n.t('parametres.section.magasin'); },
+      get libelle() { return I18n.t('parametres.libelle.techniciens_prix_hors_magasin'); },
+      get aide() { return I18n.t('parametres.aide.techniciens_prix_hors_magasin'); } },
     // Lot 2 ergonomie (T540, L24) : dictée vocale autorisée ou non ; lu par Dictee.autorisee seul. Absent : autorisée (les
     // bases d'avant gardent leur dictée) ; l'assistant d'installation pose la réponse d'une base neuve (non sans réponse).
     // Pas de règle serveur : la voix ne passe que par le navigateur.

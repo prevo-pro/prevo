@@ -177,9 +177,10 @@ Object.assign(Magasin, (() => {
     return id;
   }
 
-  /** L25 : prix d'une pièce hors magasin saisi → texte du fichier ('' si vide, ou pour le technicien : D126). */
+  /** L25 : prix d'une pièce hors magasin saisi → texte du fichier ('' si vide, ou pour le technicien sans le réglage
+   *  T558 : D126). */
   function prixHorsMagasin(valeur) {
-    if (texte(valeur) === '' || (typeof App !== 'undefined' && App.estTechnicien())) return '';
+    if (texte(valeur) === '' || (typeof App !== 'undefined' && !Magasin.prixHorsMagasinVisible())) return '';
     const prix = Donnees.nombre(valeur);
     if (prix === null || prix < 0) throw ErreurValidation(I18n.t('magasin.hors_magasin.prix_invalide'));
     return valeurFichier(prix);
@@ -209,7 +210,9 @@ Object.assign(Magasin, (() => {
    * la ligne reliée à l'article est traitée ; elle reste hors du stock). Renvoie l'identifiant de la ligne.
    */
   async function completerHorsMagasin(mouvementId, { prix, articleId }) {
-    if (typeof App !== 'undefined' && App.profil && !App.estResponsable()) throw ErreurValidation(I18n.t('magasin.hors_magasin.reserve_responsable'));
+    // Le prix : le responsable, ou le technicien avec le réglage (T558) ; l'article relié : le responsable seul.
+    const permis = () => (articleId ? App.estResponsable() : Magasin.prixHorsMagasinVisible());
+    if (typeof App !== 'undefined' && App.profil && !permis()) throw ErreurValidation(I18n.t('magasin.hors_magasin.reserve_responsable'));
     const valeurPrix = prix === undefined ? undefined : prixHorsMagasin(prix);
     if (articleId) articleExistant(articleId);
     return Donnees.modifier('mouvements_stock', (lignes) => {

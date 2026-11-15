@@ -95,6 +95,7 @@ CONSTANTES_HORS_CODES = {
     'STATUTS_OT_REPARE': 'valeurs stockées des listes (D155) : rattrapage des demandes au format 5 (T526)',
     'STATUT_DEMANDE_EN_COURS': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
     'STATUT_DEMANDE_REPAREE': 'valeur stockée (D155) : statut écrit par le rattrapage des demandes (T526)',
+    'TYPE_HORS_MAGASIN': 'valeur stockée (D155) : type de mouvement des pièces hors magasin (T558, L25)',
     'POLITIQUE_CONTENU': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_PORTE': 'technique : en-tête Content-Security-Policy',
     'POLITIQUE_ATTENTE': 'technique : en-tête Content-Security-Policy (page d\'attente du téléphone, R1)',

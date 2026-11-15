@@ -125,7 +125,8 @@ Object.assign(Ordres, (() => {
 
   // ===========================================================================================
   // 13 bis. Pièces hors magasin (L25) : désignation, quantité, prix facultatif ; comptées dans le coût, pas dans le
-  // stock. Le technicien ne voit ni ne saisit de prix (le serveur le lui cache, D126) ; le responsable (et le Solo) oui.
+  // stock. Le technicien ne voit ni ne saisit de prix (le serveur le lui cache, D126), sauf avec le réglage
+  // « Les techniciens peuvent saisir le prix des pièces hors magasin » (T558) ; le responsable (et le Solo) oui.
   // ===========================================================================================
 
   function tableauHorsMagasinHtml(pieces, prixVisible, prixModifiable) {
@@ -158,8 +159,8 @@ Object.assign(Ordres, (() => {
   function afficherHorsMagasin(zone, ot, modifiable) {
     const pieces = Ordres.interne.lignesDeLOt('mouvements_stock', ot.id).filter((m) => m.type === 'hors magasin').map(Ordres.pieceHorsMagasin);
     if (!pieces.length && !modifiable) return;
-    const prixVisible = !estTechnicien();
-    const prixModifiable = modifiable && estResponsable();
+    const prixVisible = Magasin.prixHorsMagasinVisible();        // T558 : le technicien aussi, avec le réglage
+    const prixModifiable = modifiable && prixVisible;
     UI.remplir(zone, UI.html`<h3 class="ot-sous-titre">${I18n.t('ordres.hors_magasin.titre')}</h3>
       <p class="aide">${I18n.t('ordres.hors_magasin.aide')}</p><div class="ot-hm-message"></div>
       ${pieces.length ? tableauHorsMagasinHtml(pieces, prixVisible, prixModifiable) : ''}
