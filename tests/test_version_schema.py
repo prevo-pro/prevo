@@ -209,6 +209,12 @@ class TestFormat2ModeServeur(CasServeurV1):
             parametres.write_bytes(octets_v3.replace(("version_schema;'" + FORMAT_COURANT).encode(), b"version_schema;'2"))
             for nom in ("wiki_pages.csv", "wiki_journal.csv"):
                 (serveur.dossier / nom).unlink()
+            for colonne in ("remise_en_etat", "releve_motif", "releve_le", "releve_par", "releve_mot",
+                            "renforts"):                                                                # format 6
+                retirer_derniere_colonne(serveur.dossier / "ordres_travail.csv", colonne)
+            retirer_derniere_colonne(serveur.dossier / "equipements.csv", "risque_electrique")         # format 6
+            for colonne in ("prix_unitaire", "designation"):                                           # format 6
+                retirer_derniere_colonne(serveur.dossier / "mouvements_stock.csv", colonne)
             for colonne in ("prises_en_charge", "remede_precision", "cause_precision"):              # format 5
                 retirer_derniere_colonne(serveur.dossier / "ordres_travail.csv", colonne)
             for colonne in ("repare_par", "date_reparation", "mot_technicien"):                      # format 5
@@ -489,8 +495,10 @@ class TestDossier(CasNavigateur):
                                  (PARAMETRES_V1.parent / (table + ".csv")).read_bytes(), table)
             self.assertEqual(version_schema(self.lire("parametres.csv")), FORMAT_COURANT)
             entete_ordres = self.lire("ordres_travail.csv").decode("utf-8-sig").split("\r\n", 1)[0].split(";")
-            self.assertEqual(entete_ordres[-6:], ["anomalie_constatee", "astuce", "habilitation_requise",    # formats 2 à 5
-                                                  "cause_precision", "remede_precision", "prises_en_charge"])
+            self.assertEqual(entete_ordres[-12:], ["anomalie_constatee", "astuce", "habilitation_requise",   # formats 2 à 6
+                                                   "cause_precision", "remede_precision", "prises_en_charge",
+                                                   "renforts", "releve_mot", "releve_par", "releve_le", "releve_motif",
+                                                   "remise_en_etat"])
             # Une ligne de journal par étape (1 → 2, 2 → 3, puis 3 → 4).
             actions = actions_journal_version(self.lire("journal.csv"))
             self.assertEqual(actions, ["passage au format %d du fichier ; sauvegarde %s faite juste avant" % (n, nom)

@@ -1,6 +1,6 @@
 """Jeux de fichiers d'exemple des formats de données (T182) : tests/fixtures/formats/.
 
-Couvre : chaque jeu se matérialise ; version_schema et nombre de tables attendus (plus-recent : format 6 simulé) ;
+Couvre : chaque jeu se matérialise ; version_schema et nombre de tables attendus (plus-recent : format 7 simulé) ;
 12 enregistrements au plus par table ; BOM présent ou absent selon le jeu ; données fictives ; les jeux de la 2.2
 (T378) : f3-v2.1.0 et reserves-a-reprendre lus au format 3 par le serveur (format_du_fichier, version_de_base ; côté
 navigateur : tests/test_formats_js.py), controles_reglementaires.csv de reserves-a-reprendre écrit comme Prévo
@@ -11,8 +11,11 @@ test_formats_serveur.py), les 20 tables sans colonne nouvelle identiques à f3-v
 sans changer une cellule, les valeurs du format 4 et les réserves du LISEZMOI ; depuis le format 5 (T513), f4-v2.2.0
 passe au format 5 (demandes et ordres_travail complétés, aucune valeur changée : ses demandes « Acceptée » le restent) ;
 le jeu f5-v2.2.0 (T513, base au format 5) : 27 tables aux colonnes exactes du format 5, rien à migrer, réécrit aux mêmes
-octets, tiré de f4-v2.2.0 (seuls demandes, ordres_travail et parametres changent ; valeurs du LISEZMOI) ; plus-recent :
-f5-v2.2.0 plus ses ajouts du format 6 ; f4-windows-1252 et f4-entete-tronque (T404) : f4-v2.2.0 avec le seul fichier abîmé de windows-1252 ou
+octets, tiré de f4-v2.2.0 (seuls demandes, ordres_travail et parametres changent ; valeurs du LISEZMOI) ; depuis le
+format 6 (T552), f4-v2.2.0 et f5-v2.2.0 passent au format 6 (colonnes vides en fin, aucune valeur changée) ; le jeu
+f6-v2.4.0 (T552, base au format 6) : 27 tables aux colonnes exactes du format 6, rien à migrer, réécrit aux mêmes
+octets, tiré de f5-v2.2.0 (seuls equipements, ordres_travail, mouvements_stock et parametres changent ; valeurs du
+LISEZMOI, dont une pièce hors magasin) ; plus-recent : f6-v2.4.0 plus ses ajouts du format 7 ; f4-windows-1252 et f4-entete-tronque (T404) : f4-v2.2.0 avec le seul fichier abîmé de windows-1252 ou
 entete-tronque, même fabrication, base au format 4 (rien à migrer : le cas pur) ; et, si git et les étiquettes v1.1.0,
 v1.2.0 et v2.1.0 sont là, le générateur rejoué redonne exactement les mêmes octets.
 
@@ -45,13 +48,14 @@ MOTIF_TELEPHONE = re.compile(r"(?<![\w.,])(?:(?:\+|00)33[ .-]?(?:\(0\)[ .-]?)?|0
 PLAGES_FICTIVES = ("04657100", "06399800")
 
 # jeu -> version_schema attendu (None : absent, soit le format 1)
-VERSION_SCHEMA = {"f1": None, "f2-v1.1.0": "2", "f3-v1.2.0": "3", "f3-v2.0.0": "3", "plus-recent": "6",
+VERSION_SCHEMA = {"f1": None, "f2-v1.1.0": "2", "f3-v1.2.0": "3", "f3-v2.0.0": "3", "plus-recent": "7",
                   "melange": "3", "f3-v2.1.0": "3", "reserves-a-reprendre": "3", "f4-v2.2.0": "4",
                   "f4-windows-1252": "4", "f4-entete-tronque": "4", "f5-v2.2.0": "5", "f5-windows-1252": "5",
-                  "f5-entete-tronque": "5"}
+                  "f5-entete-tronque": "5", "f6-v2.4.0": "6", "f6-windows-1252": "6", "f6-entete-tronque": "6"}
 NB_TABLES = {"f2-v1.1.0": 22, "f3-v1.2.0": 24, "f3-v2.0.0": 24, "table-absente": 22, "plus-recent": 28,
              "f3-v2.1.0": 24, "reserves-a-reprendre": 24, "f4-v2.2.0": 27, "f4-windows-1252": 27,
-             "f4-entete-tronque": 27, "f5-v2.2.0": 27, "f5-windows-1252": 27, "f5-entete-tronque": 27}
+             "f4-entete-tronque": 27, "f5-v2.2.0": 27, "f5-windows-1252": 27, "f5-entete-tronque": 27,
+             "f6-v2.4.0": 27, "f6-windows-1252": 27, "f6-entete-tronque": 27}
 # Jeux de la 2.2 (T378), au format 3 : chaque fichier, et la base
 JEUX_DE_LA_2_2 = ("f3-v2.1.0", "reserves-a-reprendre")
 COMMENTAIRE_LEVEE_REPRISE = "levée avant la 2.2, date inconnue"
@@ -112,12 +116,32 @@ VALEURS_DU_F5 = {
         "OT-2025-0002": {"prises_en_charge": "2025-09-25 13:40|TEC-0002|\n2025-09-25 13:51|TEC-0001|TEC-0002"},
         "OT-2025-0005": {"cause_precision": "Câble pincé sous le carter", "remede_precision": "Câble remplacé et protégé"}},
 }
+# Jeu f6-v2.4.0 (T552) : colonnes que le format 6 ajoute en fin de table (vides au passage 5→6) ; valeurs du jeu,
+# recopiées de LISEZMOI.md (MVT-000012 : toute la ligne, une pièce hors magasin à la place d'un inventaire).
+JEU_F6 = "f6-v2.4.0"
+COLONNES_DU_FORMAT_6 = {"equipements": ["risque_electrique"],
+                        "ordres_travail": ["renforts", "releve_mot", "releve_par", "releve_le", "releve_motif",
+                                           "remise_en_etat"],
+                        "mouvements_stock": ["designation", "prix_unitaire"]}
+VALEURS_DU_F6 = {
+    "equipements": {"EQ-0001": {"risque_electrique": "basse tension"},
+                    "EQ-0007": {"risque_electrique": "haute tension"}},
+    "ordres_travail": {
+        "OT-2025-0001": {"remise_en_etat": "Bride provisoire en place, à remplacer au prochain arrêt"},
+        "OT-2025-0002": {"renforts": "TEC-0002"},
+        "OT-2025-0005": {"releve_mot": "Carter démonté, câble commandé\nReste à le passer et à refermer",
+                         "releve_par": "TEC-0001", "releve_le": "2025-09-26 17:05", "releve_motif": "fin de journée"}},
+    "mouvements_stock": {"MVT-000012": {"date": "2025-09-26 16:40", "article_id": "", "type": "hors magasin",
+                                        "quantite": "2", "ot_id": "OT-2025-0005", "utilisateur": "Julien",
+                                        "commentaire": "Achetée au comptoir du fournisseur",
+                                        "designation": "Serre-câble inox 200 mm", "prix_unitaire": "3.75"}},
+}
 # Fichiers sans BOM, par jeu (tous les autres CSV non vides en ont un) ; « * » : aucun CSV n'en a.
 SANS_BOM = {"sans-bom": "*", "windows-1252": {"equipements.csv"}, "f4-windows-1252": {"equipements.csv"},
-            "f5-windows-1252": {"equipements.csv"}}
+            "f5-windows-1252": {"equipements.csv"}, "f6-windows-1252": {"equipements.csv"}}
 # Jeux dont equipements.csv est en Windows-1252 ; variantes abîmées tirées de f4-v2.2.0 (T404) : jeu → (variante
 # tirée de f3-v1.2.0 faite de même, seul fichier qui change).
-JEUX_WINDOWS_1252 = ("windows-1252", "f4-windows-1252", "f5-windows-1252")
+JEUX_WINDOWS_1252 = ("windows-1252", "f4-windows-1252", "f5-windows-1252", "f6-windows-1252")
 ABIMES_DU_F4 = {"f4-windows-1252": ("windows-1252", "equipements.csv"),
                 "f4-entete-tronque": ("entete-tronque", "ordres_travail.csv")}
 
@@ -206,7 +230,7 @@ class TestJeux(unittest.TestCase):
             "f1", "f2-v1.1.0", "f3-v1.2.0", "f3-v2.0.0", "vide", "entete-tronque", "colonnes-manquantes",
             "colonnes-en-trop", "sans-bom", "table-absente", "melange", "windows-1252", "plus-recent", "f3-v2.1.0",
             "reserves-a-reprendre", "f4-v2.2.0", "f4-windows-1252", "f4-entete-tronque", "f5-v2.2.0",
-            "f5-windows-1252", "f5-entete-tronque"]))
+            "f5-windows-1252", "f5-entete-tronque", "f6-v2.4.0", "f6-windows-1252", "f6-entete-tronque"]))
 
     def test_chaque_jeu_se_materialise(self):
         for nom in JEUX:
@@ -279,10 +303,10 @@ class TestJeux(unittest.TestCase):
         self.assertNotIn(b"astuce", entete)
         entete = (self.jeu("plus-recent") / "ordres_travail.csv").read_bytes().split(b"\r\n", 1)[0]
         self.assertTrue(entete.endswith(
-            b";habilitation_requise;cause_precision;remede_precision;prises_en_charge;nouvelle_colonne_v6"))
-        # La table inconnue du format 6 (LISEZMOI : 3 colonnes, 2 lignes) ; la liste exacte des tables du jeu est vérifiée
-        # par test_plus_recent_est_f5_plus_les_ajouts_du_format_6.
-        pieces = (self.jeu("plus-recent") / "pieces_v6.csv").read_bytes()
+            b";prises_en_charge;renforts;releve_mot;releve_par;releve_le;releve_motif;remise_en_etat;nouvelle_colonne_v7"))
+        # La table inconnue du format 7 (LISEZMOI : 3 colonnes, 2 lignes) ; la liste exacte des tables du jeu est vérifiée
+        # par test_plus_recent_est_f6_plus_les_ajouts_du_format_7.
+        pieces = (self.jeu("plus-recent") / "pieces_v7.csv").read_bytes()
         self.assertEqual(pieces.split(b"\r\n", 1)[0], BOM + b"id;designation;stock")
         self.assertEqual(len(lignes_en_dictionnaires(pieces)), 2)
         eq = (self.jeu("windows-1252") / "equipements.csv").read_bytes()
@@ -317,8 +341,9 @@ class TestJeux(unittest.TestCase):
     def test_f4_au_format_4_cote_serveur_passe_au_format_5(self):
         # 27 tables, chacune aux colonnes exactes du format 4, base au format 4 : rien à reprendre (CTR-0004 a sa
         # réserve) ; relue et réécrite par le serveur, chaque table redonne ses octets. Depuis le format 5 (T513) :
-        # format_du_fichier 4 pour demandes et ordres_travail (colonnes du format 5 absentes), 5 pour les autres ; le
-        # passage 4→5 ajoute les colonnes du format 5, vides, en fin, et ne change aucune autre valeur que le retour
+        # format_du_fichier 4 pour demandes et ordres_travail (colonnes du format 5 absentes) ; depuis le format 6
+        # (T552), 5 pour equipements et mouvements_stock (colonnes du format 6 absentes), 6 pour les autres ; le
+        # passage 4→5→6 ajoute les colonnes des formats 5 et 6, vides, en fin, et ne change aucune autre valeur que le retour
         # des 5 demandes « Acceptée » dont l'OT est clôturé (T526 : « Réparée », date de fin, prénom du technicien ;
         # les 7 autres renvoient à un OT absent du jeu).
         dossier = self.jeu(JEU_F4)
@@ -329,17 +354,18 @@ class TestJeux(unittest.TestCase):
             with self.subTest(table=table):
                 entete, lignes = serveur.lire_csv_tolerant(octets)
                 self.assertEqual(entete, serveur.colonnes_du_format(table, 4))
-                self.assertEqual(serveur.format_du_fichier(table, entete), 4 if table in COLONNES_DU_FORMAT_5 else 5)
+                self.assertEqual(serveur.format_du_fichier(table, entete), 4 if table in COLONNES_DU_FORMAT_5
+                                 else 5 if table in COLONNES_DU_FORMAT_6 else 6)
                 self.assertEqual(serveur.ecrire_tableau_csv(entete, lignes), octets)
                 base[table] = {"entete": entete, "lignes": lignes_en_dictionnaires(octets)}
         self.assertEqual(serveur.version_de_base(base["parametres"]["lignes"]), 4)
         self.assertEqual({l["statut"] for l in base["demandes"]["lignes"]}, {"Acceptée"})
         migree, journal, etapes = serveur.migrer_tables(base, 4, serveur.VERSION_SCHEMA_CSV)
-        self.assertEqual(journal, ["passage au format 5 du fichier"])
-        self.assertEqual([(e["de"], e["vers"]) for e in etapes], [(4, 5)])
+        self.assertEqual(journal, ["passage au format 5 du fichier", "passage au format 6 du fichier"])
+        self.assertEqual([(e["de"], e["vers"]) for e in etapes], [(4, 5), (5, 6)])
         for table in base:
             with self.subTest(table=table):
-                ajoutees = COLONNES_DU_FORMAT_5.get(table, [])
+                ajoutees = COLONNES_DU_FORMAT_5.get(table, []) + COLONNES_DU_FORMAT_6.get(table, [])
                 if table == "parametres":
                     continue
                 self.assertEqual(migree[table]["entete"], base[table]["entete"] + ajoutees)
@@ -351,13 +377,15 @@ class TestJeux(unittest.TestCase):
                 self.assertEqual([{c: l[c] for c in ajoutees} for l in migree[table]["lignes"]],
                                  [{c: r.get(c, "") for c in ajoutees} for r in retours])
         self.assertEqual([l["statut"] for l in migree["demandes"]["lignes"]], ["Réparée"] * 5 + ["Acceptée"] * 7)
-        self.assertEqual(serveur.version_de_base(migree["parametres"]["lignes"]), 5)
+        self.assertEqual(serveur.version_de_base(migree["parametres"]["lignes"]), 6)
         self.assertEqual(serveur.reserves_reprises(base["controles_reglementaires"]["lignes"],
                                                    base["reserves_controle"]["lignes"]), [])
 
-    def test_f5_au_format_5_cote_serveur_rien_a_migrer(self):
-        # T513 : 27 tables, chacune aux colonnes exactes du format 5 (format_du_fichier 5), base au format 5 : rien à
-        # migrer ni à reprendre ; relue et réécrite par le serveur, chaque table redonne ses octets.
+    def test_f5_au_format_5_cote_serveur_passe_au_format_6(self):
+        # T513 : 27 tables, chacune aux colonnes exactes du format 5 ; relue et réécrite par le serveur, chaque table
+        # redonne ses octets. T552 : format_du_fichier 5 pour equipements, ordres_travail et mouvements_stock (colonnes
+        # du format 6 absentes), 6 pour les autres ; le passage 5→6 ajoute les colonnes du format 6, vides, en fin, et
+        # ne change aucune autre valeur.
         dossier = self.jeu(JEU_F5)
         fichiers = {c.stem: c.read_bytes() for c in sorted(dossier.glob("*.csv"))}
         self.assertEqual(sorted(fichiers), sorted(serveur.tables_du_format(5)))
@@ -366,13 +394,76 @@ class TestJeux(unittest.TestCase):
             with self.subTest(table=table):
                 entete, lignes = serveur.lire_csv_tolerant(octets)
                 self.assertEqual(entete, serveur.colonnes_du_format(table, 5))
-                self.assertEqual(serveur.format_du_fichier(table, entete), 5)
+                self.assertEqual(serveur.format_du_fichier(table, entete), 5 if table in COLONNES_DU_FORMAT_6 else 6)
                 self.assertEqual(serveur.ecrire_tableau_csv(entete, lignes), octets)
                 base[table] = {"entete": entete, "lignes": lignes_en_dictionnaires(octets)}
         self.assertEqual(serveur.version_de_base(base["parametres"]["lignes"]), 5)
         migree, journal, etapes = serveur.migrer_tables(base, 5, serveur.VERSION_SCHEMA_CSV)
+        self.assertEqual(journal, ["passage au format 6 du fichier"])
+        self.assertEqual([(e["de"], e["vers"]) for e in etapes], [(5, 6)])
+        for table in base:
+            if table == "parametres":
+                continue
+            with self.subTest(table=table):
+                ajoutees = COLONNES_DU_FORMAT_6.get(table, [])
+                self.assertEqual(migree[table]["entete"], base[table]["entete"] + ajoutees)
+                self.assertEqual(migree[table]["lignes"],
+                                 [dict(l, **{c: "" for c in ajoutees}) for l in base[table]["lignes"]])
+        self.assertEqual(serveur.version_de_base(migree["parametres"]["lignes"]), 6)
+
+    def test_f6_au_format_6_cote_serveur_rien_a_migrer(self):
+        # T552 : 27 tables, chacune aux colonnes exactes du format 6 (format_du_fichier 6), base au format 6 : rien à
+        # migrer ni à reprendre ; relue et réécrite par le serveur, chaque table redonne ses octets.
+        dossier = self.jeu(JEU_F6)
+        fichiers = {c.stem: c.read_bytes() for c in sorted(dossier.glob("*.csv"))}
+        self.assertEqual(sorted(fichiers), sorted(serveur.tables_du_format(6)))
+        base = {}
+        for table, octets in fichiers.items():
+            with self.subTest(table=table):
+                entete, lignes = serveur.lire_csv_tolerant(octets)
+                self.assertEqual(entete, serveur.colonnes_du_format(table, 6))
+                self.assertEqual(serveur.format_du_fichier(table, entete), 6)
+                self.assertEqual(serveur.ecrire_tableau_csv(entete, lignes), octets)
+                base[table] = {"entete": entete, "lignes": lignes_en_dictionnaires(octets)}
+        self.assertEqual(serveur.version_de_base(base["parametres"]["lignes"]), 6)
+        migree, journal, etapes = serveur.migrer_tables(base, 6, serveur.VERSION_SCHEMA_CSV)
         self.assertIs(migree, base)
         self.assertEqual((journal, etapes), ([], []))
+
+    def test_f6_tire_de_f5_avec_les_valeurs_du_format_6(self):
+        # T552 : seuls equipements, ordres_travail, mouvements_stock et parametres diffèrent de f5-v2.2.0 ; colonnes du
+        # format 6 en fin, cellules d'avant inchangées sauf la ligne MVT-000012 (pièce hors magasin) ; valeurs du
+        # LISEZMOI.
+        f6, f5 = self.jeu(JEU_F6), self.jeu(JEU_F5)
+        self.assertEqual(sorted(c.name for c in f6.glob("*.csv")), sorted(c.name for c in f5.glob("*.csv")))
+        for chemin in sorted(f5.glob("*.csv")):
+            table = chemin.stem
+            with self.subTest(table=table):
+                if table == "parametres":
+                    self.assertEqual((f6 / chemin.name).read_bytes(), chemin.read_bytes().replace(
+                        b"version_schema;'5\r\n", b"version_schema;'6\r\n"))
+                    continue
+                if table not in COLONNES_DU_FORMAT_6:
+                    self.assertEqual((f6 / chemin.name).read_bytes(), chemin.read_bytes())
+                    continue
+                entete_avant, _ = serveur.lire_csv_tolerant(chemin.read_bytes())
+                entete_apres, _ = serveur.lire_csv_tolerant((f6 / chemin.name).read_bytes())
+                self.assertEqual(entete_apres, entete_avant + COLONNES_DU_FORMAT_6[table])
+                avant = lignes_en_dictionnaires(chemin.read_bytes())
+                apres = lignes_en_dictionnaires((f6 / chemin.name).read_bytes())
+                self.assertEqual(len(apres), len(avant))
+                valeurs = VALEURS_DU_F6[table]
+                for a, l in zip(avant, apres):
+                    attendu = dict(a, **{c: "" for c in COLONNES_DU_FORMAT_6[table]})
+                    attendu.update(valeurs.get(a["id"], {}))
+                    self.assertEqual(l, attendu, a["id"])
+        mouvements = lignes_en_dictionnaires((f6 / "mouvements_stock.csv").read_bytes())
+        self.assertEqual([l["id"] for l in mouvements if l["type"] == "hors magasin"], ["MVT-000012"])
+        lisezmoi = LISEZMOI.read_text(encoding="utf-8")
+        self.assertIn("**f6-v2.4.0**", lisezmoi)
+        for valeur in ("Serre-câble inox 200 mm", "`prix_unitaire` `3.75`", "Bride provisoire en place",
+                       "`renforts` `TEC-0002`", "motif `fin de journée`"):
+            self.assertIn(valeur, lisezmoi)
 
     def test_f5_tire_de_f4_avec_les_valeurs_du_format_5(self):
         # T513 : seuls demandes, ordres_travail et parametres diffèrent de f4-v2.2.0 ; colonnes du format 5 en fin,
@@ -458,13 +549,13 @@ class TestJeux(unittest.TestCase):
         self.assertEqual([(l["id"], l["reconduction_tacite"]) for l in valeurs["contrats_prestataires"]],
                          [("CTP-0001", "1"), ("CTP-0002", "0")])
 
-    def test_plus_recent_est_f5_plus_les_ajouts_du_format_6(self):
-        # Toutes les tables et colonnes du format 5 (aucune à compléter), plus nouvelle_colonne_v6 en fin des OT et la
-        # table pieces_v6, et aucun justificatif cité (le jeu ne fournit pas de documents) ; les autres fichiers sont
-        # ceux de f5-v2.2.0, à l'octet.
-        recent, f4 = self.jeu("plus-recent"), self.jeu(JEU_F5)
+    def test_plus_recent_est_f6_plus_les_ajouts_du_format_7(self):
+        # Toutes les tables et colonnes du format 6 (aucune à compléter), plus nouvelle_colonne_v7 en fin des OT et la
+        # table pieces_v7, et aucun justificatif cité (le jeu ne fournit pas de documents) ; les autres fichiers sont
+        # ceux de f6-v2.4.0, à l'octet.
+        recent, f4 = self.jeu("plus-recent"), self.jeu(JEU_F6)
         self.assertEqual(sorted(c.name for c in recent.glob("*.csv")),
-                         sorted([c.name for c in f4.glob("*.csv")] + ["pieces_v6.csv"]))
+                         sorted([c.name for c in f4.glob("*.csv")] + ["pieces_v7.csv"]))
         for chemin in sorted(f4.glob("*.csv")):
             with self.subTest(fichier=chemin.name):
                 if chemin.name in ("parametres.csv", "ordres_travail.csv", "habilitations.csv"):
@@ -475,12 +566,12 @@ class TestJeux(unittest.TestCase):
         self.assertEqual([dict(l, justificatif="") for l in lignes_en_dictionnaires(
             (f4 / "habilitations.csv").read_bytes())], habilitations)
         self.assertEqual((recent / "parametres.csv").read_bytes(), (f4 / "parametres.csv").read_bytes().replace(
-            b"version_schema;'5\r\n", b"version_schema;'6\r\n"))
+            b"version_schema;'6\r\n", b"version_schema;'7\r\n"))
         entete, lignes = serveur.lire_csv_tolerant((recent / "ordres_travail.csv").read_bytes())
         entete_f4, lignes_f4 = serveur.lire_csv_tolerant((f4 / "ordres_travail.csv").read_bytes())
-        self.assertEqual(entete, entete_f4 + ["nouvelle_colonne_v6"])
+        self.assertEqual(entete, entete_f4 + ["nouvelle_colonne_v7"])
         self.assertEqual([l[:-1] for l in lignes], lignes_f4)
-        self.assertEqual([l[-1] for l in lignes], ["v6-%d" % n for n in range(1, len(lignes) + 1)])
+        self.assertEqual([l[-1] for l in lignes], ["v7-%d" % n for n in range(1, len(lignes) + 1)])
 
     def test_abimes_tires_de_f4_seul_le_fichier_abime_change(self):
         # T404 : f4-v2.2.0 à l'octet près, sauf le fichier abîmé, fabriqué comme dans la variante tirée de f3-v1.2.0 ;
@@ -545,6 +636,37 @@ class TestJeux(unittest.TestCase):
         tronque = (self.jeu("f5-entete-tronque") / "ordres_travail.csv").read_bytes()
         entete, corps = tronque.split(b"\r\n", 1)
         self.assertEqual(corps, (f5 / "ordres_travail.csv").read_bytes().split(b"\r\n", 1)[1])
+        self.assertEqual(entete, (self.jeu("entete-tronque") / "ordres_travail.csv").read_bytes().split(b"\r\n", 1)[0])
+        self.assertEqual(serveur.format_du_fichier("ordres_travail", serveur.lire_csv_tolerant(tronque)[0]), 0)
+
+    def test_abimes_tires_de_f6_seul_le_fichier_abime_change(self):
+        # T552 : f6-v2.4.0 à l'octet près, sauf le fichier abîmé (equipements.csv de f6-v2.4.0 en Windows-1252, dates en
+        # JJ/MM/AAAA ; en-tête d'ordres_travail coupé, lignes de f6-v2.4.0) ; base au format 6 : le cas pur.
+        f6 = self.jeu(JEU_F6)
+        for nom, fichier in (("f6-windows-1252", "equipements.csv"), ("f6-entete-tronque", "ordres_travail.csv")):
+            dossier = self.jeu(nom)
+            with self.subTest(jeu=nom):
+                self.assertEqual(lire_variante(nom)["base"], JEU_F6)
+                self.assertEqual(sorted(c.name for c in dossier.glob("*.csv")), sorted(c.name for c in f6.glob("*.csv")))
+                for chemin in sorted(f6.glob("*.csv")):
+                    if chemin.name != fichier:
+                        self.assertEqual((dossier / chemin.name).read_bytes(), chemin.read_bytes(), chemin.name)
+                self.assertNotEqual((dossier / fichier).read_bytes(), (f6 / fichier).read_bytes())
+                self.assertEqual(serveur.version_de_base(lignes_en_dictionnaires(
+                    (dossier / "parametres.csv").read_bytes())), 6)
+        octets = (self.jeu("f6-windows-1252") / "equipements.csv").read_bytes()
+        self.assertFalse(octets.startswith(BOM))
+        lues = list(csv.reader(io.StringIO(octets.decode("cp1252"), newline=""), delimiter=";"))
+        propres = list(csv.reader(io.StringIO((f6 / "equipements.csv").read_bytes().decode("utf-8-sig"), newline=""),
+                                  delimiter=";"))
+        self.assertEqual(lues[0], propres[0])
+        self.assertEqual(lues[0][-1], "risque_electrique")
+        date_mes = lues[0].index("date_mes")
+        self.assertEqual([[re.sub(r"\A(\d{2})/(\d{2})/(\d{4})\Z", r"\3-\2-\1", c) if i == date_mes else c
+                           for i, c in enumerate(l)] for l in lues[1:]], propres[1:])
+        tronque = (self.jeu("f6-entete-tronque") / "ordres_travail.csv").read_bytes()
+        entete, corps = tronque.split(b"\r\n", 1)
+        self.assertEqual(corps, (f6 / "ordres_travail.csv").read_bytes().split(b"\r\n", 1)[1])
         self.assertEqual(entete, (self.jeu("entete-tronque") / "ordres_travail.csv").read_bytes().split(b"\r\n", 1)[0])
         self.assertEqual(serveur.format_du_fichier("ordres_travail", serveur.lire_csv_tolerant(tronque)[0]), 0)
 

@@ -94,9 +94,33 @@ stockée comme une variante (`demandes.csv`, `ordres_travail.csv`, `parametres.c
 
 Jeu canonique, comme f4-v2.2.0. Un lecteur au format 5 doit la lire sans rien migrer, ne rien écrire à l'ouverture
 (ni sauvegarde `avant-format-v5`, ni ligne de journal), et la réécrire aux mêmes octets, navigateur comme serveur.
-Une 2.2 bêta 1 (format 4) l'ouvre en lecture seule. C'est le jeu des cas « sans passage de format » depuis T513.
+Une 2.2 bêta 1 (format 4) l'ouvre en lecture seule. C'était le jeu des cas « sans passage de format » depuis T513 ;
+depuis le format 6 (T552), un lecteur au format 6 le passe au format 6 (sauvegarde `avant-format-v6`, colonnes du
+format 6 vides, aucune valeur changée).
 
-## Variantes (tirées de f3-v1.2.0, sauf reserves-a-reprendre, tirée de f3-v2.1.0, et plus-recent, tirée de f5-v2.2.0)
+## Jeu au format 6 (variante de f5-v2.2.0, T552)
+
+**f6-v2.4.0** : une base de la 2.4 (lot 2 ergonomie, livraison 2), au format 6 : `version_schema;'6`, 27 tables. Le
+générateur la tire de f5-v2.2.0 par son propre code (jamais par `serveur.py` ni `js/formats.js`) ; elle est stockée
+comme une variante (`equipements.csv`, `ordres_travail.csv`, `mouvements_stock.csv`, `parametres.csv`).
+`equipements` reçoit en fin `risque_electrique` ; `ordres_travail` reçoit en fin `renforts`, `releve_mot`,
+`releve_par`, `releve_le`, `releve_motif`, `remise_en_etat` ; `mouvements_stock` reçoit en fin `designation`,
+`prix_unitaire` ; toutes vides, sauf :
+
+- `EQ-0001` : `basse tension` ; `EQ-0007` : `haute tension` ;
+- `OT-2025-0002` : `renforts` `TEC-0002` (Karim en renfort de Julien) ;
+- `OT-2025-0005` : main passée par `TEC-0001` le `2025-09-26 17:05`, motif `fin de journée`, `releve_mot` sur deux
+  lignes (fin de ligne LF dans la cellule) ;
+- `OT-2025-0001` : `remise_en_etat` « Bride provisoire en place, à remplacer au prochain arrêt » ;
+- `MVT-000012` (inventaire de départ d'`ART-0012` dans f5-v2.2.0, remplacé : le jeu garde 12 enregistrements) devient
+  une pièce hors magasin : type `hors magasin`, `article_id` vide, quantité 2 sur `OT-2025-0005`, `designation`
+  « Serre-câble inox 200 mm », `prix_unitaire` `3.75`.
+
+Jeu canonique, comme f5-v2.2.0. Un lecteur au format 6 doit la lire sans rien migrer, ne rien écrire à l'ouverture
+(ni sauvegarde `avant-format-v6`, ni ligne de journal), et la réécrire aux mêmes octets, navigateur comme serveur.
+Une version au format 5 l'ouvre en lecture seule. C'est le jeu des cas « sans passage de format » depuis T552.
+
+## Variantes (tirées de f3-v1.2.0, sauf reserves-a-reprendre, tirée de f3-v2.1.0, et plus-recent, tirée de f6-v2.4.0)
 
 **f3-v2.0.0** : f3-v1.2.0 plus, dans `parametres.csv`, les clés de la 2.0 (`mode_solo`, `cloture_une_etape`,
 `solo_technicien_id`), et `acces/comptes.json` (`{"version": 1, "comptes": [...]}`, format écrit par `serveur.py`)
@@ -135,11 +159,11 @@ après un enregistrement par Excel (les caractères hors Windows-1252 sont deven
 l'encodage, relire les dates en AAAA-MM-JJ, et réécrire en UTF-8 avec BOM. Base au format 3 : en 2.2, le passage au
 format 4 réécrit ce fichier en UTF-8 avant tout contrôle (le même fichier sans passage : `f4-windows-1252`).
 
-**plus-recent** : données d'une version plus récente : f5-v2.2.0 (toutes les tables et colonnes du format 5) avec
-`version_schema;'6` (format 6 simulé : Prévo écrit le format 5 depuis T513), une colonne inconnue
-`nouvelle_colonne_v6` en fin d'`ordres_travail.csv` (`v6-1`, `v6-2`…), une table inconnue `pieces_v6.csv`
+**plus-recent** : données d'une version plus récente : f6-v2.4.0 (toutes les tables et colonnes du format 6) avec
+`version_schema;'7` (format 7 simulé : Prévo écrit le format 6 depuis T552), une colonne inconnue
+`nouvelle_colonne_v7` en fin d'`ordres_travail.csv` (`v7-1`, `v7-2`…), une table inconnue `pieces_v7.csv`
 (3 colonnes, 2 lignes), et `habilitations.justificatif` vide (le jeu ne cite ainsi aucun document : un export en
-lecture seule n'en cherche aucun) ; les autres fichiers sont ceux de f5-v2.2.0 (28 fichiers CSV). Un lecteur doit refuser d'écrire (garde
+lecture seule n'en cherche aucun) ; les autres fichiers sont ceux de f6-v2.4.0 (28 fichiers CSV). Un lecteur doit refuser d'écrire (garde
 « données plus récentes », demande de mettre Prévo à jour) et ne rien modifier ; en lecture seule, il peut ouvrir
 ce qu'il connaît.
 
@@ -224,8 +248,19 @@ deux variantes suivantes.
 ## Fichiers abîmés dans une base au format 5 (variantes de f5-v2.2.0, T513)
 
 **f5-windows-1252** : le même `equipements.csv` que f4-windows-1252 (cette table ne change pas au format 5), dans
-f5-v2.2.0 (`version_schema;'5`). Rien à migrer : ni sauvegarde `avant-format-v5`, ni ligne de journal de passage.
+f5-v2.2.0 (`version_schema;'5`). Rien à migrer au format 5 ; depuis le format 6 (T552), ces deux variantes passent
+d'abord au format 6 (sauvegarde `avant-format-v6`) : le cas pur est donné par f6-windows-1252 et f6-entete-tronque.
 
 **f5-entete-tronque** : l'en-tête d'`ordres_travail.csv` de f5-v2.2.0 coupé au même endroit que dans
 `entete-tronque` (il finit par `temps_pr`) ; les lignes de données sont celles de f5-v2.2.0, intactes et plus larges
 que l'en-tête. Mêmes attentes que f4-entete-tronque au format 4 : signalé, jamais réécrit, rien à faire au démarrage.
+
+## Fichiers abîmés dans une base au format 6 (variantes de f6-v2.4.0, T552)
+
+**f6-windows-1252** : `equipements.csv` de f6-v2.4.0 (avec `risque_electrique`) enregistré en Windows-1252, sans BOM,
+dates `date_mes` en JJ/MM/AAAA (même fabrication que windows-1252), dans f6-v2.4.0 (`version_schema;'6`). Rien à
+migrer : ni sauvegarde `avant-format-v6`, ni ligne de journal de passage.
+
+**f6-entete-tronque** : l'en-tête d'`ordres_travail.csv` de f6-v2.4.0 coupé au même endroit que dans
+`entete-tronque` (il finit par `temps_pr`) ; les lignes de données sont celles de f6-v2.4.0, intactes et plus larges
+que l'en-tête. Mêmes attentes que f5-entete-tronque au format 5 : signalé, jamais réécrit, rien à faire au démarrage.

@@ -1,6 +1,6 @@
 {
-  "base": "f5-v2.2.0",
-  "description": "Données d'une version plus récente : f5-v2.2.0 (toutes les tables et colonnes du format 5) avec version_schema 6, colonne inconnue nouvelle_colonne_v6 en fin de ordres_travail.csv, table inconnue pieces_v6.csv, et habilitations.justificatif vide (aucun document cité : le jeu n'en fournit pas).",
+  "base": "f6-v2.4.0",
+  "description": "Données d'une version plus récente : f6-v2.4.0 (toutes les tables et colonnes du format 6) avec version_schema 7, colonne inconnue nouvelle_colonne_v7 en fin de ordres_travail.csv, table inconnue pieces_v7.csv, et habilitations.justificatif vide (aucun document cité : le jeu n'en fournit pas).",
   "supprimer": [],
   "vider": []
 }

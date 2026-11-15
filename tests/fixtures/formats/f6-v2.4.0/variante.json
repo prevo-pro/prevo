@@ -1,0 +1,6 @@
+{
+  "base": "f5-v2.2.0",
+  "description": "Base au format 6 (2.4, lot 2 ergonomie, livraison 2) : f5-v2.2.0 complétée par le générateur (jamais par serveur.py ni js/formats.js), version_schema 6, 27 tables ; colonnes du format 6 en fin d'equipements (risque_electrique), d'ordres_travail (renforts, releve_mot, releve_par, releve_le, releve_motif, remise_en_etat) et de mouvements_stock (designation, prix_unitaire), avec des valeurs (deux machines concernées par le risque électrique, un renfort, une main passée en fin de journée avec un mot sur deux lignes, une remise en état à prévoir) et une pièce hors magasin (MVT-000012, article vide, prix 3.75, à la place d'un inventaire de départ). Jeu canonique : rien à migrer, relu et réécrit aux mêmes octets des deux côtés.",
+  "supprimer": [],
+  "vider": []
+}

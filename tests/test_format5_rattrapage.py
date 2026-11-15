@@ -154,9 +154,11 @@ const APP = `var App = { estResponsable: () => true, estTechnicien: () => false,
         lignes: Donnees.lignes(t).map((l) => Object.assign({}, l)) };
     }
     const migree = Formats.migrer(base, 4, Formats.courant).base;
-    const rejouee = Formats.ETAPES[3].appliquer(migree);
+    // (T552 : l'étape 4→5 rejouée sur la base passée au format 5 seulement ; au-delà, version_schema la distingue)
+    const migree5 = Formats.migrer(base, 4, 5).base;
+    const rejouee = Formats.ETAPES[3].appliquer(migree5);
     const dire = (b) => Object.fromEntries(b.tables.demandes.lignes.map((d) => [d.id, [d.statut, d.date_reparation, d.repare_par, d.mot_technicien]]));
-    return { migree: dire(migree), rejouee: JSON.stringify(rejouee.tables) === JSON.stringify(migree.tables),
+    return { migree: dire(migree), rejouee: JSON.stringify(rejouee.tables) === JSON.stringify(migree5.tables),
       seule: JSON.stringify(Formats.migrer({ tables: { demandes: base.tables.demandes } }, 4, 5).base.tables.demandes.lignes.map((d) => d.statut)) };
   })()`);
 
@@ -202,10 +204,10 @@ class TestRattrapageFormat5(unittest.TestCase):
             for table, octets in self.fichiers.items():
                 (dossier / (table + ".csv")).write_bytes(octets)
             etat = self.demarrer(dossier)
-            self.assertEqual((etat["base"], etat["migration"]), (5, "faite"))
+            self.assertEqual((etat["base"], etat["migration"]), (serveur.VERSION_SCHEMA_CSV, "faite"))
             sauvegardes = [c.name for c in (dossier / "sauvegardes").iterdir()]
             self.assertEqual(len(sauvegardes), 1)
-            self.assertTrue(sauvegardes[0].endswith("_avant-format-v5"))
+            self.assertTrue(sauvegardes[0].endswith("_avant-format-v%d" % serveur.VERSION_SCHEMA_CSV))
             sauvegarde = dossier / "sauvegardes" / sauvegardes[0]
             self.assertEqual((sauvegarde / "demandes.csv").read_bytes(), self.fichiers["demandes"])
             apres = demandes_lues((dossier / "demandes.csv").read_bytes())

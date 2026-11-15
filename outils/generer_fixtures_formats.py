@@ -1,4 +1,5 @@
-"""Génère les jeux de fichiers d'exemple des formats de données (tests/fixtures/formats/), T182, T378, T394, T404, T513.
+"""Génère les jeux de fichiers d'exemple des formats de données (tests/fixtures/formats/), T182, T378, T394, T404, T513,
+T552.
 
 Quatre jeux de base, tirés des fichiers de référence, chaque table réduite à 12 enregistrements :
     f1          tests/fixtures/v1/                      (format 1)
@@ -8,9 +9,11 @@ Quatre jeux de base, tirés des fichiers de référence, chaque table réduite �
 et des variantes stockées comme différences (variante.json + seulement les fichiers qui changent), dont
 f4-v2.2.0 (base au format 4, 27 tables : f3-v2.1.0 complétée PAR CE SCRIPT, jamais par serveur.py ni js/formats.js,
 avec des valeurs dans les colonnes et les tables nouvelles), f5-v2.2.0 (base au format 5 : f4-v2.2.0 complétée de
-même, T513), plus-recent (f5-v2.2.0 au format 6 simulé : version_schema 6, colonne nouvelle_colonne_v6, table
-pieces_v6), f5-windows-1252 et f5-entete-tronque (les mêmes fichiers abîmés dans f5-v2.2.0 : le cas pur depuis
-le format 5), reserves-a-reprendre (f3-v2.1.0 dont controles_reglementaires.csv est fabriqué pour la reprise des observations en réserves, D183 ; réserves attendues :
+même, T513), f6-v2.4.0 (base au format 6 : f5-v2.2.0 complétée de même, T552), plus-recent (f6-v2.4.0 au
+format 7 simulé : version_schema 7, colonne nouvelle_colonne_v7, table pieces_v7), f5-windows-1252 et
+f5-entete-tronque (les mêmes fichiers abîmés dans f5-v2.2.0 : depuis le format 6, une base au format 5 passe d'abord
+au format 6), f6-windows-1252 et f6-entete-tronque (les mêmes dans f6-v2.4.0 : le cas pur depuis le format 6),
+reserves-a-reprendre (f3-v2.1.0 dont controles_reglementaires.csv est fabriqué pour la reprise des observations en réserves, D183 ; réserves attendues :
 tests/fixtures/formats/LISEZMOI.md), et f4-windows-1252 et f4-entete-tronque (T404 : les fichiers abîmés de
 windows-1252 et entete-tronque, même fabrication, dans f4-v2.2.0 : le cas pur au format 4 ; depuis le format 5,
 une base au format 4 passe d'abord au format 5).
@@ -416,6 +419,72 @@ def jeu_f5(f3_21, f4):
             "parametres.csv": avec_parametres(f4["parametres.csv"], {"version_schema": "'5"}, [])}
 
 
+# ---------------------------------------------------------------- jeu f6-v2.4.0 (base au format 6)
+# Format 6 (lot 2 ergonomie, livraison 2, docs/FORMAT.md) : six colonnes en fin d'ordres_travail (renforts, relève,
+# remise en état), une en fin d'equipements (risque_electrique), deux en fin de mouvements_stock (pièce hors magasin)
+# et le type de mouvement « hors magasin ». Noms recopiés de la consigne du format (le jeu ne doit rien à serveur.py ni
+# à js/). Même règle que f5-v2.2.0 : jeu canonique, relu et réécrit aux mêmes octets des deux côtés.
+COLONNES_DU_FORMAT_6 = {
+    "equipements.csv": [("risque_electrique", "")],
+    "ordres_travail.csv": [("renforts", ""), ("releve_mot", ""), ("releve_par", ""), ("releve_le", ""),
+                           ("releve_motif", ""), ("remise_en_etat", "")],
+    "mouvements_stock.csv": [("designation", ""), ("prix_unitaire", "")],
+}
+# Valeurs des colonnes nouvelles, par identifiant (les autres lignes : vides). EQ-0001 basse tension, EQ-0007 haute
+# tension ; OT-2025-0002 : Karim (TEC-0002) en renfort de Julien ; OT-2025-0005 : main passée par Julien (TEC-0001) en
+# fin de journée, avec un mot sur deux lignes ; OT-2025-0001 : dépannage provisoire, remise en état à prévoir.
+VALEURS_DU_FORMAT_6 = {
+    "equipements.csv": {"EQ-0001": {"risque_electrique": "basse tension"},
+                        "EQ-0007": {"risque_electrique": "haute tension"}},
+    "ordres_travail.csv": {
+        "OT-2025-0001": {"remise_en_etat": "Bride provisoire en place, à remplacer au prochain arrêt"},
+        "OT-2025-0002": {"renforts": "TEC-0002"},
+        "OT-2025-0005": {"releve_mot": "Carter démonté, câble commandé\nReste à le passer et à refermer",
+                         "releve_par": "TEC-0001", "releve_le": "2025-09-26 17:05", "releve_motif": "fin de journée"}},
+    "mouvements_stock.csv": {},
+}
+# Ligne de mouvements_stock remplacée (le jeu garde 12 enregistrements au plus) : MVT-000012, inventaire de départ
+# d'ART-0012 dans f5-v2.2.0, devient une pièce hors magasin (article vide), prix décimal, sur OT-2025-0005.
+MOUVEMENT_HORS_MAGASIN = ["MVT-000012", "2025-09-26 16:40", "", "hors magasin", "2", "OT-2025-0005", "Julien",
+                          "Achetée au comptoir du fournisseur", "Serre-câble inox 200 mm", "3.75"]
+
+
+def au_format_6(nom, octets, remplacement=None):
+    """Table au format 5 complétée au format 6 : colonnes nouvelles en fin (vides), valeurs de VALEURS_DU_FORMAT_6 ;
+    remplacement : une ligne complète (déjà au format 6) qui remplace la ligne de même identifiant."""
+    entete, lignes = table_canonique(octets)
+    colonnes = COLONNES_DU_FORMAT_6[nom]
+    valeurs = VALEURS_DU_FORMAT_6[nom]
+    if not set(valeurs) <= {l[0] for l in lignes}:
+        raise ValueError("%s : identifiant absent de f5-v2.2.0" % nom)
+    nouvel_entete = entete + [c for c, _ in colonnes]
+    sortie = []
+    for ligne in lignes:
+        complete = ligne + [defaut for _, defaut in colonnes]
+        for colonne, valeur in valeurs.get(ligne[0], {}).items():
+            complete[nouvel_entete.index(colonne)] = valeur
+        sortie.append(complete)
+    if remplacement is not None:
+        if len(remplacement) != len(nouvel_entete) or remplacement[0] not in [l[0] for l in sortie]:
+            raise ValueError("%s : ligne de remplacement fausse" % nom)
+        sortie = [list(remplacement) if l[0] == remplacement[0] else l for l in sortie]
+    textes = [c for l in sortie for n, c in enumerate(l[len(entete):])
+              if colonnes[n][0] not in ("releve_le", "prix_unitaire")]
+    if any(t and MOTIF_TEXTE_A_PROTEGER.search(t) for t in textes):
+        raise ValueError("texte qui prendrait l'apostrophe de protection : hors du cas canonique")
+    return table_prevo(nouvel_entete, sortie)
+
+
+def jeu_f6(f3_21, f4, f5):
+    """{fichier: octets} des fichiers de f6-v2.4.0 qui diffèrent de f5-v2.2.0 (equipements, ordres_travail,
+    mouvements_stock, parametres)."""
+    return {"equipements.csv": au_format_6("equipements.csv", f4["equipements.csv"]),
+            "ordres_travail.csv": au_format_6("ordres_travail.csv", f5["ordres_travail.csv"]),
+            "mouvements_stock.csv": au_format_6("mouvements_stock.csv", f3_21["mouvements_stock.csv"],
+                                                MOUVEMENT_HORS_MAGASIN),
+            "parametres.csv": avec_parametres(f5["parametres.csv"], {"version_schema": "'6"}, [])}
+
+
 def avec_colonne_en_fin(octets, nom, valeur):
     """Table écrite comme Prévo l'écrit, avec une colonne inconnue en fin (« valeur-1 », « valeur-2 »…)."""
     entete, lignes = table_canonique(octets)
@@ -438,6 +507,7 @@ def definir_variantes(f3, f3_21):
     comptes = json.dumps({"version": 1, "comptes": [compte_responsable()]}, ensure_ascii=False, indent=2).encode("utf-8")
     f4 = jeu_f4(f3_21)
     f5 = jeu_f5(f3_21, f4)
+    f6 = jeu_f6(f3_21, f4, f5)
     b = "f3-v1.2.0"
     return {
         "f4-v2.2.0": (
@@ -457,6 +527,15 @@ def definir_variantes(f3, f3_21):
             "demandeur, une prise puis une reprise d'OT, deux précisions de cause « Autre », une de remède) ; les "
             "11 autres demandes restent « Acceptée ». Jeu canonique : rien à migrer, relu et réécrit aux mêmes octets "
             "des deux côtés.", "f4-v2.2.0", [], [], f5),
+        "f6-v2.4.0": (
+            "Base au format 6 (2.4, lot 2 ergonomie, livraison 2) : f5-v2.2.0 complétée par le générateur (jamais par "
+            "serveur.py ni js/formats.js), version_schema 6, 27 tables ; colonnes du format 6 en fin d'equipements "
+            "(risque_electrique), d'ordres_travail (renforts, releve_mot, releve_par, releve_le, releve_motif, "
+            "remise_en_etat) et de mouvements_stock (designation, prix_unitaire), avec des valeurs (deux machines "
+            "concernées par le risque électrique, un renfort, une main passée en fin de journée avec un mot sur deux "
+            "lignes, une remise en état à prévoir) et une pièce hors magasin (MVT-000012, article vide, prix 3.75, à la place d'un inventaire de départ). "
+            "Jeu canonique : rien à migrer, relu et réécrit aux mêmes octets des deux côtés.", "f5-v2.2.0", [], [],
+            f6),
         "f3-v2.0.0": (
             "Base f3-v1.2.0 plus les réglages de la 2.0 (mode Solo, clôture en une étape, technicien « moi ») et un "
             "compte responsable fictif dans acces/comptes.json (format 3 inchangé).", b, [], [],
@@ -498,25 +577,35 @@ def definir_variantes(f3, f3_21):
             "base au format 4, rien à migrer.", "f4-v2.2.0", [], [],
             {"ordres_travail.csv": entete_coupe(f4["ordres_travail.csv"])}),
         # Les mêmes dans une base au format 5 (T513) : depuis le format 5, f4-windows-1252 et f4-entete-tronque passent
-        # d'abord au format 5 ; ces deux-ci restent le cas pur (rien à migrer).
+        # d'abord au format 5 ; depuis le format 6 (T552), ces deux-ci passent aussi d'abord au format 6.
         "f5-windows-1252": (
             "equipements.csv de f5-v2.2.0 enregistré en Windows-1252, sans BOM, dates date_mes en JJ/MM/AAAA, comme "
-            "après un enregistrement par Excel (même fabrication que windows-1252) ; base au format 5, rien à migrer.",
+            "après un enregistrement par Excel (même fabrication que windows-1252) ; base au format 5.",
             "f5-v2.2.0", [], [], {"equipements.csv": dates_jjmmaaaa(f4["equipements.csv"], "date_mes")}),
         "f5-entete-tronque": (
             "En-tête de ordres_travail.csv de f5-v2.2.0 coupé au milieu du nom de colonne temps_prevu_h (même "
             "fabrication que entete-tronque) ; les lignes de données sont intactes et plus larges que l'en-tête ; "
-            "base au format 5, rien à migrer.", "f5-v2.2.0", [], [],
+            "base au format 5.", "f5-v2.2.0", [], [],
             {"ordres_travail.csv": entete_coupe(f5["ordres_travail.csv"])}),
+        # Les mêmes dans une base au format 6 (T552) : le cas pur depuis le format 6 (rien à migrer).
+        "f6-windows-1252": (
+            "equipements.csv de f6-v2.4.0 enregistré en Windows-1252, sans BOM, dates date_mes en JJ/MM/AAAA, comme "
+            "après un enregistrement par Excel (même fabrication que windows-1252) ; base au format 6, rien à migrer.",
+            "f6-v2.4.0", [], [], {"equipements.csv": dates_jjmmaaaa(f6["equipements.csv"], "date_mes")}),
+        "f6-entete-tronque": (
+            "En-tête de ordres_travail.csv de f6-v2.4.0 coupé au milieu du nom de colonne temps_prevu_h (même "
+            "fabrication que entete-tronque) ; les lignes de données sont intactes et plus larges que l'en-tête ; "
+            "base au format 6, rien à migrer.", "f6-v2.4.0", [], [],
+            {"ordres_travail.csv": entete_coupe(f6["ordres_travail.csv"])}),
         "plus-recent": (
-            "Données d'une version plus récente : f5-v2.2.0 (toutes les tables et colonnes du format 5) avec "
-            "version_schema 6, colonne inconnue nouvelle_colonne_v6 en fin de ordres_travail.csv, table inconnue "
-            "pieces_v6.csv, et habilitations.justificatif vide (aucun document cité : le jeu n'en fournit pas).",
-            "f5-v2.2.0", [], [],
-            {"parametres.csv": avec_parametres(f5["parametres.csv"], {"version_schema": "'6"}, []),
-             "ordres_travail.csv": avec_colonne_en_fin(f5["ordres_travail.csv"], "nouvelle_colonne_v6", "v6"),
+            "Données d'une version plus récente : f6-v2.4.0 (toutes les tables et colonnes du format 6) avec "
+            "version_schema 7, colonne inconnue nouvelle_colonne_v7 en fin de ordres_travail.csv, table inconnue "
+            "pieces_v7.csv, et habilitations.justificatif vide (aucun document cité : le jeu n'en fournit pas).",
+            "f6-v2.4.0", [], [],
+            {"parametres.csv": avec_parametres(f6["parametres.csv"], {"version_schema": "'7"}, []),
+             "ordres_travail.csv": avec_colonne_en_fin(f6["ordres_travail.csv"], "nouvelle_colonne_v7", "v7"),
              "habilitations.csv": avec_colonne_videe(f4["habilitations.csv"], "justificatif"),
-             "pieces_v6.csv": ecrire_table(True, ["id", "designation", "stock"],
+             "pieces_v7.csv": ecrire_table(True, ["id", "designation", "stock"],
                                            [["PIE-0001", "Pièce du futur A", "3"], ["PIE-0002", "Pièce du futur B", "0"]])}),
         "reserves-a-reprendre": (
             "Base f3-v2.1.0 dont controles_reglementaires.csv est fabriqué pour la reprise des observations en "

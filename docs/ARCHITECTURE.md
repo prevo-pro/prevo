@@ -5585,7 +5585,38 @@ compatibilité : [FORMAT.md](FORMAT.md) §5 à §7.
   (`:has(... :focus)`, clavier ouvert) ; cachée sur PC et à l'impression.
 - **Jeux d'essai** : `f5-v2.2.0` (base au format 5), `f5-windows-1252` et `f5-entete-tronque` (cas purs sans passage),
   `plus-recent` au format 6 simulé (`tests/fixtures/formats/LISEZMOI.md`) ; `f4-v2.2.0` sert désormais au passage
-  4→5.
+  4→5. Depuis le format 6 (§25.2), voir ci-dessous.
+
+### 25.2 Format 6 (2.4, lot 2 ergonomie, livraison 2 ; T552)
+
+Socle de données des décisions L16 (passer la main, renforts), L19 (risque électrique d'une machine), L20 (dépannage
+provisoire) et L25 (pièce hors magasin) ; aucun écran à lui seul. Règles de migration et de compatibilité :
+[FORMAT.md](FORMAT.md) §5 à §7.
+
+- `Schema.version` = **6** ; toujours **27 tables**. `serveur.py` reste le miroir exact (`VERSION_SCHEMA_CSV`,
+  `COLONNES_PAR_TABLE`, `PREMIER_FORMAT_DES_COLONNES`, `COLONNES_DES_FORMATS_SUIVANTS`, `ETAPES_FORMAT`).
+- **`ordres_travail`**, en fin de table (`depuisVersion(6)`) : `renforts` (texte : identifiants des techniciens en
+  renfort séparés par « , » ; le technicien principal reste `technicien_id`), `releve_mot` (texte_long : dernier mot
+  de relève), `releve_par` (référence `techniciens` : qui a passé la main), `releve_le` (date_heure), `releve_motif`
+  (choix : `fin de journée`, `compétence ou habilitation`, `pas le temps`, `autre` ; vide permis), `remise_en_etat`
+  (texte_long : mot d'une clôture en dépannage provisoire ; non vide = remise en état à prévoir).
+- **`equipements`**, en fin de table : `risque_electrique` (choix : `basse tension`, `haute tension`,
+  `local haute tension` ; vide = machine non concernée).
+- **`mouvements_stock`**, en fin de table : `designation` (texte) et `prix_unitaire` (décimal) d'une pièce hors
+  magasin ; **`mouvements_stock.type`** gagne `hors magasin` (en dernier) : `article_id` vide (il n'est exigé nulle
+  part, ni par le schéma ni par le serveur) ; `Donnees.stockArticle` ignore ce type (aucun stock ne bouge).
+- **Étape 5→6** (`etape(5, 6, …)` et `EtapeDeFormat(5, 6, …)`, même description) : colonnes ajoutées vides, aucune
+  valeur changée ; sauvegarde `avant-format-v6` dans les deux modes (`MOTIFS_SAUVEGARDE` de `serveur.py` et de
+  `js/stockage-dossier.js`). La démo naît au format 6 (colonnes vides).
+- **Serveur** : `mouvements_stock.prix_unitaire` est caché au technicien comme `articles.prix_unitaire` (D126, « ni
+  taux horaire ni prix ») : `COLONNES_CACHEES_PAR_ROLE`, colonne d'un format suivant, donc nom gardé dans l'en-tête et
+  valeurs vidées à la lecture, remises depuis le fichier à son PUT, vidées dans une ligne qu'il ajoute ; `X-Version`
+  voilée (T506). Le technicien ne peut donc pas saisir ce prix : le responsable le complète. Le demandeur ne lit ni
+  `ordres_travail` ni `mouvements_stock` ; `equipements.risque_electrique` n'est pas un coût, lu par tous les rôles
+  qui lisent `equipements`. Aucun autre droit ne change (`tests/test_format6_serveur.py`).
+- **Jeux d'essai** : `f6-v2.4.0` (base au format 6, avec une pièce hors magasin), `f6-windows-1252` et
+  `f6-entete-tronque` (cas purs sans passage), `plus-recent` au format 7 simulé (`tests/fixtures/formats/LISEZMOI.md`) ;
+  `f5-v2.2.0` sert désormais au passage 5→6.
 
 ## 26. Garanties et contrats de prestataires (2.2, lot L4 ; D182, D187, D190, CS173, CS175)
 

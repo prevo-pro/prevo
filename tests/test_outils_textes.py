@@ -713,7 +713,7 @@ class TestSocleEtSchema(unittest.TestCase):
 
     def test_valeurs_du_vrai_schema(self):
         _, valeurs, _ = ext.lire_schema(RACINE)
-        self.assertEqual(len(valeurs), 75)      # format 5 : + « Réparée » (demandes)
+        self.assertEqual(len(valeurs), 83)      # format 5 : + « Réparée » (demandes) ; format 6 : + 8 (T552)
         self.assertLessEqual({'Clôturé techniquement', 'en service', 'P1', 'B', 'à valider', 'mineure', 'majeure', 'critique', 'catalogue', 'saisie'}, valeurs)
 
     def test_moteur_de_traduction_jamais_extrait(self):

@@ -3,7 +3,9 @@
 // Contrat : docs/ARCHITECTURE.md §4, §14.1 et §20.2 (format 3 : tables wiki_pages et wiki_journal, colonne
 // ordres_travail.astuce, lot 6) ; format 4 (version 2.2, docs/FORMAT.md) : tables reserves_controle, garanties et
 // contrats_prestataires, colonnes de equipements, ordres_travail, habilitations et controles_reglementaires ;
-// format 5 (lot 1 ergonomie) : statuts « En cours » et « Réparée » des demandes, colonnes de demandes et ordres_travail.
+// format 5 (lot 1 ergonomie) : statuts « En cours » et « Réparée » des demandes, colonnes de demandes et ordres_travail ;
+// format 6 (lot 2 ergonomie, livraison 2) : colonnes de ordres_travail, equipements et mouvements_stock, type de
+// mouvement « hors magasin ».
 // Les champs de chaque table sont d'abord exactement
 // ceux du tableau du brief §6, dans le même ordre (l'ordre des champs = l'ordre des colonnes CSV),
 // puis, en fin de table, les champs ajoutés par les versions suivantes du format (attribut depuisVersion: N).
@@ -146,6 +148,9 @@ const Schema = (function () {
         })),
         // Version 4 du format (2.2, D188) : aucun défaut
         depuisVersion(4, champ('cout_arret_h', 'decimal')),
+        // Version 6 du format (lot 2 ergonomie, L19) : vide = machine non concernée (un choix vide est toujours
+        // permis) ; l'habilitation attendue se déduit du risque et du type d'OT (dépannage ou travail planifié)
+        depuisVersion(6, choix('risque_electrique', ['basse tension', 'haute tension', 'local haute tension'])),
       ],
     },
 
@@ -236,6 +241,17 @@ const Schema = (function () {
         depuisVersion(5, champ('cause_precision', 'texte')),
         depuisVersion(5, champ('remede_precision', 'texte')),
         depuisVersion(5, champ('prises_en_charge', 'texte_long')),
+        // Version 6 du format (lot 2 ergonomie, docs/FORMAT.md) : renforts (L16) = identifiants de techniciens
+        // séparés par « , » (le principal reste technicien_id) ; relève (L16) = dernier « passer la main » : mot,
+        // qui, quand, pourquoi (motif vide permis) ; remise_en_etat (L20) = mot d'une clôture en dépannage
+        // provisoire (non vide : remise en état à prévoir)
+        depuisVersion(6, champ('renforts', 'texte')),
+        depuisVersion(6, champ('releve_mot', 'texte_long')),
+        depuisVersion(6, reference('releve_par', 'techniciens')),
+        depuisVersion(6, champ('releve_le', 'date_heure')),
+        depuisVersion(6, choix('releve_motif', ['fin de journée', 'compétence ou habilitation', 'pas le temps',
+          'autre'])),
+        depuisVersion(6, champ('remise_en_etat', 'texte_long')),
       ],
     },
 
@@ -376,11 +392,17 @@ const Schema = (function () {
         identifiantChamp(),
         champ('date', 'date_heure'),
         reference('article_id', 'articles'),
-        choix('type', ['entrée', 'sortie', 'inventaire', 'retour']),
+        // « hors magasin » : format 6 (L25), pièce prise hors du magasin pour un OT : article_id vide, designation
+        // et prix_unitaire (facultatif) sur la ligne ; ne compte pas dans le stock (Donnees.stockArticle)
+        choix('type', ['entrée', 'sortie', 'inventaire', 'retour', 'hors magasin']),
         champ('quantite', 'decimal'),
         reference('ot_id', 'ordres_travail'),
         champ('utilisateur', 'texte'),
         champ('commentaire', 'texte_long'),
+        // Version 6 du format (lot 2 ergonomie, L25) : pièce hors magasin ; prix_unitaire caché au technicien par
+        // le serveur, comme articles.prix_unitaire (D126)
+        depuisVersion(6, champ('designation', 'texte')),
+        depuisVersion(6, champ('prix_unitaire', 'decimal')),
       ],
     },
 
@@ -744,8 +766,8 @@ const Schema = (function () {
   }
 
   return {
-    version: 5,                        // version du format des fichiers (ARCHITECTURE.md §14.1, §20.2 ; 4 : 2.2 ;
-                                       // 5 : lot 1 ergonomie)
+    version: 6,                        // version du format des fichiers (ARCHITECTURE.md §14.1, §20.2 ; 4 : 2.2 ;
+                                       // 5 : lot 1 ergonomie ; 6 : lot 2 ergonomie, livraison 2)
     tables: tables,
     table: table,
     champ: champDeTable,

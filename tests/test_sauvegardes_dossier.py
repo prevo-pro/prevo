@@ -17,8 +17,8 @@ jeux de tests/fixtures/formats/ sont copiés dans un dossier temporaire puis éc
                        manuelle ne copie pas documents/ ;
     avant-mise-a-jour  application entière (index.html) : premier démarrage sur f2-v1.1.0 (octets d'ORIGINE dans la
                        sauvegarde, « de » null et « vers », derniere-version.json écrit, passage au format courant
-                       ensuite) et sur f5-v2.2.0 (format courant : rien à passer) avec la version « 1.2.0 » notée ;
-                       seconde ouverture : rien ; même version notée, sur f5-v2.2.0 : rien ; jeu plus-recent (lecture
+                       ensuite) et sur f6-v2.4.0 (format courant : rien à passer) avec la version « 1.2.0 » notée ;
+                       seconde ouverture : rien ; même version notée, sur f6-v2.4.0 : rien ; jeu plus-recent (lecture
                        seule) : aucun octet écrit ; échec : bandeau, l'application
                        continue, rien n'est noté, nouvel essai réussi à l'ouverture suivante ; base vide : version notée,
                        aucune sauvegarde « avant-mise-a-jour » ;
@@ -52,7 +52,7 @@ MOTIF_QUOTIDIENNE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MOTIF_MANUELLE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}$")
 MOTIF_AVANT_MISE_A_JOUR = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}_avant-mise-a-jour$")
 MOTIF_AVANT_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}_avant-format-v%d$" % FORMAT_COURANT)
-JEU_AU_FORMAT_COURANT = "f5-v2.2.0"          # base de la 2.2 (format 5) : rien à passer au format courant à l'ouverture
+JEU_AU_FORMAT_COURANT = "f6-v2.4.0"          # base de la 2.4 (format 6) : rien à passer au format courant à l'ouverture
 HORLOGE = "2026-04-10T10:00:00"
 AUJOURDHUI = datetime.date(2026, 4, 10)
 

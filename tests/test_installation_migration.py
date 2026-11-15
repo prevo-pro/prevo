@@ -380,6 +380,10 @@ class TestBaseDeDepart(CasAssistant):
         self.assertEqual(self.enregistreur.relances, [])
 
 
+# Colonnes de date du schéma jamais remplies dans la démo (format 6, T552 : la relève d'un OT).
+DATES_VIDES_DANS_LA_DEMO = {"ordres_travail": {"releve_le"}}
+
+
 class TestJeuDeDemo(unittest.TestCase):
 
     def test_lire_jeu_de_demo_rend_les_csv_de_donnees_demo(self):
@@ -404,7 +408,8 @@ class TestJeuDeDemo(unittest.TestCase):
                 dates_presentes = {entete[i] for a in avant for i in range(len(a)) if MOTIF_DEBUT_DE_DATE.match(a[i])}
                 if avant:    # table du format 4 vide dans la démo (garanties, contrats) : rien à comparer
                     # le serveur décale par la valeur : même jeu (demandes.date_reparation remplie depuis T525)
-                    self.assertEqual(dates_presentes, types[table])
+                    # (format 6, T552 : ordres_travail.releve_le est vide dans la démo, comme toute la relève)
+                    self.assertEqual(dates_presentes, types[table] - DATES_VIDES_DANS_LA_DEMO.get(table, set()))
                 else:
                     self.assertEqual(dates_presentes, set())
                 self.assertEqual(changees, dates_presentes - set(serveur.COLONNES_NON_DECALEES.get(table, ())))

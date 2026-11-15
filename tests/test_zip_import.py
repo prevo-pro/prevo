@@ -756,7 +756,7 @@ class TestServeur(CasImport):
             self.assertEqual(entete[:len(entete_f2)], entete_f2, table)
             nouvelles = entete[len(entete_f2):]
             self.assertEqual(nouvelles, COLONNES_AJOUTEES[3].get(table, []) + COLONNES_AJOUTEES[4].get(table, [])
-                             + COLONNES_AJOUTEES[5].get(table, []),
+                             + COLONNES_AJOUTEES[5].get(table, []) + COLONNES_AJOUTEES[6].get(table, []),
                              table)
             if table == "journal":
                 self.assertRegex(lignes.pop()["action"], r"^import ZIP : prevo-export-2025-10-01\.zip, " + str(NB_TABLES) + r" tables, "
@@ -777,7 +777,8 @@ class TestServeur(CasImport):
     def test_serveur_colonnes_inconnues_du_zip_gardees(self):
         # Jeu colonnes-en-trop : colonne_maison au milieu d'equipements.csv, note_maison à la fin. Remplacer la table
         # ne doit rien perdre : les colonnes du schéma, puis les colonnes inconnues, chaque valeur gardée.
-        # ZIP au format 3 : equipements mis au format courant (cout_arret_h, format 4, vide) avant les colonnes inconnues.
+        # ZIP au format 3 : equipements mis au format courant (cout_arret_h, format 4, et risque_electrique, format 6,
+        # vides) avant les colonnes inconnues.
         zip_csv = {c: o for c, o in fichiers_du_jeu("colonnes-en-trop").items() if c.endswith(".csv")}
         schema, _ = lire_csv(fichiers_demo()["equipements.csv"])           # en-tête du format courant
         chemin_zip = ecrire_zip(self.temporaire / "colonnes-en-trop.zip", zip_csv)
@@ -795,7 +796,8 @@ class TestServeur(CasImport):
         for ligne, ligne_zip in zip(lignes, lignes_zip):
             self.assertEqual({c: ligne[c] for c in entete_zip}, ligne_zip)
             self.assertEqual({c: ligne[c] for c in entete if c not in entete_zip},
-                             {c: DEFAUTS_AJOUTES[c] for c in COLONNES_AJOUTEES[4]["equipements"]})
+                             {c: DEFAUTS_AJOUTES[c] for c in COLONNES_AJOUTEES[4]["equipements"]
+                              + COLONNES_AJOUTEES[6]["equipements"]})
 
     def test_serveur_annulation_zip_hostile_ou_plus_recent_aucun_octet_change(self):
         f3 = {chemin: o for chemin, o in fichiers_du_jeu("f3-v1.2.0").items() if chemin.endswith(".csv")}
@@ -851,12 +853,12 @@ class TestServeur(CasImport):
             self.assertIn("remises dans leur état d'avant, depuis la sauvegarde « %s »" % noms[0], message)
             self.assertIn(copies[0], message)
             # La copie de sécurité garde l'état interrompu : equipements (écrit avant ordres_travail) est celui du ZIP,
-            # mis au format courant (ZIP au format 3 : cout_arret_h ajoutée, vide), ordres_travail celui d'avant
+            # mis au format courant (ZIP au format 3 : cout_arret_h et risque_electrique ajoutées, vides), ordres_travail celui d'avant
             # (jamais écrit).
             interrompu = contenu_sauvegarde(apres, copies[0])
             entete_f3, lignes_f3 = lire_csv(f3["equipements.csv"])
             entete_i, lignes_i = lire_csv(interrompu["equipements.csv"])
-            self.assertEqual(entete_i, entete_f3 + COLONNES_AJOUTEES[4]["equipements"])
+            self.assertEqual(entete_i, entete_f3 + COLONNES_AJOUTEES[4]["equipements"] + COLONNES_AJOUTEES[6]["equipements"])
             self.assertEqual([{c: l[c] for c in entete_f3} for l in lignes_i], lignes_f3)
             self.assertEqual({l["cout_arret_h"] for l in lignes_i}, {DEFAUTS_AJOUTES["cout_arret_h"]})
             self.assertNotEqual(interrompu["equipements.csv"], avant["equipements.csv"])

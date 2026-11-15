@@ -40,16 +40,19 @@ BOM = b"\xef\xbb\xbf"
 # la colonne astuce des OT, §20.10 ; 2.2 : cout_arret_h, D188, et habilitation_requise des OT, D191), toujours
 # en fin de ligne, dans l'ordre du schéma.
 COLONNES_V2 = {
-    "equipements": ["valeur_remplacement", "cout_arret_h"],
+    "equipements": ["valeur_remplacement", "cout_arret_h", "risque_electrique"],
     "demandes": ["symptome_code", "ot_origine_id", "mot_technicien", "date_reparation", "repare_par"],
     "ordres_travail": ["anomalie_constatee", "astuce", "habilitation_requise", "cause_precision", "remede_precision",
-                       "prises_en_charge"],
+                       "prises_en_charge", "renforts", "releve_mot", "releve_par", "releve_le", "releve_motif",
+                       "remise_en_etat"],
     "parametres": [],
 }
 # Valeur par défaut de chaque nouveau champ (js/schema.js) : anomalie_constatee est un booléen faux.
 DEFAUTS_V2 = {"valeur_remplacement": "", "symptome_code": "", "ot_origine_id": "", "anomalie_constatee": "0", "astuce": "",
               "cout_arret_h": "", "habilitation_requise": "", "mot_technicien": "", "date_reparation": "",
-              "repare_par": "", "cause_precision": "", "remede_precision": "", "prises_en_charge": ""}
+              "repare_par": "", "cause_precision": "", "remede_precision": "", "prises_en_charge": "",
+              "risque_electrique": "", "renforts": "", "releve_mot": "", "releve_par": "", "releve_le": "",
+              "releve_motif": "", "remise_en_etat": ""}
 LIBELLES_TABLES = {"equipements": "Équipements", "demandes": "Demandes d'intervention",
                    "ordres_travail": "Ordres de travail"}
 MESSAGE_INFO = "ajoutée par la version %d du format, écrite au prochain enregistrement"
@@ -58,9 +61,13 @@ MESSAGE_INFO = "ajoutée par la version %d du format, écrite au prochain enregi
 INFOS_DU_FORMAT_5 = ([["info", "demandes", c] for c in ("mot_technicien", "date_reparation", "repare_par")]
                      + [["info", "ordres_travail", c] for c in ("cause_precision", "remede_precision",
                                                                 "prises_en_charge")])
+# Format 6 (T552) : les colonnes d'ordres_travail (la colonne d'equipements est comptée à part : la table est réécrite)
+INFOS_DU_FORMAT_6 = [["info", "ordres_travail", c] for c in ("renforts", "releve_mot", "releve_par", "releve_le",
+                                                             "releve_motif", "remise_en_etat")]
 VERSION_COLONNE = {"astuce": 3, "cout_arret_h": 4, "habilitation_requise": 4, "mot_technicien": 5,
                    "date_reparation": 5, "repare_par": 5, "cause_precision": 5, "remede_precision": 5,
-                   "prises_en_charge": 5}
+                   "prises_en_charge": 5, "risque_electrique": 6, "renforts": 6, "releve_mot": 6, "releve_par": 6,
+                   "releve_le": 6, "releve_motif": 6, "remise_en_etat": 6}
 
 SCRIPTS = ["js/lib/papaparse.min.js", "js/schema.js", "js/donnees.js"]
 SCRIPTS_SERVEUR = SCRIPTS_TRADUCTION + SCRIPTS + ["js/stockage-serveur.js"]   # moteur de traduction d'abord (Lot 2)
@@ -217,7 +224,8 @@ class TestLectureFichiersV1(CasNavigateur):
             [ligne[:position] + ligne[position + 1:] for ligne in lignes])
         resultat = self.analyser("equipements", BOM + tampon.getvalue().encode("utf-8"))
         colonnes = sorted((p["gravite"], p["champ"]) for p in resultat["problemes"] if p["type"] == "colonne")
-        self.assertEqual(colonnes, [("attention", "marque"), ("info", "cout_arret_h"), ("info", "valeur_remplacement")])
+        self.assertEqual(colonnes, [("attention", "marque"), ("info", "cout_arret_h"), ("info", "risque_electrique"),
+                                    ("info", "valeur_remplacement")])
         self.assertEqual([p["gravite"] for p in resultat["problemes"] if p["type"] != "colonne"], [])
 
     def test_reecriture_ajoute_les_colonnes_v2_en_fin_et_garde_toutes_les_cellules(self):
@@ -322,21 +330,24 @@ class TestFormatV2ModeServeur(CasNavigateur):
         # n'est plus signalée, les deux autres le restent (elles n'ont pas encore été enregistrées).
         self.assertEqual(sorted(avant), sorted([["info", "equipements", "valeur_remplacement"],
                                                 ["info", "equipements", "cout_arret_h"],
+                                                ["info", "equipements", "risque_electrique"],
                                                 ["info", "demandes", "symptome_code"],
                                                 ["info", "demandes", "ot_origine_id"],
                                                 ["info", "ordres_travail", "anomalie_constatee"],
                                                 ["info", "ordres_travail", "astuce"],
-                                                ["info", "ordres_travail", "habilitation_requise"]] + INFOS_DU_FORMAT_5))
+                                                ["info", "ordres_travail", "habilitation_requise"]]
+                                               + INFOS_DU_FORMAT_5 + INFOS_DU_FORMAT_6))
         self.assertEqual(sorted(apres), sorted([["info", "demandes", "symptome_code"],
                                                 ["info", "demandes", "ot_origine_id"],
                                                 ["info", "ordres_travail", "anomalie_constatee"],
                                                 ["info", "ordres_travail", "astuce"],
-                                                ["info", "ordres_travail", "habilitation_requise"]] + INFOS_DU_FORMAT_5))
+                                                ["info", "ordres_travail", "habilitation_requise"]]
+                                               + INFOS_DU_FORMAT_5 + INFOS_DU_FORMAT_6))
         # Sur le disque : format §3.1, valeur_remplacement puis cout_arret_h (format 4) en dernières colonnes,
         # le reste identique au v1.
         verifier_format_ecriture(self, octets, "equipements.csv")
         lignes_ecrites = lire_lignes_csv(octets)
-        self.assertEqual(lignes_ecrites[0][-2:], ["valeur_remplacement", "cout_arret_h"])
+        self.assertEqual(lignes_ecrites[0][-3:], ["valeur_remplacement", "cout_arret_h", "risque_electrique"])
         verifier_v1_plus_colonnes(self, lignes_v1, lignes_ecrites, "equipements",
                                   {(1, "designation"): nouvelle_designation})
         # Les tables non modifiées ne sont pas réécrites ; le journal ne note que le champ modifié.

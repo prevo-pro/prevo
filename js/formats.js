@@ -1,7 +1,7 @@
 'use strict';
 // Formats : registre des formats des fichiers de données (chantier « socle de données », décisions D167 et D168).
 // Contrat : docs/ARCHITECTURE.md §1 (chargé juste après js/schema.js), §4 (schéma), §5.6 (passage au format
-// courant), §14.1 (format 2) et §20.2 (format 3) ; docs/FORMAT.md (formats 4 et 5).
+// courant), §14.1 (format 2) et §20.2 (format 3) ; docs/FORMAT.md (formats 4, 5 et 6).
 // Le format est un entier (Schema.version), distinct de la version de l'application (2.0.0) ; celui d'une base est
 // parametres.version_schema (absent ou illisible : format 1). Tout est dérivé de Schema : une table ou un champ qui
 // porte depuisVersion: N n'existe qu'à partir du format N ; les autres existent depuis le format 1.
@@ -15,7 +15,10 @@
 //                réserves (D183, reservesReprises ci-dessous) ;
 //   - format 5 (2.2, après la bêta 1 : lot 1 ergonomie) : + demandes.mot_technicien, demandes.date_reparation,
 //                demandes.repare_par, ordres_travail.cause_precision, ordres_travail.remede_precision,
-//                ordres_travail.prises_en_charge (vides) ; statuts de demande « En cours » et « Réparée ».
+//                ordres_travail.prises_en_charge (vides) ; statuts de demande « En cours » et « Réparée » ;
+//   - format 6 (lot 2 ergonomie, livraison 2) : + ordres_travail.renforts, releve_mot, releve_par, releve_le,
+//                releve_motif, remise_en_etat, equipements.risque_electrique, mouvements_stock.designation,
+//                mouvements_stock.prix_unitaire (vides) ; type de mouvement « hors magasin ».
 // Place des colonnes (toutes les étapes) : les colonnes du fichier, connues ou inconnues du schéma, restent dans leur
 // ordre ; les colonnes que l'étape ajoute vont en fin d'en-tête, après elles, dans l'ordre du schéma (serveur.py fait
 // de même).
@@ -480,6 +483,11 @@ const Formats = (function () {
       + 'statuts de demande « En cours » et « Réparée » ; les demandes acceptées ou regroupées suivent leur OT '
       + '(En cours, ou Réparée avec la date de fin et le prénom du technicien), aucune autre valeur changée.',
     rattraperDemandes),
+    etape(5, 6, 'Format 6 (lot 2 ergonomie, livraison 2) : colonnes ordres_travail.renforts, '
+      + 'ordres_travail.releve_mot, ordres_travail.releve_par, ordres_travail.releve_le, '
+      + 'ordres_travail.releve_motif, ordres_travail.remise_en_etat, equipements.risque_electrique, '
+      + 'mouvements_stock.designation et mouvements_stock.prix_unitaire en fin de table (vides) ; type de '
+      + 'mouvement « hors magasin » ; aucune valeur existante changée.'),
   ]);
 
   // Ligne de journal d'une étape : texte exact relu par la suggestion S4.

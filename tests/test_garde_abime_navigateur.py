@@ -14,7 +14,7 @@ Donnees (ajout au journal, écritures directes de l'adaptateur).
        ErreurFichierAbime, fichier identique ; avec { remplacerFichierAbime: true } → écrit. App.adaptateur.ajouter
        sur un journal à guillemet ouvert → ErreurFichierAbime, fichier identique.
     c. TestImportZipDossier, TestImportZipServeur (mixin ParcoursImportZip) : l'import ZIP (une des deux dérogations)
-       remplace la base f5-entete-tronque par un ZIP sain (f5-v2.2.0 : bases au format 5, sans passage ni à
+       remplace la base f6-entete-tronque par un ZIP sain (f6-v2.4.0 : bases au format 6, sans passage ni à
        l'ouverture ni à l'import) ; en mode serveur, chaque PUT de l'import porte l'en-tête X-Prevo-Remplacer-Abime: 1.
     d. TestTraductionServeur : réponses simulées (page.route) ; 409 { code: "fichier_abime", table } →
        Donnees.ErreurFichierAbime (jamais ErreurConflit), en-tête seulement pour remplacerFichierAbime === true ;
@@ -43,8 +43,8 @@ from test_zip_import import (BOUTON_REMPLACER, MOTIF_AVANT_IMPORT_ZIP, contenu_s
 LIGNE_COUPEE = 'J-20261104120000-ABCD;2026-11-04 12:00;"Poste coupé'.encode("utf-8")
 ENTETE_REMPLACER = "x-prevo-remplacer-abime"
 CHEMIN_PAGE_SERVEUR = "/tests/fixtures/page-stockage-serveur.html"
-JEU_ZIP_SAIN = "f5-v2.2.0"                   # import ZIP (c) : base au format 5, rien à passer au format courant
-JEU_ZIP_ABIME = "f5-entete-tronque"          # la même, ordres_travail.csv à l'en-tête coupé (T404, T513)
+JEU_ZIP_SAIN = "f6-v2.4.0"                   # import ZIP (c) : base au format 6, rien à passer au format courant
+JEU_ZIP_ABIME = "f6-entete-tronque"          # la même, ordres_travail.csv à l'en-tête coupé (T404, T513, T552)
 
 # Chromium note en console.error toute réponse HTTP >= 400 : seules celles-ci sont attendues.
 ERREUR_REFUS_JOURNAL = re.compile(r"status of 409.*/api/csv/journal/ajout")    # serveur : ajout refusé (T200b)

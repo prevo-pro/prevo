@@ -266,7 +266,7 @@ Drafts stay in the device's browser; backups and the external copy stay with you
 
 ## Data format
 
-The data is 27 CSV files (format 5 since 2.2; format 4 for 2.2.0 beta 1): separator `;`, UTF-8 with BOM,
+The data is 27 CSV files (format 6 since 2.4; format 5 for 2.2 and 2.3; format 4 for 2.2.0 beta 1): separator `;`, UTF-8 with BOM,
 CRLF line endings. They open and can be edited in Excel. Because Excel damages some values
 (leading zeros, formulas, fractions taken for dates), Prévo protects them with an apostrophe
 at the start of the cell and removes it when reading. When reading, it also accepts the dates written

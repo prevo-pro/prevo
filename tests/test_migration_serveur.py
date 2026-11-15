@@ -72,10 +72,15 @@ AJOUTS_PAR_FORMAT = {
                                      ("catalogue_relu_le", "")]},
     5: {"demandes": [("mot_technicien", ""), ("date_reparation", ""), ("repare_par", "")],          # T513
         "ordres_travail": [("cause_precision", ""), ("remede_precision", ""), ("prises_en_charge", "")]},
+    6: {"equipements": [("risque_electrique", "")],                                                  # T552
+        "ordres_travail": [("renforts", ""), ("releve_mot", ""), ("releve_par", ""), ("releve_le", ""),
+                           ("releve_motif", ""), ("remise_en_etat", "")],
+        "mouvements_stock": [("designation", ""), ("prix_unitaire", "")]},
 }
-ORDRE_DES_TABLES = ("equipements", "demandes", "ordres_travail", "habilitations", "controles_reglementaires")
+ORDRE_DES_TABLES = ("equipements", "demandes", "ordres_travail", "mouvements_stock", "habilitations",
+                    "controles_reglementaires")
 FORMATS_DE_F1 = {"equipements": 1, "demandes": 1, "ordres_travail": 1}
-FORMATS_D_UNE_BASE_3 = {"equipements": 3, "demandes": 3, "ordres_travail": 3, "habilitations": 3,
+FORMATS_D_UNE_BASE_3 = {"equipements": 3, "demandes": 3, "ordres_travail": 3, "mouvements_stock": 3, "habilitations": 3,
                         "controles_reglementaires": 3}
 FORMATS_DE_F2 = dict(FORMATS_D_UNE_BASE_3, ordres_travail=2)     # f2-v1.1.0 et melange : ordres_travail sans astuce
 CLES_DE_L_ETAT = {"base", "courant", "plus_recent", "migration", "tables_abimees", "tables_vides", "table_bloquee",

@@ -159,9 +159,9 @@ def fichiers_du_jeu(nom, avec_acces=False):
 
 
 def fichiers_du_format_courant():
-    """{nom : octets} des CSV d'une copie du jeu f5-v2.2.0 (T513 : base au format courant, 27 tables) : ce qu'exporte
-    cette version (les autres jeux de base de tests/fixtures/formats sont aux formats 1 à 4)."""
-    fichiers = {chemin: octets for chemin, octets in fichiers_du_jeu("f5-v2.2.0").items() if chemin.endswith(".csv")}
+    """{nom : octets} des CSV d'une copie du jeu f6-v2.4.0 (T552 : base au format courant, 27 tables) : ce qu'exporte
+    cette version (les autres jeux de base de tests/fixtures/formats sont aux formats 1 à 5)."""
+    fichiers = {chemin: octets for chemin, octets in fichiers_du_jeu("f6-v2.4.0").items() if chemin.endswith(".csv")}
     assert b"\r\nversion_schema;'%d\r\n" % FORMAT_COURANT in fichiers["parametres.csv"]
     return fichiers
 

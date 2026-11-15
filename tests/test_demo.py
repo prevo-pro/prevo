@@ -87,7 +87,8 @@ TABLES = [
     'reserves_controle', 'garanties', 'contrats_prestataires']     # format 4 (2.2, CONCEPTION-L1 §2.2)
 
 FACULTATIFS_FORMAT_4 = {('habilitations', 'nature_source'), ('controles_reglementaires', 'nature_source'),
-                        ('reserves_controle', 'gravite')}
+                        ('reserves_controle', 'gravite'),
+                        ('equipements', 'risque_electrique'), ('ordres_travail', 'releve_motif')}     # format 6 (T552)
 
 
 # ---------------------------------------------------------------------------
@@ -600,7 +601,7 @@ class TestContenuDemo(unittest.TestCase):
         parametres = {p['cle']: p['valeur'] for p in self.t['parametres']}
         self.assertEqual(parametres['entreprise_nom'], 'Atelier des Trois Vallées (démo)')
         for cle, valeur in [('delai_p1_h', '0'), ('delai_p2_h', '24'), ('delai_p3_h', '168'),
-                            ('delai_p4', 'prochain arrêt'), ('rafraichissement_s', '20'), ('version_schema', '5'),
+                            ('delai_p4', 'prochain arrêt'), ('rafraichissement_s', '20'), ('version_schema', '6'),
                             # clés ajoutées par le lot 2 (ARCHITECTURE.md §14.1)
                             ('priorite_preventif', 'P3'), ('horizon_calendrier_semaines', '12')]:
             self.assertEqual(parametres[cle], valeur, cle)
@@ -2030,7 +2031,7 @@ class TestAvecNavigateur(CasNavigateur):
                 for ligne in tables[table]:
                     valeur = ligne[champ['nom']]
                     if champ['type'] == 'choix' and valeur == '' and (table, champ['nom']) in FACULTATIFS_FORMAT_4:
-                        verifiees += 1      # liste facultative du format 4, vide dans la démo
+                        verifiees += 1      # liste facultative du format 4 ou 6, vide dans la démo
                     elif champ['type'] == 'choix':
                         self.assertIn(valeur, champ['valeurs'], '%s.%s = %r' % (table, champ['nom'], valeur))
                     elif champ['type'] == 'ref' and valeur != '':

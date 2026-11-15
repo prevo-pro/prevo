@@ -1,0 +1,6 @@
+{
+  "base": "f6-v2.4.0",
+  "description": "En-tête de ordres_travail.csv de f6-v2.4.0 coupé au milieu du nom de colonne temps_prevu_h (même fabrication que entete-tronque) ; les lignes de données sont intactes et plus larges que l'en-tête ; base au format 6, rien à migrer.",
+  "supprimer": [],
+  "vider": []
+}

@@ -2,7 +2,7 @@
 
 Document généré par `outils/generer_fiche_csv.py` d'après `js/schema.js` (et, pour la section 4, `js/modules/import-types.js` ; pour la section 5, `serveur.py` et `js/modules/parametres-reglages.js`) : ne pas le modifier à la main.
 
-Prévo range ses données dans **27 fichiers CSV** (format **version 5**), dans le dossier de données (`donnees/` à côté de `serveur.py`, ou le dossier choisi en mode dossier). Ils s'ouvrent et se modifient dans Excel. Le paramètre `version_schema` de `parametres.csv` indique la version du format.
+Prévo range ses données dans **27 fichiers CSV** (format **version 6**), dans le dossier de données (`donnees/` à côté de `serveur.py`, ou le dossier choisi en mode dossier). Ils s'ouvrent et se modifient dans Excel. Le paramètre `version_schema` de `parametres.csv` indique la version du format.
 
 ## 1. Règles communes à tous les fichiers
 
@@ -102,6 +102,7 @@ Le parc : chaque machine ou sous-ensemble, sa criticité, sa consignation.
 | `actif` | Actif | `booleen` |  |  | `1` |  |
 | `valeur_remplacement` | Valeur de remplacement (€ HT) | `decimal` |  |  |  | depuis le format 2 ; autres noms reconnus : valeur de remplacement, valeur à neuf, prix de remplacement |
 | `cout_arret_h` | Coût d'une heure d'arrêt (€/h) | `decimal` |  |  |  | depuis le format 4 |
+| `risque_electrique` | Risque électrique | `choix` |  | `basse tension`, `haute tension`, `local haute tension` |  | depuis le format 6 |
 
 ### 3.3 `demandes.csv` — Demandes d'intervention
 
@@ -173,6 +174,12 @@ Ordres de travail (OT) : correctifs, préventifs, réglementaires, amélioration
 | `cause_precision` | Cause (précision) | `texte` |  |  |  | depuis le format 5 |
 | `remede_precision` | Remède (précision) | `texte` |  |  |  | depuis le format 5 |
 | `prises_en_charge` | Prises en charge | `texte_long` |  |  |  | depuis le format 5 |
+| `renforts` | Techniciens en renfort | `texte` |  |  |  | depuis le format 6 |
+| `releve_mot` | Mot de relève | `texte_long` |  |  |  | depuis le format 6 |
+| `releve_par` | Main passée par | `ref` |  | réf. `techniciens.csv` |  | depuis le format 6 |
+| `releve_le` | Main passée le | `date_heure` |  |  |  | depuis le format 6 |
+| `releve_motif` | Motif du passage de main | `choix` |  | `fin de journée`, `compétence ou habilitation`, `pas le temps`, `autre` |  | depuis le format 6 |
+| `remise_en_etat` | Remise en état à prévoir | `texte_long` |  |  |  | depuis le format 6 |
 
 ### 3.5 `ot_operations.csv` — Opérations d'ordre de travail
 
@@ -304,11 +311,13 @@ Mouvements du magasin : entrées, sorties, retours, inventaires.
 | `id` | Identifiant | `id` |  |  |  |  |
 | `date` | Date et heure | `date_heure` |  |  |  |  |
 | `article_id` | Article | `ref` |  | réf. `articles.csv` |  |  |
-| `type` | Type | `choix` |  | `entrée`, `sortie`, `inventaire`, `retour` |  |  |
+| `type` | Type | `choix` |  | `entrée`, `sortie`, `inventaire`, `retour`, `hors magasin` |  |  |
 | `quantite` | Quantité | `decimal` |  |  |  |  |
 | `ot_id` | Ordre de travail | `ref` |  | réf. `ordres_travail.csv` |  |  |
 | `utilisateur` | Utilisateur | `texte` |  |  |  |  |
 | `commentaire` | Commentaire | `texte_long` |  |  |  |  |
+| `designation` | Désignation (pièce hors magasin) | `texte` |  |  |  | depuis le format 6 |
+| `prix_unitaire` | Prix unitaire | `decimal` |  |  |  | depuis le format 6 |
 
 ### 3.13 `techniciens.csv` — Techniciens
 

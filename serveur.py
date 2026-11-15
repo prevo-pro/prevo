@@ -158,7 +158,7 @@ COLONNES_PAR_TABLE = {
     'equipements': (
         'id', 'repere', 'designation', 'localisation_id', 'parent_id', 'marque', 'modele', 'num_serie', 'date_mes',
         'criticite', 'statut', 'heures_fonct_jour', 'habilitation_requise', 'consignation', 'document', 'actif',
-        'valeur_remplacement', 'cout_arret_h',
+        'valeur_remplacement', 'cout_arret_h', 'risque_electrique',
     ),
     'demandes': (
         'id', 'date_heure', 'demandeur', 'equipement_id', 'symptome', 'impact', 'description', 'photo', 'statut',
@@ -171,7 +171,8 @@ COLONNES_PAR_TABLE = {
         'date_debut', 'date_fin', 'arret_production', 'duree_arret_h', 'symptome_code', 'cause_code', 'remede_code',
         'compte_rendu', 'remise_service', 'cout_soustraitance', 'date_cloture_tech', 'date_cloture_admin',
         'motif_annulation', 'ot_lie_id', 'anomalie_constatee', 'astuce', 'habilitation_requise', 'cause_precision',
-        'remede_precision', 'prises_en_charge',
+        'remede_precision', 'prises_en_charge', 'renforts', 'releve_mot', 'releve_par', 'releve_le', 'releve_motif',
+        'remise_en_etat',
     ),
     'ot_operations': ('id', 'ot_id', 'ordre', 'operation', 'valeur_attendue', 'fait', 'valeur_mesuree'),
     'ot_pieces': ('id', 'ot_id', 'article_id', 'quantite_prevue'),
@@ -188,7 +189,8 @@ COLONNES_PAR_TABLE = {
         'critique', 'actif',
     ),
     'article_equipement': ('id', 'article_id', 'equipement_id', 'quantite'),
-    'mouvements_stock': ('id', 'date', 'article_id', 'type', 'quantite', 'ot_id', 'utilisateur', 'commentaire'),
+    'mouvements_stock': ('id', 'date', 'article_id', 'type', 'quantite', 'ot_id', 'utilisateur', 'commentaire',
+                         'designation', 'prix_unitaire'),
     'techniciens': ('id', 'nom', 'prenom', 'metier', 'taux_horaire', 'capacite_h_semaine', 'actif'),
     'habilitations': (
         'id', 'technicien_id', 'intitule', 'date_obtention', 'date_echeance', 'recyclage_mois', 'justificatif',
@@ -247,8 +249,8 @@ MOTIF_NOM_SAUVEGARDE = re.compile(
 # Motifs acceptés par POST /api/sauvegarde {"motif": "…"} : liste FERMÉE (tout autre motif → 400).
 # Le motif devient la fin du nom de la sauvegarde (« _avant-format-v2 »). Règle générale :
 # « avant-format-v<N> » ; on n'ajoute ici que les versions que Prévo sait vraiment produire.
-MOTIFS_SAUVEGARDE = ('avant-format-v2', 'avant-format-v3', 'avant-format-v4', 'avant-format-v5', 'avant-import',
-                     'avant-import-zip', 'avant-mise-a-jour')
+MOTIFS_SAUVEGARDE = ('avant-format-v2', 'avant-format-v3', 'avant-format-v4', 'avant-format-v5', 'avant-format-v6',
+                     'avant-import', 'avant-import-zip', 'avant-mise-a-jour')
 
 # Types MIME des documents acceptés (l'extension décide du type, jamais le contenu ; toute autre extension : 415).
 # Audit F4 (§22.12) : « .doc » et « .xls » (formats binaires à macros) ne sont plus acceptés.
@@ -2959,7 +2961,7 @@ DOSSIER_CONSEILLE_WINDOWS = 'C:\\Prevo'
 DOSSIERS_JAMAIS_COPIES = ('.git', '__pycache__')
 NOM_LANCEUR_WINDOWS, NOM_LANCEUR_AUTRE = 'Lancer_GMAO.bat', 'lancer.sh'
 NOM_SCRIPT_REINITIALISATION = 'Reinitialiser_mot_de_passe.bat'
-VERSION_SCHEMA_CSV = 5                  # « version » de js/schema.js (§14.1) : posée dans un parametres.csv créé ici
+VERSION_SCHEMA_CSV = 6                  # « version » de js/schema.js (§14.1) : posée dans un parametres.csv créé ici
 DELAI_RELANCE_S = 2                     # le serveur s'arrête 2 s après la réponse de « terminer » ou « deplacer »
 ATTENTE_AVANT_RELANCE_S = 3             # le lanceur repart 3 s plus tard, une fois le port rendu
 # « terminer » sur une base absente au départ (T171) : rien de plus (« vide » : parametres.csv seul, avec version_schema
@@ -4785,10 +4787,12 @@ VERSION_SCHEMA_PAR_DEFAUT = 1           # version_schema absent ou illisible : f
 PREMIER_FORMAT_DES_TABLES = {'wiki_pages': 3, 'wiki_journal': 3, 'reserves_controle': 4, 'garanties': 4,
                              'contrats_prestataires': 4}
 PREMIER_FORMAT_DES_COLONNES = {
-    'equipements': {'valeur_remplacement': 2, 'cout_arret_h': 4},
+    'equipements': {'valeur_remplacement': 2, 'cout_arret_h': 4, 'risque_electrique': 6},
     'demandes': {'symptome_code': 2, 'ot_origine_id': 2, 'mot_technicien': 5, 'date_reparation': 5, 'repare_par': 5},
     'ordres_travail': {'anomalie_constatee': 2, 'astuce': 3, 'habilitation_requise': 4, 'cause_precision': 5,
-                       'remede_precision': 5, 'prises_en_charge': 5},
+                       'remede_precision': 5, 'prises_en_charge': 5, 'renforts': 6, 'releve_mot': 6, 'releve_par': 6,
+                       'releve_le': 6, 'releve_motif': 6, 'remise_en_etat': 6},
+    'mouvements_stock': {'designation': 6, 'prix_unitaire': 6},
     'habilitations': {'recyclage_mois': 4, 'justificatif': 4, 'catalogue_id': 4, 'nature_source': 4},
     'controles_reglementaires': {'source_periodicite': 4, 'nature_source': 4, 'catalogue_id': 4,
                                  'catalogue_relu_le': 4},
@@ -5304,6 +5308,12 @@ ETAPES_FORMAT = (
                         'statuts de demande « En cours » et « Réparée » ; les demandes acceptées ou regroupées '
                         'suivent leur OT (En cours, ou Réparée avec la date de fin et le prénom du technicien), aucune '
                         'autre valeur changée.', rattraper_demandes),
+    EtapeDeFormat(5, 6, 'Format 6 (lot 2 ergonomie, livraison 2) : colonnes ordres_travail.renforts, '
+                        'ordres_travail.releve_mot, ordres_travail.releve_par, ordres_travail.releve_le, '
+                        'ordres_travail.releve_motif, ordres_travail.remise_en_etat, '
+                        'equipements.risque_electrique, mouvements_stock.designation et '
+                        'mouvements_stock.prix_unitaire en fin de table (vides) ; type de mouvement '
+                        '« hors magasin » ; aucune valeur existante changée.'),
 )
 
 
@@ -5376,10 +5386,12 @@ VERSION_INCONNUE = 'inconnue'                   # « de » du manifeste quand de
 # sauvegarde faite avant ce format ne les a pas, sans être abîmée (« Tester une sauvegarde »). RENVOI CROISÉ : cohérence
 # avec js/schema.js vérifiée par tests/test_sauvegardes_lot7.py.
 COLONNES_DES_FORMATS_SUIVANTS = {
-    'equipements': ('valeur_remplacement', 'cout_arret_h'),
+    'equipements': ('valeur_remplacement', 'cout_arret_h', 'risque_electrique'),
     'demandes': ('symptome_code', 'ot_origine_id', 'mot_technicien', 'date_reparation', 'repare_par'),
     'ordres_travail': ('anomalie_constatee', 'astuce', 'habilitation_requise', 'cause_precision', 'remede_precision',
-                       'prises_en_charge'),
+                       'prises_en_charge', 'renforts', 'releve_mot', 'releve_par', 'releve_le', 'releve_motif',
+                       'remise_en_etat'),
+    'mouvements_stock': ('designation', 'prix_unitaire'),
     'habilitations': ('recyclage_mois', 'justificatif', 'catalogue_id', 'nature_source'),
     'controles_reglementaires': ('source_periodicite', 'nature_source', 'catalogue_id', 'catalogue_relu_le'),
 }
@@ -7353,9 +7365,12 @@ ROLES_PAR_ROUTE = {
 # dans l'en-tête renvoyé et ses valeurs sont vidées, au lieu d'être retirée. Retirée, le navigateur lirait equipements
 # au format 3 (Formats.formatDuFichier), croirait la base pas encore passée au format 4 et ne générerait plus les OT
 # préventifs échus à l'ouverture (passerAuFormatCourant de js/app.js, mode serveur) ; aucune valeur n'est reçue.
+# Format 6 (T552, L25) : mouvements_stock.prix_unitaire (prix d'une pièce hors magasin) suit la même règle que le prix
+# d'un article (D126) : vidé à la lecture, remis depuis le fichier au PUT, vidé dans une ligne ajoutée par le technicien.
 COLONNES_CACHEES_PAR_ROLE = {
     'technicien': {'techniciens': ('taux_horaire',), 'articles': ('prix_unitaire',), 'achats': ('prix_unitaire',),
-                   'contrats_prestataires': ('montant_annuel',), 'equipements': ('cout_arret_h',)},
+                   'contrats_prestataires': ('montant_annuel',), 'equipements': ('cout_arret_h',),
+                   'mouvements_stock': ('prix_unitaire',)},
     'demandeur': {'equipements': ('cout_arret_h',)},
 }
 # Lignes retirées : (colonne, valeurs). D114 : ni page Technicien ni page Intervention pour le demandeur. T544 (L30,

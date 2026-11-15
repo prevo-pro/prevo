@@ -13,18 +13,19 @@ rien n'est créé tant que la version concernée n'est pas développée.
 | Notion | Forme | Exemple | À quoi elle sert |
 |---|---|---|---|
 | **Version de l'appli** | semver `x.y.z` | `2.0.0` | Ce que l'utilisateur télécharge ; affichée dans « À propos », comparée par le bandeau de mise à jour. |
-| **Version du format** | entier | `5` | La forme des fichiers de données (tables, colonnes). C'est elle qui décide d'une migration. |
+| **Version du format** | entier | `6` | La forme des fichiers de données (tables, colonnes). C'est elle qui décide d'une migration. |
 | **Empreinte d'un fichier** | SHA-256 tronqué | `3f2a…` | Contrôle de concurrence : « ce fichier a-t-il changé depuis que je l'ai lu ? ». Sans rapport avec le format. |
 | **Version de l'API** | entier | `1` | Le contrat entre le navigateur et `serveur.py` (`/api/…`). |
 
 Une nouvelle version de l'appli n'implique pas un nouveau format : 1.2.0, les bêtas de la 2.0, la 2.0.0 et la 2.1.0 partagent le format 3.
-À l'inverse, une même version peut en connaître deux : la 2.2.0 bêta 1 écrit le format 4, la 2.2 suivante le format 5.
+À l'inverse, une même version peut en connaître deux : la 2.2.0 bêta 1 écrit le format 4, la 2.2 suivante le format 5 ;
+la 2.4 (lot 2 ergonomie, livraison 2) écrit le format 6.
 Dans le code, `Schema.version` (`js/schema.js`) est le format courant ; il n'a rien à voir avec la version de l'appli.
 
-## 2. Le format 5 (format courant)
+## 2. Le format 6 (format courant)
 
 Les données sont **27 fichiers CSV** (les 24 du format 3, plus `reserves_controle.csv`, `garanties.csv` et
-`contrats_prestataires.csv`, depuis le format 4 ; le format 5 n'ajoute que des colonnes et des valeurs) dans le
+`contrats_prestataires.csv`, depuis le format 4 ; les formats 5 et 6 n'ajoutent que des colonnes et des valeurs) dans le
 dossier de données : séparateur `;`, UTF-8 avec BOM, fins de ligne CRLF,
 une apostrophe de tête protège les valeurs qu'Excel abîmerait (ARCHITECTURE.md §3). Un fichier absent se lit comme
 une table vide : une base passée du format 3 au format 4 n'a pas encore `garanties.csv` ni `contrats_prestataires.csv`
@@ -91,15 +92,16 @@ appareils, journal des connexions), jamais les sessions ni les clés, et ne le r
 | **3** | 1.2.0, 2.0 bêta, 2.0.0, 2.1.0 | Colonne `ordres_travail.astuce` en fin de table ; tables `wiki_pages` et `wiki_journal` (vides : le passage ne crée pas leur fichier, §6). 24 tables en tout. |
 | **4** | 2.2.0 bêta 1 | Colonnes `equipements.cout_arret_h`, `ordres_travail.habilitation_requise`, `habilitations.recyclage_mois`, `habilitations.justificatif`, `habilitations.catalogue_id`, `habilitations.nature_source`, `controles_reglementaires.source_periodicite` (défaut `saisie`), `controles_reglementaires.nature_source`, `controles_reglementaires.catalogue_id`, `controles_reglementaires.catalogue_relu_le`, en fin de table ; tables `reserves_controle` (remplie par la reprise des observations, §6), `garanties` et `contrats_prestataires` (vides : le passage ne crée pas leur fichier, §6). 27 tables en tout. |
 | **5** | 2.2 (après la bêta 1 : lot 1 ergonomie) | Colonnes `demandes.mot_technicien` (le « mot pour l'opérateur » écrit à la clôture), `demandes.date_reparation`, `demandes.repare_par` (prénom du technicien, rien d'autre), `ordres_travail.cause_precision` et `ordres_travail.remede_precision` (texte libre de « Autre (préciser) »), `ordres_travail.prises_en_charge` (une ligne par prise ou reprise de l'OT : `date_heure\|technicien_id\|technicien_precedent_id`, le dernier vide pour une première prise), toutes vides au passage, en fin de table ; valeurs `En cours` et `Réparée` de `demandes.statut`, placées après `Acceptée`. Aucune valeur existante n'est changée. 27 tables. |
+| **6** | 2.4 (lot 2 ergonomie, livraison 2) | Colonnes `ordres_travail.renforts` (identifiants des techniciens en renfort, séparés par « , » ; le principal reste `technicien_id`), `ordres_travail.releve_mot`, `releve_par` (référence `techniciens`), `releve_le`, `releve_motif` (`fin de journée`, `compétence ou habilitation`, `pas le temps`, `autre`) : le dernier « passer la main » ; `ordres_travail.remise_en_etat` (mot d'une clôture en dépannage provisoire, non vide = remise en état à prévoir) ; `equipements.risque_electrique` (`basse tension`, `haute tension`, `local haute tension`, vide = machine non concernée) ; `mouvements_stock.designation` et `mouvements_stock.prix_unitaire` (pièce hors magasin), toutes vides au passage, en fin de table ; valeur `hors magasin` de `mouvements_stock.type` (article vide, ne compte pas dans le stock). Aucune valeur existante n'est changée. 27 tables. |
 
 La source de vérité est l'attribut `depuisVersion` dans [js/schema.js](../js/schema.js).
 
 ## 6. Migrations
 
-- **Registre d'étapes** : une étape par passage de N à N+1 (1→2, 2→3, 3→4, 4→5), dans `Formats.ETAPES` (navigateur) et
+- **Registre d'étapes** : une étape par passage de N à N+1 (1→2, 2→3, 3→4, 4→5, 5→6), dans `Formats.ETAPES` (navigateur) et
   `ETAPES_FORMAT` (serveur, miroir exact). Chaque étape est **pure** (l'entrée n'est pas modifiée), **idempotente**
   (rejouée, elle ne change rien) et **additive** : elle ajoute des colonnes en fin de table ou des tables, et
-  pose `version_schema`. Les colonnes et tables inconnues sont gardées telles quelles. Les étapes 1→2, 2→3 et 4→5 ne
+  pose `version_schema`. Les colonnes et tables inconnues sont gardées telles quelles. Les étapes 1→2, 2→3, 4→5 et 5→6 ne
   créent que des tables ou des colonnes vides ; **l'étape 3→4 crée aussi une table et la remplit** (voir « Reprise des
   observations ») ; **l'étape 4→5 fait suivre leur OT aux demandes acceptées** (voir « Pour le passage 4→5 »). Règle nouvelle : une étape peut remplir ce qu'elle crée, à condition de rester additive (rien
   d'existant n'est changé ni retiré) et idempotente.
@@ -154,11 +156,17 @@ La source de vérité est l'attribut `depuisVersion` dans [js/schema.js](../js/s
   planifié ou annulé, OT absent : rien. Même règle que l'écran à chaque transition d'un OT ; rejouée, elle ne change
   plus rien ; une base déjà au format 5 n'est pas reprise. Une base au format 3 enchaîne 3→4 puis 4→5 après une seule sauvegarde, `avant-format-v5`.
 
+  Pour le passage 5→6, dans cet ordre : la sauvegarde `avant-format-v6` ; `equipements.csv`, `ordres_travail.csv` et
+  `mouvements_stock.csv` (s'ils sont présents et lisibles), réécrits avec les colonnes du format 6, vides, en fin ;
+  puis `parametres.csv` (`version_schema` à 6) et la ligne de journal « passage au format 6 du fichier ». Aucune
+  cellule existante ne change. Une base d'un format plus ancien enchaîne ses étapes après une seule sauvegarde,
+  `avant-format-v6`.
+
   Seule différence entre les deux modes : la **sauvegarde du jour** (`AAAA-MM-JJ`, §8), qui n'appartient pas au
   passage. Quand elle n'existe pas encore, le serveur la fait au démarrage **après** le passage (elle a les fichiers
   au format courant), le navigateur avant la première écriture du jour, donc avant la première table que le passage
   réécrit (elle a les fichiers d'avant). Dans les deux modes, c'est la sauvegarde `avant-format-vN` (N = format
-  courant : `avant-format-v5` depuis le format 5) qui garde la base d'avant le passage.
+  courant : `avant-format-v6` depuis le format 6) qui garde la base d'avant le passage.
 - **Sauvegarde d'abord** : une sauvegarde `avant-format-vN` est faite avant la première étape ; si elle échoue, rien
   n'est migré et la migration est retentée au démarrage suivant.
 - **Fichier illisible** : un fichier que Prévo ne sait pas lire n'est jamais réécrit.
@@ -190,7 +198,10 @@ Rien n'est migré « vers le bas » : on met l'appli à jour, ou on restaure une
   **lecture seule** (bandeau, 409 `format_plus_recent` côté serveur), et refuse un ZIP au format 5. Elle ne connaît ni
   les statuts `En cours` et `Réparée` ni les colonnes du format 5 : elle les montre tels quels sans pouvoir rien
   écrire. Pour revenir à la bêta 1, restaurer la sauvegarde `avant-format-v5`.
-- Une version au format 5 ouvre un format 6 en lecture seule.
+- **Format 6 rouvert par une version au format 5** (2.2, 2.3, 2.4.0 bêta 1) : lecture seule, comme ci-dessus (garde
+  D169, 409 `format_plus_recent`), et refus d'un ZIP au format 6. Pour revenir en arrière, restaurer la sauvegarde
+  `avant-format-v6`.
+- Une version au format 6 ouvre un format 7 en lecture seule.
 
 **Écart connu entre navigateur et serveur (écart A)** : une colonne inconnue d'un fichier (par exemple
 `remarque_maison` dans `controles_reglementaires`) n'a pas la même place selon qui réécrit le fichier. Le navigateur
@@ -202,7 +213,7 @@ l'étape 3→4 ajoute en fin. Seule la place de la colonne diffère : aucune val
 | Déclencheur | Nom (motif) | Purgée automatiquement ? |
 |---|---|---|
 | Avant la première écriture du jour, et au démarrage du serveur | `AAAA-MM-JJ` (quotidienne) | Oui, après **30 jours** |
-| Avant une migration | `avant-format-vN` (`avant-format-v4` pour le passage à la 2.2.0 bêta 1, `avant-format-v5` pour le format 5) | Non |
+| Avant une migration | `avant-format-vN` (`avant-format-v4` pour le passage à la 2.2.0 bêta 1, `avant-format-v5` pour le format 5, `avant-format-v6` pour le format 6) | Non |
 | Avant un import ZIP (avec `documents/`) | `avant-import-zip` | Non |
 | Au premier démarrage d'une nouvelle version de l'appli (comparée à la version notée) | `avant-mise-a-jour` | Non |
 | À la demande (Paramètres) | `AAAA-MM-JJ_HHMMSS` (manuelle) | Oui, les 60 dernières gardées |
@@ -241,9 +252,9 @@ Chaque sauvegarde et chaque export ZIP contient un `manifeste.json` :
 {
   "application": "Prévo",
   "version_appli": "2.0.0",
-  "format": 5,
+  "format": 6,
   "date": "2026-11-04T09:30:00",
-  "motif": "avant-format-v5",
+  "motif": "avant-format-v6",
   "mode": "serveur",
   "fichiers": [ { "nom": "equipements.csv", "octets": 1234, "sha256": "…" } ]
 }
@@ -296,9 +307,9 @@ de la base ; la confirmation le dit.
   état, bandeau « Fichier abîmé » compris.
 - Le navigateur lit le ZIP et écrit par le chemin habituel : aucune route serveur nouvelle.
 
-## 11. Ajouter un format 6 (liste de contrôle)
+## 11. Ajouter un format 7 (liste de contrôle)
 
-Le format 5 (T513) a suivi cette liste ; pour le format 6, remplacer chaque numéro par le suivant.
+Les formats 5 (T513) et 6 (T552) ont suivi cette liste ; pour le format 7, remplacer chaque numéro par le suivant.
 
 1. **Schéma** : dans [js/schema.js](../js/schema.js), marquer les nouveaux champs `depuisVersion(6, …)` (toujours en fin
    de table) et les nouvelles tables `depuisVersion: 6` ; passer `Schema.version` à 6. Rester additif (§6) ; si l'étape remplit une table qu'elle crée, la règle de reprise est par ligne source et idempotente (§6, reprise des observations).
@@ -322,7 +333,7 @@ indiquée, par une étape de migration additive (§6), et seulement si cette ver
 peuvent encore changer. Ces fonctions aident au suivi ; la responsabilité reste celle de l'employeur, et les
 périodicités réglementaires seront sourcées et modifiables.
 
-**Ce qui existe déjà (format 5) et ne sera donc pas recréé :**
+**Ce qui existe déjà (format 6) et ne sera donc pas recréé :**
 
 - Compteurs d'heures et relevés : tables `compteurs` et `releves`, `gammes.declencheur` (`compteur`, `seuil`),
   `gammes.compteur_id`, `gammes.periodicite_unites`, `gammes.releve_derniere_realisation`. La 2.3 s'appuie dessus.

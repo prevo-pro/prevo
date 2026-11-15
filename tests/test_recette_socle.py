@@ -98,7 +98,7 @@ EQUIPEMENT = "EQ-0005"                       # PO-02 : présent dans tous les je
 MOTIF_AVANT_MISE_A_JOUR = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}_avant-mise-a-jour$")
 MOTIF_AVANT_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}_avant-format-v%d$" % FORMAT_COURANT)
 # Base déjà au format courant (T394) : les parcours « sans passage de format ».
-JEU_SANS_PASSAGE = "f5-v2.2.0"                # T513 : f4-v2.2.0 jusqu'au format 4
+JEU_SANS_PASSAGE = "f6-v2.4.0"                # T552 : f5-v2.2.0 jusqu'au format 5, f4-v2.2.0 jusqu'au format 4
 MOTIF_QUOTIDIENNE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MOTIF_DATE_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
 MOTIF_DATE_JMA = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
@@ -108,8 +108,11 @@ DEFAUTS = {"valeur_remplacement": "", "symptome_code": "", "ot_origine_id": "", 
            "cout_arret_h": "", "habilitation_requise": "", "recyclage_mois": "", "justificatif": "", "catalogue_id": "",
            "nature_source": "", "source_periodicite": "saisie", "catalogue_relu_le": "", "mot_technicien": "",
            "date_reparation": "", "repare_par": "", "cause_precision": "", "remede_precision": "",
-           "prises_en_charge": ""}
-COLONNES_DU_FORMAT_5_DES_OT = ["cause_precision", "remede_precision", "prises_en_charge"]      # T513
+           "prises_en_charge": "", "risque_electrique": "", "renforts": "", "releve_mot": "", "releve_par": "",
+           "releve_le": "", "releve_motif": "", "remise_en_etat": "", "designation": "", "prix_unitaire": ""}
+COLONNES_DU_FORMAT_5_DES_OT = ["cause_precision", "remede_precision", "prises_en_charge",       # T513
+                               "renforts", "releve_mot", "releve_par", "releve_le", "releve_motif",
+                               "remise_en_etat"]                                               # format 6 : T552
 TABLES = list(SERVEUR.TABLES)                # les tables du format courant, dans l'ordre du schéma
 VERSION_SCHEMA_ECRITE = {"parametres.csv": {("version_schema", "valeur")}}     # seule cellule que le passage change
 
@@ -610,14 +613,14 @@ class TestElevesServeurComptes(CasRecetteSocle):
             # Format 4 : colonnes en fin de equipements, ordres_travail, habilitations et controles_reglementaires.
             self.assertEqual(self.verifier_aucune_perte(origine, demarre, VERSION_SCHEMA_ECRITE),
                              ["controles_reglementaires.csv", "demandes.csv", "equipements.csv", "habilitations.csv",
-                              "journal.csv", "ordres_travail.csv", "parametres.csv"])
-            self.assertEqual(lire_table(demarre["ordres_travail.csv"])[0][-5:],
+                              "journal.csv", "mouvements_stock.csv", "ordres_travail.csv", "parametres.csv"])
+            self.assertEqual(lire_table(demarre["ordres_travail.csv"])[0][-11:],
                              ["astuce", "habilitation_requise"] + COLONNES_DU_FORMAT_5_DES_OT)
             self.assertNotIn("wiki_pages.csv", demarre)
             journal = actions_du_format(demarre["journal.csv"], len(lignes_en_dictionnaires(origine["journal.csv"])))
             self.assertEqual([(l["action"], l["poste"]) for l in journal],
                              [("passage au format %d du fichier ; sauvegarde %s faite juste avant" % (n, avant_format),
-                               "Serveur Prévo") for n in (3, 4, 5)])
+                               "Serveur Prévo") for n in (3, 4, 5, 6)])
             self.assertEqual(demarre["acces/comptes.json"], origine["acces/comptes.json"])
             ot_apres_demarrage = len(lignes_en_dictionnaires(demarre["ordres_travail.csv"]))
 
@@ -713,8 +716,8 @@ DESIGNATION = "Pompe de refroidissement (recette)"
 # Cas purs (T404) : le fichier abîmé dans une base au format 4 (tirée de f4-v2.2.0), aucun passage de format. Les
 # autres jeux abîmés sont tirés de f3-v1.2.0 : le passage au format 4 (démarrage ou ouverture) écrit aussi
 # version_schema.
-JEU_WINDOWS_1252 = "f5-windows-1252"         # T513 : les mêmes, dans une base au format 5 (f4-… jusqu'au format 4)
-JEU_ENTETE_TRONQUE = "f5-entete-tronque"
+JEU_WINDOWS_1252 = "f6-windows-1252"         # T552 : les mêmes, dans une base au format 6 (f5-…, f4-… avant)
+JEU_ENTETE_TRONQUE = "f6-entete-tronque"
 JEUX_ABIMES_SANS_PASSAGE = (JEU_WINDOWS_1252, JEU_ENTETE_TRONQUE)
 MOTIF_AVANT_UN_FORMAT = re.compile(r"_avant-format-v\d+$")
 
@@ -750,7 +753,7 @@ class ParcoursAbimes:
         « fichiers complétés »), puis toute la base passée au format 4 (ligne « passage au format 4 »), après une seule
         sauvegarde ; la sauvegarde se voit dans Paramètres."""
         origine, apres, _ = self.parcours_du_responsable("melange")
-        self.assertEqual(lire_table(apres["ordres_travail.csv"])[0][-5:],
+        self.assertEqual(lire_table(apres["ordres_travail.csv"])[0][-11:],
                          ["astuce", "habilitation_requise"] + COLONNES_DU_FORMAT_5_DES_OT)
         self.assertEqual(version_schema(apres["parametres.csv"]), str(FORMAT_COURANT))
         avant_format = une_seule(sauvegardes(apres), MOTIF_AVANT_FORMAT)
@@ -759,7 +762,8 @@ class ParcoursAbimes:
         suite = "sauvegarde %s faite juste avant" % avant_format
         self.assertEqual([l["action"] for l in actions_du_format(apres["journal.csv"], deja)],
                          ["fichiers complétés au format 3 : ordres_travail ; " + suite,
-                          "passage au format 4 du fichier ; " + suite, "passage au format 5 du fichier ; " + suite])
+                          "passage au format 4 du fichier ; " + suite, "passage au format 5 du fichier ; " + suite,
+                          "passage au format 6 du fichier ; " + suite])
         self.assertIn("Avant format %d" % FORMAT_COURANT, self.carte_des_sauvegardes())
 
     def verifier_colonnes_en_trop(self):

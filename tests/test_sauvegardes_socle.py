@@ -394,12 +394,15 @@ class TestAvantMiseAJour(CasDossier):
     def test_f4_premier_demarrage_passage_au_format_5(self):
         self.premier_demarrage("f4-v2.2.0")
 
-    def test_f5_premier_demarrage_sans_passage_de_format(self):
+    def test_f5_premier_demarrage_passage_au_format_6(self):
         self.premier_demarrage("f5-v2.2.0")
 
+    def test_f6_premier_demarrage_sans_passage_de_format(self):
+        self.premier_demarrage("f6-v2.4.0")
+
     def test_autre_version_notee_nouvelle_sauvegarde_meme_version_aucune(self):
-        # Base déjà au format courant (f5-v2.2.0) : seules les sauvegardes liées à la version sont en jeu.
-        source = copier_jeu("f5-v2.2.0", self.racine / "autre" / "donnees")
+        # Base déjà au format courant (f6-v2.4.0) : seules les sauvegardes liées à la version sont en jeu.
+        source = copier_jeu("f6-v2.4.0", self.racine / "autre" / "donnees")
         (source / "derniere-version.json").write_text(
             json.dumps({"version": "1.2.0", "depuis": "2025-03-01T08:00:00"}), encoding="utf-8")
         with commun.ServeurPrevo(source=source) as serveur:
@@ -410,7 +413,7 @@ class TestAvantMiseAJour(CasDossier):
             notee = json.loads((serveur.dossier / "derniere-version.json").read_text(encoding="utf-8"))
             self.assertEqual(notee["version"], SERVEUR.VERSION_APPLICATION)
         # La version courante déjà notée : aucune sauvegarde « avant-mise-a-jour » (la quotidienne, oui).
-        source = copier_jeu("f5-v2.2.0", self.racine / "meme" / "donnees")
+        source = copier_jeu("f6-v2.4.0", self.racine / "meme" / "donnees")
         meme = json.dumps({"version": SERVEUR.VERSION_APPLICATION, "depuis": "2026-01-01T08:00:00"}).encode("utf-8")
         (source / "derniere-version.json").write_bytes(meme)
         with commun.ServeurPrevo(source=source) as serveur:
@@ -570,8 +573,8 @@ class TestManifesteEtDocuments(CasDossier):
 
 class TestMotifs(unittest.TestCase):
 
-    MOTIFS = ("avant-format-v2", "avant-format-v3", "avant-format-v4", "avant-format-v5", "avant-import",
-              "avant-import-zip", "avant-mise-a-jour")
+    MOTIFS = ("avant-format-v2", "avant-format-v3", "avant-format-v4", "avant-format-v5", "avant-format-v6",
+              "avant-import", "avant-import-zip", "avant-mise-a-jour")
 
     def test_liste_fermee_et_noms(self):
         self.assertEqual(SERVEUR.MOTIFS_SAUVEGARDE, self.MOTIFS)

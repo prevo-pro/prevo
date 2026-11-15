@@ -225,7 +225,8 @@ DEFINITION_SCHEMA = {
         'parent_id:ref>equipements marque:texte modele:texte num_serie:texte! date_mes:date '
         'criticite:choix[A|B|C] statut:choix[en service|arrêt|rebut] heures_fonct_jour:decimal '
         'habilitation_requise:texte consignation:texte_long document:document actif:booleen '
-        'valeur_remplacement:decimal cout_arret_h:decimal'),
+        'valeur_remplacement:decimal cout_arret_h:decimal '
+        'risque_electrique:choix[basse tension|haute tension|local haute tension]'),
     'demandes': (
         'id:id date_heure:date_heure demandeur:texte equipement_id:ref>equipements '
         'symptome:texte_long impact:choix[sécurité|arrêt|dégradé|gêne] description:texte_long '
@@ -248,7 +249,10 @@ DEFINITION_SCHEMA = {
         'compte_rendu:texte_long remise_service:booleen cout_soustraitance:decimal '
         'date_cloture_tech:date_heure date_cloture_admin:date_heure motif_annulation:texte_long '
         'ot_lie_id:ref>ordres_travail anomalie_constatee:booleen astuce:texte_long habilitation_requise:texte '
-        'cause_precision:texte remede_precision:texte prises_en_charge:texte_long'),
+        'cause_precision:texte remede_precision:texte prises_en_charge:texte_long '
+        'renforts:texte releve_mot:texte_long releve_par:ref>techniciens releve_le:date_heure '
+        'releve_motif:choix[fin de journée|compétence ou habilitation|pas le temps|autre] '
+        'remise_en_etat:texte_long'),
     'ot_operations': (
         'id:id ot_id:ref>ordres_travail ordre:entier operation:texte valeur_attendue:texte '
         'fait:booleen valeur_mesuree:texte'),
@@ -269,8 +273,9 @@ DEFINITION_SCHEMA = {
     'article_equipement': (
         'id:id article_id:ref>articles equipement_id:ref>equipements quantite:decimal'),
     'mouvements_stock': (
-        'id:id date:date_heure article_id:ref>articles type:choix[entrée|sortie|inventaire|retour] '
-        'quantite:decimal ot_id:ref>ordres_travail utilisateur:texte commentaire:texte_long'),
+        'id:id date:date_heure article_id:ref>articles type:choix[entrée|sortie|inventaire|retour|hors magasin] '
+        'quantite:decimal ot_id:ref>ordres_travail utilisateur:texte commentaire:texte_long designation:texte '
+        'prix_unitaire:decimal'),
     'techniciens': (
         'id:id nom:texte prenom:texte metier:texte taux_horaire:decimal capacite_h_semaine:decimal '
         'actif:booleen'),
@@ -2200,7 +2205,8 @@ def generer_controles(ctx):
 
 # Listes facultatives du format 4 : vides dans la démo (CONCEPTION-L1 §2.1, §2.2).
 CHOIX_FACULTATIFS = {('habilitations', 'nature_source'), ('controles_reglementaires', 'nature_source'),
-                     ('reserves_controle', 'gravite')}
+                     ('reserves_controle', 'gravite'), ('equipements', 'risque_electrique'),
+                     ('ordres_travail', 'releve_motif')}
 
 
 COMMENTAIRE_LEVEE_REPRISE = 'levée avant la 2.2, date inconnue'     # texte fixe de CONCEPTION-L1 §3.2
@@ -2239,14 +2245,15 @@ def generer_reserves_ae01(ctx):
 
 
 def generer_parametres(ctx):
-    # version_schema = Schema.version (js/schema.js : 5 depuis le lot 1 ergonomie, 4 depuis la 2.2, 3 depuis le lot 6,
+    # version_schema = Schema.version (js/schema.js : 6 depuis le lot 2 ergonomie, 5 depuis le lot 1 ergonomie, 4 depuis
+    # la 2.2, 3 depuis le lot 6,
     # §20.2) ; priorite_preventif et horizon_calendrier_semaines sont les clés ajoutées par le lot 2 (ARCHITECTURE.md
     # §14.1).
     for cle, valeur in [('entreprise_nom', NOM_ENTREPRISE), ('delai_p1_h', 0), ('delai_p2_h', 24),
                         ('delai_p3_h', 168), ('delai_p4', 'prochain arrêt'), ('heures_fonct_defaut', 8),
                         ('tolerance_preventif_pct', 10), ('rafraichissement_s', 20),
                         ('priorite_preventif', 'P3'), ('horizon_calendrier_semaines', 12),
-                        ('version_schema', 5)]:
+                        ('version_schema', 6)]:
         creer_ligne(ctx, 'parametres', cle=cle, valeur=valeur)
 
 
