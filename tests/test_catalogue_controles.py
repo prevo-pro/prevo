@@ -926,6 +926,10 @@ class TestCatalogueEcranServeur(CasCatalogueEcran):
             self.page.wait_for_function(
                 "() => document.getElementById('toast').textContent.includes('Valeurs du catalogue reprises')")
             self.page.wait_for_function("() => !document.querySelector('#controle-reprendre-catalogue')")
+            # L'entrée du journal s'écrit après la ligne du contrôle (Donnees.modifier) : le premier redessin peut la
+            # précéder, le App.reafficher() qui suit le toast la montre. On attend ce second rendu.
+            self.page.wait_for_function("() => { const e = document.querySelector('#contenu .controles-journal"
+                                        " .controles-action'); return !!e && e.textContent.trim().startsWith('modification'); }")
             ligne = self.controle(identifiant)
             self.assertEqual({cle: ligne[cle] for cle in PROVENANCE + ("periodicite_mois",)},
                              dict(SOURCE_C14, catalogue_relu_le="2027-03-01", periodicite_mois="60"))
