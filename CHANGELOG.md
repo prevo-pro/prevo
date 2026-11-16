@@ -7,6 +7,17 @@ suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [2.4.0] - 2026-11-16
+
+- Plus simple au quotidien : mode Solo pour un technicien seul, assistant d'installation, clôture d'un OT en une fois, fiche d'OT sur téléphone, OT à valider visibles du responsable.
+- Depuis la 2.1 : réserves des contrôles réglementaires, habilitations, garanties et contrats, coût de l'arrêt, pannes récurrentes. Vos données sont sauvegardées puis passent au format 6.
+
+**Première version stable depuis la 2.1.2.** Elle rassemble la 2.2.0 bêta 1 (section plus bas), le lot 1 d'ergonomie
+avec le mode Solo et le lot 2 d'ergonomie, tous deux détaillés ci-dessous. Les équipes de 1 à 5 personnes ont été
+rejouées sur 18 parcours avant la publication. Au premier lancement, Prévo garde une copie de la base
+(`avant-format-v6`) puis passe les données au format 6 ; une version plus ancienne les rouvre en lecture seule. Copiez
+tout de même votre dossier de données avant la mise à jour.
+
 ### Lot 2 d'ergonomie, livraison 1 (proposé pour la 2.4.0-beta.1)
 
 Les frictions relevées au retest du 14/11/2026 sont reprises une à une avec le responsable du projet. Cette première
@@ -768,7 +779,8 @@ Première version, qui réunit les lots 1 à 4 du cahier des charges (le détail
   option, guide d'utilisation imprimable, fiche technique des fichiers CSV.
 - Données dans 22 fichiers CSV lisibles dans Excel ; 907 tests automatisés.
 
-[Non publié]: https://github.com/prevo-pro/prevo/compare/v2.2.0-beta.1...HEAD
+[Non publié]: https://github.com/prevo-pro/prevo/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/prevo-pro/prevo/compare/v2.1.2...v2.4.0
 [2.2.0-beta.1]: https://github.com/prevo-pro/prevo/compare/v2.1.1...v2.2.0-beta.1
 [2.1.2]: https://github.com/prevo-pro/prevo/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/prevo-pro/prevo/compare/v2.1.0...v2.1.1
