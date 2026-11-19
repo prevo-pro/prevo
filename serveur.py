@@ -6902,6 +6902,9 @@ def jeton_des_versions(config, identite):
 # « -12.5 », « -12,5 », « -.5 », « -1e-7 » : une colonne numérique s'écrit sans apostrophe) ; « -1+cmd|… » et
 # « -2+WEBSERVICE(…) », que l'ancienne exception (un chiffre après le tiret) laissait passer, sont refusées.
 MOTIF_CELLULE_DANGEREUSE = re.compile(r'^(?:[=+@\t\r]|-(?!(?:[0-9]+(?:[.,][0-9]+)?|[.,][0-9]+)(?:[eE][+-]?[0-9]+)?\Z))')
+# Premiers caractères qui peuvent ouvrir MOTIF_CELLULE_DANGEREUSE : seules ces cellules passent par l'expression
+# (2.4.1, test de performance : 5 000 OT, 210 000 cellules, 90 ms d'expressions à chaque écriture ; même résultat).
+DEBUTS_DE_CELLULE_DANGEREUSE = frozenset('=+@\t\r-')
 
 
 def verifier_contenu_csv(table, octets, corps_d_ajout=False, entete_libre=False):
@@ -6931,7 +6934,7 @@ def verifier_contenu_csv(table, octets, corps_d_ajout=False, entete_libre=False)
                                           table=table, colonnes=';'.join(attendues)))
     for numero, ligne in enumerate(lignes[1:], 2):
         for cellule in ligne:
-            if MOTIF_CELLULE_DANGEREUSE.match(cellule):
+            if cellule[:1] in DEBUTS_DE_CELLULE_DANGEREUSE and MOTIF_CELLULE_DANGEREUSE.match(cellule):
                 raise ErreurHttp(400, traduisible('csv.formule',
                                                   'Ligne {numero} de {table}.csv : une cellule commence par un '
                                                   'caractère de formule (« {caractere} ») ; Prévo la protège par '
