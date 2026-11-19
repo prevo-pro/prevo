@@ -8895,8 +8895,9 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
     def api_premier_acces(self, segment, corps):
         """POST /api/premier-acces (route publique, L05) : {jeton} → le prénom, le nom et l'identifiant du compte du QR
         (rien n'est changé) ; {jeton, nouveau} → le mot de passe choisi (choisir_premier_mot_de_passe : 12 caractères
-        au moins, jeton à usage unique), puis une session ouverte pour ce compte (sans « rester connecté »), comme une
-        connexion. 401 au même message pour un jeton qui ne sert plus ; 400 corps ou mot de passe refusé."""
+        au moins, jeton à usage unique), puis une session ouverte pour ce compte, comme une connexion, en « rester
+        connecté » (session_longue_jours ; décision 4b de Nicolas du 19/11 : le QR se flashe avec son propre
+        téléphone, il ne se reconnecte pas dès le lendemain). 401 au même message pour un jeton qui ne sert plus ; 400 corps ou mot de passe refusé."""
         self.exiger_comptes()
         demande = lire_objet_json(corps)
         jeton, nouveau = demande.get('jeton'), demande.get('nouveau')
@@ -8915,7 +8916,7 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
         if self.session is not None and not self.session.get('appareil'):
             fermer_session(self.config, self.session['cle'])
         ecrire_journal_acces(self.config, compte['identifiant'], origine[0], origine[1], 'connexion', origine[2])
-        self.repondre_avec_session(compte, False)
+        self.repondre_avec_session(compte, True)
 
     def api_deconnecter_partout(self, segment, corps):
         """POST /api/acces/deconnecter-partout : sans corps (ou {}), toutes les sessions de la personne connectée, la

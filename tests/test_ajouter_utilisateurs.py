@@ -142,6 +142,11 @@ class TestCompteParQr(CasUtilisateurs):
         session = choisi.json()["session"]
         self.assertEqual((session["identifiant"], session["role"], session["a_changer"]), ("karim.haddad", "technicien", False))
         self.assertEqual(self.client.session(choisi.cookie)["identifiant"], "karim.haddad")
+        # Décision 4b de Nicolas (19/11) : la session du premier accès est en « rester connecté » (30 jours, cookie
+        # avec Max-Age), pas de nouvelle connexion dès le lendemain.
+        self.assertIn("Max-Age=%d" % (30 * 86400), choisi.set_cookie)
+        sessions = base.serveur.lire_sessions(self.serveur.config)
+        self.assertEqual([s["longue"] for s in sessions.values() if s["identifiant"] == "karim.haddad"], [True])
         self.assertNotIn("premier_acces", self.compte("karim.haddad"))
         # Usage unique : le même QR ne sert plus, même message que pour un jeton inconnu.
         for corps in ({"jeton": jeton}, {"jeton": jeton, "nouveau": "un autre mot de passe long"},
