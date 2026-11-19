@@ -646,8 +646,10 @@ manager has set it to “Blocking”.</p>
     report of at least 10 characters (“NTR” is not accepted on a corrective job) and the “Equipment returned to service
     safely” box. Each code list offers “Other (specify)” with a short free-text field: the details stand in for the
     code. On a preventive or statutory WO, the cause is not asked for (unless an anomaly was found) and the remedy is
-    optional. An empty list never blocks the closure: a message says where to create the codes. The equipment's isolation procedure is shown on the WO: ticking a box does not
-    isolate anything.</li>
+    optional. An empty list never blocks the closure: a message says where to create the codes. After a
+    <span class="bouton">Hand over</span>, a job report that is still empty picks up the colleague's handover note
+    (“Taken from the handover note of …”): it only remains to complete it. The equipment's isolation procedure is shown
+    on the WO: ticking a box does not isolate anything.</li>
   <li><b>Administrative closure</b> locks the WO and puts it in the wiki queue (see
     <a href="#wiki-file">7.4</a>). To resume the work, you create a linked work order.</li>
   <li>Cost of a WO = hours × hourly rate + parts issued × price + subcontracting.</li>
@@ -822,7 +824,9 @@ due dates and keeps their documents; it sends nothing itself.</p>
     contract with automatic renewal, which becomes “decision due” (for example, ending on 31/12 with 3&nbsp;months'
     notice: decision due from 01/08 to 30/09). A contract without automatic renewal, or whose termination has been
     recorded, is never “decision due”: it is “ending soon” before its end. Contract statuses: current, decision due,
-    ending soon, notice deadline passed, dates to update, end date unknown, ended. The lead time is set in Settings ›
+    ending soon, notice deadline passed, dates to update, end date unknown, ended. A contract whose notice is as long as
+    the renewal (equipment hired month by month with one month's notice…) “can be terminated at any time”: the record
+    gives the deadline for the next letter and the end it obtains, with no alert. The lead time is set in Settings ›
     “Warranties and contracts” (“Alert before the due date (days)”, 60 by default, from 1 to 365). The manager's home
     screen has a “Warranties and contracts” tile.</li>
   <li><b>The actions.</b> On a contract: <span class="bouton">Write to the contractor</span> (opens your email
@@ -1355,7 +1359,8 @@ account.</p>
     tells you as you type whether it is too short, acceptable or strong.</li>
   <li><b>“Stay signed in on this device”.</b> If ticked, the session lasts 30 days on this phone or
     workstation; otherwise 12 hours without activity, after which Prévo asks for the password again. Both durations (session, and
-    “stay signed in”) are set in Settings › Access and installation.</li>
+    “stay signed in”) are set in Settings › Access and installation. The first access with the QR code shown by the
+    manager opens a “stay signed in” session straight away.</li>
   <li><b>Session ended while you were typing.</b> Prévo shows the sign-in screen without erasing anything: when you
     sign in again with the same account, you find the screen as you left it, with what you had typed, and it is still
     to be saved. If someone else signs in on this workstation, they are not shown what you had typed.</li>
