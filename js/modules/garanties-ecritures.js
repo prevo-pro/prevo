@@ -355,7 +355,10 @@ Object.assign(Garanties, (() => {
    * JJ/MM/AAAA ; <commentaire> » ; contrat déjà sans reconduction tacite : la ligne ne change pas, l'entrée du
    * journal est écrite quand même (la trace de la lettre). Refus : date de la lettre absente, illisible ou future,
    * contrat introuvable ou retiré, profil, contrat tacite dont la fin enregistrée est passée (« dates à mettre à
-   * jour » ou « à décider » sur une période calculée : reconduire d'abord, rien n'est écrit). Renvoie ['reconduction_tacite'] ou [].
+   * jour » ou « à décider » sur une période calculée : reconduire d'abord, rien n'est écrit). Décision 5b (19/11) :
+   * contrat « résiliable à tout moment » (préavis ≥ reconduction) dont la lettre part après la date limite de la période
+   * en cours : il s'arrête à la première fin que la lettre atteint (finAuPlusTot à la date de la lettre), écrite dans
+   * date_fin ; le journal ajoute « ; fin au JJ/MM/AAAA ». Renvoie ['reconduction_tacite'] (et 'date_fin') ou [].
    */
   async function noterResiliation(contratId, valeurs) {
     exigerResponsable();
@@ -363,7 +366,8 @@ Object.assign(Garanties, (() => {
     const lue = Donnees.normaliser.date(v.date);
     const date = lue.ok ? lue.valeur : texte(v.date);
     const commentaire = texte(v.commentaire);
-    const action = 'résiliation notée : lettre du ' + UI.dateFr(date) + (commentaire ? ' ; ' + commentaire : '');
+    const base = 'résiliation notée : lettre du ' + UI.dateFr(date) + (commentaire ? ' ; ' + commentaire : '');
+    let action = base;
     let id = texte(contratId);
     const changes = await Donnees.modifier(CONTRATS.table, (lignes, outils) => {
       const ligne = ligneSuivie(CONTRATS, lignes, contratId);
@@ -376,9 +380,16 @@ Object.assign(Garanties, (() => {
         throw ErreurValidation(I18n.t('garanties.noter_resiliation.reconduire_d_abord', { fin: UI.dateFr(dateIso(ligne.date_fin)) }));
       }
       if (!estTacite(ligne)) return [];
+      const aLaLettre = Garanties.etatContrat(ligne, date);           // 5b : quelle fin la lettre atteint-elle ?
       ligne.reconduction_tacite = '0';
+      action = base;                                                  // modifier peut rejouer cette fonction
+      if (aLaLettre.aToutMoment && aLaLettre.finAuPlusTot) {
+        ligne.date_fin = aLaLettre.finAuPlusTot;
+        action = base + ' ; fin au ' + UI.dateFr(aLaLettre.finAuPlusTot);
+        return ['reconduction_tacite', 'date_fin'];
+      }
       return ['reconduction_tacite'];
-    }, { action });
+    }, { get action() { return action; } });
     if (!changes.length) await Donnees.journaliser(CONTRATS.table, id, action);
     return changes;
   }

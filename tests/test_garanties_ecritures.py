@@ -224,6 +224,35 @@ class TestServeur(CasGaranties):
             self.accepte("reconduireContrat", ctp, {"date_debut": jour.isoformat(), "date_fin": futur})
             self.assertEqual(self.accepte("noterResiliation", ctp, {"date": jour.isoformat()}), ["reconduction_tacite"])
 
+    def test_resiliation_d_un_contrat_resiliable_a_tout_moment(self):
+        """Décision 5b (19/11), relecture de la 2.4.1 : un contrat reconduit chaque mois avec un mois de préavis, dont la
+        date limite de la période en cours est passée, s'arrête à la fin que la lettre atteint (fin du mois suivant),
+        pas à la fin enregistrée : date_fin la prend, le journal la dit."""
+        with ServeurPrevo() as serveur:
+            self.ouvrir_serveur(serveur)
+            dossier = serveur.dossier
+            _eq1, _eq2, fou = equipements_et_fournisseur(dossier)
+            jour = self.aujourdhui()
+            debut = jour.replace(day=1)
+            fin = (debut + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)       # fin du mois
+            fin_suivante = (fin + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+            ctp = self.accepte("creerContrat", {"fournisseur_id": fou, "objet": "Location nacelle", "date_debut":
+                                                debut.isoformat(), "date_fin": fin.isoformat(), "preavis_mois": "1",
+                                                "reconduction_tacite": True, "reconduction_mois": "1"})
+            etat = self.page.evaluate("(id) => Garanties.etatContrat(Donnees.trouver('contrats_prestataires', id))", ctp)
+            self.assertEqual((etat["statut"], etat.get("aToutMoment"), etat.get("finAuPlusTot")),
+                             ("en_cours", True, fin_suivante.isoformat()))
+            self.assertEqual(self.accepte("noterResiliation", ctp, {"date": jour.isoformat()}),
+                             ["reconduction_tacite", "date_fin"])
+            ligne = ligne_de(dossier, "contrats_prestataires.csv", ctp)
+            self.assertEqual((ligne["reconduction_tacite"], ligne["date_debut"], ligne["date_fin"]),
+                             ("0", debut.isoformat(), fin_suivante.isoformat()))
+            self.assertTrue(journal(dossier, "contrats_prestataires", ctp)[-1].endswith(
+                "résiliation notée : lettre du %s ; fin au %s" % (jour.strftime("%d/%m/%Y"), fin_suivante.strftime("%d/%m/%Y"))))
+            # La fiche lit la résiliation notée au journal (la date de fin changée par la lettre ne l'annule pas)
+            notee = self.page.evaluate("(id) => Garanties.resiliationNotee(Donnees.trouver('contrats_prestataires', id))", ctp)
+            self.assertEqual(notee["lettre"], jour.isoformat())
+
     def test_contrat_reconduit_resiliation_notee_et_retire(self):
         with ServeurPrevo() as serveur:
             self.ouvrir_serveur(serveur)

@@ -582,18 +582,23 @@ Object.assign(Garanties, (() => {
     return UI.champ({ nom, type: 'date', libelle }, valeur, Object.assign({ obligatoire: true }, reglages || {}));
   }
 
-  /** « Noter la résiliation » : date d'envoi de la lettre (obligatoire, pas dans le futur), commentaire. */
+  /** « Noter la résiliation » : date d'envoi de la lettre (obligatoire, pas dans le futur), commentaire. Décision 5b :
+   *  un contrat « résiliable à tout moment » s'arrête à la première fin que la lettre atteint (finAuPlusTot pour une
+   *  lettre du jour) ; la confirmation relit la fin écrite (Garanties.noterResiliation la calcule à la date de la lettre). */
   async function ouvrirResiliation(contrat, etat) {
     const jour = Donnees.aujourdhui();
+    const finPrevue = etat.aToutMoment ? etat.finAuPlusTot : etat.fin;
     const fait = await UI.fenetreAction({ classe: 'garanties-fenetre', titre: I18n.t('garanties.fiche_contrat.noter_resiliation'),
-      introduction: UI.html`<p>${I18n.t('garanties.resiliation.introduction', { fin: UI.dateFr(etat.fin) })}</p>`,
+      introduction: UI.html`<p>${I18n.t('garanties.resiliation.introduction', { fin: UI.dateFr(finPrevue) })}</p>`,
       champs: [champDate('date', I18n.t('garanties.resiliation.date'), jour, { attributs: { max: jour } }),
         UI.champ({ nom: 'commentaire', type: 'texte_long', libelle: I18n.t('commun.champ.commentaire') }, '')],
       libelleValider: I18n.t('commun.bouton.enregistrer'),
       verifier: (valeurs) => (valeurs.date > jour ? [{ nom: 'date', message: I18n.t('garanties.noter_resiliation.date_future') }] : []),
       action: (valeurs) => Garanties.noterResiliation(contrat.id, valeurs),
     });
-    if (fait) await apresEcriture(I18n.t('garanties.resiliation.notee', { fin: UI.dateFr(etat.fin) }));
+    const ecrit = fait ? Donnees.trouver('contrats_prestataires', contrat.id) : null;
+    const finEcrite = dateIso(ecrit && ecrit.date_fin) || etat.fin;
+    if (fait) await apresEcriture(I18n.t('garanties.resiliation.notee', { fin: UI.dateFr(finEcrite) }));
   }
 
   /** « Reconduire » : nouvelle période proposée (Garanties.propositionReconduction), modifiable. */
