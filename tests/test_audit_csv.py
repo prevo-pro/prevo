@@ -165,6 +165,26 @@ class TestAuditCsvServeur(unittest.TestCase):
         self.assertEqual(self.lire("parametres"), corps)
 
 
+class TestPremierTriDesCellules(unittest.TestCase):
+    """2.4.1 (relecture) : verifier_contenu_csv ne passe par MOTIF_CELLULE_DANGEREUSE que les cellules dont le premier
+    caractère est dans DEBUTS_DE_CELLULE_DANGEREUSE. Ce premier tri doit rester exactement la classe de tête du motif :
+    tout caractère qui peut ouvrir le motif est dans l'ensemble (sinon des cellules dangereuses passeraient)."""
+
+    def test_tout_debut_possible_du_motif_est_dans_l_ensemble(self):
+        suites = ["", "1", "-1", "1+cmd|x", "A1", " ", "e5", ".5"]
+        oublies = sorted({hex(code) for code in range(0x3000) for suite in suites
+                          if serveur.MOTIF_CELLULE_DANGEREUSE.match(chr(code) + suite)
+                          and chr(code) not in serveur.DEBUTS_DE_CELLULE_DANGEREUSE})
+        self.assertEqual(oublies, [])
+
+    def test_le_premier_tri_ne_change_aucun_refus(self):
+        for cellule in ("=1+1", "+33", "@SUM", "\tx", "\rx", "-1+cmd|' /C calc'!A0", "-12", "-12,5", "-.5", "-1e-7",
+                        "'=1", " =1", "texte", ""):
+            attendu = bool(serveur.MOTIF_CELLULE_DANGEREUSE.match(cellule))
+            trie = cellule[:1] in serveur.DEBUTS_DE_CELLULE_DANGEREUSE and attendu
+            self.assertEqual(trie, attendu, repr(cellule))
+
+
 class TestDemoAcceptee(unittest.TestCase):
 
     def test_chaque_fichier_de_la_demo_passe_la_verification(self):

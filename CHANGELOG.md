@@ -19,12 +19,14 @@ prises après le rejeu de la livraison 2 et corrige deux textes d'aide.
 
 - **Clôture d'un OT passé de main en main.** Dans la fenêtre de clôture, un compte rendu vide reprend le dernier mot de
   relève (« Passer la main »), avec « Repris du mot de relève de … » : le technicien le complète au lieu de retaper le
-  diagnostic. Un compte rendu déjà écrit reste tel quel ; la règle de clôture ne change pas.
+  diagnostic. Le texte repris compte comme compte rendu : relisez-le et ajoutez ce qui a été fait. Un compte rendu
+  déjà écrit reste tel quel.
 - **Premier accès par QR.** La session ouverte après le choix du mot de passe est en « rester connecté » (30 jours,
   réglable) : plus de nouvelle connexion dès le lendemain sur son propre téléphone.
 - **Contrats dont le préavis est aussi long que la reconduction** (location reconduite chaque mois avec un mois de
   préavis…). Au lieu de « préavis dépassé » en permanence, la fiche dit « résiliable à tout moment : une lettre envoyée
-  au plus tard le … arrête le contrat le … », sans alerte.
+  au plus tard le … arrête le contrat le … », sans alerte. « Noter la résiliation » y arrête le contrat à cette fin-là,
+  celle que la lettre atteint.
 
 ### Corrigé
 

@@ -242,6 +242,7 @@ Object.assign(Ordres, (() => {
     const heures = UI.champ({ nom: 'heures', type: 'duree', libelle: total > 0 ? I18n.t('ordres.champs_clore.temps_passe_ajouter_heures')
       : I18n.t('ordres.cloture.temps_passe') }, temps.valeur, { aide: temps.aide });
     const codes = Ordres.champsCodes(ot);       // T515 : symptôme, cause (sauf préventif), remède ; « Autre » en tête
+    const compteRendu = compteRenduPropose(ot);
     codes.forEach((bloc) => {
       const cle = bloc.dataset.code;
       if (cle && exiges[cle]) marquerExige(UI.$('.champ', bloc));
@@ -259,9 +260,7 @@ Object.assign(Ordres, (() => {
       ...Ordres.interne.rappelTempsRenforts(ot),                  // L16 : temps des renforts, sans bloquer
       ...questionArret(ot),                                       // P04 : le bilan compte les arrêts
       ...codes,
-      marquerExige(champOt('compte_rendu', compteRenduPropose(ot), {        // L23 : écrit d'office ; 1B : mot de relève
-        aide: aideCompteRendu(ot),
-      })),
+      marquerExige(champOt('compte_rendu', compteRendu.valeur, { aide: compteRendu.aide })),   // L23 ; 1B : mot de relève
       ...(completer ? [] : Demandes.champsMotOperateur(ot)),      // A4 : mot pour l'opérateur, si l'OT vient d'une demande
       remise,
       ...extensionsCloture(ot, mode),
@@ -390,24 +389,18 @@ Object.assign(Ordres, (() => {
     return !texte(ot.compte_rendu) && visiteSansAnomalie(ot) ? I18n.t('ordres.cloture.visite_rien_a_signaler') : '';
   }
 
-  /** Décision 1B de Nicolas (19/11, rejeu de la livraison 2 : un technicien retapait le diagnostic que son collègue avait
-   *  écrit en passant la main) : sans compte rendu ni texte d'office, le dernier mot de relève (L16) est proposé, à
-   *  compléter. '' s'il n'y en a pas : la règle RG4 du compte rendu ne change pas. */
-  function motDeReleveAReprendre(ot) {
-    return texte(ot.compte_rendu) || compteRenduDOffice(ot) ? '' : texte(ot.releve_mot);
-  }
-
-  /** Compte rendu proposé dans la fenêtre : celui de l'OT, sinon le texte d'office (L23), sinon le mot de relève (1B). */
+  /** Compte rendu proposé dans la fenêtre et son aide → { valeur, aide } : celui de l'OT, sinon le texte d'office (L23),
+   *  sinon, décision 1B de Nicolas (19/11, rejeu de la livraison 2 : un technicien retapait le diagnostic que son
+   *  collègue avait écrit en passant la main), le dernier mot de relève (L16), à compléter ; l'aide dit alors de qui il
+   *  vient. La règle RG4 ne change pas : le texte repris compte comme compte rendu. Calculé une fois par fenêtre. */
   function compteRenduPropose(ot) {
-    return texte(ot.compte_rendu) || compteRenduDOffice(ot) || motDeReleveAReprendre(ot);
-  }
-
-  /** Aide du compte rendu ; quand il reprend le mot de relève, elle dit de qui il vient. */
-  function aideCompteRendu(ot) {
     const aide = I18n.t('ordres.champs_clore.ete_constate_cause_ete');
-    if (!motDeReleveAReprendre(ot)) return aide;
+    const deja = texte(ot.compte_rendu) || compteRenduDOffice(ot);
+    const mot = texte(ot.releve_mot);
+    if (deja || !mot) return { valeur: deja, aide };
     const auteur = Ordres.nomTechnicien(texte(ot.releve_par));
-    return auteur ? I18n.t('ordres.champs_clore.repris_du_mot_de_releve', { nomTechnicien: auteur }) + ' ' + aide : aide;
+    return { valeur: mot,
+      aide: auteur ? I18n.t('ordres.champs_clore.repris_du_mot_de_releve', { nomTechnicien: auteur }) + ' ' + aide : aide };
   }
 
   /**
