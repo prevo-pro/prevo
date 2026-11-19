@@ -36,7 +36,9 @@ class TestParcGaranties(CasNavigateur):
                            "technicienId: id}))", [profil, nom, technicien_id])
         self.page.reload()
         attendre_pret(self.page)
-        self.page.wait_for_load_state("networkidle")
+        # Pas d'attente « networkidle » (rouge sous la charge de la suite complète du 16/11 : jamais atteinte en 15 s) :
+        # la fiche pose l'identifiant et la carte des garanties dans le même rendu, sans attente entre les deux
+        # (Parc.afficherFiche, js/modules/parc-fiche.js) ; attendre l'identifiant suffit.
         self.page.wait_for_function(
             "(id) => { const dd = document.querySelector('#contenu .parc .valeurs dd');"
             " return dd !== null && dd.textContent.trim() === id; }", arg=identifiant)

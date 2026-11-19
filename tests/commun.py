@@ -653,6 +653,18 @@ class _ResultatEnregistre(unittest.TestResult):
 # Aides pour les pages
 # ---------------------------------------------------------------------------
 
+def figer_a_midi(contexte):
+    """Fige l'horloge des pages du contexte à midi du jour (heure du PC), avant tout chargement de page.
+
+    La démo garde le jour de la semaine et l'heure de ses dates (StockageDemo.decalerDates : décalage par semaines
+    entières) : son OT « en cours » (scenarios_demo()["ot_statut_en_cours"]) commence le lundi à 7 h 30. Le lundi de
+    0 h à 7 h 30, ce début est dans le futur ; la clôture proposée à l'heure du moment finit avant le début et Prévo
+    la refuse, à raison. Un test qui clôture cet OT l'appelle pour ne pas dépendre de l'heure (diagnostic du
+    19/11/2026 : suite complète du 16/11 lancée un lundi vers 1 h, test_hors_magasin_l25 rouge)."""
+    import datetime
+    contexte.clock.set_fixed_time(datetime.datetime.combine(datetime.date.today(), datetime.time(12, 0)))
+
+
 def preregler_profil(contexte, type, nom="", technicien_id="", poste="Poste test"):
     """Mémorise un profil et un poste dans localStorage avant tout chargement de page.
 

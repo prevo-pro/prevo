@@ -16,7 +16,7 @@ import json
 import unittest
 
 import test_rapport_bilan_mois as base
-from commun import CasNavigateur, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import CasNavigateur, attendre_pret, figer_a_midi, preregler_profil, scenarios_demo, url_fichier
 
 OT = scenarios_demo()["ot_statut_en_cours"]          # correctif « En cours » de la démo
 
@@ -139,6 +139,7 @@ class TestSaisieSurLOt(CasOt):
 class TestFenetreDeCloture(CasOt):
 
     def test_piece_hors_magasin_dans_la_fenetre(self):
+        figer_a_midi(self.contexte)         # clôture de l'OT « en cours » de la démo
         page = self.ouvrir_demo("responsable")
         page.evaluate("location.hash = %r" % ("#/ot/" + OT))
         page.wait_for_selector(".ot-actions [data-cible='Clôturé techniquement']")

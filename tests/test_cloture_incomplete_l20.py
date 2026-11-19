@@ -15,7 +15,7 @@ Lancer depuis la racine du projet :
 """
 import unittest
 
-from commun import CasNavigateur, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import CasNavigateur, attendre_pret, figer_a_midi, preregler_profil, scenarios_demo, url_fichier
 
 OT = scenarios_demo()["ot_statut_en_cours"]
 FENETRE = "dialog.dialogue[open]"
@@ -120,6 +120,7 @@ class TestResponsable(CasIncomplete):
         self.assertIn("Autoriser les clôtures incomplètes", page.inner_text("body"))
 
     def test_accueil_fiche_completer_valider(self):
+        figer_a_midi(self.contexte)         # clôture de l'OT « en cours » de la démo
         page = self.page_responsable()
         # Le responsable ne clôture jamais incomplet, même réglage actif.
         self.assertEqual(page.evaluate("Ordres.manquesQuiBloquent([{ champ: 'heures', texte: 'a' }]).length"), 1)

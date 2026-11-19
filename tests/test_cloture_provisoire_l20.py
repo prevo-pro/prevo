@@ -12,7 +12,7 @@ Lancer depuis la racine du projet :
 """
 import unittest
 
-from commun import CasNavigateur, attendre_pret, preregler_profil, scenarios_demo, url_fichier
+from commun import CasNavigateur, attendre_pret, figer_a_midi, preregler_profil, scenarios_demo, url_fichier
 
 OT = scenarios_demo()["ot_statut_en_cours"]
 FENETRE = "dialog.dialogue[open]"
@@ -87,6 +87,7 @@ class TestFenetre(CasProvisoire):
 class TestValidation(CasProvisoire):
 
     def test_valider_puis_creer_en_un_geste(self):
+        figer_a_midi(self.contexte)         # clôture de l'OT « en cours » de la démo
         page = self.ouvrir(self.contexte, "responsable")
         page.evaluate(VALIDE_JS, [OT, MOT])
         self.assertEqual(page.evaluate("(id) => Ordres.verifierCloture(Donnees.trouver('ordres_travail', id))", OT), [])
