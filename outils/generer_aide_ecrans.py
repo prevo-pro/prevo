@@ -164,8 +164,9 @@ ECRANS = {
                     "Quatre onglets : Préparation (travail à faire, pièces, technicien, date), Exécution "
                     "(check-list, temps, sorties de pièces), Compte rendu (symptôme, cause, remède, astuce "
                     "pour la prochaine fois) et Historique de l'équipement. Prévo refuse de planifier s'il "
-                    "manque une pièce en stock et refuse d'affecter un technicien sans l'habilitation requise "
-                    "valable à la date prévue : seul le responsable passe outre, en écrivant un motif."
+                    "manque une pièce en stock. Pour un technicien sans l'habilitation requise valable à la date "
+                    "prévue, Prévo le signale ; pour une habilitation électrique, il refuse si vous l'avez réglé "
+                    "ainsi dans les paramètres, et seul le responsable passe alors outre, en écrivant un motif."
                 ),
                 "essayez": "onglet Préparation, bouton Planifier.",
             },
@@ -547,9 +548,10 @@ ECRANS_EN = {
                 "texte": (
                     "Four tabs: Preparation (work to be done, parts, technician, date), Execution (checklist, "
                     "times, parts issued), Job report (symptom, cause, remedy, tip for next time) and the "
-                    "equipment history. Prévo refuses to schedule if a part is out of stock and refuses to assign a "
-                    "technician without the required authorisation, valid on the planned date: only the manager "
-                    "can override it, by writing a reason."
+                    "equipment history. Prévo refuses to schedule if a part is out of stock. For a technician "
+                    "without the required authorisation, valid on the planned date, Prévo flags it; for an "
+                    "electrical authorisation, it refuses if you have set it that way in the settings, and only "
+                    "the manager can then override it, by writing a reason."
                 ),
                 "essayez": "Preparation tab, Schedule button.",
             },
