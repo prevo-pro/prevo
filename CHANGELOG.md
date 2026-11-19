@@ -7,6 +7,35 @@ suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [2.4.1] - 2026-11-20
+
+- Clôture : le compte rendu reprend le mot de relève laissé par le collègue qui a passé la main ; il suffit de le compléter.
+- Premier accès par QR : le téléphone reste connecté 30 jours. Aide des habilitations corrigée : Prévo signale, et ne refuse que si vous l'avez réglé.
+
+**Correctif de la 2.4.0.** Même format de données (format 6) : rien à faire à la mise à jour. Il reprend les décisions
+prises après le rejeu de la livraison 2 et corrige deux textes d'aide.
+
+### Modifié
+
+- **Clôture d'un OT passé de main en main.** Dans la fenêtre de clôture, un compte rendu vide reprend le dernier mot de
+  relève (« Passer la main »), avec « Repris du mot de relève de … » : le technicien le complète au lieu de retaper le
+  diagnostic. Un compte rendu déjà écrit reste tel quel ; la règle de clôture ne change pas.
+- **Premier accès par QR.** La session ouverte après le choix du mot de passe est en « rester connecté » (30 jours,
+  réglable) : plus de nouvelle connexion dès le lendemain sur son propre téléphone.
+- **Contrats dont le préavis est aussi long que la reconduction** (location reconduite chaque mois avec un mois de
+  préavis…). Au lieu de « préavis dépassé » en permanence, la fiche dit « résiliable à tout moment : une lettre envoyée
+  au plus tard le … arrête le contrat le … », sans alerte.
+
+### Corrigé
+
+- **Aide des habilitations.** L'aide de la fiche d'OT et le guide annonçaient un refus systématique. Une habilitation
+  manquante est signalée ; Prévo ne refuse que si « Habilitation électrique absente » est réglée sur « Bloquante », et
+  seulement pour les habilitations électriques (en mode Solo, un simple rappel).
+- **Aide du champ « Habilitation requise »** de la machine : elle proposait « BR ». Elle renvoie maintenant
+  l'électricité vers « Risque électrique » et garde ce champ pour les autres habilitations (CACES…) ; les valeurs déjà
+  saisies restent vérifiées.
+- **Serveur.** Le contrôle des formules dans les fichiers reçus est plus rapide sur une grosse base (même résultat).
+
 ## [2.4.0] - 2026-11-16
 
 - Plus simple au quotidien : mode Solo pour un technicien seul, assistant d'installation, clôture d'un OT en une fois, fiche d'OT sur téléphone, OT à valider visibles du responsable.
