@@ -2594,6 +2594,7 @@ I18n.ajouter('tr', {
   'garanties.raison_contrat.en_cours_preavis': '{fin} tarihine kadar (fesih için son tarih {limite})',
   'garanties.raison_contrat.fin_inconnue': 'bitiş tarihi bilinmiyor: geçerli dönemin bitişini girin',
   'garanties.raison_contrat.preavis_depasse_tacite': 'fesih için son tarih geçti ({limite}): feshedilmezse {fin} tarihinde yenilenir',
+  'garanties.raison_contrat.resiliable_a_tout_moment': 'her an feshedilebilir: en geç {limite} tarihine kadar gönderilen bir mektup sözleşmeyi {fin} tarihinde sona erdirir',
   'garanties.raison_contrat.termine': '{fin} tarihinde sona erdi',
   'garanties.raison_garantie.a_venir': '{debut} tarihinde başlıyor',
   'garanties.raison_garantie.bientot': '{quand} ({fin}) bitiyor',

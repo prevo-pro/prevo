@@ -314,6 +314,38 @@ class TestEtatContrat(CasGaranties):
         # rien n'est écrit
         self.assertEqual(self.js("() => Donnees.trouver('contrats_prestataires', 'CTP-0004').date_fin"), "2025-12-31")
 
+    def test_preavis_egal_ou_plus_long_que_la_reconduction_resiliable_a_tout_moment(self):
+        """Décision 5b de Nicolas (19/11) : préavis ≥ durée d'une reconduction (location reconduite chaque mois, un
+        mois de préavis) : la date limite de chaque période reconduite tombe avant son début ; au lieu de « préavis
+        dépassé » pour toujours, « en cours », résiliable à tout moment, sans alerte, avec la première fin possible."""
+        etat = ("([debut, fin, preavis, mois, jour]) => Garanties.etatContrat({ date_debut: debut, date_fin: fin, "
+                "preavis_mois: preavis, reconduction_tacite: '1', reconduction_mois: mois }, jour, 60)")
+        # Première période de 12 mois : « à décider » avant sa date limite, comme tout contrat tacite
+        self.assertEqual(self.js(etat, ["2026-01-01", "2026-12-31", "1", "1", "2026-10-15"])["statut"], "a_decider")
+        # Date limite de la fin enregistrée passée : la fin suivante est encore possible
+        e = self.js(etat, ["2026-01-01", "2026-12-31", "1", "1", "2026-12-05"])
+        self.assertEqual((e["statut"], e["alerte"], e["aToutMoment"], e["finAuPlusTot"], e["dateLimite"], e["joursAvantLimite"]),
+                         ("en_cours", False, True, "2027-01-31", "2026-12-31", 26))
+        self.assertEqual(e["finPeriode"], "2026-12-31")
+        self.assertEqual(e["raison"], "résiliable à tout moment : une lettre envoyée au plus tard le 31/12/2026 arrête "
+                                      "le contrat le 31/01/2027")
+        # Période reconduite d'un mois (saisie avec « Reconduire ») : fin de février, lettre avant le 28/01
+        e = self.js(etat, ["2027-01-01", "2027-01-31", "1", "1", "2027-01-10"])
+        self.assertEqual((e["statut"], e["finAuPlusTot"], e["dateLimite"]), ("en_cours", "2027-02-28", "2027-01-28"))
+        # Préavis de 3 mois, reconduction d'un mois : la première fin dont la date limite n'est pas passée
+        e = self.js(etat, ["2027-01-01", "2027-01-31", "3", "1", "2027-01-10"])
+        self.assertEqual((e["statut"], e["finAuPlusTot"], e["dateLimite"]), ("en_cours", "2027-04-30", "2027-01-30"))
+        # Préavis de 12 mois, reconduction annuelle (égaux)
+        e = self.js(etat, ["2026-01-01", "2026-12-31", "12", "12", "2026-06-01"])
+        self.assertEqual((e["statut"], e["finAuPlusTot"], e["dateLimite"]), ("en_cours", "2027-12-31", "2026-12-31"))
+        # Préavis plus court que la reconduction : « préavis dépassé » inchangé (CS173)
+        e = self.js(etat, ["2026-01-01", "2026-12-31", "3", "12", "2026-10-01"])
+        self.assertEqual((e["statut"], e.get("aToutMoment")), ("preavis_depasse", None))
+        # Durée d'une reconduction inconnue : rien à calculer, « préavis dépassé » inchangé
+        self.assertEqual(self.js(etat, ["2026-01-01", "2026-12-31", "1", "", "2026-12-05"])["statut"], "preavis_depasse")
+        # Fin enregistrée passée : « dates à mettre à jour » inchangé (le contrat a continué, période à saisir)
+        self.assertEqual(self.js(etat, ["2026-01-01", "2026-12-31", "1", "1", "2027-01-10"])["statut"], "a_mettre_a_jour")
+
     def test_periode_calculee_fins_de_mois(self):
         calcul = ("([fin, mois, jour]) => Garanties.etatContrat({ date_fin: fin, preavis_mois: '0', "
                   "reconduction_tacite: '1', reconduction_mois: mois }, jour, 60).finPeriode")

@@ -290,6 +290,25 @@ const Garanties = (() => {
     return finApres(fin, k * mois);
   }
 
+  /**
+   * Décision 5b de Nicolas (19/11) : un contrat reconduit tacitement dont le préavis égale ou dépasse la durée d'une
+   * reconduction (location reconduite chaque mois avec un mois de préavis…) a sa date limite avant le début de chaque
+   * période reconduite : il ne serait jamais « à décider », toujours « préavis dépassé ». Il est en fait résiliable à
+   * tout moment : → { limite, fin } de la première fin de période (finPeriode + k × reconduction_mois, k ≥ 1) dont la
+   * date limite n'est pas passée ; null si le préavis est plus court que la reconduction ou l'un des deux inconnu.
+   */
+  function resiliationPossible(contrat, finPeriode, jour) {
+    const preavis = preavisMois(contrat);
+    const mois = reconductionMois(contrat);
+    if (!preavis || !mois || preavis < mois) return null;
+    for (let k = 1; k <= Math.ceil(preavis / mois) + 1; k += 1) {
+      const fin = finApres(finPeriode, k * mois);
+      const limite = limiteDeLaFin(fin, preavis);
+      if (limite >= jour) return { limite, fin };
+    }
+    return null;
+  }
+
   function raisonContrat(statut, etatCalcule) {
     const fin = UI.dateFr(etatCalcule.fin);
     const finPeriode = UI.dateFr(etatCalcule.finPeriode);
@@ -312,6 +331,10 @@ const Garanties = (() => {
         return I18n.t('garanties.raison_contrat.preavis_depasse_tacite', { limite, fin: finPeriode });
       case TERMINE: return I18n.t('garanties.raison_contrat.termine', { fin });
       default:
+        if (etatCalcule.aToutMoment) {                  // décision 5b : préavis ≥ reconduction
+          return I18n.t('garanties.raison_contrat.resiliable_a_tout_moment',
+            { limite, fin: UI.dateFr(etatCalcule.finAuPlusTot) });
+        }
         return avecPreavis ? I18n.t('garanties.raison_contrat.en_cours_preavis', { fin: finPeriode, limite })
           : I18n.t('garanties.raison_contrat.en_cours', { fin: finPeriode });
     }
@@ -329,6 +352,9 @@ const Garanties = (() => {
    *   « se termine bientôt » (sans reconduction tacite, 0 ≤ fin − jour ≤ délai : alerte, la prestation s'arrête) ;
    *   « préavis dépassé » (reconduction tacite, date limite < jour ≤ fin) ; « terminé » (fin passée, sans
    *   reconduction tacite) ; « en cours ».
+   * Décision 5b (19/11) : « préavis dépassé » d'un contrat dont le préavis égale ou dépasse la reconduction devient
+   *   « en cours » avec aToutMoment, finAuPlusTot (première fin encore possible) et dateLimite, joursAvantLimite de
+   *   cette fin : « résiliable à tout moment », sans alerte (resiliationPossible).
    * Sans reconduction tacite (dont un contrat dont la résiliation est notée : reconduction_tacite à 0), rien n'est à
    * décider : la date limite de résiliation ne compte pas, jamais « à décider » ni « préavis dépassé » (T463, décision
    * de l'orchestrateur qui remplace QUESTIONS L4-L6 Q1 pour ces contrats) ; « se termine bientôt » avant la fin.
@@ -355,6 +381,11 @@ const Garanties = (() => {
       else if (joursAvantFin < 0) statut = TERMINE;
       Object.assign(resultat, { statut, finPeriode, periodeCalculee: Boolean(reconduite), dateLimite,
         joursAvantLimite, joursAvantFin, alerte: statut === A_DECIDER || statut === BIENTOT });
+      const aToutMoment = statut === PREAVIS_DEPASSE ? resiliationPossible(contrat, finPeriode, jour) : null;
+      if (aToutMoment) {
+        Object.assign(resultat, { statut: EN_COURS, aToutMoment: true, finAuPlusTot: aToutMoment.fin,
+          dateLimite: aToutMoment.limite, joursAvantLimite: joursEntre(jour, aToutMoment.limite) });
+      }
     }
     resultat.raison = raisonContrat(resultat.statut, resultat);
     return resultat;

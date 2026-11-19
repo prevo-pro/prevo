@@ -2594,6 +2594,7 @@ I18n.ajouter('it', {
   'garanties.raison_contrat.en_cours_preavis': 'fino al {fin} (termine ultimo di recesso il {limite})',
   'garanties.raison_contrat.fin_inconnue': 'data di fine sconosciuta: inserisci la fine del periodo in corso',
   'garanties.raison_contrat.preavis_depasse_tacite': 'termine ultimo di recesso superato ({limite}): senza recesso, si rinnova il {fin}',
+  'garanties.raison_contrat.resiliable_a_tout_moment': 'recedibile in qualsiasi momento: una lettera inviata entro il {limite} chiude il contratto il {fin}',
   'garanties.raison_contrat.termine': 'terminato il {fin}',
   'garanties.raison_garantie.a_venir': 'inizia il {debut}',
   'garanties.raison_garantie.bientot': 'termina {quand}, il {fin}',

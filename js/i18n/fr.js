@@ -2590,6 +2590,7 @@ I18n.ajouter('fr', {
   'garanties.raison_contrat.en_cours_preavis': 'jusqu\'au {fin} (date limite de résiliation le {limite})',
   'garanties.raison_contrat.fin_inconnue': 'date de fin inconnue : saisissez la fin de la période en cours',
   'garanties.raison_contrat.preavis_depasse_tacite': 'date limite de résiliation passée ({limite}) : sans résiliation, il est reconduit le {fin}',
+  'garanties.raison_contrat.resiliable_a_tout_moment': 'résiliable à tout moment : une lettre envoyée au plus tard le {limite} arrête le contrat le {fin}',
   'garanties.raison_contrat.termine': 'terminé le {fin}',
   'garanties.raison_garantie.a_venir': 'commence le {debut}',
   'garanties.raison_garantie.bientot': 'se termine {quand}, le {fin}',

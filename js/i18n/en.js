@@ -2592,6 +2592,7 @@ I18n.ajouter('en', {
   'garanties.raison_contrat.en_cours_preavis': 'until {fin} (termination deadline {limite})',
   'garanties.raison_contrat.fin_inconnue': 'end date unknown: enter the end of the current period',
   'garanties.raison_contrat.preavis_depasse_tacite': 'termination deadline passed ({limite}): unless terminated, it renews on {fin}',
+  'garanties.raison_contrat.resiliable_a_tout_moment': 'can be terminated at any time: a letter sent by {limite} at the latest ends the contract on {fin}',
   'garanties.raison_contrat.termine': 'ended on {fin}',
   'garanties.raison_garantie.a_venir': 'starts on {debut}',
   'garanties.raison_garantie.bientot': 'ends {quand}, on {fin}',
