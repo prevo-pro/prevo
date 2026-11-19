@@ -196,7 +196,7 @@ Object.assign(Parc, (() => {
       aide: I18n.t('parc.formulaire.risque_electrique_aide'),
     }));
     ajouter(UI.champ(definition('habilitation_requise'), valeur('habilitation_requise'), {
-      aide: I18n.t('parc.formulaire.ex_br_plusieurs_habilitations'),
+      aide: I18n.t('parc.formulaire.habilitation_requise_aide'),
     }));
     ajouter(UI.champ(definition('consignation'), valeur('consignation'), {
       aide: I18n.t('parc.formulaire.etape_ligne_texte_affiche'),

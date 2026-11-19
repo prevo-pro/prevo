@@ -1950,7 +1950,7 @@ I18n.ajouter('en', {
   'parc.formulaire.equipement_existe_plus': 'This equipment no longer exists.',
   'parc.formulaire.equipement_introuvable': 'Equipment not found',
   'parc.formulaire.etape_ligne_texte_affiche': 'One step per line. This text is shown on the record and on work orders.',
-  'parc.formulaire.ex_br_plusieurs_habilitations': 'E.g. BR. Several authorisations: separated by a comma.',
+  'parc.formulaire.habilitation_requise_aide': 'For electrical work, use “Electrical hazard”; here, other authorisations (CACES R489…). Several: separated by a comma.',
   'parc.formulaire.risque_electrique_aide': 'Prévo works out the expected authorisation: BR for troubleshooting, B1, B2 or BC for planned work; H0 for a high-voltage room; H1, H2 or HC for high voltage. Empty: machine not concerned.',
   'parc.formulaire.modifier_libelle_equipement': 'Edit {libelleEquipement}',
   'parc.formulaire.modifier_v1': 'Edit {repere}',

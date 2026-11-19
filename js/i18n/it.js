@@ -1952,7 +1952,7 @@ I18n.ajouter('it', {
   'parc.formulaire.equipement_existe_plus': 'Questa attrezzatura non esiste più.',
   'parc.formulaire.equipement_introuvable': 'Attrezzatura non trovata',
   'parc.formulaire.etape_ligne_texte_affiche': 'Un passaggio per riga. Questo testo viene mostrato sulla scheda e sugli ordini di lavoro.',
-  'parc.formulaire.ex_br_plusieurs_habilitations': 'Es. BR. Più abilitazioni: separate da una virgola.',
+  'parc.formulaire.habilitation_requise_aide': 'Per l\'elettricità, usa «Rischio elettrico»; qui, le altre abilitazioni (CACES R489…). Più abilitazioni: separate da una virgola.',
   'parc.formulaire.risque_electrique_aide': 'Prévo ne deduce l\'abilitazione attesa: BR per un guasto, B1, B2 o BC per un lavoro programmato; H0 per un locale di alta tensione; H1, H2 o HC in alta tensione. Vuoto: macchina non interessata.',
   'parc.formulaire.modifier_libelle_equipement': 'Modifica {libelleEquipement}',
   'parc.formulaire.modifier_v1': 'Modifica {repere}',

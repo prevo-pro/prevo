@@ -1952,7 +1952,7 @@ I18n.ajouter('pt-PT', {
   'parc.formulaire.equipement_existe_plus': 'Este equipamento já não existe.',
   'parc.formulaire.equipement_introuvable': 'Equipamento não encontrado',
   'parc.formulaire.etape_ligne_texte_affiche': 'Um passo por linha. Este texto aparece na ficha e nas ordens de trabalho.',
-  'parc.formulaire.ex_br_plusieurs_habilitations': 'Ex. BR. Várias habilitações: separadas por vírgula.',
+  'parc.formulaire.habilitation_requise_aide': 'Para a eletricidade, utilize «Risco elétrico»; aqui, as outras habilitações (CACES R489…). Várias habilitações: separadas por vírgula.',
   'parc.formulaire.risque_electrique_aide': 'O Prévo deduz a habilitação esperada: BR para uma avaria, B1, B2 ou BC para um trabalho planeado; H0 para um posto de alta tensão; H1, H2 ou HC em alta tensão. Vazio: máquina não abrangida.',
   'parc.formulaire.modifier_libelle_equipement': 'Editar {libelleEquipement}',
   'parc.formulaire.modifier_v1': 'Editar {repere}',

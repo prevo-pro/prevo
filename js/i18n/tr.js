@@ -1952,7 +1952,7 @@ I18n.ajouter('tr', {
   'parc.formulaire.equipement_existe_plus': 'Bu ekipman artık yok.',
   'parc.formulaire.equipement_introuvable': 'Ekipman bulunamadı',
   'parc.formulaire.etape_ligne_texte_affiche': 'Her satıra bir adım. Bu metin kayıtta ve iş emirlerinde görünür.',
-  'parc.formulaire.ex_br_plusieurs_habilitations': 'Ör. BR. Birden çok yetkilendirme: virgülle ayırın.',
+  'parc.formulaire.habilitation_requise_aide': 'Elektrik için “Elektrik riski” alanını kullanın; burada diğer yetkilendirmeler (CACES R489…). Birden çok yetkilendirme: virgülle ayırın.',
   'parc.formulaire.risque_electrique_aide': 'Prévo beklenen yetkilendirmeyi buradan çıkarır: arıza giderme için BR, planlı iş için B1, B2 veya BC; yüksek gerilim odası için H0; yüksek gerilimde H1, H2 veya HC. Boş: makine ilgili değil.',
   'parc.formulaire.modifier_libelle_equipement': '{libelleEquipement} düzenle',
   'parc.formulaire.modifier_v1': '{repere} düzenle',
