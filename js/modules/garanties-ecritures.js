@@ -366,8 +366,8 @@ Object.assign(Garanties, (() => {
     const lue = Donnees.normaliser.date(v.date);
     const date = lue.ok ? lue.valeur : texte(v.date);
     const commentaire = texte(v.commentaire);
-    const base = 'résiliation notée : lettre du ' + UI.dateFr(date) + (commentaire ? ' ; ' + commentaire : '');
-    let action = base;
+    let action = 'résiliation notée : lettre du ' + UI.dateFr(date) + (commentaire ? ' ; ' + commentaire : '');
+    const sansFin = action;
     let id = texte(contratId);
     const changes = await Donnees.modifier(CONTRATS.table, (lignes, outils) => {
       const ligne = ligneSuivie(CONTRATS, lignes, contratId);
@@ -382,10 +382,10 @@ Object.assign(Garanties, (() => {
       if (!estTacite(ligne)) return [];
       const aLaLettre = Garanties.etatContrat(ligne, date);           // 5b : quelle fin la lettre atteint-elle ?
       ligne.reconduction_tacite = '0';
-      action = base;                                                  // modifier peut rejouer cette fonction
+      action = sansFin;                                               // modifier peut rejouer cette fonction
       if (aLaLettre.aToutMoment && aLaLettre.finAuPlusTot) {
         ligne.date_fin = aLaLettre.finAuPlusTot;
-        action = base + ' ; fin au ' + UI.dateFr(aLaLettre.finAuPlusTot);
+        action = sansFin + ' ; fin au ' + UI.dateFr(aLaLettre.finAuPlusTot);
         return ['reconduction_tacite', 'date_fin'];
       }
       return ['reconduction_tacite'];
