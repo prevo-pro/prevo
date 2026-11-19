@@ -1029,6 +1029,7 @@ I18n.ajouter('it', {
   'ordres.champs_clore.deja_saisi': 'Già inserito: {total}.',
   'ordres.champs_clore.equipement_remis_service_securite': 'Attrezzatura rimessa in servizio in sicurezza (protezioni rimontate, messa in sicurezza rimossa, produzione avvisata)',
   'ordres.champs_clore.ete_constate_cause_ete': 'Cosa è stato riscontrato, la causa, cosa è stato fatto (almeno 10 caratteri; «niente da segnalare» non è accettato su un correttivo).',
+  'ordres.champs_clore.repris_du_mot_de_releve': 'Ripreso dalla nota di consegna di {nomTechnicien}: completala con ciò che è stato fatto.',
   'ordres.champs_clore.moins_temps_passe_exige': 'È richiesto almeno un tempo impiegato (es. 1,5).',
   'ordres.champs_clore.piece_hors_magasin': 'Ricambio fuori magazzino (descrizione)',
   'ordres.champs_clore.piece_sortie_magasin_facultatif': 'Ricambio scaricato dal magazzino (facoltativo)',

@@ -1029,6 +1029,7 @@ I18n.ajouter('pt-PT', {
   'ordres.champs_clore.deja_saisi': 'Já introduzido: {total}.',
   'ordres.champs_clore.equipement_remis_service_securite': 'Equipamento reposto em serviço em segurança (proteções repostas, consignação levantada, produção avisada)',
   'ordres.champs_clore.ete_constate_cause_ete': 'O que foi constatado, a causa, o que foi feito (10 carateres no mínimo; «RAS» recusado numa OT corretiva).',
+  'ordres.champs_clore.repris_du_mot_de_releve': 'Retomado da nota de passagem de {nomTechnicien}: complete-a com o que foi feito.',
   'ordres.champs_clore.moins_temps_passe_exige': 'É exigido pelo menos um tempo dedicado (ex. 1,5).',
   'ordres.champs_clore.piece_hors_magasin': 'Peça fora do armazém (designação)',
   'ordres.champs_clore.piece_sortie_magasin_facultatif': 'Peça saída do armazém (facultativo)',

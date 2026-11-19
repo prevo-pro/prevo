@@ -156,6 +156,46 @@ class TestParcoursPassation(CasPassation):
             carte = self.page.inner_text(".accueil-a-prendre li:has(a[href='#/ot/%s'])" % ot)
             self.assertIn("Passé par Julien (fin de journée)", carte)
 
+    def test_cloture_reprend_le_mot_de_releve(self):
+        """Décision 1B de Nicolas (19/11) : à la clôture, un compte rendu vide reprend le dernier mot de relève, à
+        compléter, et l'aide dit de qui il vient ; un compte rendu déjà écrit sur l'OT reste celui de la fenêtre."""
+        mot = "Joint de bride HS, remplacé ; fuite arrêtée."
+        with ServeurPrevo() as serveur:
+            self.ouvrir(serveur, "#/ot")
+            ot = self.creer_ot({"equipement_id": "EQ-0005", "titre": "Fuite 1B", "technicien_id": KARIM,
+                                "priorite": "P1", "date_prevue": "2026-01-02"})
+            self.page.evaluate("id => Ordres.changerStatut(id, 'Créé', 'En cours', {})", ot)
+            self.changer_profil(serveur, "#/accueil", "technicien", KARIM, "Karim Benali")
+            self.aller_fiche(ot)
+            self.page.click("#ot-passer-main")
+            self.page.wait_for_selector(self.fenetre())
+            self.page.check("dialog.dialogue[open] input[name=releve_motif][value='pas le temps']")
+            self.page.select_option("#ot-passation-a", JULIEN)
+            self.page.fill("dialog.dialogue[open] textarea[name=releve_mot]", mot)
+            self.valider_fenetre()
+            self.attendre(serveur, ot, lambda o: o["technicien_id"] == JULIEN)
+            self.changer_profil(serveur, "#/accueil", "technicien", JULIEN, "Julien Moreau")
+            compte_rendu = self.fenetre() + " [name='compte_rendu']"
+
+            def ouvrir_cloture():
+                self.aller_fiche(ot)
+                self.page.click(".ot-actions [data-cible='Clôturé techniquement']")
+                self.page.wait_for_selector(compte_rendu, state="visible")
+                return self.page.inner_text(self.fenetre() + " .champ:has([name='compte_rendu']) .aide")
+
+            aide = ouvrir_cloture()
+            self.assertEqual(self.page.input_value(compte_rendu), mot)
+            self.assertIn("Repris du mot de relève de Karim Benali", aide)
+            self.page.click(self.fenetre() + " .fenetre-actions .btn-fantome")          # annuler : rien d'écrit
+            self.page.wait_for_selector(self.fenetre(), state="detached")
+            self.assertEqual(ot_sur_disque(serveur.dossier, ot)["compte_rendu"], "")
+            # Compte rendu déjà écrit sur l'OT (onglet Compte rendu) : il reste, sans la phrase du mot de relève
+            self.page.evaluate("""async (id) => { await Donnees.modifier('ordres_travail', (lignes) => {
+              lignes.find((l) => l.id === id).compte_rendu = 'Bride resserrée au couple, essai 10 min OK.'; }); }""", ot)
+            aide = ouvrir_cloture()
+            self.assertEqual(self.page.input_value(compte_rendu), "Bride resserrée au couple, essai 10 min OK.")
+            self.assertNotIn("mot de relève", aide)
+
     def test_rg8_journee_terminee_et_attente_equipe(self):
         with ServeurPrevo(demo_rg8_bloquante()) as serveur:          # L19 (T556) : RG8 réglée « bloquante »
             self.ouvrir(serveur, "#/ot")

@@ -1025,6 +1025,7 @@ I18n.ajouter('fr', {
   'ordres.champs_clore.deja_saisi': 'Déjà saisi : {total}.',
   'ordres.champs_clore.equipement_remis_service_securite': 'Équipement remis en service en sécurité (protections remises, consignation levée, production prévenue)',
   'ordres.champs_clore.ete_constate_cause_ete': 'Ce qui a été constaté, la cause, ce qui a été fait (10 caractères au moins ; « RAS » refusé sur un correctif).',
+  'ordres.champs_clore.repris_du_mot_de_releve': 'Repris du mot de relève de {nomTechnicien} : complétez-le avec ce qui a été fait.',
   'ordres.champs_clore.moins_temps_passe_exige': 'Au moins un temps passé est exigé (ex. 1,5).',
   'ordres.champs_clore.piece_hors_magasin': 'Pièce hors magasin (désignation)',
   'ordres.champs_clore.piece_sortie_magasin_facultatif': 'Pièce sortie du magasin (facultatif)',

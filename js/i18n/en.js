@@ -1027,6 +1027,7 @@ I18n.ajouter('en', {
   'ordres.champs_clore.deja_saisi': 'Already entered: {total}.',
   'ordres.champs_clore.equipement_remis_service_securite': 'Equipment returned to service safely (guards refitted, isolation removed, production told)',
   'ordres.champs_clore.ete_constate_cause_ete': 'What was found, the cause, what was done (at least 10 characters; “NTR” is not accepted on a corrective job).',
+  'ordres.champs_clore.repris_du_mot_de_releve': 'Taken from the handover note of {nomTechnicien}: add what was done.',
   'ordres.champs_clore.moins_temps_passe_exige': 'At least one time spent entry is required (e.g. 1.5).',
   'ordres.champs_clore.piece_hors_magasin': 'Non-stock part (description)',
   'ordres.champs_clore.piece_sortie_magasin_facultatif': 'Part issued from stores (optional)',

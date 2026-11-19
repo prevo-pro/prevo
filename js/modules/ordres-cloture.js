@@ -259,8 +259,8 @@ Object.assign(Ordres, (() => {
       ...Ordres.interne.rappelTempsRenforts(ot),                  // L16 : temps des renforts, sans bloquer
       ...questionArret(ot),                                       // P04 : le bilan compte les arrêts
       ...codes,
-      marquerExige(champOt('compte_rendu', texte(ot.compte_rendu) || compteRenduDOffice(ot), {        // L23 : écrit d'office
-        aide: I18n.t('ordres.champs_clore.ete_constate_cause_ete'),
+      marquerExige(champOt('compte_rendu', compteRenduPropose(ot), {        // L23 : écrit d'office ; 1B : mot de relève
+        aide: aideCompteRendu(ot),
       })),
       ...(completer ? [] : Demandes.champsMotOperateur(ot)),      // A4 : mot pour l'opérateur, si l'OT vient d'une demande
       remise,
@@ -388,6 +388,26 @@ Object.assign(Ordres, (() => {
   /** L23 : compte rendu écrit d'office (langue de l'écran au moment de l'écriture) ; '' s'il est déjà écrit ou s'il faut l'écrire. */
   function compteRenduDOffice(ot) {
     return !texte(ot.compte_rendu) && visiteSansAnomalie(ot) ? I18n.t('ordres.cloture.visite_rien_a_signaler') : '';
+  }
+
+  /** Décision 1B de Nicolas (19/11, rejeu de la livraison 2 : un technicien retapait le diagnostic que son collègue avait
+   *  écrit en passant la main) : sans compte rendu ni texte d'office, le dernier mot de relève (L16) est proposé, à
+   *  compléter. '' s'il n'y en a pas : la règle RG4 du compte rendu ne change pas. */
+  function motDeReleveAReprendre(ot) {
+    return texte(ot.compte_rendu) || compteRenduDOffice(ot) ? '' : texte(ot.releve_mot);
+  }
+
+  /** Compte rendu proposé dans la fenêtre : celui de l'OT, sinon le texte d'office (L23), sinon le mot de relève (1B). */
+  function compteRenduPropose(ot) {
+    return texte(ot.compte_rendu) || compteRenduDOffice(ot) || motDeReleveAReprendre(ot);
+  }
+
+  /** Aide du compte rendu ; quand il reprend le mot de relève, elle dit de qui il vient. */
+  function aideCompteRendu(ot) {
+    const aide = I18n.t('ordres.champs_clore.ete_constate_cause_ete');
+    if (!motDeReleveAReprendre(ot)) return aide;
+    const auteur = Ordres.nomTechnicien(texte(ot.releve_par));
+    return auteur ? I18n.t('ordres.champs_clore.repris_du_mot_de_releve', { nomTechnicien: auteur }) + ' ' + aide : aide;
   }
 
   /**

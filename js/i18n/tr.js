@@ -1029,6 +1029,7 @@ I18n.ajouter('tr', {
   'ordres.champs_clore.deja_saisi': 'Zaten girilen: {total}.',
   'ordres.champs_clore.equipement_remis_service_securite': 'Ekipman güvenli şekilde hizmete alındı (korumalar yerine takıldı, enerji izolasyonu kaldırıldı, üretime haber verildi)',
   'ordres.champs_clore.ete_constate_cause_ete': 'Tespit edilenler, neden ve yapılanlar (en az 10 karakter; düzeltici bakımda “bildirilecek bir şey yok” kabul edilmez).',
+  'ordres.champs_clore.repris_du_mot_de_releve': '{nomTechnicien} devir notundan alındı: yapılanları ekleyin.',
   'ordres.champs_clore.moins_temps_passe_exige': 'En az bir harcanan süre gerekli (örn. 1,5).',
   'ordres.champs_clore.piece_hors_magasin': 'Depo dışı parça (tanım)',
   'ordres.champs_clore.piece_sortie_magasin_facultatif': 'Depodan çıkan parça (isteğe bağlı)',
