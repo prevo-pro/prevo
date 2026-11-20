@@ -530,7 +530,9 @@ Les contrôles du lot 1 restent en place avant elle : chemin dont un segment com
 `tests/fixtures/` (pages et fichiers d'essai des tests). Pas d'en-têtes CORS.
 Le serveur parle HTTP/1.1 avec connexions persistantes (`protocol_version = 'HTTP/1.1'` : un
 navigateur réutilise ses connexions au lieu d'en ouvrir une par requête), avec une file d'attente
-d'écoute de 128 connexions (`request_queue_size = 128`) et un fil par connexion.
+d'écoute de 128 connexions (`request_queue_size = 128`) et un fil par connexion. `TCP_NODELAY` est posé sur
+chaque connexion (`disable_nagle_algorithm = True`) : sous Linux, sans lui, chaque petit fichier attendait environ 40 ms
+l'accusé de réception retardé du navigateur (algorithme de Nagle, en-tête et corps envoyés en deux écritures).
 **Lot 7 (§22)** : quand les comptes sont exigés, toute route `/api/` répond **401** sans session ni appareil enrôlé et **403** hors du rôle (table `ROLES_PAR_ROUTE`, §22.5) ; routes `/api/connexion`, `/api/session`, `/api/acces/…` (§22.4), `/api/installation/…` (loopback, §22.10) ; fichiers publics `/acces/…` de la porte d'entrée (§22.6) ; sauvegardes (§22.11) : `POST /api/sauvegarde` manuelle limitée à une par minute (**429**, `Retry-After`) et purgée au-delà de 60, `POST /api/sauvegarde/tester`, `copie_externe` dans `GET /api/info`.
 Lancement : `py serveur.py [--port 8080] [--donnees CHEMIN] [--sans-navigateur] [--hote NOM]
 [--servir-tests]` ; port suivant si occupé (jusqu'à +20) ; affiche l'adresse locale et les adresses

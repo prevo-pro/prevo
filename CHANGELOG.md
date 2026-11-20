@@ -7,6 +7,12 @@ suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Corrigé
+
+- **Ouverture plus rapide avec un serveur sous Linux.** Chaque petit fichier de l'application attendait environ 40 ms
+  avant de partir (délai du réseau propre à Linux) : l'ouverture prenait près d'une seconde de trop. Sous Windows, rien
+  ne change.
+
 ## [2.4.1] - 2026-11-20
 
 - Clôture : le compte rendu reprend le mot de relève laissé par le collègue qui a passé la main ; il suffit de le compléter.

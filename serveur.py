@@ -8427,6 +8427,10 @@ class GestionnaireRequetes(http.server.BaseHTTPRequestHandler):
     # Toutes les réponses portent Content-Length (envoyer) ; le corps des requêtes est lu après les contrôles, ou
     # jeté (64 Ko au plus) avant un refus ; sinon la connexion est fermée après la réponse (traiter).
     protocol_version = 'HTTP/1.1'
+    # TCP_NODELAY (20/11/2026) : l'en-tête et le corps d'une réponse partent en deux écritures ; sous Linux, sur une
+    # connexion gardée, l'algorithme de Nagle retenait le corps d'un petit fichier jusqu'à l'accusé de réception
+    # retardé du navigateur, environ 40 ms par fichier (chargement de 2,2 s au lieu de 1,2 s, ~195 fichiers).
+    disable_nagle_algorithm = True
 
     # --- Points d'entrée appelés par http.server ---------------------------
 
