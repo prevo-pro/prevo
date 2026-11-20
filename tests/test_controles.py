@@ -627,6 +627,9 @@ class TestProfils(CasControles):
                 self.assertIn("Organisme", page.inner_text(".controles-fiche"))
             self.aller("#/controles/nouveau")
             page.wait_for_function("location.hash === '#/accueil'")
+            # Quitter l'application avant d'arrêter ce serveur : la page ouverte continue d'interroger /api/versions
+            # (suivi des autres postes) et ses appels refusés pendant le second bloc faisaient échouer le test.
+            page.goto("about:blank")
 
         with ServeurPrevo() as serveur:
             contexte = self.navigateur.new_context(locale="fr-FR", viewport={"width": 1280, "height": 800})
