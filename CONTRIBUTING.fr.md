@@ -43,10 +43,10 @@ ils ne servent qu'aux tests, pas à l'utilisation de Prévo. La suite complète 
 py outils/lancer_tests.py --journal tests/resultats/suite.txt
 ```
 
-Chaque fichier de test tourne à part ; celui qui dépasse `--delai-max` (15 min par défaut) est arrêté et compté en
-échec, la suite continue. L'aller-retour par le vrai Excel ne tourne qu'avec `PREVO_TEST_EXCEL=1` (Excel installé),
-l'essai avec un vrai Ollama et `qwen2.5:7b` qu'avec `PREVO_TEST_IA=1` ; sinon ces tests sont sautés. Aucun test ne lit
-le vrai `prevo.pro` ni n'envoie quoi que ce soit hors du PC.
+Chaque fichier de test tourne à part ; celui qui dépasse `--delai-max` (15 min par défaut, 25 sous Linux) est arrêté
+et compté en échec, la suite continue. L'aller-retour par le vrai Excel ne tourne qu'avec `PREVO_TEST_EXCEL=1` (Excel
+installé), l'essai avec un vrai Ollama et `qwen2.5:7b` qu'avec `PREVO_TEST_IA=1` ; sinon ces tests sont sautés. Aucun
+test ne lit le vrai `prevo.pro` ni n'envoie quoi que ce soit hors du PC.
 
 Outils de développement (Playwright aussi) : `py outils/generer_captures.py` refait les captures d'écran
 (`docs/captures/` et images du guide) ; `py outils/generer_fiche_csv.py` refait la fiche technique des CSV d'après le

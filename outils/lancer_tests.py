@@ -2,10 +2,10 @@
 
 Chaque fichier tests/test_*.py, dans l'ordre de « unittest discover », est lancé à part, depuis la racine du dépôt :
     <python courant> -X utf8 -m unittest discover -s tests -p <fichier> -v
-Un fichier qui dépasse le délai maximal (15 minutes par défaut) est arrêté avec tout son arbre de processus
-(navigateur, pilote Playwright, serveur…), compté en échec « délai maximal dépassé (N min) », et la suite continue
-avec le fichier suivant : un blocage fait échouer un fichier au lieu de figer la suite (le 04/11, une suite complète
-s'était figée sans aucun échec entre deux classes à navigateur de tests/test_recette_lot1.py).
+Un fichier qui dépasse le délai maximal (15 minutes par défaut, 25 sous Linux) est arrêté avec tout son arbre de
+processus (navigateur, pilote Playwright, serveur…), compté en échec « délai maximal dépassé (N min) », et la suite
+continue avec le fichier suivant : un blocage fait échouer un fichier au lieu de figer la suite (le 04/11, une suite
+complète s'était figée sans aucun échec entre deux classes à navigateur de tests/test_recette_lot1.py).
 
 Sortie (le journal, sinon la sortie standard) : la sortie complète de chaque fichier (sortie standard et erreurs
 mêlées dans l'ordre, avec les lignes « ... ok », « ... FAIL », « ... ERROR » de unittest), encadrée par une ligne
@@ -33,7 +33,11 @@ from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
 MOTIF_PAR_DEFAUT = "test_*.py"
-DELAI_PAR_DEFAUT = 15        # minutes, par fichier de test
+# Délai par défaut, en minutes, par fichier de test : 15 sur le PC Windows de référence. Tolérance propre à Linux
+# (20/11/2026) : sur le serveur Linux de développement, tests/test_ecrans_langues.py met 864 à 870 s seul au calme
+# (moins de 15 min sur le PC) et frôlait les 900 s. Le délai ne sert qu'à arrêter un fichier bloqué : l'allonger ne
+# masque aucun échec, il retarde seulement l'arrêt d'un blocage.
+DELAI_PAR_DEFAUT = 25 if sys.platform.startswith("linux") else 15
 INTERVALLE = 0.25            # secondes entre deux relevés de la sortie du fichier en cours
 PREFIXE = "====="            # début des lignes écrites par le lanceur (les autres viennent des tests)
 

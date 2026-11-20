@@ -43,10 +43,10 @@ only used for testing, not for running Prévo. The full suite takes about an hou
 py outils/lancer_tests.py --journal tests/resultats/suite.txt
 ```
 
-Each test file runs on its own; a file that goes beyond `--delai-max` (15 minutes by default) is stopped and counted
-as failed, and the suite goes on. The round trip through the real Excel runs only with `PREVO_TEST_EXCEL=1` (Excel
-installed), the test with a real Ollama and `qwen2.5:7b` only with `PREVO_TEST_IA=1`; otherwise they are skipped.
-No test ever reads the real `prevo.pro` or sends anything outside the PC.
+Each test file runs on its own; a file that goes beyond `--delai-max` (15 minutes by default, 25 on Linux) is stopped
+and counted as failed, and the suite goes on. The round trip through the real Excel runs only with
+`PREVO_TEST_EXCEL=1` (Excel installed), the test with a real Ollama and `qwen2.5:7b` only with `PREVO_TEST_IA=1`;
+otherwise they are skipped. No test ever reads the real `prevo.pro` or sends anything outside the PC.
 
 Development tools (Playwright too): `py outils/generer_captures.py` remakes the screenshots (`docs/captures/` and the
 images of the guide); `py outils/generer_fiche_csv.py` remakes the CSV technical sheet from the schema;
